@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">TCQT</string>
+    <string name="module_name">TCQT</string>
+    <string name="module_desc">TCQT by callng@github</string>
 </resources>

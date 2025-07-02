@@ -1,15 +1,31 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Built application files
+*.apk
+*.ap_
+app/build/
+app/src/main/gen/
+app/src/main/bin/
+cmake-build-*
+release/
+debug/
+
+# Kotlin sessions
+.kotlin/
+
+# Generated files
+bin/
+gen/
+out/
+app/.cxx/
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
 local.properties
+
+# Log Files
+*.log
+
+# IntelliJ
+*.iml
+.idea/
