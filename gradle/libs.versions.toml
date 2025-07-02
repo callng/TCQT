@@ -1,0 +1,23 @@
+[versions]
+agp = "8.11.0"
+kotlin = "2.2.0"
+core = "1.16.0"
+xposed = "82"
+kotlinx-serialization = "1.9.0"
+kotlinx-coroutines = "1.10.2"
+kotlinx-io = "0.1.16"
+protobuf-java = "4.31.1"
+
+[libraries]
+androidx-core = { group = "androidx.core", name = "core", version.ref = "core"}
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed"}
+kotlinx-io-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-jvm", version.ref = "kotlinx-io" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
+protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
