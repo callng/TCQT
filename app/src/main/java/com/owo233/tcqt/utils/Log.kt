@@ -14,8 +14,8 @@ private val logExecutor = Executors.newSingleThreadExecutor()
 private fun parseLog(level: Int, tag: String, msg: String, cause: Throwable? = null) = buildString {
     val levelStr = when (level) {
         Log.DEBUG -> "DEBUG"
-        Log.INFO -> " INFO"
-        Log.WARN -> " WARN"
+        Log.INFO -> "INFO"
+        Log.WARN -> "WARN"
         Log.ERROR -> "ERROR"
         else -> "?????"
     }

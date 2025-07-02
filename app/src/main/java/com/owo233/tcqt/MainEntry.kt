@@ -1,14 +1,17 @@
 package com.owo233.tcqt
 
 import android.content.Context
+import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import mqq.app.MobileQQ
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 
@@ -16,7 +19,7 @@ class MainEntry: IXposedHookLoadPackage {
     private var firstStageInit = false
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
-        if (lpparam.packageName == PACKAGE_NAME_QQ) {
+        if (lpparam.packageName == PACKAGE_NAME_QQ || lpparam.packageName == PACKAGE_NAME_TIM) {
             entryQQ(lpparam.classLoader)
         }
     }
@@ -37,7 +40,7 @@ class MainEntry: IXposedHookLoadPackage {
                     execStartupInit(it)
                 }
             } catch (e: Throwable) {
-                logE(msg = "entryQQ 异常", cause = e)
+                logE(msg = "startup 异常", cause = e)
             }
         }
 
@@ -61,7 +64,7 @@ class MainEntry: IXposedHookLoadPackage {
                         if (key.contains("LoadDex", ignoreCase = true)) {
                             clazz.declaredMethods.forEach { method ->
                                 if (method.parameterTypes.size == 1 && method.parameterTypes[0] == Context::class.java) {
-                                    logI(msg = "Try load fetchEntry's injector.")
+                                    // logI(msg = "Try load fetchEntry's injector.")
                                     XposedBridge.hookMethod(method, startup)
                                 }
                             }
@@ -70,6 +73,8 @@ class MainEntry: IXposedHookLoadPackage {
                 }
             }
             firstStageInit = true
+        }.onFailure {
+            logE(msg = "entryQQ 异常", cause = it)
         }
     }
 
@@ -84,11 +89,15 @@ class MainEntry: IXposedHookLoadPackage {
                 System.setProperty("TCQT_flag", "114514")
             } else return
 
-            logI(msg = "替换类加载器成功")
+            logI(msg = "PName = " + MobileQQ.getMobileQQ().qqProcessName)
 
             secStaticStageInited = true
 
-            // TODO hook入口
+            ActionManager.runFirst(ctx, when {
+                PlatformTools.isMainProcess() -> ActionProcess.MAIN
+                PlatformTools.isMsfProcess() -> ActionProcess.MSF
+                else -> ActionProcess.ALL
+            })
         }
     }
 
@@ -96,7 +105,7 @@ class MainEntry: IXposedHookLoadPackage {
         if (runCatching {
                 moduleLoader.loadClass("mqq.app.MobileQQ")
             }.isSuccess) {
-            logI(msg = "ModuleClassloader already injected.")
+            // logI(msg = "ModuleClassloader already injected.")
             return true
         }
 
@@ -119,7 +128,7 @@ class MainEntry: IXposedHookLoadPackage {
         }.onFailure {
             logE(msg = "Classloader inject failed.")
         }.onSuccess {
-            logI(msg = "Classloader inject successfully.")
+            // logI(msg = "Classloader inject successfully.")
         }.isSuccess
     }
 
@@ -127,5 +136,6 @@ class MainEntry: IXposedHookLoadPackage {
         @JvmStatic var secStaticStageInited = false
 
         internal const val PACKAGE_NAME_QQ = "com.tencent.mobileqq"
+        internal const val PACKAGE_NAME_TIM = "com.tencent.tim"
     }
 }

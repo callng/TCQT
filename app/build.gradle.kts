@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    kotlin("plugin.serialization") version "2.2.0"
 }
 
 android {
@@ -31,6 +32,7 @@ android {
     packaging {
         resources.excludes.addAll(
             arrayOf(
+                "google/**",
                 "kotlin/**",
                 "META-INF/**",
                 "**.bin",
@@ -70,6 +72,7 @@ android {
 
 dependencies {
     compileOnly(libs.xposed.api)
+    compileOnly(project(":qqinterface"))
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.io.jvm)
