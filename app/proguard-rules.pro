@@ -42,9 +42,21 @@
 # 保留 ActionProcess 枚举
 -keep enum com.owo233.tcqt.ext.ActionProcess
 
-# 保留所有类中名为 top 的字段
--keepclassmembers class * {
-    volatile long top;
+# 大多数 volatile 字段是由 AtomicFU（Kotlin 的原子操作库）自动处理的，不应该被改名或删除。
+-keepclassmembers class kotlinx.io.** {
+    volatile <fields>;
+}
+
+-keepclassmembers class kotlinx.coroutines.io.** {
+    volatile <fields>;
+}
+
+-keepclassmembernames class kotlinx.io.** {
+    volatile <fields>;
+}
+
+-keepclassmembernames class kotlinx.coroutines.io.** {
+    volatile <fields>;
 }
 
 -obfuscationdictionary obf-dict.txt
