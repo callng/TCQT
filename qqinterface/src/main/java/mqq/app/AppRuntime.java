@@ -1,12 +1,10 @@
 package mqq.app;
 
 import android.os.Bundle;
-import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
 import com.tencent.qphone.base.remote.SimpleAccount;
-import com.tencent.qphone.base.remote.ToServiceMsg;
 
 import mqq.app.api.IRuntimeService;
 
@@ -96,10 +94,6 @@ public abstract class AppRuntime {
 
     public boolean isLogin() {
         return false;
-    }
-
-    public ServletContainer getServletContainer() {
-        return null;
     }
 
     public void onCreate(Bundle bundle) {

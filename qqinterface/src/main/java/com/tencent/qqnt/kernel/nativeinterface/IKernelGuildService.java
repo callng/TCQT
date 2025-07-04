@@ -1,7 +1,5 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-import java.util.ArrayList;
-
 public interface IKernelGuildService {
 /*    void refreshGuildList(boolean isForced); // 只刷新id，详细信息需要额外获取
 

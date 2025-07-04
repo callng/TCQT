@@ -1,7 +1,5 @@
 package com.tencent.mobileqq.pb;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class PBRepeatMessageField<T extends MessageMicro<T>> extends PBField<List<T>> {

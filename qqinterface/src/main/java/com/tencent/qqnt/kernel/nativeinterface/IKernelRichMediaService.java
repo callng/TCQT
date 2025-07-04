@@ -1,8 +1,6 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 
-import java.util.ArrayList;
-
 public interface IKernelRichMediaService {
 /*    void batchGetGroupFileCount(ArrayList<Long> arrayList, IBatchGroupFileCountCallback iBatchGroupFileCountCallback);
 

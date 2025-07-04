@@ -1,7 +1,5 @@
 package com.tencent.mobileqq.data.troop;
 
-import org.jetbrains.annotations.Nullable;
-
 public class TroopMemberInfo {
     public static final long VALUE_DISTANCE_TO_SELF_UNKOWN = -100;
     protected static final int VALUE_INVALID = -100;
@@ -13,9 +11,6 @@ public class TroopMemberInfo {
     public String autoremark;
     public long credit_level;
     public String displayedNamePinyinFirst;
-
-    @Nullable
-    public TroopMemberInfoExt extInfo;
 
     @Deprecated(since = "推荐使用TroopMemberNickInfo")
     public String friendnick;
@@ -34,9 +29,6 @@ public class TroopMemberInfo {
     public int newRealLevel;
     public TroopMemberNickInfo nickInfo;
     public int realLevel;
-
-    @Nullable
-    public TroopMemberSpecialTitleInfo specialTitleInfo;
 
     @Deprecated(since = "推荐使用TroopMemberNickInfo")
     public String troopColorNick;

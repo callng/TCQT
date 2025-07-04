@@ -1,10 +1,5 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-
 public interface IKernelMsgService {
 /*    void deleteMsg(Contact contact, ArrayList<Long> msgIdList, IOperateCallback callback);
 

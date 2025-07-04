@@ -1,7 +1,6 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class MsgRecord {
     //AnonymousExtInfo anonymousExtInfo;

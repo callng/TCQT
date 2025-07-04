@@ -1,7 +1,7 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 
-public  enum VideoCodecFormatType {
+public enum VideoCodecFormatType {
     KCODECFORMATH264,
     KCODECFORMATH265
 }

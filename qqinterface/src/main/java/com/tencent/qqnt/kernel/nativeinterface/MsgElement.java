@@ -1,7 +1,5 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-import java.io.Serializable;
-
 public final class MsgElement {
     ArkElement arkElement; // JSON MSG
     AVRecordElement avRecordElement; // 录音
