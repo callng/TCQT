@@ -45,7 +45,7 @@ internal object NTServiceFetcher {
                     }
                     "trpc.msg.olpush.OlPushService.MsgPush" -> {
                         val msgPush = ProtoBuf.decodeFromByteArray<MessagePush>(buffer)
-                        if (AioListener.onMsgPush(it, msgPush)) {
+                        if (AioListener.onMsgPush(msgPush)) {
                             it.result = Unit
                         } else {
                             return@before

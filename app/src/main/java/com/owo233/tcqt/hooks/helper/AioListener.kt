@@ -4,7 +4,6 @@ import com.google.protobuf.UnknownFieldSet
 import com.owo233.tcqt.entries.C2CRecallMessage
 import com.owo233.tcqt.entries.GroupRecallMessage
 import com.owo233.tcqt.entries.Message
-import com.owo233.tcqt.entries.MessageHead
 import com.owo233.tcqt.entries.MessagePush
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
@@ -12,7 +11,6 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
-import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.io.core.ByteReadPacket
@@ -26,13 +24,13 @@ import kotlin.text.toLong
 
 object AioListener {
 
-    fun onMsgPush(param: XC_MethodHook.MethodHookParam, msgPush: MessagePush): Boolean {
+    fun onMsgPush(msgPush: MessagePush): Boolean {
         val msgType = msgPush.msgBody.content.msgType
         val subType = msgPush.msgBody.content.msgSubType
         val msgBody = msgPush.msgBody
         return when(msgType) {
             528 -> when(subType) {
-                138 -> onC2CRecall(msgBody.msgHead, msgBody.body!!.msgContent)
+                138 -> onC2CRecall(msgBody.body!!.msgContent)
                 else -> false
             }
             732 -> when(subType) {
@@ -63,11 +61,9 @@ object AioListener {
             if (recallData.type != 7u || recallData.peerId == 0uL) return@launchWithCatch
 
             val groupCode = recallData.peerId.toLong()
-            val msgUid = message.content.msgUid
             val targetUid = recallData.operation.msgInfo?.senderUid ?: ""
             val operatorUid = recallData.operation.operatorUid ?: ""
             val msgSeq = recallData.operation.msgInfo?.msgSeq ?: 0L
-            val wording = recallData.operation.wording?.wording ?: ""
 
             if (operatorUid == QQInterfaces.app.currentUid) return@launchWithCatch
 
@@ -87,14 +83,15 @@ object AioListener {
             )
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_GROUP_NOTICE, LocalGrayTips.Align.CENTER) {
                 member(operatorUid, operator, operatorNick, "3")
-                text("尝试撤回")
+                text("想撤回")
                 if (targetUid == operatorUid) {
-                    text("自己")
+                    text("TA")
                 } else {
                     member(targetUid, target, targetNick, "3")
                 }
                 text("的")
                 msgRef("消息", msgSeq)
+                text(",已拦截")
             }
         }
 
@@ -102,32 +99,25 @@ object AioListener {
     }
 
     @OptIn(DelicateCoroutinesApi::class, ExperimentalSerializationApi::class)
-    private fun onC2CRecall(msgHead: MessageHead, richMsg: ByteArray?): Boolean {
+    private fun onC2CRecall(richMsg: ByteArray?): Boolean {
         if (richMsg == null) return false
 
         GlobalScope.launchWithCatch {
             val recallData = ProtoBuf.decodeFromByteArray<C2CRecallMessage>(richMsg)
 
             val senderUid = recallData.info.senderUid
-            val receiverUid = recallData.info.receiverUid
             val msgSeq = recallData.info.msgSeq
-            val msgClientSeq = recallData.info.msgClientSeq
-            val msgUid = recallData.info.msgUid
-            val msgTime = recallData.info.msgTime
-            val wording = recallData.info.wording?.wording ?: ""
 
             if (senderUid == QQInterfaces.app.currentUid) return@launchWithCatch
-
-            val sender = ContactHelper.getUinByUidAsync(senderUid)
-            val receiver = ContactHelper.getUinByUidAsync(receiverUid)
 
             val contact = ContactHelper.generateContact(
                 chatType = MsgConstant.KCHATTYPEC2C,
                 id = senderUid
             )
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
-                text("对方尝试撤回一条")
+                text("对方想撤回一条")
                 msgRef("消息", msgSeq)
+                text(",已拦截")
             }
         }
 
