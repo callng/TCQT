@@ -46,27 +46,28 @@ object AioListener {
     )
     private fun onGroupRecall(message: Message, msgContent: ByteArray?): Boolean {
         if (msgContent == null) return false
+
+        val reader = ByteReadPacket(msgContent)
+        val buffer = try {
+            if (msgContent.size >= 7 && reader.readUInt() == message.msgHead.peerId) {
+                reader.discardExact(1)
+                reader.readBytes(reader.readShort().toInt())
+            } else msgContent
+        } finally {
+            reader.release()
+        }
+        val recallData = ProtoBuf.decodeFromByteArray<GroupRecallMessage>(buffer)
+
+        if (recallData.type != 7u || recallData.peerId == 0uL) return false
+
+        val operatorUid = recallData.operation.operatorUid ?: ""
+
+        if (operatorUid == QQInterfaces.app.currentUid) return false
+
         GlobalScope.launchWithCatch {
-            val reader = ByteReadPacket(msgContent)
-            val buffer = try {
-                if (msgContent.size >= 7 && reader.readUInt() == message.msgHead.peerId) {
-                    reader.discardExact(1)
-                    reader.readBytes(reader.readShort().toInt())
-                } else msgContent
-            } finally {
-                reader.release()
-            }
-            val recallData = ProtoBuf.decodeFromByteArray<GroupRecallMessage>(buffer)
-
-            if (recallData.type != 7u || recallData.peerId == 0uL) return@launchWithCatch
-
             val groupCode = recallData.peerId.toLong()
             val targetUid = recallData.operation.msgInfo?.senderUid ?: ""
-            val operatorUid = recallData.operation.operatorUid ?: ""
             val msgSeq = recallData.operation.msgInfo?.msgSeq ?: 0L
-
-            if (operatorUid == QQInterfaces.app.currentUid) return@launchWithCatch
-
             val target = ContactHelper.getUinByUidAsync(targetUid)
             val operator = ContactHelper.getUinByUidAsync(operatorUid)
 
