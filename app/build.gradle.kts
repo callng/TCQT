@@ -36,8 +36,8 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
     }
 
