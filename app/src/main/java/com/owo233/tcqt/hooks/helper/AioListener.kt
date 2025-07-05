@@ -72,10 +72,10 @@ object AioListener {
             val operator = ContactHelper.getUinByUidAsync(operatorUid)
 
             val targetNick = (if (targetUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupCode, target.toLong()).getOrNull())?.let {
-                it.troopnick.ifNullOrEmpty { it.friendnick }
+                it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
             } ?: targetUid
             val operatorNick = (if (operatorUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupCode, operator.toLong()).getOrNull())?.let {
-                it.troopnick.ifNullOrEmpty { it.friendnick }
+                it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
             } ?: operatorUid
 
             val contact = ContactHelper.generateContact(

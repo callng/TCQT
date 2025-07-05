@@ -1,18 +1,13 @@
 package com.tencent.qqnt.troopmemberlist;
 
 import androidx.lifecycle.LifecycleOwner;
-
 import com.tencent.mobileqq.data.troop.TroopMemberInfo;
 import com.tencent.mobileqq.data.troop.TroopMemberNickInfo;
 import com.tencent.mobileqq.qroute.QRouteApi;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
 import java.util.List;
 import java.util.Map;
-
-import kotlin.Deprecated;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function2;
@@ -45,22 +40,21 @@ public interface ITroopMemberListRepoApi extends QRouteApi {
 
     //void fetchTroopMemberUinListInfoWithExtInfo(@Nullable String str, @Nullable List<String> list, boolean z, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str2, @Nullable f fVar);
 
-    //@Nullable
-    //TroopMemberInfo getTroopMemberFromCacheOrFetchAsync(@Nullable String str, @Nullable String str2, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str3, @Nullable g gVar);
+    @Nullable
+    TroopMemberInfo getTroopMemberFromCacheOrFetchAsync(@Nullable String groupId, @Nullable String userId, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str3, @Nullable g gVar);
 
     int getTroopMemberInfoDBVersion();
 
-    @Deprecated(message = "兼容旧逻辑，过渡用，新逻辑不要使用")
-    @Nullable
-    TroopMemberInfo getTroopMemberInfoSync(@Nullable String groupId, @Nullable String userId, @Nullable LifecycleOwner lifecycleOwner, @NotNull String from);
+    //@Deprecated(message = "兼容旧逻辑，过渡用，新逻辑不要使用")
+    //@Nullable
+    //TroopMemberInfo getTroopMemberInfoSync(@Nullable String groupId, @Nullable String userId, @Nullable LifecycleOwner lifecycleOwner, @NotNull String from);
 
     //@Deprecated(message = "兼容旧逻辑，过渡用，新逻辑不要使用")
     //@Nullable
     //TroopMemberInfo getTroopMemberInfoSync(@Nullable String str, @Nullable String str2, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str3, long j);
 
-    //@Deprecated(message = "兼容旧逻辑，过渡用，新逻辑不要使用")
-    //@Nullable
-    //TroopMemberInfo getTroopMemberWithExtFromCacheOrFetchAsync(@Nullable String str, @Nullable String str2, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str3, @Nullable g gVar);
+    @Nullable
+    TroopMemberInfo getTroopMemberWithExtFromCacheOrFetchAsync(@Nullable String groupId, @Nullable String userId, @Nullable LifecycleOwner lifecycleOwner, @NotNull String str3, @Nullable g gVar);
 
     //@Deprecated(message = "兼容旧逻辑，过渡用，新逻辑不要使用")
     //@Nullable

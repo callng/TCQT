@@ -53,10 +53,15 @@ internal object GroupHelper {
         groupId: Long,
         uin: Long
     ): Result<TroopMemberInfo> {
-        return kotlin.runCatching {
+        return runCatching {
             val api = QRoute.api(ITroopMemberListRepoApi::class.java)
-            api.getTroopMemberInfoSync(groupId.toString(), uin.toString(), null, groupId.toString())
-                ?: throw Exception("获取群成员信息失败: NT兼容接口已废弃")
+            api.getTroopMemberFromCacheOrFetchAsync(
+                groupId.toString(),
+                uin.toString(),
+                null,
+                "AIONickBlockApiImpl-level",
+                null
+            ) ?: throw Exception("获取群成员信息失败")
         }
     }
 
@@ -69,7 +74,7 @@ internal object GroupHelper {
         if (PlatformTools.getQQVersionCode() < QQ_9_0_65_VER) {
             val service = QQInterfaces.app.getRuntimeService(ITroopMemberInfoService::class.java, "all")
             info = service.getTroopMember(groupId.toString(), uin.toString())
-            if (refresh || !service.isMemberInCache(groupId.toString(), uin.toString()) || info == null || info.troopnick == null) {
+            if (refresh || !service.isMemberInCache(groupId.toString(), uin.toString()) || info == null) {
                 info = requestTroopMemberInfo(service, groupId, uin).getOrNull()
             }
         } else {
@@ -105,6 +110,7 @@ internal object GroupHelper {
             Result.failure(Exception("获取群成员信息失败"))
         }
     }
+
     private fun requestMemberInfo(groupId: Long, memberUin: Long) {
         val app = QQInterfaces.app
         val businessHandler = app.getBusinessHandler(BusinessHandlerFactory.TROOP_MEMBER_CARD_HANDLER)
