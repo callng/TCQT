@@ -4,7 +4,7 @@ import android.content.Context
 import com.owo233.tcqt.utils.logE
 
 enum class ActionProcess {
-    MSF, MAIN, ALL
+    MSF, MAIN, TOOL, ALL
 }
 
 abstract class AlwaysRunAction : IAction {
@@ -29,5 +29,4 @@ interface IAction {
     val name: String
 
     val process: ActionProcess
-        get() = ActionProcess.MAIN
 }

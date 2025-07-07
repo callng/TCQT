@@ -96,6 +96,7 @@ class MainEntry: IXposedHookLoadPackage {
             ActionManager.runFirst(ctx, when {
                 PlatformTools.isMainProcess() -> ActionProcess.MAIN
                 PlatformTools.isMsfProcess() -> ActionProcess.MSF
+                PlatformTools.isToolProcess() -> ActionProcess.TOOL
                 else -> ActionProcess.ALL
             })
         }

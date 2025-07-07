@@ -32,25 +32,25 @@ val String.asJson: JsonElement
 val String.asJsonObject: JsonObject
     get() = Json.parseToJsonElement(this).asJsonObject
 
+@Suppress("UNCHECKED_CAST")
 val Collection<Any>.json: JsonArray
     get() {
         val arrayList = arrayListOf<JsonElement>()
         forEach {
-            if (it != null) {
-                when (it) {
-                    is JsonElement -> arrayList.add(it)
-                    is Number -> arrayList.add(it.json)
-                    is String -> arrayList.add(it.json)
-                    is Boolean -> arrayList.add(it.json)
-                    is Map<*, *> -> arrayList.add((it as Map<String, Any>).json)
-                    is Collection<*> -> arrayList.add((it as Collection<Any>).json)
-                    else -> error("unknown array type: ${it::class.java}")
-                }
+            when (it) {
+                is JsonElement -> arrayList.add(it)
+                is Number -> arrayList.add(it.json)
+                is String -> arrayList.add(it.json)
+                is Boolean -> arrayList.add(it.json)
+                is Map<*, *> -> arrayList.add((it as Map<String, Any>).json)
+                is Collection<*> -> arrayList.add((it as Collection<Any>).json)
+                else -> error("unknown array type: ${it::class.java}")
             }
         }
         return arrayList.jsonArray
     }
 
+@Suppress("UNCHECKED_CAST")
 val Map<String, Any?>.json: JsonObject
     get() {
         val map = hashMapOf<String, JsonElement>()

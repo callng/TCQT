@@ -44,6 +44,10 @@ object PlatformTools {
         return MobileQQ.getMobileQQ().qqProcessName.contains("msf", ignoreCase = true)
     }
 
+    fun isToolProcess(): Boolean {
+        return MobileQQ.getMobileQQ().qqProcessName.contains("tool", ignoreCase = true)
+    }
+
     fun isMqq(): Boolean {
         return MobileQQ.getMobileQQ().qqProcessName == "com.tencent.mobileqq"
     }

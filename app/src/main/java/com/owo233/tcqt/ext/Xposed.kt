@@ -43,6 +43,10 @@ internal fun Class<*>.hookMethod(name: String, hook: XC_MethodHook) {
     XposedBridge.hookAllMethods(this, name, hook)
 }
 
+internal fun Method.hookMethod(hook: XC_MethodHook) {
+    XposedBridge.hookMethod(this, hook)
+}
+
 internal fun beforeHook(ver: Int = XCallback.PRIORITY_DEFAULT, block: (param: XC_MethodHook.MethodHookParam) -> Unit): XC_MethodHook {
     return object :XC_MethodHook(ver) {
         override fun beforeHookedMethod(param: MethodHookParam) {
@@ -98,7 +102,9 @@ internal fun Class<*>.getStaticObject(
 
 object FuzzyClassKit {
     private val dic = arrayOf(
-        "r" , "t", "o", "a", "b", "c", "e", "f", "d", "g", "h", "i", "j", "k", "l", "m", "n", "p", "q", "s", "t", "u", "v", "w", "x", "y", "z"
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+        "u", "v", "w", "x", "y", "z"
     )
 
     fun findClassByField(prefix: String, check: (Field) -> Boolean): Class<*>? {
@@ -135,11 +141,11 @@ object FuzzyClassKit {
         return list
     }
 
-    fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
+    fun findMethodByClassPrefix(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Method? {
         dic.forEach { className ->
             val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$className")
             clz?.methods?.forEach {
-                if (check(clz, it)) return clz
+                if (check(clz, it)) return it
             }
         }
 
@@ -154,6 +160,7 @@ object FuzzyClassKit {
                 if (check(clz, it)) arrayList.add(clz)
             }
         }
+
         return arrayList
     }
 

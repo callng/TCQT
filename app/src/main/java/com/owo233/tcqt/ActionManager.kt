@@ -3,12 +3,14 @@ package com.owo233.tcqt
 import android.content.Context
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.hooks.BrowserRestrictMitigation
 import com.owo233.tcqt.hooks.FetchService
 
 object ActionManager {
 
     private val FIRST_ACTION = arrayOf(
-        FetchService::class.java
+        FetchService::class.java,
+        BrowserRestrictMitigation::class.java
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
