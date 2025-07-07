@@ -5,12 +5,14 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.BrowserRestrictMitigation
 import com.owo233.tcqt.hooks.FetchService
+import com.owo233.tcqt.hooks.LoginCheckBoxDefault
 
 object ActionManager {
 
     private val FIRST_ACTION = arrayOf(
         FetchService::class.java,
-        BrowserRestrictMitigation::class.java
+        BrowserRestrictMitigation::class.java,
+        LoginCheckBoxDefault::class.java
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
