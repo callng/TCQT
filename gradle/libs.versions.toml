@@ -7,14 +7,10 @@ kotlinx-serialization = "1.9.0"
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.1.16"
 protobuf-java = "4.31.1"
-stringfog-plugin = "5.2.0"
-stringfog-xor = "5.0.0"
 
 [libraries]
 androidx-core = { group = "androidx.core", name = "core", version.ref = "core"}
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
-stringfog-plugin = { group = "com.github.megatronking.stringfog", name = "gradle-plugin", version.ref = "stringfog-plugin" }
-stringfog-xor = { group = "com.github.megatronking.stringfog", name = "xor", version.ref = "stringfog-xor" }
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed"}
 kotlinx-io-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-jvm", version.ref = "kotlinx-io" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }

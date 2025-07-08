@@ -1,31 +1,9 @@
-import com.github.megatronking.stringfog.plugin.StringFogExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     kotlin("plugin.serialization") version "2.2.0"
-    id("stringfog")
-}
-
-configure<StringFogExtension> {
-    // 加解密库的实现类路径
-    implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
-
-    // StringFog会自动尝试获取packageName
-    packageName = "com.owo233.tcqt"
-
-    // 加密开关
-    enable = true
-
-    // 指定需加密的代码包路径，可配置多个，未指定将默认全部加密
-    // fogPackages = ['com.xxx.xxx']
-
-    // 指定密钥生成器，默认使用长度8的随机密钥
-    kg = com.github.megatronking.stringfog.plugin.kg.RandomKeyGenerator()
-
-    // 控制字符串加密后在字节码中的存在形式
-    mode = com.github.megatronking.stringfog.plugin.StringFogMode.bytes
 }
 
 android {
@@ -103,5 +81,4 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(libs.protobuf.java)
-    implementation(libs.stringfog.xor)
 }
