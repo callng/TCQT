@@ -4,6 +4,7 @@ import android.content.Context
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.BrowserRestrictMitigation
+import com.owo233.tcqt.hooks.FakeMultiWindowStatus
 import com.owo233.tcqt.hooks.FetchService
 import com.owo233.tcqt.hooks.LoginCheckBoxDefault
 import com.owo233.tcqt.hooks.RemoveQRLoginCheck
@@ -15,6 +16,7 @@ object ActionManager {
         BrowserRestrictMitigation::class.java, // 移除内置浏览器访问限制
         LoginCheckBoxDefault::class.java, // 自动勾选登录页用户协议复选框
         RemoveQRLoginCheck::class.java, // 移除长按或相册扫码登录限制
+        FakeMultiWindowStatus::class.java, // 伪装非多窗口模式
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
