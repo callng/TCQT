@@ -14,7 +14,7 @@ class BrowserRestrictMitigation: IAction {
         FuzzyClassKit.findMethodByClassPrefix(
             prefix = "com.tencent.mobileqq.webview.WebSecurityPluginV2",
             isSubClass = true
-        ) {_, method ->
+        ) { _, method ->
             method.parameterCount == 1 && method.parameterTypes[0] == Bundle::class.java
         }?.hookMethod(beforeHook {
             val bundle = it.args[0] as Bundle

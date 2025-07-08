@@ -152,6 +152,17 @@ object FuzzyClassKit {
         return null
     }
 
+    fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
+        dic.forEach { name ->
+            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$name")
+            clz?.methods?.forEach {
+                if (check(clz, it)) return clz
+            }
+        }
+
+        return  null
+    }
+
     fun findClassesByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): List<Class<*>> {
         val arrayList = arrayListOf<Class<*>>()
         dic.forEach { className ->
