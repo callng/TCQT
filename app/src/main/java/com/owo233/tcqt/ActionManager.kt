@@ -6,13 +6,15 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.BrowserRestrictMitigation
 import com.owo233.tcqt.hooks.FetchService
 import com.owo233.tcqt.hooks.LoginCheckBoxDefault
+import com.owo233.tcqt.hooks.RemoveQRLoginCheck
 
 object ActionManager {
 
     private val FIRST_ACTION = arrayOf(
-        FetchService::class.java,
-        BrowserRestrictMitigation::class.java,
-        LoginCheckBoxDefault::class.java
+        FetchService::class.java, // 防止群和好友消息撤回
+        BrowserRestrictMitigation::class.java, // 移除内置浏览器访问限制
+        LoginCheckBoxDefault::class.java, // 自动勾选登录页用户协议复选框
+        RemoveQRLoginCheck::class.java, // 移除长按或相册扫码登录限制
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
