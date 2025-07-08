@@ -31,7 +31,7 @@ class LoginCheckBoxDefault: IAction {
         })
     }
 
-    override val name: String get() = "默认勾选复选框协议"
+    override val name = "默认勾选复选框协议"
 
-    override val process: ActionProcess get() = ActionProcess.MAIN
+    override val processes = setOf(ActionProcess.MAIN)
 }

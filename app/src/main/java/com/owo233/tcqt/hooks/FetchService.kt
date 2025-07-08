@@ -20,7 +20,7 @@ class FetchService: IAction {
         }
     }
 
-    override val name: String get() = "消息防撤回"
+    override val name = "消息防撤回"
 
-    override val process: ActionProcess = ActionProcess.MAIN
+    override val processes = setOf(ActionProcess.MAIN)
 }

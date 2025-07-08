@@ -28,9 +28,16 @@ object ActionManager {
     }
 
     fun runFirst(ctx: Context, proc: ActionProcess) {
+        val baseProcs = setOf(ActionProcess.MSF, ActionProcess.MAIN, ActionProcess.TOOL)
+
         FIRST_ACTION.forEach {
             val action = instanceOf(it)
-            if (proc == action.process && proc != ActionProcess.INVALID) {
+
+            val shouldRun = ActionProcess.ALL in action.processes
+                    || proc in action.processes
+                    || (ActionProcess.OTHER in action.processes && proc !in baseProcs)
+
+            if (shouldRun) {
                 action(ctx)
             }
         }

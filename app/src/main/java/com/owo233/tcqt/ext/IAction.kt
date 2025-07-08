@@ -4,7 +4,9 @@ import android.content.Context
 import com.owo233.tcqt.utils.logE
 
 enum class ActionProcess {
-    MSF, MAIN, TOOL, INVALID
+    MSF, MAIN, TOOL,
+    OTHER, // 非上述三个
+    ALL, // 全部进程
 }
 
 interface IAction {
@@ -22,5 +24,5 @@ interface IAction {
 
     val name: String
 
-    val process: ActionProcess
+    val processes: Set<ActionProcess>
 }

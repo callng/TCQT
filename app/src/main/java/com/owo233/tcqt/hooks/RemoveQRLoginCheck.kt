@@ -19,7 +19,7 @@ class RemoveQRLoginCheck: IAction {
             })
     }
 
-    override val name: String get() = "移除扫码登录检查"
+    override val name = "移除扫码登录检查"
 
-    override val process: ActionProcess get() = ActionProcess.MAIN
+    override val processes = setOf(ActionProcess.MAIN)
 }

@@ -14,9 +14,14 @@ class FakeMultiWindowStatus: IAction {
             .hookMethod(afterHook {
                 it.result = false
             })
+
+        Activity::class.java.getDeclaredMethod("isInPictureInPictureMode")
+            .hookMethod(afterHook {
+                it.result = false
+            })
     }
 
-    override val name: String get() = "伪装多窗口状态"
+    override val name = "伪装多窗口状态"
 
-    override val process: ActionProcess get() = ActionProcess.MAIN
+    override val processes = setOf(ActionProcess.ALL)
 }

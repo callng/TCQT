@@ -97,7 +97,7 @@ class MainEntry: IXposedHookLoadPackage {
                 PlatformTools.isMainProcess() -> ActionProcess.MAIN
                 PlatformTools.isMsfProcess() -> ActionProcess.MSF
                 PlatformTools.isToolProcess() -> ActionProcess.TOOL
-                else -> ActionProcess.INVALID
+                else -> ActionProcess.OTHER
             })
         }
     }
