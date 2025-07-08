@@ -30,7 +30,7 @@ object ActionManager {
     fun runFirst(ctx: Context, proc: ActionProcess) {
         FIRST_ACTION.forEach {
             val action = instanceOf(it)
-            if (proc == action.process) { //  || proc == ActionProcess.ALL
+            if (proc == action.process && proc != ActionProcess.INVALID) {
                 action(ctx)
             }
         }

@@ -4,13 +4,7 @@ import android.content.Context
 import com.owo233.tcqt.utils.logE
 
 enum class ActionProcess {
-    MSF, MAIN, TOOL, ALL
-}
-
-abstract class AlwaysRunAction : IAction {
-    override val name: String get() = ""
-
-    override fun canRun(ctx: Context): Boolean = true
+    MSF, MAIN, TOOL, INVALID
 }
 
 interface IAction {
