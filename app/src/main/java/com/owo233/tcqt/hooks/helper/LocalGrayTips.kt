@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
-import de.robv.android.xposed.XposedBridge
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -67,7 +66,7 @@ object LocalGrayTips {
                 }
             }
         }.onFailure {
-            XposedBridge.log(it)
+            logE(msg = "addLocalGrayTip failed", cause = it)
         }
     }
 

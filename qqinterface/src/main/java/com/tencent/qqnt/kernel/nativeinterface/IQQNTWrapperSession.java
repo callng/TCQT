@@ -5,6 +5,11 @@ import java.util.ArrayList;
 public interface IQQNTWrapperSession {
     final class CppProxy implements IQQNTWrapperSession {
         @Override
+        public IKernelTicketService getTicketService() {
+            return null;
+        }
+
+        @Override
         public IKernelUixConvertService getUixConvertService() {
             return null;
         }
@@ -16,11 +21,6 @@ public interface IQQNTWrapperSession {
 
         @Override
         public ArrayList<String> getCacheErrLog() {
-            return null;
-        }
-
-        @Override
-        public IKernelGuildService getGuildService() {
             return null;
         }
 
@@ -70,14 +70,17 @@ public interface IQQNTWrapperSession {
         }
 
         @Override
-        public String startNT() {
-            return null;
+        public void updateTicket(SessionTicket sessionTicket) {
+
+        }
+
+        @Override
+        public void setQimei36(String str) {
+
         }
     }
 
-    //IKernelAvatarService getAvatarService();
-
-    //IKernelBuddyService getBuddyService();
+    IKernelTicketService getTicketService();
 
     IKernelUixConvertService getUixConvertService();
 
@@ -85,45 +88,13 @@ public interface IQQNTWrapperSession {
 
     ArrayList<String> getCacheErrLog();
 
-    //IKernelConfigMgrService getConfigMgrService();
-
-    //IKernelDirectSessionService getDirectSessionService();
-
-    //IKernelFeedService getFeedChannelService();
-
-    //IKernelGroupService getGroupService();
-
-    IKernelGuildService getGuildService();
-
     IKernelMsgService getMsgService();
-
-    //IKernelProfileService getProfileService();
-
-    //IKernelRDeliveryService getRDeliveryService();
-
-    //IKernelRecentContactService getRecentContactService();
 
     IKernelRichMediaService getRichMediaService();
 
-   // IKernelSearchService getSearchService();
-
     String getSessionId();
 
-    //IKernelSettingService getSettingService();
-
     ArrayList<String> getShortLinkBlacklist();
-
-    //IKernelStorageCleanService getStorageCleanService();
-
-   // IKernelTestPerformanceService getTestPerformanceService();
-
-   // IKernelTicketService getTicketService();
-
-    //IKernelTipOffService getTipOffService();
-
-    //IKernelUnitedConfigService getUnitedConfigService();
-
-    //IKernelYellowFaceService getYellowFaceService();
 
     boolean offLineSync(boolean z);
 
@@ -135,5 +106,7 @@ public interface IQQNTWrapperSession {
 
     void switchToFront();
 
-    String startNT();
+    void updateTicket(SessionTicket sessionTicket);
+
+    void setQimei36(String str);
 }

@@ -25,7 +25,7 @@ class BrowserRestrictMitigation: IAction {
         })
     }
 
-    override val name = "禁用内置浏览器访问限制"
+    override val name: String get() = "禁用内置浏览器访问限制"
 
-    override val processes = setOf(ActionProcess.TOOL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

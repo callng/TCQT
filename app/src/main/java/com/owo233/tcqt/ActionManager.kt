@@ -7,6 +7,7 @@ import com.owo233.tcqt.hooks.BrowserRestrictMitigation
 import com.owo233.tcqt.hooks.FakeMultiWindowStatus
 import com.owo233.tcqt.hooks.FetchService
 import com.owo233.tcqt.hooks.LoginCheckBoxDefault
+import com.owo233.tcqt.hooks.OneClickLikes
 import com.owo233.tcqt.hooks.RemoveQRLoginCheck
 import com.owo233.tcqt.hooks.SkipQRLoginWait
 
@@ -19,6 +20,7 @@ object ActionManager {
         RemoveQRLoginCheck::class.java, // 移除长按或相册扫码登录限制
         FakeMultiWindowStatus::class.java, // 伪装非多窗口模式
         SkipQRLoginWait::class.java, // 跳过扫码登录等待
+        OneClickLikes::class.java, // 一键点赞
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()

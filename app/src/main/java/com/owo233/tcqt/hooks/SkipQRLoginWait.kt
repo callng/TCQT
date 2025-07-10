@@ -23,7 +23,7 @@ class SkipQRLoginWait: IAction {
         }
     }
 
-    override val name = "跳过扫码登录等待"
+    override val name: String get() = "跳过扫码登录等待"
 
-    override val processes = setOf(ActionProcess.MAIN)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

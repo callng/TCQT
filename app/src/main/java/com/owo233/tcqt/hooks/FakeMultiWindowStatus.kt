@@ -21,7 +21,7 @@ class FakeMultiWindowStatus: IAction {
             })
     }
 
-    override val name = "伪装多窗口状态"
+    override val name: String get() = "伪装多窗口状态"
 
-    override val processes = setOf(ActionProcess.ALL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }
