@@ -5,14 +5,13 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.IXposedHookLoadPackage
-import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import mqq.app.MobileQQ
-import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 
 class MainEntry: IXposedHookLoadPackage {
@@ -45,33 +44,43 @@ class MainEntry: IXposedHookLoadPackage {
         }
 
         runCatching {
-            val fieldList = arrayListOf<Field>()
-            FuzzyClassKit.findClassesByField(classLoader, "com.tencent.mobileqq.startup.task.config") { _, field ->
-                (field.type == HashMap::class.java || field.type == Map::class.java) && Modifier.isStatic(field.modifiers)
-            }.forEach {
-                it.declaredFields.forEach { field ->
-                    if ((field.type == HashMap::class.java || field.type == Map::class.java)
-                        && Modifier.isStatic(field.modifiers))
-                        fieldList.add(field)
+            val clz = FuzzyClassKit.findClassesByField(classLoader, "com.tencent.mobileqq.startup.task.config") { _, field ->
+                (field.type == HashMap::class.java) && Modifier.isStatic(field.modifiers)
+            }.firstOrNull()
+
+            if (clz == null) {
+                logE(msg = "startup: 找不到与之匹配的class,模块初始化失败")
+                return
+            }
+
+            val field = clz.declaredFields.firstOrNull {
+                it.type == HashMap::class.java && Modifier.isStatic(it.modifiers)
+            }
+
+            if (field == null) {
+                logE(msg = "startup: 找不到与之匹配的field,模块初始化失败")
+                return
+            }
+
+            if (!field.isAccessible) field.isAccessible = true
+
+            @Suppress("UNCHECKED_CAST")
+            val map = field.get(null) as? HashMap<String, Class<*>>
+            if (map == null) {
+                logE(msg = "startup: field无法转换为map,模块初始化失败")
+                return
+            }
+
+            for ((key, clazz) in map) {
+                if (key.contains("LoadDex", ignoreCase = true)) {
+                    clazz.declaredMethods.firstOrNull {
+                        it.parameterTypes.size == 1 && it.parameterTypes[0] == Context::class.java
+                    }?.hookMethod(startup)
+
+                    break
                 }
             }
-            fieldList.forEach {
-                if (!it.isAccessible) it.isAccessible = true
-                @Suppress("UNCHECKED_CAST")
-                (it.get(null) as? Map<String, Class<*>>).also { map ->
-                    if (map == null) logE(msg = "Not found matched entry")
-                    else map.forEach { (key, clazz) ->
-                        if (key.contains("LoadDex", ignoreCase = true)) {
-                            clazz.declaredMethods.forEach { method ->
-                                if (method.parameterTypes.size == 1 && method.parameterTypes[0] == Context::class.java) {
-                                    // logI(msg = "Try load fetchEntry's injector.")
-                                    XposedBridge.hookMethod(method, startup)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+
             firstStageInit = true
         }.onFailure {
             logE(msg = "entryQQ 异常", cause = it)
