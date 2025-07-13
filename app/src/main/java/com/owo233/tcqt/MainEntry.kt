@@ -23,63 +23,38 @@ class MainEntry: IXposedHookLoadPackage {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun entryQQ(classLoader: ClassLoader) {
-        val startup = afterHook(51) { param ->
-            try {
-                val loader = param.thisObject.javaClass.classLoader!!
-                XpClassLoader.ctxClassLoader = loader
+        val startup = afterHook(51) {
+            runCatching {
+                it.thisObject.javaClass.classLoader?.also { loader ->
+                    XpClassLoader.ctxClassLoader = loader
 
-                val clz = loader.loadClass("com.tencent.common.app.BaseApplicationImpl")
-                val field = clz.declaredFields.first {
-                    it.type == clz
-                }
+                    val app = loader.loadClass("com.tencent.common.app.BaseApplicationImpl")
+                        .declaredFields.first { f -> f.type.name == "com.tencent.common.app.BaseApplicationImpl" }
+                        .apply { isAccessible = true }
+                        .get(null) as? Context
 
-                val app: Context? = field.get(null) as? Context
-                app?.let {
-                    execStartupInit(it)
+                    app?.let(::execStartupInit)
                 }
-            } catch (e: Throwable) {
+            }.onFailure { e ->
                 logE(msg = "startup 异常", cause = e)
             }
         }
 
         runCatching {
-            val clz = FuzzyClassKit.findClassesByField(classLoader, "com.tencent.mobileqq.startup.task.config") { _, field ->
-                (field.type == HashMap::class.java) && Modifier.isStatic(field.modifiers)
-            }.firstOrNull()
+            val map = FuzzyClassKit.findClassesByField(classLoader, "com.tencent.mobileqq.startup.task.config") { _, f ->
+                f.type == HashMap::class.java && Modifier.isStatic(f.modifiers)
+            }.firstNotNullOfOrNull { clz ->
+                clz.declaredFields.firstOrNull {
+                    it.type == HashMap::class.java && Modifier.isStatic(it.modifiers)
+                }?.apply { isAccessible = true }?.get(null) as? HashMap<String, Class<*>>
+            } ?: return@runCatching logE(msg = "startup: 找不到静态 HashMap 字段")
 
-            if (clz == null) {
-                logE(msg = "startup: 找不到与之匹配的class,模块初始化失败")
-                return
-            }
-
-            val field = clz.declaredFields.firstOrNull {
-                it.type == HashMap::class.java && Modifier.isStatic(it.modifiers)
-            }
-
-            if (field == null) {
-                logE(msg = "startup: 找不到与之匹配的field,模块初始化失败")
-                return
-            }
-
-            if (!field.isAccessible) field.isAccessible = true
-
-            @Suppress("UNCHECKED_CAST")
-            val map = field.get(null) as? HashMap<String, Class<*>>
-            if (map == null) {
-                logE(msg = "startup: field无法转换为map,模块初始化失败")
-                return
-            }
-
-            for ((key, clazz) in map) {
-                if (key.contains("LoadDex", ignoreCase = true)) {
-                    clazz.declaredMethods.firstOrNull {
-                        it.parameterTypes.size == 1 && it.parameterTypes[0] == Context::class.java
-                    }?.hookMethod(startup)
-
-                    break
-                }
-            }
+            map.entries.firstOrNull { it.key.contains("LoadDex", ignoreCase = true) }?.value
+                ?.declaredMethods?.firstOrNull {
+                    it.parameterTypes.size == 1 && it.parameterTypes[0] == Context::class.java
+                }?.hookMethod(startup)
 
             firstStageInit = true
         }.onFailure {
