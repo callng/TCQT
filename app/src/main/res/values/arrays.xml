@@ -2,5 +2,6 @@
 <resources>
     <string-array name="module_scope">
         <item>com.tencent.mobileqq</item>
+        <item>com.tencent.tim</item>
     </string-array>
 </resources>
