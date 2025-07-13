@@ -15,8 +15,8 @@ import kotlin.random.Random
 
 object PlatformTools {
 
-    const val QQ_9_0_65_VER = 6566L
     const val QQ_9_0_70_VER = 6700L
+    const val TIM_4_0_95_VER = 4002L
 
     internal lateinit var GlobalUi: Handler
 
