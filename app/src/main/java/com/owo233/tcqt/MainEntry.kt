@@ -73,7 +73,7 @@ class MainEntry: IXposedHookLoadPackage {
                 System.setProperty("TCQT_flag", "114514")
             } else return
 
-            logI(msg = "PName = " + MobileQQ.getMobileQQ().qqProcessName)
+            // logI(msg = "PName = " + MobileQQ.getMobileQQ().qqProcessName)
 
             secStaticStageInited = true
 
