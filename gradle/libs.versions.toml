@@ -7,6 +7,7 @@ kotlinx-serialization = "1.9.0"
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.1.16"
 protobuf-java = "4.31.1"
+protobuf = "0.9.5"
 
 [libraries]
 androidx-core = { group = "androidx.core", name = "core", version.ref = "core"}
@@ -22,3 +23,4 @@ protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }

@@ -1,161 +1,177 @@
 package com.owo233.tcqt.hooks.helper
 
-import com.google.protobuf.UnknownFieldSet
-import com.owo233.tcqt.entries.C2CRecallMessage
-import com.owo233.tcqt.entries.GroupRecallMessage
-import com.owo233.tcqt.entries.Message
-import com.owo233.tcqt.entries.MessagePush
+import com.google.protobuf.ByteString
+import com.owo233.tcqt.entries.InfoSyncPushOuterClass
+import com.owo233.tcqt.entries.MsgPushOuterClass
+import com.owo233.tcqt.entries.QQMessageOuterClass
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
+import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import kotlinx.io.core.ByteReadPacket
-import kotlinx.io.core.discardExact
-import kotlinx.io.core.readBytes
-import kotlinx.io.core.readUInt
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.text.toLong
 
 object AioListener {
 
-    fun onMsgPush(msgPush: MessagePush): Boolean {
-        val msgType = msgPush.msgBody.content.msgType
-        val subType = msgPush.msgBody.content.msgSubType
-        val msgBody = msgPush.msgBody
-        return when(msgType) {
-            528 -> when(subType) {
-                138 -> onC2CRecall(msgBody.body!!.msgContent)
-                else -> false
+    fun handleMsgPush(buffer: ByteArray, param: XC_MethodHook.MethodHookParam) {
+        val msgPush = MsgPushOuterClass.MsgPush.parseFrom(buffer)
+        val msg = msgPush.qqMessage
+        val msgType = msg.messageContentInfo.msgType
+        val msgSubType = msg.messageContentInfo.msgSubType
+        val operationInfoByteArray = msg.messageBody.operationInfo.toByteArray()
+
+        when(msgType) {
+            528 -> when (msgSubType) {
+                138 -> onC2CRecallByMsgPush(operationInfoByteArray, msgPush, param)
             }
-            732 -> when(subType) {
-                17 -> onGroupRecall(msgBody, msgBody.body!!.msgContent)
-                else -> false
+            732 -> when (msgSubType) {
+                17 -> onGroupRecallByMsgPush(operationInfoByteArray, msgPush, param)
             }
-            else -> false
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class, ExperimentalUnsignedTypes::class,
-        ExperimentalSerializationApi::class
-    )
-    private fun onGroupRecall(message: Message, msgContent: ByteArray?): Boolean {
-        if (msgContent == null) return false
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun onGroupRecallByMsgPush(
+        operationInfoByteArray: ByteArray,
+        msgPush: MsgPushOuterClass.MsgPush,
+        param: XC_MethodHook.MethodHookParam
+    ) {
+        val firstPart = operationInfoByteArray.copyOfRange(0, 7)
+        val secondPart = operationInfoByteArray.copyOfRange(7, operationInfoByteArray.size)
 
-        val reader = ByteReadPacket(msgContent)
-        val buffer = try {
-            if (msgContent.size >= 7 && reader.readUInt() == message.msgHead.peerId) {
-                reader.discardExact(1)
-                reader.readBytes(reader.readShort().toInt())
-            } else msgContent
-        } finally {
-            reader.release()
-        }
-        val recallData = ProtoBuf.decodeFromByteArray<GroupRecallMessage>(buffer)
+        val operationInfo = QQMessageOuterClass
+            .QQMessage
+            .MessageBody
+            .GroupRecallOperationInfo.parseFrom(secondPart)
 
-        if (recallData.type != 7u || recallData.peerId == 0uL) return false
+        val newOperationInfoByteArray = firstPart + (operationInfo.toBuilder().apply {
+            msgSeq = 1
+            info = info.toBuilder().apply {
+                msgInfo = msgInfo.toBuilder().setMsgSeq(1).build()
+            }.build()
+        }.build().toByteArray())
 
-        val operatorUid = recallData.operation.operatorUid ?: ""
+        val newMsgPush = msgPush.toBuilder().apply {
+            qqMessage = qqMessage.toBuilder().apply {
+                messageBody = messageBody.toBuilder().apply {
+                    setOperationInfo(
+                        ByteString.copyFrom(newOperationInfoByteArray)
+                    )
+                }.build()
+            }.build()
+        }.build()
 
-        if (operatorUid == QQInterfaces.app.currentUid) return false
+        param.args[1] = newMsgPush.toByteArray()
+
+        val operatorUid = operationInfo.info.operatorUid
+        if (operatorUid == QQInterfaces.app.currentUid) return
 
         GlobalScope.launchWithCatch {
-            val groupCode = recallData.peerId.toLong()
-            val targetUid = recallData.operation.msgInfo?.senderUid ?: ""
-            val msgSeq = recallData.operation.msgInfo?.msgSeq ?: 0L
-            val target = ContactHelper.getUinByUidAsync(targetUid)
-            val operator = ContactHelper.getUinByUidAsync(operatorUid)
+            val groupPeerId = operationInfo.peerId // 群号
+            val targetUid = operationInfo.info.msgInfo.senderUid //操作目标UID
+            val recallMsgSeq = operationInfo.info.msgInfo.msgSeq // 撤回消息序号
 
-            val targetNick = (if (targetUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupCode, target.toLong()).getOrNull())?.let {
+            val targetUin = ContactHelper.getUinByUidAsync(targetUid) // 操作目标UIN
+            val operatorUin = ContactHelper.getUinByUidAsync(operatorUid) // 操作者UIN
+
+            val targetNick = (if (targetUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupPeerId, targetUin.toLong()).getOrNull())?.let {
                 it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
-            } ?: targetUid
-            val operatorNick = (if (operatorUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupCode, operator.toLong()).getOrNull())?.let {
+            } ?: targetUid // 被撤回账号的昵称,优先为群昵称
+            val operatorNick = (if (operatorUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupPeerId, operatorUin.toLong()).getOrNull())?.let {
                 it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
-            } ?: operatorUid
+            } ?: operatorUid // 操作者的昵称,优先为群昵称
 
             val contact = ContactHelper.generateContact(
                 chatType = MsgConstant.KCHATTYPEGROUP,
-                id = groupCode.toString()
+                id = groupPeerId.toString()
             )
+
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_GROUP_NOTICE, LocalGrayTips.Align.CENTER) {
-                member(operatorUid, operator, operatorNick, "3")
+                member(operatorUid, operatorUin, operatorNick, "3")
                 text("想撤回")
                 if (targetUid == operatorUid) {
-                    text("TA")
+                    text("TA自己")
                 } else {
-                    member(targetUid, target, targetNick, "3")
+                    member(targetUid, targetUin, targetNick, "3")
                 }
                 text("的")
-                msgRef("消息", msgSeq)
+                msgRef("消息", recallMsgSeq.toLong())
                 text(",已拦截")
             }
         }
-
-        return true
     }
 
-    @OptIn(DelicateCoroutinesApi::class, ExperimentalSerializationApi::class)
-    private fun onC2CRecall(richMsg: ByteArray?): Boolean {
-        if (richMsg == null) return false
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun onC2CRecallByMsgPush(
+        operationInfoByteArray: ByteArray,
+        msgPush: MsgPushOuterClass.MsgPush,
+        param: XC_MethodHook.MethodHookParam
+    ) {
+        val operationInfo = QQMessageOuterClass
+            .QQMessage
+            .MessageBody
+            .C2CRecallOperationInfo.parseFrom(operationInfoByteArray)
 
-        GlobalScope.launchWithCatch {
-            val recallData = ProtoBuf.decodeFromByteArray<C2CRecallMessage>(richMsg)
+        val newOperationInfoByteArray = operationInfo.toBuilder().apply {
+            info = info.toBuilder().apply {
+                msgSeq = 1
+            }.build()
+        }.build().toByteArray()
 
-            val senderUid = recallData.info.senderUid
-            val msgSeq = recallData.info.msgSeq
+        val newMsgPush = msgPush.toBuilder().apply {
+            qqMessage = qqMessage.toBuilder().apply {
+                messageBody = messageBody.toBuilder().apply {
+                    setOperationInfo(
+                        ByteString.copyFrom(newOperationInfoByteArray)
+                    )
+                }.build()
+            }.build()
+        }.build()
 
-            if (senderUid == QQInterfaces.app.currentUid) return@launchWithCatch
+        param.args[1] = newMsgPush.toByteArray()
+
+        GlobalScope.launchWithCatch{
+            val operatorUid = operationInfo.info.operatorUid
+            if (operatorUid == QQInterfaces.app.currentUid) return@launchWithCatch
+
+            val recallMsgSeq = operationInfo.info.msgSeq
 
             val contact = ContactHelper.generateContact(
                 chatType = MsgConstant.KCHATTYPEC2C,
-                id = senderUid
+                id = operatorUid
             )
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
                 text("对方想撤回一条")
-                msgRef("消息", msgSeq)
+                msgRef("消息", recallMsgSeq.toLong())
                 text(",已拦截")
             }
         }
-
-        return true
     }
 
-    fun onInfoSyncPush(fieldSet: UnknownFieldSet): Result<UnknownFieldSet> {
-        val type = fieldSet.getField(3)
-        if (!type.varintList.any { it == 2L }) {
-            return Result.success(fieldSet)
-        }
+    fun handleInfoSyncPush(buffer: ByteArray, param: XC_MethodHook.MethodHookParam) {
+        val infoSyncPush = InfoSyncPushOuterClass.InfoSyncPush.parseFrom(buffer)
+        infoSyncPush.syncRecallContent.syncInfoBodyList.forEach { syncInfoBody ->
+            syncInfoBody.msgList.forEach { qqMessage ->
+                val msgType = qqMessage.messageContentInfo.msgType
+                val msgSubType = qqMessage.messageContentInfo.msgSubType
+                if ((msgType == 732 && msgSubType == 17) || (msgType == 528 && msgSubType == 138)) {
+                    val newInfoSyncPush = infoSyncPush.toBuilder().apply {
+                        syncRecallContent = syncRecallContent.toBuilder().apply {
+                            for (i in 0 until syncInfoBodyCount) {
+                                setSyncInfoBody(
+                                    i, getSyncInfoBody(i).toBuilder().clearMsg().build()
+                                )
+                            }
+                        }.build()
+                    }.build()
 
-        val builder = UnknownFieldSet.newBuilder(fieldSet)
-        builder.clearField(8) // 移除content的内容
-
-        val contentsBuilder = UnknownFieldSet.Field.newBuilder()
-        val contents = fieldSet.getField(8)
-        // 这里可以使用groupList
-        // 其它地方只能用lengthDelimitedList？应该是qq不同的业务Proto版本不一样的导致的
-        contents.groupList.forEach { content ->
-            var isRecallEvent = false
-            val bodies = content.getField(4)
-            bodies.groupList.forEach { body ->
-                val msgs = body.getField(8)
-                msgs.groupList.forEach { msg ->
-                    val msgHead = msg.getField(2).groupList.first()
-                    val msgType = msgHead.getField(1).varintList.first()
-                    val msgSubType = msgHead.getField(2).varintList.first()
-                    isRecallEvent = (msgType == 528L && msgSubType == 138L) || (msgType == 732L && msgSubType == 17L)
+                    param.args[1] = newInfoSyncPush.toByteArray()
                 }
             }
-            if (!isRecallEvent) {
-                contentsBuilder.addGroup(content)
-            }
         }
-
-        builder.addField(8, contentsBuilder.build())
-        return Result.success(builder.build())
     }
 }

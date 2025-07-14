@@ -1,8 +1,10 @@
+import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.protobuf)
     kotlin("plugin.serialization") version "2.2.0"
 }
 
@@ -17,6 +19,7 @@ android {
         versionCode = 7
         versionName = "1.6"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
+        buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
 
     buildFeatures {
@@ -40,6 +43,14 @@ android {
                 "kotlin-tooling-metadata.json"
             )
         )
+    }
+
+    sourceSets {
+        named("main") {
+            proto {
+                srcDirs("src/main/proto")
+            }
+        }
     }
 
     applicationVariants.all {
@@ -67,6 +78,21 @@ android {
                 "-Xno-param-assertions",
                 "-Xno-receiver-assertions"
             ))
+        }
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.3"
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
         }
     }
 }

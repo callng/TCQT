@@ -3,9 +3,7 @@
 
 package com.owo233.tcqt.hooks.helper
 
-import com.google.protobuf.UnknownFieldSet
 import com.owo233.tcqt.data.BuildWrapper
-import com.owo233.tcqt.entries.MessagePush
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.utils.logD
 import com.owo233.tcqt.utils.logE
@@ -15,8 +13,6 @@ import com.tencent.qqnt.kernel.nativeinterface.IQQNTWrapperSession
 import com.tencent.qqnt.kernel.nativeinterface.SessionTicket
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.protobuf.ProtoBuf
 
 internal object NTServiceFetcher {
     private lateinit var iKernelService: IKernelService
@@ -63,29 +59,17 @@ internal object NTServiceFetcher {
     }
 
     private fun initHookOnMsfPush() {
-        kernelService.wrapperSession.javaClass.hookMethod("onMsfPush").before {
-            runCatching {
-                val cmd = it.args[0] as String
-                val buffer = it.args[1] as? ByteArray ?: return@before
-                when(cmd) {
-                    "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
-                        val unknownFieldSet = UnknownFieldSet.parseFrom(buffer)
-                        AioListener.onInfoSyncPush(unknownFieldSet).onSuccess { new ->
-                            it.args[1] = new.toByteArray()
-                        }.onFailure { e ->
-                            logE(msg = "无法处理InfoSyncPush", cause = e)
-                        }
-                    }
-                    "trpc.msg.olpush.OlPushService.MsgPush" -> {
-                        val msgPush = ProtoBuf.decodeFromByteArray<MessagePush>(buffer)
-                        if (AioListener.onMsgPush(msgPush)) {
-                            it.result = Unit
-                        } else {
-                            return@before
-                        }
-                    }
-                    else -> { }
+        kernelService.wrapperSession.javaClass.hookMethod("onMsfPush").before { param ->
+            val cmd = param.args[0] as String
+            val buffer = param.args[1] as ByteArray
+            when(cmd) {
+                "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
+                    AioListener.handleInfoSyncPush(buffer, param)
                 }
+                "trpc.msg.olpush.OlPushService.MsgPush" -> {
+                    AioListener.handleMsgPush(buffer, param)
+                }
+                else -> { }
             }
         }
 

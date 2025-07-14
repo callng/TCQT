@@ -26,9 +26,30 @@
     public void handleLoadPackage(de.robv.android.xposed.callbacks.XC_LoadPackage$LoadPackageParam);
 }
 
+
 # 保留所有 @Serializable 注解的类和它们的序列化器
--keep @kotlinx.serialization.Serializable class * {
-    public static kotlinx.serialization.KSerializer serializer(...);
+#-keep @kotlinx.serialization.Serializable class * {
+#    public static kotlinx.serialization.KSerializer serializer(...);
+#}
+
+-if @kotlinx.serialization.Serializable class **
+-keepclassmembers class <1> {
+    static <1>$Companion Companion;
+}
+
+-if @kotlinx.serialization.Serializable class ** {
+    static **$* *;
+}
+-keepclassmembers class <2>$<3> {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+-if @kotlinx.serialization.Serializable class ** {
+    public static ** INSTANCE;
+}
+-keepclassmembers class <1> {
+    public static <1> INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
 }
 
 # 保留 IAction 实现类的无参构造
@@ -59,9 +80,28 @@
     volatile <fields>;
 }
 
+# protobuf
+-keepclassmembers class com.owo233.tcqt.entries.**OuterClass$** {
+    <fields>;
+    <methods>;
+}
+
+# 忽略 kotlin.jvm.internal.Intrinsics 的检查
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void check*(...);
+    public static void throw*(...);
+}
+
+# 忽略 java.util.Objects 的检查
+-assumenosideeffects class java.util.Objects {
+    public static ** requireNonNull(...);
+}
+
 -obfuscationdictionary obf-dict.txt
 -classobfuscationdictionary obf-dict.txt
 -packageobfuscationdictionary obf-dict.txt
 -repackageclasses ''
 -allowaccessmodification
 -overloadaggressively
+
+-keepattributes LineNumberTable,SourceFile
