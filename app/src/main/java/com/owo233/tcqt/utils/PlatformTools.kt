@@ -49,7 +49,7 @@ object PlatformTools {
     }
 
     fun isMqq(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName == "com.tencent.mobileqq"
+        return MobileQQ.PACKAGE_NAME == "com.tencent.mobileqq"
     }
 
     fun isMqqPackage(): Boolean {
@@ -57,11 +57,11 @@ object PlatformTools {
     }
 
     fun isTim(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName == "com.tencent.tim"
+        return MobileQQ.PACKAGE_NAME == "com.tencent.tim"
     }
 
     fun isMainProcess(): Boolean {
-        return isMqq() || isTim()
+        return !MobileQQ.getMobileQQ().qqProcessName.contains(":")
     }
 
     @SuppressLint("HardwareIds")

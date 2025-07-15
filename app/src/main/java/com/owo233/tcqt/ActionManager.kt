@@ -9,6 +9,7 @@ import com.owo233.tcqt.hooks.FetchService
 import com.owo233.tcqt.hooks.LoginCheckBoxDefault
 import com.owo233.tcqt.hooks.ModuleUpdate
 import com.owo233.tcqt.hooks.OneClickLikes
+import com.owo233.tcqt.hooks.PokeNoCoolDown
 import com.owo233.tcqt.hooks.RemoveQRLoginCheck
 import com.owo233.tcqt.hooks.SkipQRLoginWait
 
@@ -23,6 +24,7 @@ object ActionManager {
         SkipQRLoginWait::class.java, // 跳过扫码登录等待
         OneClickLikes::class.java, // 一键点赞
         ModuleUpdate::class.java, // 模块更新干掉宿主
+        PokeNoCoolDown::class.java, // 禁用戳一戳10秒冷却
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()

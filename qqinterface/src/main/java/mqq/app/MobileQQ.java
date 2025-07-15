@@ -6,6 +6,8 @@ import com.tencent.qphone.base.util.BaseApplication;
 import java.util.List;
 
 public abstract class MobileQQ extends BaseApplication {
+    public static String PACKAGE_NAME = "com.tencent.mobileqq";
+
     public static MobileQQ getMobileQQ() {
         throw new UnsupportedOperationException("only view.");
     }

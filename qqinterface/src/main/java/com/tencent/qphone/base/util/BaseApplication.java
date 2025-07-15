@@ -7,9 +7,15 @@ public abstract class BaseApplication extends ApplicationDelegate {
         throw new UnsupportedOperationException();
     }
 
+    public abstract Object getAppData(String str);
+
     public abstract int getAppId();
+
+    public abstract String getChannelId();
 
     public abstract int getNTCoreVersion();
 
     public abstract String getQua();
+
+    public abstract boolean isUserAllow();
 }

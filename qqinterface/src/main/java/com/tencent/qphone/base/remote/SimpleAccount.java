@@ -7,6 +7,15 @@ public class SimpleAccount {
     public static final String _LOGINPROCESS = "_loginedProcess";
     public static final String _LOGINTIME = "_loginTime";
     public static final String _UIN = "_uin";
+    private static final String tag = "SimpleAccount";
+
+    public static boolean isSameAccount(SimpleAccount simpleAccount, SimpleAccount simpleAccount2) {
+        return false;
+    }
+
+    public static SimpleAccount parseSimpleAccount(String str) {
+        return null;
+    }
 
     public boolean containsKey(String str) {
         return false;
