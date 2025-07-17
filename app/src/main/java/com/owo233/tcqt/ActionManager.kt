@@ -34,7 +34,7 @@ object ActionManager {
     }
 
     fun runFirst(ctx: Context, proc: ActionProcess) {
-        val baseProcs = setOf(ActionProcess.MSF, ActionProcess.MAIN, ActionProcess.TOOL)
+        val baseProcs = setOf(ActionProcess.MSF, ActionProcess.MAIN, ActionProcess.TOOL, ActionProcess.OPENSDK)
 
         FIRST_ACTION.forEach {
             val action = instanceOf(it)

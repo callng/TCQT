@@ -4,8 +4,8 @@ import android.content.Context
 import com.owo233.tcqt.utils.logE
 
 enum class ActionProcess {
-    MSF, MAIN, TOOL,
-    OTHER, // 非上述三个
+    MSF, MAIN, TOOL, OPENSDK,
+    OTHER, // 非上述四个
     ALL, // 全部进程
 }
 

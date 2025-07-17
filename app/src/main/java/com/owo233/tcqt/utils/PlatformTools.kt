@@ -48,6 +48,10 @@ object PlatformTools {
         return MobileQQ.getMobileQQ().qqProcessName.contains("tool", ignoreCase = true)
     }
 
+    fun isOpenSdkProcess(): Boolean {
+        return MobileQQ.getMobileQQ().qqProcessName.contains("openSdk", ignoreCase = true)
+    }
+
     fun isMqq(): Boolean {
         return MobileQQ.PACKAGE_NAME == "com.tencent.mobileqq"
     }
