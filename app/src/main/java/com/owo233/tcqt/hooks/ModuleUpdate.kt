@@ -26,7 +26,7 @@ class ModuleUpdate: IAction {
                     "android.intent.action.PACKAGE_REPLACED" -> {
                         val packageName = intent.data?.schemeSpecificPart
                         if (packageName == TCQTBuild.APP_ID) {
-                            Thread.sleep(100)
+                            Thread.sleep(50)
                             exitProcess(0)
                         }
                     }
@@ -39,5 +39,5 @@ class ModuleUpdate: IAction {
 
     override val name: String get() = "模块更新干掉宿主"
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }
