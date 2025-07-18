@@ -4,6 +4,8 @@ import android.content.Context
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.BrowserRestrictMitigation
+import com.owo233.tcqt.hooks.DefaultBubble
+import com.owo233.tcqt.hooks.DefaultFont
 import com.owo233.tcqt.hooks.FakeMultiWindowStatus
 import com.owo233.tcqt.hooks.FetchService
 import com.owo233.tcqt.hooks.LoginCheckBoxDefault
@@ -25,6 +27,8 @@ object ActionManager {
         OneClickLikes::class.java, // 一键点赞
         ModuleUpdate::class.java, // 模块更新干掉宿主
         PokeNoCoolDown::class.java, // 禁用戳一戳10秒冷却
+        DefaultFont::class.java, // 强制使用默认字体
+        DefaultBubble::class.java, // 强制使用默认气泡
     )
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
