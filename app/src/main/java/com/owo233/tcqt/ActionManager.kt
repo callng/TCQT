@@ -3,33 +3,11 @@ package com.owo233.tcqt
 import android.content.Context
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.hooks.BrowserRestrictMitigation
-import com.owo233.tcqt.hooks.DefaultBubble
-import com.owo233.tcqt.hooks.DefaultFont
-import com.owo233.tcqt.hooks.FakeMultiWindowStatus
-import com.owo233.tcqt.hooks.FetchService
-import com.owo233.tcqt.hooks.LoginCheckBoxDefault
-import com.owo233.tcqt.hooks.ModuleUpdate
-import com.owo233.tcqt.hooks.OneClickLikes
-import com.owo233.tcqt.hooks.PokeNoCoolDown
-import com.owo233.tcqt.hooks.RemoveQRLoginCheck
-import com.owo233.tcqt.hooks.SkipQRLoginWait
+import com.owo233.tcqt.generated.GeneratedActionList
 
 object ActionManager {
 
-    private val FIRST_ACTION = arrayOf(
-        FetchService::class.java, // 防止群和好友消息撤回
-        BrowserRestrictMitigation::class.java, // 移除内置浏览器访问限制
-        LoginCheckBoxDefault::class.java, // 自动勾选登录页用户协议复选框
-        RemoveQRLoginCheck::class.java, // 移除长按或相册扫码登录限制
-        FakeMultiWindowStatus::class.java, // 伪装非多窗口模式
-        SkipQRLoginWait::class.java, // 跳过扫码登录等待
-        OneClickLikes::class.java, // 一键点赞
-        ModuleUpdate::class.java, // 模块更新干掉宿主
-        PokeNoCoolDown::class.java, // 禁用戳一戳10秒冷却
-        DefaultFont::class.java, // 强制使用默认字体
-        DefaultBubble::class.java, // 强制使用默认气泡
-    )
+    private val FIRST_ACTION = GeneratedActionList.ACTIONS // ksp 自动生成
 
     private val instanceMap = hashMapOf<Class<*>, IAction>()
 

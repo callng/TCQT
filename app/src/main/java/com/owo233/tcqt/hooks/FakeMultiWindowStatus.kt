@@ -2,11 +2,13 @@ package com.owo233.tcqt.hooks
 
 import android.app.Activity
 import android.content.Context
+import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 
+@RegisterAction
 class FakeMultiWindowStatus: IAction {
 
     override fun onRun(ctx: Context) {

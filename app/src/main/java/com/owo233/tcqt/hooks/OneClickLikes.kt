@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks
 import android.content.Context
 import android.view.View
 import android.widget.ImageView
+import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
@@ -16,6 +17,7 @@ import com.tencent.mobileqq.profilecard.base.component.AbsProfileHeaderComponent
 import com.tencent.mobileqq.vas.api.IVasSingedApi
 import de.robv.android.xposed.XposedBridge
 
+@RegisterAction
 class OneClickLikes: IAction {
 
     override fun onRun(ctx: Context) {

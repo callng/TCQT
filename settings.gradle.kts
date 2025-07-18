@@ -27,3 +27,5 @@ dependencyResolutionManagement {
 rootProject.name = "TCQT"
 include(":app")
 include(":qqinterface")
+include(":annotations")
+include(":processor")

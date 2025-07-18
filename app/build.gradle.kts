@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.protobuf)
     kotlin("plugin.serialization") version "2.2.0"
+    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
 }
 
 android {
@@ -79,6 +80,8 @@ android {
                 "-Xno-receiver-assertions"
             ))
         }
+
+        sourceSets.configureEach { kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin")) }
     }
 }
 
@@ -100,6 +103,8 @@ protobuf {
 dependencies {
     compileOnly(libs.xposed.api)
     compileOnly(project(":qqinterface"))
+    ksp(project(":processor"))
+    implementation(project(":annotations"))
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.io.jvm)
