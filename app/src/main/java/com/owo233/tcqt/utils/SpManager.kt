@@ -8,7 +8,9 @@ import com.owo233.tcqt.data.TCQTBuild
 object SpManager {
     private const val SP_NAME = TCQTBuild.APP_NAME + "_sp"
 
-    const val SP_KEY_GUID = "guid"
+    const val SP_KEY_NEW_GUID = "new_guid"
+    const val SP_KEY_DEFAULT_GUID = "default_guid"
+    const val SP_KEY_CHANGE_GUID_ENABLED = "change_guid_enabled"
 
     private lateinit var sp: SharedPreferences
 
