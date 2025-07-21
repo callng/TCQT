@@ -11,6 +11,7 @@ internal object GuildHelper {
         val api = QRoute.api(IGuildUtilApi::class.java)
         val guid = api.guid?.toHexString()
         if (guid.isNullOrBlank()) {
+            // mqq.app.WtloginManagerImpl getGUID 获取原始GUID
             val androidId = PlatformTools.getAndroidID()
             val macAddress = "02:00:00:00:00:00"
             return MD5.toMD5Byte(androidId + macAddress).toHexString()
