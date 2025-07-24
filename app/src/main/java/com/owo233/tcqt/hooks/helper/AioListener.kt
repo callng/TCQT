@@ -154,13 +154,13 @@ object AioListener {
 
     fun handleInfoSyncPush(buffer: ByteArray, param: XC_MethodHook.MethodHookParam) {
         val infoSyncPush = InfoSyncPushOuterClass.InfoSyncPush.parseFrom(buffer)
-        infoSyncPush.syncRecallContent.syncInfoBodyList.forEach { syncInfoBody ->
+        infoSyncPush.syncMsgRecall.syncInfoBodyList.forEach { syncInfoBody ->
             syncInfoBody.msgList.forEach { qqMessage ->
                 val msgType = qqMessage.messageContentInfo.msgType
                 val msgSubType = qqMessage.messageContentInfo.msgSubType
                 if ((msgType == 732 && msgSubType == 17) || (msgType == 528 && msgSubType == 138)) {
                     val newInfoSyncPush = infoSyncPush.toBuilder().apply {
-                        syncRecallContent = syncRecallContent.toBuilder().apply {
+                        syncMsgRecall = syncMsgRecall.toBuilder().apply {
                             for (i in 0 until syncInfoBodyCount) {
                                 setSyncInfoBody(
                                     i, getSyncInfoBody(i).toBuilder().clearMsg().build()

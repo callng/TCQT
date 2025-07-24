@@ -3,64 +3,66 @@ package com.owo233.tcqt.entries;
 option java_package = "com.owo233.tcqt.entries";
 
 message QQMessage {
-  MessageHead messageHead = 1;
-  MessageContentInfo messageContentInfo = 2;
-  MessageBody messageBody = 3;
+  MessageHead message_head = 1;
+  MessageContentInfo message_content_info = 2;
+  MessageBody message_body = 3;
 
   message MessageHead {
-    int64 senderPeerId = 1;
-    string senderUid = 2;
-    int64 receiverPeerId = 5;
-    string receiverUid = 6;
-    SenderInfo senderInfo = 8;
+    int64 sender_peer_id = 1;
+    string sender_uid = 2;
+    int64 receiver_peer_id = 5;
+    string receiver_uid = 6;
+    SenderInfo sender_info = 8;
 
     message SenderInfo {
-      int64 peerId = 1;
-      int32 msgSubType = 2;
-      string nickName = 4;
+      int64 peer_id = 1;
+      int32 msg_sub_type = 2;
+      string nick_name = 4;
     }
   }
+
   message MessageContentInfo {
-    int32 msgType = 1;
-    int32 msgSubType = 2;
-    int32 subSeq = 3;
-    int32 msgSeq = 5;
-    int64 msgTime = 6;
+    int32 msg_type = 1;
+    int32 msg_sub_type = 2;
+    int32 sub_seq = 3;
+    int32 msg_seq = 5;
+    int64 msg_time = 6;
   }
+
   message MessageBody {
-    RichMsg richMsg = 1;
-    bytes operationInfo = 2;
+    RichMsg rich_msg = 1;
+    bytes operation_info = 2;
 
     message RichMsg {
-      repeated MsgContent msgContent = 2;
+      repeated MsgContent msg_content = 2;
 
       message MsgContent {
-        TextMsg textMsg = 1;
-        MsgSender msgSender = 16;
+        TextMsg text_msg = 1;
+        MsgSender msg_sender = 16;
 
         message TextMsg {
           string text = 1;
         }
 
         message MsgSender {
-          string nickName = 1;
+          string nick_name = 1;
         }
       }
     }
 
     message GroupRecallOperationInfo {
-      int64 peerId = 4;
+      int64 peer_id = 4;
       Info info = 11;
-      int32 msgSeq = 37;
+      int32 msg_seq = 37;
 
       message Info {
-        string operatorUid = 1;
-        MsgInfo msgInfo = 3;
+        string operator_uid = 1;
+        MsgInfo msg_info = 3;
 
         message MsgInfo {
-          int32 msgSeq = 1;
-          int64 msgTime = 2;
-          string senderUid = 6;
+          int32 msg_seq = 1;
+          int64 msg_time = 2;
+          string sender_uid = 6;
         }
       }
     }
@@ -69,11 +71,11 @@ message QQMessage {
       Info info = 1;
 
       message Info {
-        string operatorUid = 1;
-        string receiverUid = 2;
-        int64 msgTime = 5;
-        int64 msgRandom = 6;
-        int32 msgSeq = 20;
+        string operator_uid = 1;
+        string receiver_uid = 2;
+        int64 msg_time = 5;
+        int64 msg_random = 6;
+        int32 msg_seq = 20;
       }
     }
   }
