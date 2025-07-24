@@ -10,7 +10,7 @@ import com.owo233.tcqt.hooks.helper.MockSharedPreferences
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 
-@RegisterAction
+// @RegisterAction
 class PokeNoCoolDown: IAction {
     override fun onRun(ctx: Context) {
         XposedHelpers.findAndHookMethod(
