@@ -3,30 +3,33 @@ package com.tencent.qqnt.kernel.nativeinterface;
 import java.util.HashMap;
 
 public final class FileElement {
-    Long expireTime;
-    String file10MMd5;
-    Integer fileBizId;
-    Integer fileGroupIndex;
-    String fileMd5;
-    String fileName;
-    String filePath;
-    String fileSha;
-    String fileSha3;
-    long fileSize;
-    String fileSubId;
-    Integer fileTransType;
-    String fileUuid;
-    String folderId;
-    Integer invalidState;
-    Integer picHeight;
-    HashMap<Integer, String> picThumbPath;
-    Integer picWidth;
-    Integer progress;
-    Integer subElementType;
-    int thumbFileSize;
-    String thumbMd5;
-    Integer transferStatus;
-    Integer videoDuration;
+    public Long expireTime;
+    public byte[] extensionFields;
+    public FileAssistantSource faSource;
+    public String file10MMd5;
+    public Integer fileBizId;
+    public Integer fileGroupIndex;
+    public String fileMd5;
+    public String fileName;
+    public String filePath;
+    public String fileSha;
+    public String fileSha3;
+    public long fileSize;
+    public String fileSubId;
+    public Integer fileTransType;
+    public String fileUuid;
+    public String folderId;
+    public Integer invalidState;
+    public Integer picHeight;
+    public HashMap<Integer, String> picThumbPath;
+    public Integer picWidth;
+    public Integer progress;
+    public int storeID;
+    public Integer subElementType;
+    public int thumbFileSize;
+    public String thumbMd5;
+    public Integer transferStatus;
+    public Integer videoDuration;
 
     public FileElement() {
         this.fileMd5 = "";
@@ -41,6 +44,14 @@ public final class FileElement {
 
     public Long getExpireTime() {
         return this.expireTime;
+    }
+
+    public byte[] getExtensionFields() {
+        return this.extensionFields;
+    }
+
+    public FileAssistantSource getFaSource() {
+        return this.faSource;
     }
 
     public String getFile10MMd5() {
@@ -115,6 +126,10 @@ public final class FileElement {
         return this.progress;
     }
 
+    public int getStoreID() {
+        return this.storeID;
+    }
+
     public Integer getSubElementType() {
         return this.subElementType;
     }
@@ -135,8 +150,16 @@ public final class FileElement {
         return this.videoDuration;
     }
 
-    public void setExpireTime(Long l2) {
-        this.expireTime = l2;
+    public void setExpireTime(Long l) {
+        this.expireTime = l;
+    }
+
+    public void setExtensionFields(byte[] bArr) {
+        this.extensionFields = bArr;
+    }
+
+    public void setFaSource(FileAssistantSource fileAssistantSource) {
+        this.faSource = fileAssistantSource;
     }
 
     public void setFile10MMd5(String str) {
@@ -171,8 +194,8 @@ public final class FileElement {
         this.fileSha3 = str;
     }
 
-    public void setFileSize(long j2) {
-        this.fileSize = j2;
+    public void setFileSize(long j) {
+        this.fileSize = j;
     }
 
     public void setFileSubId(String str) {
@@ -211,12 +234,16 @@ public final class FileElement {
         this.progress = num;
     }
 
+    public void setStoreID(int i) {
+        this.storeID = i;
+    }
+
     public void setSubElementType(Integer num) {
         this.subElementType = num;
     }
 
-    public void setThumbFileSize(int i2) {
-        this.thumbFileSize = i2;
+    public void setThumbFileSize(int i) {
+        this.thumbFileSize = i;
     }
 
     public void setThumbMd5(String str) {
@@ -232,26 +259,18 @@ public final class FileElement {
     }
 
     public String toString() {
-        return "FileElement{fileMd5=" + this.fileMd5 + ",fileName=" + this.fileName + ",filePath=" + this.filePath + ",fileSize=" + this.fileSize + ",picHeight=" + this.picHeight + ",picWidth=" + this.picWidth + ",picThumbPath=" + this.picThumbPath + ",expireTime=" + this.expireTime + ",file10MMd5=" + this.file10MMd5 + ",fileSha=" + this.fileSha + ",fileSha3=" + this.fileSha3 + ",videoDuration=" + this.videoDuration + ",transferStatus=" + this.transferStatus + ",progress=" + this.progress + ",invalidState=" + this.invalidState + ",fileUuid=" + this.fileUuid + ",fileSubId=" + this.fileSubId + ",thumbFileSize=" + this.thumbFileSize + ",fileBizId=" + this.fileBizId + ",thumbMd5=" + this.thumbMd5 + ",folderId=" + this.folderId + ",fileGroupIndex=" + this.fileGroupIndex + ",fileTransType=" + this.fileTransType + ",subElementType=" + this.subElementType + ",}";
+        return "FileElement{fileMd5=" + this.fileMd5 + ",fileName=" + this.fileName + ",filePath=" + this.filePath + ",fileSize=" + this.fileSize + ",picHeight=" + this.picHeight + ",picWidth=" + this.picWidth + ",picThumbPath=" + this.picThumbPath + ",expireTime=" + this.expireTime + ",file10MMd5=" + this.file10MMd5 + ",fileSha=" + this.fileSha + ",fileSha3=" + this.fileSha3 + ",videoDuration=" + this.videoDuration + ",transferStatus=" + this.transferStatus + ",progress=" + this.progress + ",invalidState=" + this.invalidState + ",fileUuid=" + this.fileUuid + ",fileSubId=" + this.fileSubId + ",thumbFileSize=" + this.thumbFileSize + ",fileBizId=" + this.fileBizId + ",thumbMd5=" + this.thumbMd5 + ",folderId=" + this.folderId + ",fileGroupIndex=" + this.fileGroupIndex + ",fileTransType=" + this.fileTransType + ",subElementType=" + this.subElementType + ",storeID=" + this.storeID + ",faSource=" + this.faSource + ",extensionFields=" + this.extensionFields + ",}";
     }
 
-    public FileElement(String str, String str2, String str3, long j2, Integer num, Integer num2, HashMap<Integer, String> hashMap, Long l2, String str4, String str5, String str6, Integer num3, Integer num4, Integer num5, Integer num6, String str7, String str8, int i2, Integer num7, String str9, String str10, Integer num8, Integer num9, Integer num10) {
-        this.fileMd5 = "";
-        this.fileName = "";
-        this.filePath = "";
-        this.file10MMd5 = "";
-        this.fileSha = "";
-        this.fileSha3 = "";
-        this.fileUuid = "";
-        this.fileSubId = "";
+    public FileElement(String str, String str2, String str3, long j, Integer num, Integer num2, HashMap<Integer, String> hashMap, Long l, String str4, String str5, String str6, Integer num3, Integer num4, Integer num5, Integer num6, String str7, String str8, int i, Integer num7, String str9, String str10, Integer num8, Integer num9, Integer num10, int i2, FileAssistantSource fileAssistantSource, byte[] bArr) {
         this.fileMd5 = str;
         this.fileName = str2;
         this.filePath = str3;
-        this.fileSize = j2;
+        this.fileSize = j;
         this.picHeight = num;
         this.picWidth = num2;
         this.picThumbPath = hashMap;
-        this.expireTime = l2;
+        this.expireTime = l;
         this.file10MMd5 = str4;
         this.fileSha = str5;
         this.fileSha3 = str6;
@@ -261,12 +280,15 @@ public final class FileElement {
         this.invalidState = num6;
         this.fileUuid = str7;
         this.fileSubId = str8;
-        this.thumbFileSize = i2;
+        this.thumbFileSize = i;
         this.fileBizId = num7;
         this.thumbMd5 = str9;
         this.folderId = str10;
         this.fileGroupIndex = num8;
         this.fileTransType = num9;
         this.subElementType = num10;
+        this.storeID = i2;
+        this.faSource = fileAssistantSource;
+        this.extensionFields = bArr;
     }
 }

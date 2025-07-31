@@ -41,8 +41,10 @@ class ChangeGuid: IAction {
             if (SpManager.getString(SpManager.SP_KEY_NEW_GUID, "").isNotBlank() &&
                 SpManager.getBoolean(SpManager.SP_KEY_CHANGE_GUID_ENABLED, false)) {
                 logI(msg = """
+                    
                     设置GUID: ${SpManager.getString(SpManager.SP_KEY_NEW_GUID)}
                     原始GUID: ${SpManager.getString(SpManager.SP_KEY_DEFAULT_GUID)}
+                    
                 """.trimIndent())
                 GuidHelper.hookGuid(SpManager.getString(SpManager.SP_KEY_NEW_GUID))
             }

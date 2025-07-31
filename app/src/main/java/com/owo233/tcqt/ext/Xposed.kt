@@ -4,6 +4,7 @@ import com.owo233.tcqt.utils.logE
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.callbacks.XCallback
+import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -107,20 +108,6 @@ object FuzzyClassKit {
         "u", "v", "w", "x", "y", "z"
     )
 
-    fun findClassByField(prefix: String, check: (Field) -> Boolean): Class<*>? {
-        dic.forEach { className ->
-            val clz = XpClassLoader.load("$prefix.$className")
-            clz?.fields?.forEach {
-                if (it.modifiers and Modifier.STATIC != 0
-                    && !isBaseType(it.type)
-                    && check(it)
-                ) return clz
-            }
-        }
-
-        return null
-    }
-
     fun findClassesByField(
         classLoader: ClassLoader = FuzzyClassKit::class.java.classLoader ?: XpClassLoader,
         prefix: String,
@@ -163,16 +150,19 @@ object FuzzyClassKit {
         return  null
     }
 
-    fun findClassesByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): List<Class<*>> {
-        val arrayList = arrayListOf<Class<*>>()
-        dic.forEach { className ->
-            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$className")
-            clz?.methods?.forEach {
-                if (check(clz, it)) arrayList.add(clz)
+    fun findClassByConstructor(
+        prefix: String,
+        isSubClass: Boolean = false,
+        check: (Class<*>, Constructor<*>) -> Boolean
+    ): Class<*>? {
+        dic.forEach { name ->
+            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$name")
+            clz?.declaredConstructors?.forEach {
+                if (check(clz, it)) return clz
             }
         }
 
-        return arrayList
+        return null
     }
 
     private fun isBaseType(clz: Class<*>): Boolean {
