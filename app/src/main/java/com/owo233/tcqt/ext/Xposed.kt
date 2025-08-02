@@ -2,6 +2,7 @@ package com.owo233.tcqt.ext
 
 import com.owo233.tcqt.utils.logE
 import de.robv.android.xposed.XC_MethodHook
+import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.callbacks.XCallback
 import java.lang.reflect.Constructor
@@ -68,6 +69,21 @@ internal fun afterHook(ver: Int = XCallback.PRIORITY_DEFAULT, block: (param: XC_
             }.onFailure {
                 logE(msg = "afterHook 异常", cause = it)
             }
+        }
+    }
+}
+
+internal fun replaceHook(
+    ver: Int = XCallback.PRIORITY_DEFAULT,
+    block: (param: XC_MethodHook.MethodHookParam) -> Any?
+): XC_MethodHook {
+    return object : XC_MethodReplacement(ver) {
+        override fun replaceHookedMethod(param: MethodHookParam): Any? {
+            return kotlin.runCatching {
+                block(param)
+            }.onFailure {
+                logE(msg = "replaceHook 异常", cause = it)
+            }.getOrNull()
         }
     }
 }

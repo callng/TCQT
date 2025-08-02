@@ -55,6 +55,7 @@ TCQT 是专为 Android QQ/TIM 客户端打造的 Xposed 模块，用于拦截并
 - 禁用FLAG_SECURE标志
 - 上传群文件时自动重命名.apk(%n_%v(%c).APK)
 - 移除群回复消息时添加的@(强迫症)
+- 禁止过滤反应表情(把 shit Emoji 过滤了 难绷)
 
 ---
 
