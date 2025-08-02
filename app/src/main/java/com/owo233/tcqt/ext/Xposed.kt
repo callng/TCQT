@@ -131,8 +131,19 @@ object FuzzyClassKit {
     fun findMethodByClassPrefix(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Method? {
         dic.forEach { className ->
             val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$className")
-            clz?.methods?.forEach {
+            clz?.declaredMethods?.forEach {
                 if (check(clz, it)) return it
+            }
+        }
+
+        return null
+    }
+
+    fun findMethodByClassName(prefix: String, check: (Method) -> Boolean): Method? {
+        dic.forEach { name->
+            val clz = XpClassLoader.load("$prefix.$name")
+            clz?.declaredMethods?.forEach {
+                if (check(it)) return it
             }
         }
 
@@ -142,7 +153,7 @@ object FuzzyClassKit {
     fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
         dic.forEach { name ->
             val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$name")
-            clz?.methods?.forEach {
+            clz?.declaredMethods?.forEach {
                 if (check(clz, it)) return clz
             }
         }
@@ -173,5 +184,17 @@ object FuzzyClassKit {
                 clz == Short::class.java ||
                 clz == Char::class.java ||
                 clz == Byte::class.java
+    }
+
+    private fun getAllMethods(clazz: Class<*>): List<Method> {
+        val methods = mutableListOf<Method>()
+        var currentClass: Class<*>? = clazz
+
+        while(currentClass != null && currentClass != Any::class.java) {
+            methods.addAll(currentClass.declaredMethods)
+            currentClass = currentClass.superclass
+        }
+
+        return methods
     }
 }
