@@ -27,6 +27,7 @@ message QQMessage {
     int32 sub_seq = 3;
     int32 msg_seq = 5;
     int64 msg_time = 6;
+    int32 msg_seq_id = 11;
   }
 
   message MessageBody {
@@ -39,6 +40,7 @@ message QQMessage {
       message MsgContent {
         TextMsg text_msg = 1;
         MsgSender msg_sender = 16;
+        Mt my_custom_field = 53; // 不知道字段含义
 
         message TextMsg {
           string text = 1;
@@ -46,6 +48,10 @@ message QQMessage {
 
         message MsgSender {
           string nick_name = 1;
+        }
+
+        message Mt {
+          int32 mt_type = 1; // 随便取个名吧
         }
       }
     }

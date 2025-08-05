@@ -13,6 +13,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlin.text.toLong
 
 object AioListener {
@@ -21,15 +22,53 @@ object AioListener {
         val msgPush = MsgPushOuterClass.MsgPush.parseFrom(buffer)
         val msg = msgPush.qqMessage
         val msgType = msg.messageContentInfo.msgType
-        val msgSubType = msg.messageContentInfo.msgSubType
+        val subType = msg.messageContentInfo.subSeq
         val operationInfoByteArray = msg.messageBody.operationInfo.toByteArray()
 
         when(msgType) {
-            528 -> when (msgSubType) {
+            528 -> when (subType) {
                 138 -> onC2CRecallByMsgPush(operationInfoByteArray, msgPush, param)
             }
-            732 -> when (msgSubType) {
+            732 -> when (subType) {
                 17 -> onGroupRecallByMsgPush(operationInfoByteArray, msgPush, param)
+            }
+            166 -> when (subType) { // 好友私聊消息
+                11 -> onC2CFlashPicByMsgPush(buffer, msgPush, param)
+            }
+        }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun onC2CFlashPicByMsgPush(
+        buffer: ByteArray,
+        msgPush: MsgPushOuterClass.MsgPush,
+        param: XC_MethodHook.MethodHookParam
+    ) {
+        param.args[1] = buffer
+
+        val contentList = msgPush
+            .qqMessage // 1
+            .messageBody // 3
+            .richMsg // 1
+            .msgContentList // 2
+
+        if (contentList.size >= 3 && contentList[2].myCustomField.mtType == 3) {
+            GlobalScope.launchWithCatch{ // 闪照消息，由于闪照被视为正常图片，所以添加一条提示
+                delay(233L)
+
+                val operatorUid = msgPush.qqMessage.messageHead.senderUid
+                if (operatorUid == QQInterfaces.app.currentUid) return@launchWithCatch
+
+                val msgSeq = msgPush.qqMessage.messageContentInfo.msgSeqId
+
+                val contact = ContactHelper.generateContact(
+                    chatType = MsgConstant.KCHATTYPEC2C,
+                    id = operatorUid
+                )
+                LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
+                    text("对方发送了一条闪照")
+                    msgRef("消息", msgSeq.toLong())
+                }
             }
         }
     }
@@ -157,8 +196,8 @@ object AioListener {
         infoSyncPush.syncMsgRecall.syncInfoBodyList.forEach { syncInfoBody ->
             syncInfoBody.msgList.forEach { qqMessage ->
                 val msgType = qqMessage.messageContentInfo.msgType
-                val msgSubType = qqMessage.messageContentInfo.msgSubType
-                if ((msgType == 732 && msgSubType == 17) || (msgType == 528 && msgSubType == 138)) {
+                val subType = qqMessage.messageContentInfo.subSeq
+                if ((msgType == 732 && subType == 17) || (msgType == 528 && subType == 138)) {
                     val newInfoSyncPush = infoSyncPush.toBuilder().apply {
                         syncMsgRecall = syncMsgRecall.toBuilder().apply {
                             for (i in 0 until syncInfoBodyCount) {
