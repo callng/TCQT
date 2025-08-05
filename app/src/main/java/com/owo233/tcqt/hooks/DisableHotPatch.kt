@@ -115,5 +115,5 @@ class DisableHotPatch: IAction {
 
     override val name: String get() = "禁用热补丁"
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL)
 }
