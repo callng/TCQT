@@ -1,17 +1,19 @@
 package com.owo233.tcqt
 
+import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.utils.PACKAGE_NAME_QQ
+import com.owo233.tcqt.utils.PACKAGE_NAME_TIM
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.initHostInfo
 import com.owo233.tcqt.utils.logE
-import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.callbacks.XC_LoadPackage
-import mqq.app.MobileQQ
 import java.lang.reflect.Modifier
 
 class MainEntry: IXposedHookLoadPackage {
@@ -64,6 +66,8 @@ class MainEntry: IXposedHookLoadPackage {
 
     private fun execStartupInit(ctx: Context) {
         if (secStaticStageInited) return
+
+        initHostInfo(ctx as Application)
 
         val classLoader = ctx.classLoader.also { requireNotNull(it) }
         XpClassLoader.hostClassLoader = classLoader
@@ -119,9 +123,7 @@ class MainEntry: IXposedHookLoadPackage {
     }
 
     companion object {
-        @JvmStatic var secStaticStageInited = false
-
-        internal const val PACKAGE_NAME_QQ = "com.tencent.mobileqq"
-        internal const val PACKAGE_NAME_TIM = "com.tencent.tim"
+        @JvmStatic
+        var secStaticStageInited = false
     }
 }

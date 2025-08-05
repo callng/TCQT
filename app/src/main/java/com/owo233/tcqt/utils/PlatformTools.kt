@@ -62,15 +62,15 @@ object PlatformTools {
     }
 
     fun isMqq(): Boolean {
-        return MobileQQ.PACKAGE_NAME == "com.tencent.mobileqq"
+        return MobileQQ.PACKAGE_NAME == PACKAGE_NAME_QQ
     }
 
     fun isMqqPackage(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.startsWith("com.tencent.mobileqq")
+        return MobileQQ.getMobileQQ().qqProcessName.startsWith(PACKAGE_NAME_QQ)
     }
 
     fun isTim(): Boolean {
-        return MobileQQ.PACKAGE_NAME == "com.tencent.tim"
+        return MobileQQ.PACKAGE_NAME == PACKAGE_NAME_TIM
     }
 
     fun isMainProcess(): Boolean {
