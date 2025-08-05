@@ -17,8 +17,8 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
-        versionCode = 62
-        versionName = "2.5"
+        versionCode = 67
+        versionName = "2.6"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
