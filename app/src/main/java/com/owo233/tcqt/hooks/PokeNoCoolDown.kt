@@ -7,10 +7,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.hooks.helper.MockSharedPreferences
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 
-// @RegisterAction
+@RegisterAction
 class PokeNoCoolDown: IAction {
     override fun onRun(ctx: Context) {
         XposedHelpers.findAndHookMethod(
@@ -33,6 +34,8 @@ class PokeNoCoolDown: IAction {
     }
 
     override val name: String get() = "禁用戳一戳10秒冷却"
+
+    override val key: String get() = TCQTSetting.POKE_NO_COOL_DOWN
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

@@ -7,6 +7,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.replaceHook
+import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class DisableReactionLimit: IAction {
@@ -29,6 +30,8 @@ class DisableReactionLimit: IAction {
     }
 
     override val name: String get() = "禁止过滤反应表情"
+
+    override val key: String get() = TCQTSetting.DISABLE_REACTION_LIMIT
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

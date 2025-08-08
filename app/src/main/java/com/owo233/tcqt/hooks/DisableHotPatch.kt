@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.tencent.mobileqq.earlydownload.xmldata.XmlData
 import com.tencent.mobileqq.pb.PBInt32Field
 import com.tencent.mobileqq.pb.PBRepeatMessageField
@@ -114,6 +115,8 @@ class DisableHotPatch: IAction {
     }
 
     override val name: String get() = "禁用热补丁"
+
+    override val key: String get() = TCQTSetting.DISABLE_HOT_PATCH
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL)
 }

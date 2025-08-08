@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import de.robv.android.xposed.XposedBridge
 
@@ -42,6 +43,8 @@ class SkipQRLoginWait: IAction {
     }
 
     override val name: String get() = "跳过扫码登录等待"
+
+    override val key: String get() = TCQTSetting.SKIP_QR_LOGIN_WAIT
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.OPENSDK)
 }

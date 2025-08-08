@@ -8,6 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.logE
 import com.tencent.mobileqq.activity.VisitorsActivity
@@ -76,6 +77,8 @@ class OneClickLikes: IAction {
     }
 
     override val name: String get() = "一键点赞"
+
+    override val key: String get() = TCQTSetting.ONE_CLICK_LIKES
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 

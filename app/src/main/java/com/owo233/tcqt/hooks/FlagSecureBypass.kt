@@ -7,6 +7,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class FlagSecureBypass: IAction {
@@ -28,6 +29,8 @@ class FlagSecureBypass: IAction {
     }
 
     override val name: String get() = "绕过 FLAG_SECURE"
+
+    override val key: String get() = TCQTSetting.FLAG_SECURE_BYPASS
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

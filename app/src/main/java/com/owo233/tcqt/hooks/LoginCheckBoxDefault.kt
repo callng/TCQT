@@ -6,6 +6,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
@@ -34,6 +35,8 @@ class LoginCheckBoxDefault: IAction {
     }
 
     override val name: String get() = "默认勾选复选框协议"
+
+    override val key: String get() = TCQTSetting.LOGIN_CHECK_BOX_DEFAULT
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

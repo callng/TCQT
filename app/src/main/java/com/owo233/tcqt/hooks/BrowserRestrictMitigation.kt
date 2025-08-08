@@ -8,6 +8,7 @@ import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class BrowserRestrictMitigation: IAction {
@@ -28,6 +29,8 @@ class BrowserRestrictMitigation: IAction {
     }
 
     override val name: String get() = "禁用内置浏览器访问限制"
+
+    override val key: String get() = TCQTSetting.BROWSER_RESTRICT_MITIGATION
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

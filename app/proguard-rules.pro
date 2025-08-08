@@ -60,6 +60,9 @@
 # 保留 IAction 接口
 -keep interface com.owo233.tcqt.ext.IAction
 
+# 保留 AlwaysRunAction 接口
+-keep interface com.owo233.tcqt.ext.AlwaysRunAction
+
 # 保留 ActionProcess 枚举
 -keep enum com.owo233.tcqt.ext.ActionProcess
 

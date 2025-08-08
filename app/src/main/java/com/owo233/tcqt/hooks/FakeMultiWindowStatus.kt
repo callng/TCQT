@@ -7,6 +7,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class FakeMultiWindowStatus: IAction {
@@ -24,6 +25,8 @@ class FakeMultiWindowStatus: IAction {
     }
 
     override val name: String get() = "伪装多窗口状态"
+
+    override val key: String get() = TCQTSetting.FAKE_MULTI_WINDOW_STATUS
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

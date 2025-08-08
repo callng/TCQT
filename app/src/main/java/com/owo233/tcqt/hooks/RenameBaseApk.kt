@@ -10,6 +10,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.setObjectField
@@ -99,6 +100,8 @@ class RenameBaseApk: IAction {
     }
 
     override val name: String get() = "上传群文件时重命名.apk文件"
+
+    override val key: String get() = TCQTSetting.RENAME_BASE_APK
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

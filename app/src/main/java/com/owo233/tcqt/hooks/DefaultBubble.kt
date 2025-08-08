@@ -5,6 +5,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.tencent.qqnt.kernel.nativeinterface.VASMsgBubble
 import de.robv.android.xposed.XposedBridge
 
@@ -19,6 +20,8 @@ class DefaultBubble: IAction {
     }
 
     override val name: String get() = "强制使用默认气泡"
+
+    override val key: String get() = TCQTSetting.DEFAULT_BUBBLE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

@@ -19,6 +19,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.SpManager
 import com.owo233.tcqt.utils.logI
@@ -170,6 +171,8 @@ class ChangeGuid: IAction {
     }
 
     override val name: String get() = "自定义GUID"
+
+    override val key: String get() = TCQTSetting.CHANGE_GUID
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 }

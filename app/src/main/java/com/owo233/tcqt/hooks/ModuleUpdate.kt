@@ -8,6 +8,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import kotlin.system.exitProcess
 
 @RegisterAction
@@ -40,6 +41,8 @@ class ModuleUpdate: IAction {
     }
 
     override val name: String get() = "模块更新干掉宿主"
+
+    override val key: String get() = TCQTSetting.MODULE_UPDATE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

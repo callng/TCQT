@@ -6,6 +6,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.isPublic
 import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
 import de.robv.android.xposed.XposedBridge
@@ -27,6 +28,8 @@ class DisableFlashPic: IAction {
     }
 
     override val name: String get() = "将闪照视为正常图片"
+
+    override val key: String get() = TCQTSetting.DISABLE_FLASH_PIC
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }
