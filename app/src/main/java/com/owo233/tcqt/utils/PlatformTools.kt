@@ -98,9 +98,9 @@ object PlatformTools {
         context.toast("已复制到剪切板")
     }
 
-    private fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
+    fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
         if (!::GlobalUi.isInitialized) {
-            logI(msg = msg)
+            logE(msg = msg)
             return
         }
         GlobalUi.post { Toast.makeText(this, msg, flag).show() }

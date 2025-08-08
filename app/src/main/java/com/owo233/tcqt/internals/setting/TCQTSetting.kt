@@ -77,7 +77,7 @@ internal object TCQTSetting {
         val default: T? = null
     ) {
         @Suppress("UNCHECKED_CAST")
-        operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
+        operator fun getValue(thisRef: Any?, property: KProperty<*>?): T {
             return when (type) {
                 SettingType.BOOLEAN -> config.getBoolean(key, default as? Boolean ?: false)
                 SettingType.INT     -> config.getInt(key, default as? Int ?: 0)
@@ -86,7 +86,7 @@ internal object TCQTSetting {
         }
 
         @Suppress("UNCHECKED_CAST")
-        operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+        operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
             when (type) {
                 SettingType.BOOLEAN -> config.putBoolean(key, (value as? Boolean) ?: value.toString().toBooleanStrict())
                 SettingType.INT     -> config.putInt(key, (value as? Int) ?: value.toString().toInt())
