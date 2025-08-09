@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TCQT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+          background-color: #f8f9fa;
+          color: #333;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          padding: 20px 10px;
+        }
+
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          display: none;
+        }
+
+        .card {
+          border: none;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+          background-color: #fff;
+        }
+
+        .card-header {
+          background-color: #fff;
+          border-bottom: 1px solid #eee;
+          padding: 24px;
+          text-align: center;
+        }
+
+        .card-header h2 {
+          font-weight: 600;
+          color: #1a73e8;
+          margin: 0 0 8px 0;
+        }
+
+        .version-info {
+          font-size: 0.9rem;
+          color: #666;
+        }
+
+        .version-success {
+          color: #28a745;
+          font-weight: 600;
+        }
+
+        .version-fail {
+          color: #dc3545;
+          font-weight: 500;
+        }
+
+        .list-group-item {
+          border: none;
+          padding: 16px 24px;
+          border-bottom: 1px solid #f0f0f0;
+          transition: background-color 0.2s ease;
+          cursor: pointer;
+        }
+
+        .list-group-item:hover {
+          background-color: #f8f9fc;
+        }
+
+        .feature-label {
+          font-weight: 600;
+          font-size: 1.05rem;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .feature-label i {
+          opacity: 0.6;
+          font-size: 0.9rem;
+        }
+
+        .feature-desc {
+          font-size: 0.92rem;
+          color: #555;
+          margin: 10px 0 0;
+          opacity: 0;
+          max-height: 0;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .feature-desc.show {
+          opacity: 1;
+          max-height: 100px;
+          margin: 10px 0;
+        }
+
+        /* 开关部分：保留原生动画，增加阴影和焦点光晕 */
+        .form-switch .form-check-input {
+          /* 不改宽高、边框颜色，保留默认动画 */
+          box-shadow: 0 0 6px rgba(26, 115, 232, 0.6);
+          transition: box-shadow 0.3s ease, transform 0.2s ease;
+        }
+
+        .form-switch .form-check-input:focus {
+          box-shadow: 0 0 8px 3px rgba(26, 115, 232, 0.75);
+          outline: none;
+        }
+
+        .form-switch .form-check-input:hover {
+          transform: scale(1.05);
+          box-shadow: 0 0 10px 4px rgba(26, 115, 232, 0.85);
+        }
+
+        /* 按钮样式 */
+        .btn-save {
+          margin: 24px 24px 24px;
+          padding: 12px;
+          font-size: 1.1rem;
+          border-radius: 12px;
+          background-color: #1a73e8;
+          border: none;
+          box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+          transition: transform 0.1s ease, box-shadow 0.2s ease;
+          color: white;
+          user-select: none;
+        }
+
+        .btn-save:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(26, 115, 232, 0.4);
+        }
+
+        .btn-save:disabled {
+          background-color: #6c757d;
+          box-shadow: none;
+          cursor: not-allowed;
+        }
+
+        /* Toast 提示 */
+        #toast {
+          position: fixed;
+          bottom: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: #333;
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          display: none;
+          z-index: 9999;
+          font-size: 0.95rem;
+          animation: fadeIn 0.2s, fadeOut 0.2s 1.8s forwards;
+          user-select: none;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
+        /* 加载动画居中 */
+        #loading {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+          color: #555;
+          user-select: none;
+        }
+
+        #loading .spinner-border {
+          width: 3rem;
+          height: 3rem;
+          border-width: 0.3em;
+        }
+    </style>
+</head>
+<body>
+<!-- 加载动画 -->
+<div id="loading">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">加载中...</span>
+    </div>
+    <p class="mt-3">正在加载，请稍候...</p>
+</div>
+<!-- 主体内容 -->
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="bi bi-gear"></i> TCQT 模块</h2>
+            <div class="version-info"> 宿主版本: <span id="qqVersion" class="version-fail">加载中...</span><br> 模块版本: <span id="moduleVersion" class="version-fail">加载中...</span>
+            </div>
+            <small class="text-muted mt-2 d-block"> 启用或禁用功能，保存后重启宿主生效。 </small>
+        </div>
+        <ul id="feature-list" class="list-group list-group-flush"></ul>
+        <button id="btnSave" class="btn-save">💾 保存设置</button>
+    </div>
+</div>
+<!-- Toast 提示 -->
+<div id="toast">已保存</div>
+<script>
+    const features = [
+      // { key: "browser_restrict_mitigation", label: "绕过内置浏览器访问限制", desc: "允许任何URL地址访问，不再拦截。" },
+      { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。" },
+      { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
+      { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
+      { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
+      { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。" },
+      { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
+      { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
+      { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
+      { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。" },
+      { key: "login_check_box_default", label: "自动勾选复选框", desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。" },
+      { key: "module_update", label: "模块更新重启宿主", desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。" },
+      { key: "one_click_likes", label: "一键20赞", desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。" },
+      { key: "poke_no_cool_down", label: "戳一戳无冷却", desc: "移除戳一戳冷却时间。" },
+      { key: "remove_qr_login_check", label: "移除扫码登录检查", desc: "扫描相册里的二维码时不再拦截登录。" },
+      { key: "rename_base_apk", label: "重命名.apk文件", desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。" },
+      { key: "reply_no_at", label: "回复不带 @", desc: "回复消息时不添加 @ 对方。" },
+      { key: "skip_qr_login_wait", label: "跳过扫码登录等待", desc: "扫码登录时跳过倒计时。" }
+    ];
+
+    let injected = false;
+
+    function setVersionText(id, text, success) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.remove("version-success", "version-fail");
+      el.classList.add(success ? "version-success" : "version-fail");
+    }
+
+    async function loadVersions() {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          if (typeof TCQT !== "undefined") {
+            try {
+              setVersionText("qqVersion", TCQT.getQQVersion(), true);
+              setVersionText("moduleVersion", TCQT.getModuleVersion(), true);
+              injected = true;
+            } catch (e) {
+              console.error("获取版本失败", e);
+              setVersionText("qqVersion", "获取失败", false);
+              setVersionText("moduleVersion", "获取失败", false);
+              injected = false;
+            }
+          } else {
+            setVersionText("qqVersion", "环境异常", false);
+            setVersionText("moduleVersion", "环境异常", false);
+            injected = false;
+          }
+          resolve();
+        }, 50);
+      });
+    }
+
+    function renderFeatures() {
+      const container = document.getElementById("feature-list");
+      container.innerHTML = "";
+
+      features.forEach(feature => {
+        const li = document.createElement("li");
+        li.className = "list-group-item";
+
+        li.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="feature-label">
+                <i class="bi bi-chevron-down"></i>
+                ${feature.label}
+              </div>
+              <div class="feature-desc">${feature.desc}</div>
+            </div>
+            <div class="form-check form-switch ms-3">
+              <input class="form-check-input" type="checkbox" id="switch-${feature.key}">
+            </div>
+          </div>
+        `;
+
+        const label = li.querySelector(".feature-label");
+        const desc = li.querySelector(".feature-desc");
+        const checkbox = li.querySelector("input[type=checkbox]");
+
+        label.addEventListener("click", () => {
+          const isShowing = desc.classList.contains("show");
+          desc.classList.toggle("show", !isShowing);
+          const icon = label.querySelector("i");
+          icon.className = isShowing ? "bi bi-chevron-down" : "bi bi-chevron-up";
+        });
+
+        // 阻止点击开关时冒泡到父元素导致展开收起
+        checkbox.addEventListener("click", e => e.stopPropagation());
+
+        container.appendChild(li);
+
+        if (!injected) {
+          checkbox.disabled = true;
+        } else {
+          try {
+            const settingJson = TCQT.getSetting(feature.key);
+            const setting = JSON.parse(settingJson);
+            checkbox.checked = setting.value;
+          } catch (e) {
+            console.warn("获取设置失败", e);
+            checkbox.checked = false;
+          }
+        }
+      });
+
+      document.getElementById("btnSave").disabled = !injected;
+    }
+
+    function saveSettings() {
+      if (!injected) {
+        alert("模块接口未注入，无法保存设置");
+        return;
+      }
+      features.forEach(feature => {
+        const checked = document.getElementById("switch-" + feature.key).checked;
+        try {
+          TCQT.setSettingBoolean(feature.key, checked);
+        } catch (e) {
+          console.error(`设置 ${feature.key} 失败`, e);
+        }
+      });
+      showToast("设置已保存");
+    }
+
+    function showToast(msg) {
+      if (typeof TCQT !== "undefined") {
+        try {
+          TCQT.toast(msg);
+          return;
+        } catch (e) {}
+      }
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 2000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("btnSave").addEventListener("click", saveSettings);
+    });
+
+    (async function init() {
+      await loadVersions();
+      renderFeatures();
+      document.getElementById("loading").style.display = "none";
+      document.querySelector(".container").style.display = "block";
+    })();
+</script>
+</body>
+</html>

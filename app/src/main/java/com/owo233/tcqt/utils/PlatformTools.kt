@@ -8,12 +8,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
-import android.os.Handler
 import android.os.Process
 import android.provider.Settings
-import android.widget.Toast
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.ext.toast
 import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +25,6 @@ object PlatformTools {
 
     const val QQ_9_0_70_VER = 6700L
     const val TIM_4_0_95_VER = 4002L
-
-    internal lateinit var GlobalUi: Handler
 
     fun isQQNt(): Boolean {
         return try {
@@ -96,14 +93,6 @@ object PlatformTools {
         val clip = ClipData.newPlainText("label", text)
         clipboard.setPrimaryClip(clip)
         context.toast("已复制到剪切板")
-    }
-
-    fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
-        if (!::GlobalUi.isInitialized) {
-            logE(msg = msg)
-            return
-        }
-        GlobalUi.post { Toast.makeText(this, msg, flag).show() }
     }
 
     fun isMsfProcessRunning(context: Context = MobileQQ.getContext()): Boolean {

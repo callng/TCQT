@@ -9,6 +9,7 @@ kotlinx-io = "0.1.16"
 protobuf-java = "4.31.1"
 protobuf = "0.9.5"
 ksp = "2.2.0-2.0.2"
+nanohttpd = "2.3.1"
 
 [libraries]
 androidx-core = { group = "androidx.core", name = "core", version.ref = "core"}
@@ -20,6 +21,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
 ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp"}
+nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

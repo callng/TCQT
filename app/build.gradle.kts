@@ -111,5 +111,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
+    implementation(libs.nanohttpd)
     implementation(libs.protobuf.java)
 }

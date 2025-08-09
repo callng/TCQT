@@ -3,6 +3,11 @@ package com.owo233.tcqt.internals.setting
 import com.owo233.tcqt.utils.MMKVUtils
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
+import oicq.wlogin_sdk.tools.MD5
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
 import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
@@ -61,6 +66,28 @@ internal object TCQTSetting {
             }
         }.readText()
 
+    val settingHtml: String
+        get() {
+            val localFile = dataDir.resolve("index.html")
+            val assetPath = "rez/index.html"
+
+            val assetContent = openAsset(assetPath).readText()
+            val assetMd5 = MD5.toMD5Byte(assetContent)
+
+            val localMd5 = if (localFile.exists()) {
+                MD5.toMD5Byte(localFile.readText())
+            } else {
+                null
+            }
+
+            return if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
+                localFile.writeText(assetContent)
+                assetContent
+            } else {
+                localFile.readText()
+            }
+        }
+
     @Suppress("UNCHECKED_CAST")
     inline fun <reified T : Any> getSetting(key: String): Setting<T> {
         val result = settingMap[key] ?: Setting(key, SettingType.BOOLEAN)
@@ -92,6 +119,24 @@ internal object TCQTSetting {
                 SettingType.INT     -> config.putInt(key, (value as? Int) ?: value.toString().toInt())
                 SettingType.STRING  -> config.putString(key, value.toString())
             }
+        }
+    }
+
+    fun openAsset(fileName: String): InputStream {
+        return requireNotNull(TCQTSetting::class.java.classLoader).getResourceAsStream("assets/${fileName}")
+    }
+
+    private fun InputStream.readText(): String {
+        this.use {
+            val sb = StringBuilder()
+            val reader = BufferedReader(InputStreamReader(this, StandardCharsets.UTF_8))
+            var line: String? = reader.readLine()
+            while (line != null) {
+                sb.append(line)
+                sb.append("\n")
+                line = reader.readLine()
+            }
+            return sb.toString()
         }
     }
 }

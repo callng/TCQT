@@ -8,9 +8,10 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.json
+import com.owo233.tcqt.ext.toast
+import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.PlatformTools.toast
 import com.tencent.smtt.sdk.WebView
 import de.robv.android.xposed.XposedBridge
 import mqq.app.MobileQQ
@@ -18,6 +19,8 @@ import java.net.URL
 
 @RegisterAction
 class WebJsBridge: AlwaysRunAction() {
+
+    internal lateinit var server: LocalWebServer
     override fun onRun(ctx: Context) {
         val onLoad = afterHook {
             val web = it.thisObject as WebView
@@ -25,12 +28,25 @@ class WebJsBridge: AlwaysRunAction() {
             if (url.host == "tcqt.qq.com" || url.host == "tcqt.dev") {
                 web.loadUrl("http://${TCQTSetting.settingUrl}")
             } else if (url.host == TCQTSetting.settingUrl.substringBefore(":")) {
+                if (!::server.isInitialized) {
+                    val (host, port) = parseHostAndPort(TCQTSetting.settingUrl)
+                    server = LocalWebServer(host, port, TCQTSetting.settingHtml)
+                    server.start()
+                }
                 web.addJavascriptInterface(TCQTJsBridge, "TCQT")
             }
         }
         WebView::class.java.declaredMethods
             .filter { it.name == "loadUrl" || it.name == "loadData" || it.name == "loadDataWithBaseURL"}
             .forEach { XposedBridge.hookMethod(it, onLoad) }
+    }
+
+    private fun parseHostAndPort(url: String): Pair<String, Int> {
+        val parts = url.split(":")
+        require(parts.size == 2) { "Invalid settingUrl format" }
+        val host = parts[0]
+        val port = parts[1].toIntOrNull() ?: error("Port is not a valid number")
+        return host to port
     }
 
     companion object TCQTJsBridge {

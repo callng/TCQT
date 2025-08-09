@@ -1,5 +1,9 @@
 package com.owo233.tcqt.ext
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import com.owo233.tcqt.utils.logE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -9,6 +13,15 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 val EMPTY_BYTE_ARRAY = ByteArray(0)
+
+internal lateinit var globalUi: Handler
+
+internal fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
+    if (!::globalUi.isInitialized) {
+        globalUi = Handler(Looper.getMainLooper())
+    }
+    globalUi.post { Toast.makeText(this, msg, flag).show() }
+}
 
 class Nullable<T: Any>(
     private var value: T?
