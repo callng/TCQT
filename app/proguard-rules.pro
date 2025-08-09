@@ -100,6 +100,12 @@
     public static ** requireNonNull(...);
 }
 
+# 去除 DebugMetadataKt() 注释
+-assumenosideeffects public final class kotlin.coroutines.jvm.internal.DebugMetadataKt {
+   private static final kotlin.coroutines.jvm.internal.DebugMetadata getDebugMetadataAnnotation(kotlin.coroutines.jvm.internal.BaseContinuationImpl) return null;
+}
+
+-dontwarn java.beans.**
 -obfuscationdictionary obf-dict.txt
 -classobfuscationdictionary obf-dict.txt
 -packageobfuscationdictionary obf-dict.txt

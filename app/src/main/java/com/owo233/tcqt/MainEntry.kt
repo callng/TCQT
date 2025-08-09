@@ -2,6 +2,7 @@ package com.owo233.tcqt
 
 import android.app.Application
 import android.content.Context
+import android.content.res.XModuleResources
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.XpClassLoader
@@ -12,11 +13,15 @@ import com.owo233.tcqt.utils.PACKAGE_NAME_TIM
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.initHostInfo
 import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.moduleLoadInit
+import com.owo233.tcqt.utils.modulePath
+import com.owo233.tcqt.utils.moduleRes
 import de.robv.android.xposed.IXposedHookLoadPackage
+import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import java.lang.reflect.Modifier
 
-class MainEntry: IXposedHookLoadPackage {
+class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
     private var firstStageInit = false
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
@@ -88,6 +93,8 @@ class MainEntry: IXposedHookLoadPackage {
                 PlatformTools.isOpenSdkProcess() -> ActionProcess.OPENSDK
                 else -> ActionProcess.OTHER
             })
+
+            moduleLoadInit = true
         }
     }
 
@@ -120,6 +127,11 @@ class MainEntry: IXposedHookLoadPackage {
         }.onSuccess {
             // logI(msg = "Classloader inject successfully.")
         }.isSuccess
+    }
+
+    override fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
+        modulePath = startupParam.modulePath
+        moduleRes = XModuleResources.createInstance(modulePath, null)
     }
 
     companion object {

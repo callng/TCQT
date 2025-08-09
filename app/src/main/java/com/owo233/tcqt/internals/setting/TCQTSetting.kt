@@ -1,6 +1,7 @@
 package com.owo233.tcqt.internals.setting
 
 import com.owo233.tcqt.utils.MMKVUtils
+import com.owo233.tcqt.utils.moduleClassLoader
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 import oicq.wlogin_sdk.tools.MD5
@@ -123,7 +124,7 @@ internal object TCQTSetting {
     }
 
     fun openAsset(fileName: String): InputStream {
-        return requireNotNull(TCQTSetting::class.java.classLoader).getResourceAsStream("assets/${fileName}")
+        return moduleClassLoader.getResourceAsStream("assets/${fileName}")
     }
 
     private fun InputStream.readText(): String {

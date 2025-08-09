@@ -4,14 +4,13 @@ import android.content.Context
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.FuzzyClassKit
-import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
-class BrowserRestrictMitigation: IAction {
+class BrowserRestrictMitigation: AlwaysRunAction() {
 
     override fun onRun(ctx: Context) {
         FuzzyClassKit.findMethodByClassPrefix(
@@ -29,8 +28,6 @@ class BrowserRestrictMitigation: IAction {
     }
 
     override val name: String get() = "禁用内置浏览器访问限制"
-
-    override val key: String get() = TCQTSetting.BROWSER_RESTRICT_MITIGATION
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

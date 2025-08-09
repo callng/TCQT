@@ -117,3 +117,11 @@ fun CoroutineScope.launchWithCatch(
             .onFailure { onError(it) }
     }
 }
+
+fun Int.dp2px(ctx: Context): Int {
+    return (this * ctx.getDensity() + 0.5f).toInt()
+}
+
+fun Context.getDensity(): Float {
+    return this.resources.displayMetrics.density
+}

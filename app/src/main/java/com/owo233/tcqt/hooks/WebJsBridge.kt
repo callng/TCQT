@@ -12,6 +12,7 @@ import com.owo233.tcqt.ext.toast
 import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.Toasts
 import com.tencent.smtt.sdk.WebView
 import de.robv.android.xposed.XposedBridge
 import mqq.app.MobileQQ
@@ -21,6 +22,7 @@ import java.net.URL
 class WebJsBridge: AlwaysRunAction() {
 
     internal lateinit var server: LocalWebServer
+
     override fun onRun(ctx: Context) {
         val onLoad = afterHook {
             val web = it.thisObject as WebView
@@ -58,7 +60,7 @@ class WebJsBridge: AlwaysRunAction() {
 
         @JavascriptInterface
         fun toast(str: String) {
-            MobileQQ.getContext().toast(str)
+            Toasts.success(MobileQQ.getContext(), str)
         }
 
         @JavascriptInterface

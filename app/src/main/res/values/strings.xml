@@ -1,4 +1,5 @@
 <resources>
     <string name="module_name">TCQT</string>
     <string name="module_desc">TCQT by callng@github</string>
+    <string name="res_inject_success">资源注入成功</string>
 </resources>

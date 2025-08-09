@@ -99,7 +99,6 @@
 
         /* 开关部分：保留原生动画，增加阴影和焦点光晕 */
         .form-switch .form-check-input {
-          /* 不改宽高、边框颜色，保留默认动画 */
           box-shadow: 0 0 6px rgba(26, 115, 232, 0.6);
           transition: box-shadow 0.3s ease, transform 0.2s ease;
         }
@@ -183,6 +182,37 @@
           height: 3rem;
           border-width: 0.3em;
         }
+
+        /* ============= 滚动条美化 ============= */
+        ::-webkit-scrollbar {
+          width: 8px; /* 垂直滚动条宽度 */
+          height: 8px; /* 水平滚动条高度 */
+        }
+
+        ::-webkit-scrollbar-track {
+          background-color: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background-color: #c0c0c0;
+          border-radius: 10px;
+          border: 2px solid #f1f1f1; /* 内边距效果 */
+          transition: background-color 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background-color: #a0a0a0;
+          box-shadow: 0 0 8px rgba(26, 115, 232, 0.4);
+        }
+
+        ::-webkit-scrollbar-button {
+          display: none;
+        }
+
+        ::-webkit-scrollbar-corner {
+          background-color: #f1f1f1;
+        }
     </style>
 </head>
 <body>
@@ -193,21 +223,28 @@
     </div>
     <p class="mt-3">正在加载，请稍候...</p>
 </div>
+
 <!-- 主体内容 -->
 <div class="container">
     <div class="card">
         <div class="card-header">
             <h2><i class="bi bi-gear"></i> TCQT 模块</h2>
-            <div class="version-info"> 宿主版本: <span id="qqVersion" class="version-fail">加载中...</span><br> 模块版本: <span id="moduleVersion" class="version-fail">加载中...</span>
+            <div class="version-info">
+                宿主版本: <span id="qqVersion" class="version-fail">加载中...</span><br>
+                模块版本: <span id="moduleVersion" class="version-fail">加载中...</span>
             </div>
-            <small class="text-muted mt-2 d-block"> 启用或禁用功能，保存后重启宿主生效。 </small>
+            <small class="text-muted mt-2 d-block">
+                启用或禁用功能，保存后重启宿主生效。
+            </small>
         </div>
         <ul id="feature-list" class="list-group list-group-flush"></ul>
         <button id="btnSave" class="btn-save">💾 保存设置</button>
     </div>
 </div>
+
 <!-- Toast 提示 -->
 <div id="toast">已保存</div>
+
 <script>
     const features = [
       // { key: "browser_restrict_mitigation", label: "绕过内置浏览器访问限制", desc: "允许任何URL地址访问，不再拦截。" },
@@ -297,7 +334,6 @@
           icon.className = isShowing ? "bi bi-chevron-down" : "bi bi-chevron-up";
         });
 
-        // 阻止点击开关时冒泡到父元素导致展开收起
         checkbox.addEventListener("click", e => e.stopPropagation());
 
         container.appendChild(li);
