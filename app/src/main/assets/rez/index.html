@@ -42,15 +42,21 @@
         }
 
         .version-info {
-          font-size: 0.9rem;
+          display: inline-block;
+          text-align: left;
+        }
+        .version-row {
+          display: flex;
+          align-items: center;
+        }
+        .version-label {
+          min-width: 6em; /* 固定标签宽度，冒号对齐 */
           color: #666;
         }
-
         .version-success {
           color: #28a745;
           font-weight: 600;
         }
-
         .version-fail {
           color: #dc3545;
           font-weight: 500;
@@ -97,7 +103,6 @@
           margin: 10px 0;
         }
 
-        /* 开关部分：保留原生动画，增加阴影和焦点光晕 */
         .form-switch .form-check-input {
           box-shadow: 0 0 6px rgba(26, 115, 232, 0.6);
           transition: box-shadow 0.3s ease, transform 0.2s ease;
@@ -183,33 +188,28 @@
           border-width: 0.3em;
         }
 
-        /* ============= 滚动条美化 ============= */
+        /* 滚动条美化 */
         ::-webkit-scrollbar {
-          width: 8px; /* 垂直滚动条宽度 */
-          height: 8px; /* 水平滚动条高度 */
+          width: 8px;
+          height: 8px;
         }
-
         ::-webkit-scrollbar-track {
           background-color: #f1f1f1;
           border-radius: 10px;
         }
-
         ::-webkit-scrollbar-thumb {
           background-color: #c0c0c0;
           border-radius: 10px;
-          border: 2px solid #f1f1f1; /* 内边距效果 */
+          border: 2px solid #f1f1f1;
           transition: background-color 0.3s ease;
         }
-
         ::-webkit-scrollbar-thumb:hover {
           background-color: #a0a0a0;
           box-shadow: 0 0 8px rgba(26, 115, 232, 0.4);
         }
-
         ::-webkit-scrollbar-button {
           display: none;
         }
-
         ::-webkit-scrollbar-corner {
           background-color: #f1f1f1;
         }
@@ -230,15 +230,21 @@
         <div class="card-header">
             <h2><i class="bi bi-gear"></i> TCQT 模块</h2>
             <div class="version-info">
-                宿主版本: <span id="qqVersion" class="version-fail">加载中...</span><br>
-                模块版本: <span id="moduleVersion" class="version-fail">加载中...</span>
+                <div class="version-row">
+                    <span class="version-label">宿主版本:</span>
+                    <span id="qqVersion" class="version-fail">加载中...</span>
+                </div>
+                <div class="version-row">
+                    <span class="version-label">模块版本:</span>
+                    <span id="moduleVersion" class="version-fail">加载中...</span>
+                </div>
             </div>
             <small class="text-muted mt-2 d-block">
                 启用或禁用功能，保存后重启宿主生效。
             </small>
         </div>
         <ul id="feature-list" class="list-group list-group-flush"></ul>
-        <button id="btnSave" class="btn-save">💾 保存设置</button>
+        <button id="btnSave" class="btn-save">保存设置</button>
     </div>
 </div>
 
@@ -281,8 +287,13 @@
         setTimeout(() => {
           if (typeof TCQT !== "undefined") {
             try {
-              setVersionText("qqVersion", TCQT.getQQVersion(), true);
-              setVersionText("moduleVersion", TCQT.getModuleVersion(), true);
+              const hostName = TCQT.getHostName();
+              const qqVersion = TCQT.getQQVersion();
+              const moduleName = TCQT.getModuleName();
+              const moduleVersion = TCQT.getModuleVersion();
+
+              setVersionText("qqVersion", `${hostName} ${qqVersion}`, true);
+              setVersionText("moduleVersion", `${moduleName} ${moduleVersion}`, true);
               injected = true;
             } catch (e) {
               console.error("获取版本失败", e);
@@ -368,7 +379,8 @@
           console.error(`设置 ${feature.key} 失败`, e);
         }
       });
-      showToast("设置已保存");
+      const hostName = TCQT.getHostName();
+      showToast(`设置已保存，重启 ${hostName} 后生效`);
     }
 
     function showToast(msg) {

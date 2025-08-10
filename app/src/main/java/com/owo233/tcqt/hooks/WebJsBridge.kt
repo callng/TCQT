@@ -12,9 +12,11 @@ import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
+import com.owo233.tcqt.utils.hostInfo
 import com.tencent.smtt.sdk.WebView
 import de.robv.android.xposed.XposedBridge
 import mqq.app.MobileQQ
+import java.net.Socket
 import java.net.URL
 
 @RegisterAction
@@ -23,17 +25,20 @@ class WebJsBridge: AlwaysRunAction() {
     internal lateinit var server: LocalWebServer
 
     override fun onRun(ctx: Context) {
+        if (!::server.isInitialized) {
+            val (host, port) = parseHostAndPort(TCQTSetting.settingUrl)
+            if (!isPortInUse(host, port)) {
+                server = LocalWebServer(host, port, TCQTSetting.settingHtml)
+                server.start()
+            }
+        }
+
         val onLoad = afterHook {
             val web = it.thisObject as WebView
             val url = URL(web.url)
             if (url.host == "tcqt.qq.com" || url.host == "tcqt.dev") {
                 web.loadUrl("http://${TCQTSetting.settingUrl}")
             } else if (url.host == TCQTSetting.settingUrl.substringBefore(":")) {
-                if (!::server.isInitialized) {
-                    val (host, port) = parseHostAndPort(TCQTSetting.settingUrl)
-                    server = LocalWebServer(host, port, TCQTSetting.settingHtml)
-                    server.start()
-                }
                 web.addJavascriptInterface(TCQTJsBridge, "TCQT")
             }
         }
@@ -50,12 +55,26 @@ class WebJsBridge: AlwaysRunAction() {
         return host to port
     }
 
+    private fun isPortInUse(host: String, port: Int): Boolean {
+        return try {
+            Socket(host, port).use { true }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     companion object TCQTJsBridge {
         @JavascriptInterface
         fun getQQVersion(): String = "${PlatformTools.getQQVersion()}(${PlatformTools.getQQVersionCode()})"
 
         @JavascriptInterface
+        fun getHostName(): String = hostInfo.hostName
+
+        @JavascriptInterface
         fun getModuleVersion(): String = "${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE})"
+
+        @JavascriptInterface
+        fun getModuleName(): String = TCQTBuild.APP_NAME
 
         @JavascriptInterface
         fun toast(str: String) {

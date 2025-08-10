@@ -39,10 +39,7 @@ class AddModuleEntrance: AlwaysRunAction() {
 
     @SuppressLint("DiscouragedApi")
     private fun createEntry(settingConfigProviderClass: Class<*>?, isNewSetting: Boolean) {
-        if (settingConfigProviderClass == null) {
-            logE(msg = "createEntry: settingConfigProviderClass is null")
-            return
-        }
+        settingConfigProviderClass ?: return
 
         runCatching {
             val methods = settingConfigProviderClass.getMethods(false)
@@ -116,12 +113,20 @@ class AddModuleEntrance: AlwaysRunAction() {
                                 ?: return@runCatching logE(msg = "无法加载浏览器类")
 
                             val intent = Intent(context, browser).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 putExtra("fling_action_key", 2)
                                 putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                                putExtra("useDefBackText", true)
-                                putExtra("param_force_internal_browser", true)
-                                putExtra("url", "http://${TCQTSetting.settingUrl}/")
+                                putExtra("url", "http://${TCQTSetting.settingUrl}")
+                                putExtra("hide_more_button", true)
+                                putExtra("hide_operation_bar",true)
+                                putExtra("hide_title_bar", true)
+                                putExtra("hide_title_left_arrow", true)
+                                putExtra("hide_left_button", true)
+                                putExtra("hideRightButton", true)
+                                putExtra("finish_animation_up_down", true)
+                                putExtra("ishiderefresh", true)
+                                putExtra("ishidebackforward", true)
+                                putExtra("portraitOnly", true)
+                                putExtra("webStyle", "noBottomBar")
                             }
                             context.startActivity(intent)
                         }.onFailure { logE(msg = "进入模块设置入口失败", cause = it) }

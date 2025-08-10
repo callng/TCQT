@@ -60,12 +60,23 @@ internal object TCQTSetting {
     )
 
     val settingUrl: String
-        get() = dataDir.resolve("domain").also {
-            if (!it.exists()) {
-                it.createNewFile()
-                it.writeText("127.0.0.1:5315")
+        get() {
+            val file = dataDir.resolve("domain")
+            if (!file.exists()) {
+                file.writeText("localhost:5315")
+                return "localhost:5315"
             }
-        }.readText()
+
+            val content = file.readText().trim()
+            val host = content.substringBefore(":").trim()
+
+            return if (host != "localhost") {
+                file.writeText("localhost:5315")
+                "localhost:5315"
+            } else {
+                content
+            }
+        }
 
     val settingHtml: String
         get() {
