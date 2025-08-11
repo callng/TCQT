@@ -5,8 +5,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.protobuf)
-    kotlin("plugin.serialization") version "2.2.0"
-    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
