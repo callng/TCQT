@@ -211,6 +211,29 @@
           opacity: 0.7;
         }
 
+        /* Feedback Link */
+        .feedback-link {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+
+        .feedback-link a {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #333;
+          text-decoration: none;
+          font-weight: 500;
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: var(--transition);
+        }
+
+        .feedback-link a:hover {
+          background-color: rgba(67, 97, 238, 0.1);
+          color: var(--primary-color);
+        }
+
         /* Toast System */
         #toast-container {
           position: fixed;
@@ -355,11 +378,19 @@
                 </div>
             </div>
             <small class="text-muted mt-2 d-block">
+                红色标记功能被启用表示用户已了解该功能的详细作用，需用户自行承担对应功能的使用风险。
+            </small>
+            <small class="text-muted mt-2 d-block">
                 启用或禁用功能，保存后重启宿主生效。
             </small>
         </div>
         <ul id="feature-list" class="list-group list-group-flush"></ul>
         <button id="btnSave" class="btn-save">保存设置</button>
+        <div class="feedback-link">
+            <a href="https://github.com/callng/TCQT/issues" target="_blank" title="有问题？去反馈">
+                <i class="bi bi-github"></i> 有问题？去反馈
+            </a>
+        </div>
     </div>
 </div>
 
@@ -368,16 +399,16 @@
 
 <script>
     const features = [
-      { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。" },
+      { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。", color: "#dc3545" },
       { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
       { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
       { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
-      { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。" },
+      { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。", color: "#dc3545" },
       { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
-      { key: "exclude_send_cmd", label: "禁止发送指定包体", desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。" },
+      { key: "exclude_send_cmd", label: "禁止发送指定包体", desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。", color: "#dc3545" },
       { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
       { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
-      { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。" },
+      { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。", color: "#dc3545" },
       { key: "login_check_box_default", label: "自动勾选复选框", desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。" },
       { key: "module_update", label: "模块更新重启宿主", desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。" },
       { key: "one_click_likes", label: "一键20赞", desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。" },
@@ -442,7 +473,7 @@
             <div class="flex-grow-1">
               <div class="feature-label">
                 <i class="bi bi-chevron-down"></i>
-                ${feature.label}
+                <span style="color: ${feature.color || '#333'}">${feature.label}</span>
               </div>
               <div class="feature-desc">${feature.desc || ""}</div>
             </div>
