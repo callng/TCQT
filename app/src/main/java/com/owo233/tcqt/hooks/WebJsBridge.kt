@@ -6,7 +6,9 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
+import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -16,6 +18,8 @@ import com.owo233.tcqt.utils.hostInfo
 import com.tencent.smtt.sdk.WebView
 import de.robv.android.xposed.XposedBridge
 import mqq.app.MobileQQ
+import org.json.JSONArray
+import org.json.JSONObject
 import java.net.Socket
 import java.net.URL
 
@@ -33,6 +37,8 @@ class WebJsBridge: AlwaysRunAction() {
             }
         }
 
+        addWhiteList() // 添加host白名单
+
         val onLoad = afterHook {
             val web = it.thisObject as WebView
             val url = URL(web.url)
@@ -45,6 +51,44 @@ class WebJsBridge: AlwaysRunAction() {
         WebView::class.java.declaredMethods
             .filter { it.name == "loadUrl" || it.name == "loadData" || it.name == "loadDataWithBaseURL"}
             .forEach { XposedBridge.hookMethod(it, onLoad) }
+    }
+
+    private fun addWhiteList() {
+        XpClassLoader.load("com.tencent.mobileqq.qmmkv.MMKVOptionEntity")
+            ?.hookMethod("decodeString", afterHook {
+                val key = it.args[0] as? String ?: return@afterHook
+                if (key == "207_2849" || key.startsWith("207_")) {
+                    val result = it.result as? String ?: return@afterHook
+                    val json = JSONObject(result)
+                    val hosts = listOf("127.0.0.1", "localhost")
+
+                    addHosts(json, "whiteList", hosts)
+                    addHosts(json, "whiteListv2", hosts)
+                    addHosts(json, "kbWhiteList", hosts)
+
+                    it.result = json.toString()
+                }
+            })
+    }
+
+    private fun addHosts(json: JSONObject, key: String, hosts: List<String>) {
+        val array = if (json.has(key)) {
+            json.getJSONArray(key)
+        } else {
+            val newArr = JSONArray()
+            json.put(key, newArr)
+            newArr
+        }
+
+        val existing = (0 until array.length())
+            .map{ array.getString(it) }
+            .toMutableSet()
+
+        for (host in hosts) {
+            if (existing.add(host)) {
+                array.put(host)
+            }
+        }
     }
 
     private fun parseHostAndPort(url: String): Pair<String, Int> {

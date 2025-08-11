@@ -9,21 +9,32 @@ object ActionManager {
 
     private val FIRST_ACTION = GeneratedActionList.ACTIONS // ksp 自动生成
 
-    private val instanceMap = hashMapOf<Class<*>, IAction>()
+    private val instanceMap = hashMapOf<Class<out IAction>, IAction>()
 
-    private fun instanceOf(cls: Class<*>): IAction = instanceMap.getOrPut(cls) {
-        cls.getConstructor().newInstance() as IAction
-    }
+    private fun instanceOf(cls: Class<out IAction>): IAction =
+        instanceMap.getOrPut(cls) {
+            try {
+                cls.getField("INSTANCE").get(null) as IAction
+            } catch (_: NoSuchFieldException) {
+                cls.getDeclaredConstructor().newInstance()
+            }
+        }
 
     fun runFirst(ctx: Context, proc: ActionProcess) {
-        val baseProcs = setOf(ActionProcess.MSF, ActionProcess.MAIN, ActionProcess.TOOL, ActionProcess.OPENSDK)
+        val baseProcs = setOf(
+            ActionProcess.MSF,
+            ActionProcess.MAIN,
+            ActionProcess.TOOL,
+            ActionProcess.OPENSDK
+        )
 
-        FIRST_ACTION.forEach {
-            val action = instanceOf(it)
+        FIRST_ACTION.forEach { actionClass ->
+            val action = instanceOf(actionClass)
 
-            val shouldRun = ActionProcess.ALL in action.processes
-                    || proc in action.processes
-                    || (ActionProcess.OTHER in action.processes && proc !in baseProcs)
+            val shouldRun =
+                ActionProcess.ALL in action.processes ||
+                        proc in action.processes ||
+                        (ActionProcess.OTHER in action.processes && proc !in baseProcs)
 
             if (shouldRun) {
                 action(ctx)

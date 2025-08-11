@@ -4,74 +4,122 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TCQT</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+    <!-- Bootstrap 5.3.7 + Icons -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Animate.css for smooth animations -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+
     <style>
+        :root {
+          --primary-color: #4361ee;
+          --primary-light: #4cc9f0;
+          --text-dark: #333;
+          --text-light: #555;
+          --bg-light: #f8f9fa;
+          --card-bg: #ffffff;
+          --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+          --border-color: #e0e0e0;
+          --success-color: #28a745;
+          --danger-color: #dc3545;
+          --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
         body {
-          background-color: #f8f9fa;
-          color: #333;
+          background: var(--bg-light);
+          color: var(--text-dark);
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          padding: 20px 10px;
+          padding: 16px;
+          margin: 0;
+          min-height: 100vh;
+          background-image:
+            radial-gradient(circle at 20% 30%, rgba(67, 97, 238, 0.05) 0%, transparent 30%),
+            radial-gradient(circle at 80% 70%, rgba(76, 201, 240, 0.05) 0%, transparent 30%);
         }
 
         .container {
-          max-width: 600px;
-          margin: 0 auto;
+          max-width: 640px;
+          margin: 20px auto;
           display: none;
         }
 
+        /* Glassmorphic Card */
         .card {
           border: none;
-          border-radius: 16px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          border-radius: 24px;
+          box-shadow: var(--shadow);
           overflow: hidden;
-          background-color: #fff;
+          background: var(--card-bg);
+          backdrop-filter: blur(12px);
+          background: rgba(255, 255, 255, 0.85);
+          transition: var(--transition);
+        }
+
+        .card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 36px rgba(67, 97, 238, 0.18);
         }
 
         .card-header {
-          background-color: #fff;
-          border-bottom: 1px solid #eee;
-          padding: 24px;
+          background: transparent;
+          border-bottom: 1px solid var(--border-color);
+          padding: 32px 24px 24px;
           text-align: center;
         }
 
         .card-header h2 {
-          font-weight: 600;
-          color: #1a73e8;
+          font-weight: 700;
+          color: var(--primary-color);
           margin: 0 0 8px 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
         }
 
         .version-info {
-          display: inline-block;
+          margin-top: 12px;
+          font-size: 0.95rem;
           text-align: left;
+          display: inline-block;
         }
+
         .version-row {
           display: flex;
           align-items: center;
+          margin-bottom: 4px;
         }
+
         .version-label {
-          min-width: 6em; /* 固定标签宽度，冒号对齐 */
-          color: #666;
-        }
-        .version-success {
-          color: #28a745;
-          font-weight: 600;
-        }
-        .version-fail {
-          color: #dc3545;
+          min-width: 7em;
+          color: var(--text-light);
           font-weight: 500;
         }
 
+        .version-success {
+          color: var(--success-color);
+          font-weight: 600;
+        }
+
+        .version-fail {
+          color: var(--danger-color);
+          font-weight: 500;
+        }
+
+        /* Feature List */
         .list-group-item {
           border: none;
           padding: 16px 24px;
-          border-bottom: 1px solid #f0f0f0;
-          transition: background-color 0.2s ease;
+          border-bottom: 1px solid var(--border-color);
+          transition: var(--transition);
           cursor: pointer;
+          position: relative;
         }
 
         .list-group-item:hover {
-          background-color: #f8f9fc;
+          background-color: rgba(67, 97, 238, 0.03);
         }
 
         .feature-label {
@@ -79,99 +127,125 @@
           font-size: 1.05rem;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          user-select: none;
         }
 
         .feature-label i {
-          opacity: 0.6;
-          font-size: 0.9rem;
+          opacity: 0.7;
+          font-size: 0.95rem;
+          transition: transform 0.3s ease;
+        }
+
+        .feature-label.expanded i {
+          transform: rotate(180deg);
         }
 
         .feature-desc {
           font-size: 0.92rem;
-          color: #555;
+          color: var(--text-light);
           margin: 10px 0 0;
           opacity: 0;
           max-height: 0;
           overflow: hidden;
-          transition: all 0.3s ease;
+          transition: all 0.4s ease;
         }
 
         .feature-desc.show {
           opacity: 1;
-          max-height: 100px;
+          max-height: 120px;
           margin: 10px 0;
         }
 
+        /* Switch Styling */
         .form-switch .form-check-input {
-          box-shadow: 0 0 6px rgba(26, 115, 232, 0.6);
-          transition: box-shadow 0.3s ease, transform 0.2s ease;
+          background-color: #ced4da;
+          border: none;
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+          transition: var(--transition);
+        }
+
+        .form-switch .form-check-input:checked {
+          background-color: var(--primary-color);
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
         }
 
         .form-switch .form-check-input:focus {
-          box-shadow: 0 0 8px 3px rgba(26, 115, 232, 0.75);
           outline: none;
+          box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
         }
 
         .form-switch .form-check-input:hover {
-          transform: scale(1.05);
-          box-shadow: 0 0 10px 4px rgba(26, 115, 232, 0.85);
+          scale: 1.08;
         }
 
-        /* 按钮样式 */
+        /* Save Button */
         .btn-save {
-          margin: 24px 24px 24px;
-          padding: 12px;
+          margin: 20px 24px;
+          padding: 14px;
           font-size: 1.1rem;
-          border-radius: 12px;
-          background-color: #1a73e8;
+          font-weight: 600;
+          border-radius: 14px;
+          background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
           border: none;
-          box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
-          transition: transform 0.1s ease, box-shadow 0.2s ease;
           color: white;
+          box-shadow: 0 6px 16px rgba(67, 97, 238, 0.35);
+          transition: var(--transition);
           user-select: none;
+          width: calc(100% - 48px);
         }
 
         .btn-save:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(26, 115, 232, 0.4);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(67, 97, 238, 0.45);
+        }
+
+        .btn-save:active:not(:disabled) {
+          transform: translateY(0);
         }
 
         .btn-save:disabled {
-          background-color: #6c757d;
+          background: #adb5bd;
           box-shadow: none;
           cursor: not-allowed;
+          opacity: 0.7;
         }
 
-        /* Toast 提示 */
-        #toast {
+        /* Toast System */
+        #toast-container {
           position: fixed;
           bottom: 30px;
           left: 50%;
           transform: translateX(-50%);
+          z-index: 10000;
+          pointer-events: none;
+          width: max-content;
+          max-width: 90%;
+        }
+
+        .toast-item {
           background-color: #333;
           color: white;
-          padding: 12px 24px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-          display: none;
-          z-index: 9999;
+          padding: 14px 24px;
+          border-radius: 10px;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+          margin-bottom: 10px;
           font-size: 0.95rem;
-          animation: fadeIn 0.2s, fadeOut 0.2s 1.8s forwards;
-          user-select: none;
+          opacity: 0;
+          transform: translateY(20px);
+          pointer-events: auto;
+          animation: fadeInUp 0.3s forwards, fadeOutDown 0.3s 2.2s forwards;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @keyframes fadeInUp {
+          to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes fadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
+        @keyframes fadeOutDown {
+          to { opacity: 0; transform: translateY(20px); }
         }
 
-        /* 加载动画居中 */
+        /* Loading Screen */
         #loading {
           position: fixed;
           top: 50%;
@@ -180,55 +254,93 @@
           text-align: center;
           color: #555;
           user-select: none;
+          z-index: 9999;
         }
 
         #loading .spinner-border {
-          width: 3rem;
-          height: 3rem;
+          width: 3.5rem;
+          height: 3.5rem;
           border-width: 0.3em;
+          border-color: var(--primary-color) transparent transparent transparent;
         }
 
-        /* 滚动条美化 */
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
+        /* Textarea */
+        textarea {
+          font-family: 'Courier New', monospace;
+          font-size: 0.9rem;
+          padding: 10px;
+          border-radius: 8px;
+          border: 1px solid #ced4da;
+          background-color: #fdfdfd;
+          transition: var(--transition);
+          width: 100%;
+          min-height: 100px;
+          box-sizing: border-box;
         }
-        ::-webkit-scrollbar-track {
-          background-color: #f1f1f1;
-          border-radius: 10px;
+
+        textarea:focus {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+          outline: none;
         }
-        ::-webkit-scrollbar-thumb {
-          background-color: #c0c0c0;
-          border-radius: 10px;
-          border: 2px solid #f1f1f1;
-          transition: background-color 0.3s ease;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background-color: #a0a0a0;
-          box-shadow: 0 0 8px rgba(26, 115, 232, 0.4);
-        }
-        ::-webkit-scrollbar-button {
+
+        .textarea-container {
           display: none;
+          margin-top: 12px;
+          padding: 12px;
+          background-color: #f9f9fc;
+          border-radius: 10px;
+          border: 1px solid var(--border-color);
         }
-        ::-webkit-scrollbar-corner {
-          background-color: #f1f1f1;
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: #c0c0c0;
+          border-radius: 10px;
+          transition: var(--transition);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--primary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+          .container {
+            margin: 10px auto;
+            padding: 0 10px;
+          }
+          .card-header h2 {
+            font-size: 1.3rem;
+          }
         }
     </style>
 </head>
 <body>
+
 <!-- 加载动画 -->
 <div id="loading">
     <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">加载中...</span>
     </div>
-    <p class="mt-3">正在加载，请稍候...</p>
+    <p class="mt-3 text-muted">正在初始化设置...</p>
 </div>
 
 <!-- 主体内容 -->
 <div class="container">
-    <div class="card">
+    <div class="card animate__animated animate__fadeIn">
         <div class="card-header">
-            <h2><i class="bi bi-gear"></i> TCQT 模块</h2>
+            <h2><i class="bi bi-sliders"></i> TCQT 模块设置</h2>
             <div class="version-info">
                 <div class="version-row">
                     <span class="version-label">宿主版本:</span>
@@ -248,18 +360,18 @@
     </div>
 </div>
 
-<!-- Toast 提示 -->
-<div id="toast">已保存</div>
+<!-- Toast 容器 -->
+<div id="toast-container"></div>
 
 <script>
     const features = [
-      // { key: "browser_restrict_mitigation", label: "绕过内置浏览器访问限制", desc: "允许任何URL地址访问，不再拦截。" },
       { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。" },
       { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
       { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
       { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
       { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。" },
       { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
+      { key: "exclude_send_cmd", label: "禁止发送指定包体", desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。" },
       { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
       { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
       { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。" },
@@ -277,6 +389,7 @@
 
     function setVersionText(id, text, success) {
       const el = document.getElementById(id);
+      if (!el) return;
       el.textContent = text;
       el.classList.remove("version-success", "version-fail");
       el.classList.add(success ? "version-success" : "version-fail");
@@ -287,10 +400,10 @@
         setTimeout(() => {
           if (typeof TCQT !== "undefined") {
             try {
-              const hostName = TCQT.getHostName();
-              const qqVersion = TCQT.getQQVersion();
-              const moduleName = TCQT.getModuleName();
-              const moduleVersion = TCQT.getModuleVersion();
+              const hostName = TCQT.getHostName() || "QQ";
+              const qqVersion = TCQT.getQQVersion() || "未知";
+              const moduleName = TCQT.getModuleName() || "TCQT";
+              const moduleVersion = TCQT.getModuleVersion() || "未知";
 
               setVersionText("qqVersion", `${hostName} ${qqVersion}`, true);
               setVersionText("moduleVersion", `${moduleName} ${moduleVersion}`, true);
@@ -302,6 +415,7 @@
               injected = false;
             }
           } else {
+            console.error("TCQT 对象未定义");
             setVersionText("qqVersion", "环境异常", false);
             setVersionText("moduleVersion", "环境异常", false);
             injected = false;
@@ -319,6 +433,7 @@
         const li = document.createElement("li");
         li.className = "list-group-item";
 
+        // 动态生成结构
         li.innerHTML = `
           <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
@@ -326,41 +441,79 @@
                 <i class="bi bi-chevron-down"></i>
                 ${feature.label}
               </div>
-              <div class="feature-desc">${feature.desc}</div>
+              <div class="feature-desc">${feature.desc || ""}</div>
             </div>
             <div class="form-check form-switch ms-3">
-              <input class="form-check-input" type="checkbox" id="switch-${feature.key}">
+              <input class="form-check-input" type="checkbox" id="switch-${feature.key}" role="switch">
             </div>
           </div>
         `;
 
+        // 添加 exclude_send_cmd 的 textarea 容器
+        if (feature.key === "exclude_send_cmd") {
+          const textareaContainer = document.createElement("div");
+          textareaContainer.className = "textarea-container";
+          textareaContainer.id = "container-textarea-exclude_send_cmd";
+
+          const textarea = document.createElement("textarea");
+          textarea.id = "textarea-exclude_send_cmd_string";
+          textarea.placeholder = "如果你不知道这是什么，请不要启用本功能!!!\n填写欲禁止发送包体的cmd\n一行一个，支持正则表达式(以!开头表示)";
+          textarea.setAttribute("rows", "4");
+          textareaContainer.appendChild(textarea);
+          li.appendChild(textareaContainer);
+        }
+
         const label = li.querySelector(".feature-label");
         const desc = li.querySelector(".feature-desc");
         const checkbox = li.querySelector("input[type=checkbox]");
+        const textareaContainer = li.querySelector(".textarea-container");
 
+        // 点击标题展开/收起
         label.addEventListener("click", () => {
-          const isShowing = desc.classList.contains("show");
-          desc.classList.toggle("show", !isShowing);
+          const isExpanded = desc.classList.contains("show");
+          desc.classList.toggle("show", !isExpanded);
+          label.classList.toggle("expanded", !isExpanded);
           const icon = label.querySelector("i");
-          icon.className = isShowing ? "bi bi-chevron-down" : "bi bi-chevron-up";
+          icon.className = isExpanded ? "bi bi-chevron-down" : "bi bi-chevron-up";
+
+          if (textareaContainer) {
+            textareaContainer.style.display = isExpanded ? "none" : "block";
+          }
         });
 
+        // 阻止 checkbox 冒泡
         checkbox.addEventListener("click", e => e.stopPropagation());
 
-        container.appendChild(li);
-
-        if (!injected) {
-          checkbox.disabled = true;
-        } else {
+        // 状态初始化
+        if (injected) {
           try {
             const settingJson = TCQT.getSetting(feature.key);
             const setting = JSON.parse(settingJson);
-            checkbox.checked = setting.value;
+            checkbox.checked = !!setting.value;
           } catch (e) {
-            console.warn("获取设置失败", e);
             checkbox.checked = false;
           }
+
+          if (feature.key === "exclude_send_cmd") {
+            try {
+              const strJson = TCQT.getSetting("exclude_send_cmd_string");
+              const strSetting = JSON.parse(strJson);
+              const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+              if (textarea) textarea.value = strSetting.value || "";
+            } catch (e) {
+              const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+              if (textarea) textarea.value = "";
+            }
+          }
+        } else {
+          checkbox.disabled = true;
+          if (feature.key === "exclude_send_cmd") {
+            const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+            if (textarea) textarea.disabled = true;
+          }
         }
+
+        container.appendChild(li);
       });
 
       document.getElementById("btnSave").disabled = !injected;
@@ -368,9 +521,10 @@
 
     function saveSettings() {
       if (!injected) {
-        alert("模块接口未注入，无法保存设置");
+        showToast("模块接口未注入，无法保存设置");
         return;
       }
+
       features.forEach(feature => {
         const checked = document.getElementById("switch-" + feature.key).checked;
         try {
@@ -379,23 +533,41 @@
           console.error(`设置 ${feature.key} 失败`, e);
         }
       });
-      const hostName = TCQT.getHostName();
+
+      const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+      if (textarea) {
+        const textValue = textarea.value.trim();
+        try {
+          TCQT.setSettingString("exclude_send_cmd_string", textValue);
+        } catch (e) {
+          console.error("保存 exclude_send_cmd_string 失败", e);
+        }
+      }
+
+      const hostName = TCQT.getHostName() || "应用";
       showToast(`设置已保存，重启 ${hostName} 后生效`);
     }
 
     function showToast(msg) {
-      if (typeof TCQT !== "undefined") {
+      // 优先使用 TCQT.toast
+      if (typeof TCQT !== "undefined" && typeof TCQT.toast === "function") {
         try {
           TCQT.toast(msg);
           return;
         } catch (e) {}
       }
-      const toast = document.getElementById("toast");
+
+      // DOM Toast fallback
+      const toastContainer = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      toast.className = "toast-item animate__animated";
       toast.textContent = msg;
-      toast.style.display = "block";
+      toastContainer.appendChild(toast);
+
+      // 自动移除
       setTimeout(() => {
-        toast.style.display = "none";
-      }, 2000);
+        toast.remove();
+      }, 2500);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -403,10 +575,18 @@
     });
 
     (async function init() {
-      await loadVersions();
-      renderFeatures();
-      document.getElementById("loading").style.display = "none";
-      document.querySelector(".container").style.display = "block";
+      try {
+        await loadVersions();
+        renderFeatures();
+      } catch (err) {
+        console.error("初始化失败:", err);
+        setVersionText("qqVersion", "初始化失败", false);
+        setVersionText("moduleVersion", "初始化失败", false);
+        document.getElementById("btnSave").disabled = true;
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        document.querySelector(".container").style.display = "block";
+      }
     })();
 </script>
 </body>

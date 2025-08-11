@@ -125,3 +125,5 @@ fun Int.dp2px(ctx: Context): Int {
 fun Context.getDensity(): Float {
     return this.resources.displayMetrics.density
 }
+
+fun String.toUtf8ByteArray(): ByteArray = this.toByteArray(Charsets.UTF_8)

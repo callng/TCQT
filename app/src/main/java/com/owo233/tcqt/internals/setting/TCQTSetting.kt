@@ -19,6 +19,8 @@ internal object TCQTSetting {
     const val DISABLE_FLASH_PIC: String = "disable_flash_pic"
     const val DISABLE_HOT_PATCH: String = "disable_hot_patch"
     const val DISABLE_REACTION_LIMIT: String = "disable_reaction_limit"
+    const val EXCLUDE_SEND_CMD: String = "exclude_send_cmd"
+    const val EXCLUDE_SEND_CMD_STRING: String = "exclude_send_cmd_string"
     const val FAKE_MULTI_WINDOW_STATUS: String = "fake_multi_window_status"
     const val FETCH_SERVICE: String = "fetch_service"
     const val FLAG_SECURE_BYPASS: String = "flag_secure_bypass"
@@ -46,6 +48,8 @@ internal object TCQTSetting {
         DISABLE_FLASH_PIC to Setting(DISABLE_FLASH_PIC, SettingType.BOOLEAN, true),
         DISABLE_HOT_PATCH to Setting(DISABLE_HOT_PATCH, SettingType.BOOLEAN, false),
         DISABLE_REACTION_LIMIT to Setting(DISABLE_REACTION_LIMIT, SettingType.BOOLEAN, true),
+        EXCLUDE_SEND_CMD to Setting(EXCLUDE_SEND_CMD, SettingType.BOOLEAN, false),
+        EXCLUDE_SEND_CMD_STRING to Setting(EXCLUDE_SEND_CMD_STRING, SettingType.STRING, ""),
         FAKE_MULTI_WINDOW_STATUS to Setting(FAKE_MULTI_WINDOW_STATUS, SettingType.BOOLEAN, true),
         FETCH_SERVICE to Setting(FETCH_SERVICE, SettingType.BOOLEAN, true),
         FLAG_SECURE_BYPASS to Setting(FLAG_SECURE_BYPASS, SettingType.BOOLEAN, true),
