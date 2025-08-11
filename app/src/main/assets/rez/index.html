@@ -148,7 +148,7 @@
           opacity: 0;
           max-height: 0;
           overflow: hidden;
-          transition: all 0.4s ease;
+          transition: all 0.3s ease;
         }
 
         .feature-desc.show {
@@ -274,8 +274,10 @@
           background-color: #fdfdfd;
           transition: var(--transition);
           width: 100%;
-          min-height: 100px;
+          min-height: 60px;
           box-sizing: border-box;
+          resize: vertical;
+          line-height: 1.4;
         }
 
         textarea:focus {
@@ -291,6 +293,7 @@
           background-color: #f9f9fc;
           border-radius: 10px;
           border: 1px solid var(--border-color);
+          width: 100%;
         }
 
         /* Scrollbar */
@@ -457,8 +460,8 @@
 
           const textarea = document.createElement("textarea");
           textarea.id = "textarea-exclude_send_cmd_string";
-          textarea.placeholder = "如果你不知道这是什么，请不要启用本功能!!!\n填写欲禁止发送包体的cmd\n一行一个，支持正则表达式(以!开头表示)";
-          textarea.setAttribute("rows", "4");
+          textarea.placeholder = "不了解不要启用本功能!!!\n填写欲禁止发送包体的cmd\n一行一个，正则表达式(以!开头表示)";
+          textarea.rows = 4;
           textareaContainer.appendChild(textarea);
           li.appendChild(textareaContainer);
         }
@@ -484,7 +487,15 @@
         // 阻止 checkbox 冒泡
         checkbox.addEventListener("click", e => e.stopPropagation());
 
-        // 状态初始化
+        container.appendChild(li);
+      });
+    }
+
+    function initSettings() {
+      features.forEach(feature => {
+        const checkbox = document.getElementById("switch-" + feature.key);
+        if (!checkbox) return;
+
         if (injected) {
           try {
             const settingJson = TCQT.getSetting(feature.key);
@@ -495,14 +506,15 @@
           }
 
           if (feature.key === "exclude_send_cmd") {
-            try {
-              const strJson = TCQT.getSetting("exclude_send_cmd_string");
-              const strSetting = JSON.parse(strJson);
-              const textarea = document.getElementById("textarea-exclude_send_cmd_string");
-              if (textarea) textarea.value = strSetting.value || "";
-            } catch (e) {
-              const textarea = document.getElementById("textarea-exclude_send_cmd_string");
-              if (textarea) textarea.value = "";
+            const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+            if (textarea) {
+              try {
+                const strJson = TCQT.getSetting("exclude_send_cmd_string");
+                const strSetting = JSON.parse(strJson);
+                textarea.value = strSetting.value || "";
+              } catch (e) {
+                textarea.value = "";
+              }
             }
           }
         } else {
@@ -512,8 +524,6 @@
             if (textarea) textarea.disabled = true;
           }
         }
-
-        container.appendChild(li);
       });
 
       document.getElementById("btnSave").disabled = !injected;
@@ -549,7 +559,6 @@
     }
 
     function showToast(msg) {
-      // 优先使用 TCQT.toast
       if (typeof TCQT !== "undefined" && typeof TCQT.toast === "function") {
         try {
           TCQT.toast(msg);
@@ -578,6 +587,7 @@
       try {
         await loadVersions();
         renderFeatures();
+        initSettings();
       } catch (err) {
         console.error("初始化失败:", err);
         setVersionText("qqVersion", "初始化失败", false);
