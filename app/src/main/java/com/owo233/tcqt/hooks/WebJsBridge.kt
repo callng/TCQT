@@ -126,6 +126,11 @@ class WebJsBridge: AlwaysRunAction() {
         }
 
         @JavascriptInterface
+        fun exitHost() {
+            ModuleCommand.sendCommand(MobileQQ.getContext(), "exit_all")
+        }
+
+        @JavascriptInterface
         fun getSetting(key: String): String {
             val setting = TCQTSetting.getSetting<Any>(key)
             val value = when (setting.type) {
