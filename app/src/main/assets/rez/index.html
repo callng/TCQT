@@ -2,692 +2,624 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>TCQT</title>
 
-    <!-- Bootstrap 5.3.7 + Icons -->
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.7/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
 
-    <!-- Animate.css for smooth animations -->
-    <link href="https://cdn.bootcdn.net/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
-
     <style>
+        /* --- CSS Variables and Base --- */
         :root {
             --primary-color: #4361ee;
             --primary-light: #4cc9f0;
-            --text-dark: #333;
-            --text-light: #555;
-            --bg-light: #f8f9fa;
-            --card-bg: #ffffff;
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            --border-color: #e0e0e0;
-            --success-color: #28a745;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --text-light: #f8f9fa;
+            --bg-body: #f7f9fc;
+            --bg-card: #ffffff;
+            --border-color: #e9ecef;
+            --success-color: #198754;
             --danger-color: #dc3545;
-            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            --radius-lg: 24px;
-            --radius-md: 14px;
-            --line-height: 1.5;
+            --shadow: 0 8px 24px rgba(67, 97, 238, 0.1);
+            --radius: 16px;
+            --transition-fast: all 0.2s ease-in-out;
+            --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @media (prefers-reduced-motion: reduce) {
-            :root {
-                --transition: none;
-            }
+        *, *::before, *::after {
+            box-sizing: border-box;
         }
 
         body {
-            background: var(--bg-light);
-            color: var(--text-dark);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            padding: 16px;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
             margin: 0;
+            padding: 20px;
             min-height: 100vh;
-            background-image:
-                radial-gradient(circle at 20% 30%, rgba(67, 97, 238, 0.08) 0%, transparent 35%),
-                radial-gradient(circle at 80% 70%, rgba(76, 201, 240, 0.08) 0%, transparent 35%);
-            line-height: var(--line-height);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .container {
-            max-width: 640px;
-            margin: 20px auto;
-            display: none;
-        }
-
-        /* Glassmorphic Card */
-        .card {
-            border: none;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(16px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 14px 40px rgba(67, 97, 238, 0.2);
-        }
-
-        .card-header {
-            padding: 32px 24px 24px;
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .card-header h2 {
-            font-weight: 700;
-            color: var(--primary-color);
-            margin: 0 0 8px 0;
+        /* --- Loading Spinner --- */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            font-size: 1.5rem;
+            background-color: var(--bg-body);
+            z-index: 10000;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--primary-light);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-overlay p {
+            margin-top: 16px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- App Container & Header --- */
+        .app-container {
+            max-width: 720px;
+            margin: 0 auto;
+            display: none; /* Hidden until loaded */
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .app-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .app-header h1 i {
+            color: var(--primary-color);
         }
 
         .version-info {
-            margin-top: 12px;
-            font-size: 0.95rem;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+        .version-info-wrapper {
+            display: inline-flex;
+            flex-direction: row;
             align-items: center;
-            gap: 8px;
-            width: 220px; /* Fixed width to match approximate title width */
+            gap: 24px;
+        }
+        .version-item {
+            color: var(--text-muted);
+        }
+        .version-item span {
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .version-success { color: var(--success-color); background-color: rgba(25, 135, 84, 0.1); }
+        .version-fail { color: var(--danger-color); background-color: rgba(220, 53, 69, 0.1); }
+
+        .header-notice {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background-color: var(--bg-card);
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 24px;
+            max-width: 500px;
             margin-left: auto;
             margin-right: auto;
         }
+        .header-notice strong { color: var(--danger-color); }
 
-        .version-item {
-            display: grid;
-            grid-template-columns: 80px 1fr;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
+        /* --- Feature List --- */
+        .feature-list {
+            background-color: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
         }
 
-        .version-label {
-            color: var(--text-light);
-            font-weight: 500;
-            white-space: nowrap;
-            text-align: left;
-            min-width: 80px;
-        }
-
-        .version-success {
-            color: var(--success-color);
-            font-weight: 600;
-            text-align: left;
-        }
-
-        .version-fail {
-            color: var(--danger-color);
-            font-weight: 500;
-            text-align: left;
-        }
-
-        /* Feature List */
-        .list-group-item {
-            border: none;
-            padding: 16px 24px;
+        .feature-item {
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border-color);
-            transition: background-color 0.25s ease;
-            cursor: pointer;
-            position: relative;
+            transition: background-color var(--transition-fast);
+        }
+        .feature-item:last-child {
+            border-bottom: none;
         }
 
-        .list-group-item:hover {
-            background-color: rgba(67, 97, 238, 0.04);
-        }
-
-        .feature-label {
-            font-weight: 600;
-            font-size: 1.05rem;
+        .feature-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            cursor: pointer;
             user-select: none;
-            color: var(--text-dark);
         }
 
-        .feature-label i {
-            opacity: 0.7;
-            font-size: 0.95rem;
-            transition: transform 0.3s ease;
+        .feature-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-
-        .feature-label.expanded i {
+        .feature-title .icon-toggle {
+            transition: transform var(--transition-smooth);
+            color: var(--text-muted);
+        }
+        .feature-item.is-expanded .icon-toggle {
             transform: rotate(180deg);
-            opacity: 1;
+            color: var(--primary-color);
         }
 
-        .feature-desc {
-            font-size: 0.92rem;
-            color: var(--text-light);
-            margin: 10px 0 0;
-            opacity: 0;
+        .feature-desc, .textarea-container {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            padding-left: 28px;
             max-height: 0;
+            opacity: 0;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: max-height var(--transition-smooth), opacity var(--transition-smooth), margin-top var(--transition-smooth);
         }
-
-        .feature-desc.show {
+        .feature-item.is-expanded .feature-desc,
+        .feature-item.is-expanded .textarea-container {
+            max-height: 200px; /* Adjust as needed */
             opacity: 1;
-            max-height: 120px;
-            margin: 10px 0;
         }
-
-        /* Switch Styling */
+        
+        /* --- Switch --- */
         .form-switch .form-check-input {
+            width: 2.5em;
+            height: 1.4em;
             background-color: #ced4da;
-            border: none;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
-            transition: var(--transition);
+            border-color: #ced4da;
+            cursor: pointer;
+            transition: var(--transition-fast);
         }
-
         .form-switch .form-check-input:checked {
             background-color: var(--primary-color);
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+        .form-switch .form-check-input:focus-visible {
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.25);
+            border-color: var(--primary-color);
+        }
+        .form-switch {
+            padding-left: 3.5em; /* Ensure enough space */
         }
 
-        .form-switch .form-check-input:focus {
+        /* --- Textarea --- */
+        textarea {
+            width: 100%;
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 0.85rem;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: #fdfdfd;
+            resize: vertical;
+            min-height: 100px;
+        }
+        textarea:focus {
             outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
         }
 
-        .form-switch .form-check-input:hover {
-            scale: 1.08;
-        }
-
-        /* Save Button */
-        .btn-save {
-            margin: 20px 24px;
-            padding: 14px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: var(--radius-md);
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+        /* --- Floating Action Button (FAB) for Save --- */
+        .fab-save {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-light));
+            color: var(--text-light);
             border: none;
-            color: white;
-            box-shadow: 0 6px 16px rgba(67, 97, 238, 0.35);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
             user-select: none;
-            width: calc(100% - 48px);
         }
-
-        .btn-save:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(67, 97, 238, 0.45);
+        .fab-save:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.5);
         }
-
-        .btn-save:active:not(:disabled) {
-            transform: translateY(0);
+        .fab-save:active {
+            transform: translateY(-1px) scale(0.98);
         }
-
-        .btn-save:disabled {
+        .fab-save.disabled {
             background: #adb5bd;
             box-shadow: none;
             cursor: not-allowed;
+            transform: scale(0.95);
             opacity: 0.7;
         }
 
-        /* Feedback Link */
-        .feedback-link {
+        /* --- Footer Link --- */
+        .footer-link {
             text-align: center;
-            margin-bottom: 20px;
+            margin: 40px 0;
         }
-
-        .feedback-link a {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-dark);
+        .footer-link a {
+            color: var(--text-muted);
             text-decoration: none;
             font-weight: 500;
             padding: 8px 16px;
-            border-radius: 8px;
-            transition: var(--transition);
+            border-radius: 20px;
+            transition: var(--transition-fast);
         }
-
-        .feedback-link a:hover {
+        .footer-link a:hover {
             background-color: rgba(67, 97, 238, 0.1);
             color: var(--primary-color);
         }
 
-        /* Toast System */
-        #toast-container {
+        /* --- Toast Notifications --- */
+        .toast-container {
             position: fixed;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 10000;
+            z-index: 10001;
             pointer-events: none;
-            width: max-content;
-            max-width: 90%;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
-
         .toast-item {
-            background-color: #333;
-            color: white;
-            padding: 14px 24px;
-            border-radius: 10px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-            margin-bottom: 10px;
+            background-color: rgba(33, 37, 41, 0.9);
+            color: var(--text-light);
+            padding: 12px 24px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             font-size: 0.95rem;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: auto;
-            animation: fadeInUp 0.3s forwards, fadeOutDown 0.3s 2.2s forwards;
+            font-weight: 500;
+            animation: slideUpFadeIn 0.4s forwards, slideDownFadeOut 0.4s 2.6s forwards;
         }
-
-        @keyframes fadeInUp {
+        @keyframes slideUpFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes fadeOutDown {
+        @keyframes slideDownFadeOut {
+            from { opacity: 1; transform: translateY(0); }
             to { opacity: 0; transform: translateY(20px); }
         }
 
-        /* Loading Screen */
-        #loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: #555;
-            user-select: none;
-            z-index: 9999;
-        }
-
-        #loading .spinner-border {
-            width: 3.5rem;
-            height: 3.5rem;
-            border-width: 0.3em;
-            border-color: var(--primary-color) transparent transparent transparent;
-            animation: spin 1.2s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Textarea */
-        textarea {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ced4da;
-            background-color: #fdfdfd;
-            transition: var(--transition);
-            width: 100%;
-            min-height: 60px;
-            box-sizing: border-box;
-            resize: vertical;
-            line-height: 1.4;
-        }
-
-        textarea:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-            outline: none;
-        }
-
-        .textarea-container {
-            display: none;
-            margin-top: 12px;
-            padding: 12px;
-            background-color: #f9f9fc;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            width: 100%;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #c0c0c0;
-            border-radius: 10px;
-            transition: var(--transition);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-color);
-        }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            .container {
-                margin: 10px auto;
-                padding: 0 10px;
+        /* --- Responsive Design --- */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .app-header h1 { font-size: 1.7rem; }
+            .version-info-wrapper {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
             }
-
-            .card-header h2 {
-                font-size: 1.35rem;
-            }
-
-            .btn-save {
-                margin: 20px 10px;
-                width: calc(100% - 20px);
-            }
-
-            .version-info {
-                width: 180px; /* Adjusted for smaller screens */
-            }
-
-            .version-item {
-                grid-template-columns: 70px 1fr;
-            }
-
-            .version-label {
-                min-width: 70px;
-            }
+            .feature-item { padding: 14px 15px; }
+            .fab-save { bottom: 20px; right: 20px; width: 56px; height: 56px; font-size: 1.6rem; }
         }
+
     </style>
 </head>
 <body>
 
-<!-- 加载动画 -->
-<div id="loading">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">加载中...</span>
-    </div>
-    <p class="mt-3 text-muted">正在初始化...</p>
+<div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>正在初始化...</p>
 </div>
 
-<!-- 主体内容 -->
-<div class="container">
-    <div class="card animate__animated animate__fadeIn">
-        <div class="card-header">
-            <h2><i class="bi bi-sliders"></i> TCQT 模块设置</h2>
-            <div class="version-info">
-                <div class="version-item">
-                    <span class="version-label">宿主版本:</span>
-                    <span id="qqVersion" class="version-fail">加载中...</span>
-                </div>
-                <div class="version-item">
-                    <span class="version-label">模块版本:</span>
-                    <span id="moduleVersion" class="version-fail">加载中...</span>
-                </div>
+<div id="app-container" class="app-container">
+    <header class="app-header">
+        <h1><i class="bi bi-sliders"></i>TCQT 模块设置</h1>
+        <div class="version-info">
+            <div class="version-info-wrapper">
+                <div class="version-item">宿主: <span id="qqVersion">加载中...</span></div>
+                <div class="version-item">模块: <span id="moduleVersion">加载中...</span></div>
             </div>
-            <small class="text-muted mt-3 d-block">
-                被红色标记的功能有一定风险性，需用户自行承担对应功能的使用风险。
-            </small>
-            <small class="text-muted d-block">
-                启用或关闭对应功能后保存重启宿主生效。
-            </small>
         </div>
-        <ul id="feature-list" class="list-group list-group-flush"></ul>
-        <button id="btnSave" class="btn-save">保存设置</button>
-        <div class="feedback-link">
-            <a href="https://github.com/callng/TCQT/issues" target="_blank" title="有问题？去反馈">
-                <i class="bi bi-github"></i> 有问题？去反馈
-            </a>
+        <div class="header-notice">
+            被 <strong>红色</strong> 标记的功能有一定风险，请自行承担使用风险。<br>
+            更改设置后需保存并重启宿主才能生效。
         </div>
-    </div>
+    </header>
+
+    <main>
+        <div id="feature-list" class="feature-list"></div>
+    </main>
+
+    <footer class="footer-link">
+        <a href="https://github.com/callng/TCQT/issues" target="_blank" title="有问题？去反馈">
+            <i class="bi bi-github"></i> 有问题？去反馈
+        </a>
+    </footer>
+
 </div>
 
-<!-- Toast 容器 -->
-<div id="toast-container"></div>
+<button id="btnSave" class="fab-save" title="保存设置">
+    <i class="bi bi-save-fill"></i>
+</button>
+
+<div id="toast-container" class="toast-container"></div>
 
 <script>
-    const features = [
-        { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。", color: "#dc3545" },
-        { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
-        { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
-        { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
-        { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。", color: "#dc3545" },
-        { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
-        { key: "exclude_send_cmd", label: "禁止发送指定包体", desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。", color: "#dc3545" },
-        { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
-        { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
-        { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。", color: "#dc3545" },
-        { key: "login_check_box_default", label: "自动勾选复选框", desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。" },
-        { key: "module_update", label: "模块更新重启动宿主", desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。" },
-        { key: "one_click_likes", label: "一键20赞", desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。" },
-        { key: "poke_no_cool_down", label: "戳一戳无冷却", desc: "移除戳一戳冷却时间。" },
-        { key: "remove_qr_login_check", label: "移除扫码登录检查", desc: "扫描相册里的二维码时不再拦截登录。" },
-        { key: "rename_base_apk", label: "重命名.apk文件", desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。" },
-        { key: "reply_no_at", label: "回复不带 @", desc: "回复消息时不添加 @ 对方。" },
-        { key: "skip_qr_login_wait", label: "跳过扫码登录等待", desc: "扫码登录时跳过倒计时。" }
-    ];
-
-    let injected = false;
-
-    function setVersionText(id, text, success) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = text;
-        el.classList.remove("version-success", "version-fail");
-        el.classList.add(success ? "version-success" : "version-fail");
-    }
-
-    async function loadVersions() {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                if (typeof TCQT !== "undefined") {
-                    try {
-                        const hostName = TCQT.getHostName() || "QQ";
-                        const qqVersion = TCQT.getQQVersion() || "未知";
-                        const moduleName = TCQT.getModuleName() || "TCQT";
-                        const moduleVersion = TCQT.getModuleVersion() || "未知";
-
-                        setVersionText("qqVersion", `${hostName} ${qqVersion}`, true);
-                        setVersionText("moduleVersion", `${moduleName} ${moduleVersion}`, true);
-                        injected = true;
-                    } catch (e) {
-                        console.error("获取版本失败", e);
-                        setVersionText("qqVersion", "获取失败", false);
-                        setVersionText("moduleVersion", "获取失败", false);
-                        injected = false;
-                    }
-                } else {
-                    console.error("TCQT 对象未定义");
-                    setVersionText("qqVersion", "QQ 11.4.5(51419)", false);
-                    setVersionText("moduleVersion", "TCQT(环境异常)", false);
-                    injected = false;
+    document.addEventListener("DOMContentLoaded", () => {
+        // --- Data ---
+        const features = [
+            { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。", color: "var(--danger-color)" },
+            { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
+            { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
+            { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
+            { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。", color: "var(--danger-color)" },
+            { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
+            {
+                key: "exclude_send_cmd",
+                label: "禁止发送指定包体",
+                desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。",
+                color: "var(--danger-color)",
+                textarea: {
+                    key: "exclude_send_cmd_string",
+                    placeholder: "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
                 }
-                resolve();
-            }, 50);
-        });
-    }
+            },
+            { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
+            { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
+            { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。", color: "var(--danger-color)" },
+            { key: "login_check_box_default", label: "自动勾选复选框", desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。" },
+            { key: "module_update", label: "模块更新重启动宿主", desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。" },
+            { key: "one_click_likes", label: "一键20赞", desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。" },
+            { key: "poke_no_cool_down", label: "戳一戳无冷却", desc: "移除戳一戳冷却时间。" },
+            { key: "remove_qr_login_check", label: "移除扫码登录检查", desc: "扫描相册里的二维码时不再拦截登录。" },
+            { key: "rename_base_apk", label: "重命名.apk文件", desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。" },
+            { key: "reply_no_at", label: "回复不带 @", desc: "回复消息时不添加 @ 对方。" },
+            { key: "skip_qr_login_wait", label: "跳过扫码登录等待", desc: "扫码登录时跳过倒计时。" }
+        ];
 
-    function renderFeatures() {
-        const container = document.getElementById("feature-list");
-        container.innerHTML = "";
+        // --- State ---
+        let injected = false;
 
-        features.forEach(feature => {
-            const li = document.createElement("li");
-            li.className = "list-group-item";
+        // --- DOM Elements ---
+        const ui = {
+            loadingOverlay: document.getElementById('loading-overlay'),
+            appContainer: document.getElementById('app-container'),
+            qqVersion: document.getElementById('qqVersion'),
+            moduleVersion: document.getElementById('moduleVersion'),
+            featureList: document.getElementById('feature-list'),
+            btnSave: document.getElementById('btnSave'),
+            toastContainer: document.getElementById('toast-container')
+        };
 
-            // 动态生成结构
-            li.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <div class="feature-label">
-                            <i class="bi bi-chevron-down"></i>
-                            <span style="color: ${feature.color || 'inherit'}">${feature.label}</span>
-                        </div>
-                        <div class="feature-desc">${feature.desc || ""}</div>
-                    </div>
-                    <div class="form-check form-switch ms-3">
-                        <input class="form-check-input" type="checkbox" id="switch-${feature.key}" role="switch">
-                    </div>
-                </div>
-            `;
+        // --- Functions ---
 
-            // 添加 exclude_send_cmd 的 textarea 容器
-            if (feature.key === "exclude_send_cmd") {
+        const setVersionText = (el, text, success) => {
+            if (!el) return;
+            el.textContent = text;
+            el.className = success ? 'version-success' : 'version-fail';
+        };
+
+        const loadVersions = async () => {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    if (typeof TCQT !== "undefined") {
+                        try {
+                            const hostName = TCQT.getHostName() || "QQ";
+                            const qqVer = TCQT.getQQVersion() || "未知";
+                            const moduleName = TCQT.getModuleName() || "TCQT";
+                            const moduleVer = TCQT.getModuleVersion() || "未知";
+                            setVersionText(ui.qqVersion, `${hostName} ${qqVer}`, true);
+                            setVersionText(ui.moduleVersion, `${moduleName} ${moduleVer}`, true);
+                            injected = true;
+                        } catch (e) {
+                            console.error("获取版本失败", e);
+                            setVersionText(ui.qqVersion, "获取失败", false);
+                            setVersionText(ui.moduleVersion, "获取失败", false);
+                        }
+                    } else {
+                        console.warn("TCQT 对象未注入，使用模拟数据。");
+                        setVersionText(ui.qqVersion, "QQ 11.4.5 (14191)", false);
+                        setVersionText(ui.moduleVersion, "TCQT (环境异常)", false);
+                    }
+                    resolve();
+                }, 200);
+            });
+        };
+
+        const createFeatureElement = (feature) => {
+            const item = document.createElement('div');
+            item.className = 'feature-item';
+            item.dataset.key = feature.key;
+
+            const header = document.createElement('div');
+            header.className = 'feature-header';
+
+            const title = document.createElement('div');
+            title.className = 'feature-title';
+            title.style.color = feature.color || 'inherit';
+            title.innerHTML = `<i class="bi bi-chevron-down icon-toggle"></i><span>${feature.label}</span>`;
+
+            const switchWrapper = document.createElement('div');
+            switchWrapper.className = 'form-check form-switch';
+            const switchInput = document.createElement('input');
+            switchInput.className = 'form-check-input';
+            switchInput.type = 'checkbox';
+            switchInput.role = 'switch';
+            switchInput.id = `switch-${feature.key}`;
+            switchInput.addEventListener('click', e => e.stopPropagation());
+            switchWrapper.appendChild(switchInput);
+
+            header.append(title, switchWrapper);
+
+            const desc = document.createElement('div');
+            desc.className = 'feature-desc';
+            desc.textContent = feature.desc;
+
+            item.append(header, desc);
+
+            if (feature.textarea) {
                 const textareaContainer = document.createElement("div");
                 textareaContainer.className = "textarea-container";
-                textareaContainer.id = "container-textarea-exclude_send_cmd";
-
                 const textarea = document.createElement("textarea");
-                textarea.id = "textarea-exclude_send_cmd_string";
-                textarea.placeholder = "不了解不要启用本功能!!!\n填写欲禁止发送包体的cmd\n一行一个，正则表达式(以!开头表示)";
+                textarea.id = `textarea-${feature.key}`;
+                textarea.placeholder = feature.textarea.placeholder || "";
                 textarea.rows = 4;
                 textareaContainer.appendChild(textarea);
-                li.appendChild(textareaContainer);
+                item.appendChild(textareaContainer);
             }
 
-            const label = li.querySelector(".feature-label");
-            const desc = li.querySelector(".feature-desc");
-            const checkbox = li.querySelector("input[type=checkbox]");
-            const textareaContainer = li.querySelector(".textarea-container");
-
-            // 点击标题展开/收起
-            label.addEventListener("click", () => {
-                const isExpanded = desc.classList.contains("show");
-                desc.classList.toggle("show", !isExpanded);
-                label.classList.toggle("expanded", !isExpanded);
-                const icon = label.querySelector("i");
-                icon.className = isExpanded ? "bi bi-chevron-down" : "bi bi-chevron-up";
-
-                if (textareaContainer) {
-                    textareaContainer.style.display = isExpanded ? "none" : "block";
-                }
+            header.addEventListener('click', () => {
+                item.classList.toggle('is-expanded');
             });
 
-            // 阻止 checkbox 冒泡
-            checkbox.addEventListener("click", e => e.stopPropagation());
+            return item;
+        };
 
-            container.appendChild(li);
-        });
-    }
+        const renderFeatures = () => {
+            ui.featureList.innerHTML = "";
+            features.forEach(feature => {
+                const el = createFeatureElement(feature);
+                ui.featureList.appendChild(el);
+            });
+        };
 
-    function initSettings() {
-        features.forEach(feature => {
-            const checkbox = document.getElementById("switch-" + feature.key);
-            if (!checkbox) return;
+        const initSettings = () => {
+            features.forEach(feature => {
+                const checkbox = document.getElementById(`switch-${feature.key}`);
+                if (!checkbox) return;
 
-            if (injected) {
+                if (injected) {
+                    try {
+                        checkbox.checked = JSON.parse(TCQT.getSetting(feature.key)).value;
+                    } catch {
+                        checkbox.checked = false;
+                    }
+
+                    if (feature.textarea) {
+                        const textarea = document.getElementById(`textarea-${feature.key}`);
+                        if (textarea) {
+                            try {
+                                textarea.value = JSON.parse(TCQT.getSetting(feature.textarea.key)).value || "";
+                            } catch {
+                                textarea.value = "";
+                            }
+                        }
+                    }
+                } else {
+                    checkbox.disabled = true;
+                    if (feature.textarea) {
+                        const textarea = document.getElementById(`textarea-${feature.key}`);
+                        if (textarea) textarea.disabled = true;
+                    }
+                }
+            });
+            ui.btnSave.classList.toggle('disabled', !injected);
+            ui.btnSave.disabled = !injected;
+        };
+
+        const saveSettings = () => {
+            if (!injected) {
+                showToast("模块接口未注入，无法保存设置");
+                return;
+            }
+
+            features.forEach(feature => {
+                const checked = document.getElementById(`switch-${feature.key}`).checked;
                 try {
-                    const settingJson = TCQT.getSetting(feature.key);
-                    const setting = JSON.parse(settingJson);
-                    checkbox.checked = !!setting.value;
+                    TCQT.setSettingBoolean(feature.key, checked);
                 } catch (e) {
-                    checkbox.checked = false;
+                    console.error(`设置 ${feature.key} 失败`, e);
                 }
 
-                if (feature.key === "exclude_send_cmd") {
-                    const textarea = document.getElementById("textarea-exclude_send_cmd_string");
+                if (feature.textarea) {
+                    const textarea = document.getElementById(`textarea-${feature.key}`);
                     if (textarea) {
                         try {
-                            const strJson = TCQT.getSetting("exclude_send_cmd_string");
-                            const strSetting = JSON.parse(strJson);
-                            textarea.value = strSetting.value || "";
+                            TCQT.setSettingString(feature.textarea.key, textarea.value.trim());
                         } catch (e) {
-                            textarea.value = "";
+                            console.error(`保存 ${feature.textarea.key} 失败`, e);
                         }
                     }
                 }
-            } else {
-                checkbox.disabled = true;
-                if (feature.key === "exclude_send_cmd") {
-                    const textarea = document.getElementById("textarea-exclude_send_cmd_string");
-                    if (textarea) textarea.disabled = true;
+            });
+
+            const hostName = (typeof TCQT !== "undefined" && TCQT.getHostName()) || "宿主";
+            if (confirm(`已保存，是否重启 ${hostName} 以应用更改？`)) {
+                try {
+                    TCQT.exitHost();
+                } catch (e) {
+                    console.error("调用 exitHost 失败", e);
+                    showToast("自动重启失败，请手动重启宿主");
                 }
+            } else {
+                showToast(`设置已保存，重启 ${hostName} 后生效`);
             }
-        });
+        };
 
-        document.getElementById("btnSave").disabled = !injected;
-    }
-
-    function saveSettings() {
-        if (!injected) {
-            showToast("模块接口未注入，无法保存设置");
-            return;
-        }
-
-        features.forEach(feature => {
-            const checked = document.getElementById("switch-" + feature.key).checked;
-            try {
-                TCQT.setSettingBoolean(feature.key, checked);
-            } catch (e) {
-                console.error(`设置 ${feature.key} 失败`, e);
+        const showToast = (msg) => {
+            if (injected && typeof TCQT.toast === "function") {
+                try {
+                    TCQT.toast(msg);
+                    return;
+                } catch (e) { /* Fallback to DOM toast */ }
             }
-        });
 
-        const textarea = document.getElementById("textarea-exclude_send_cmd_string");
-        if (textarea) {
-            const textValue = textarea.value.trim();
+            const toast = document.createElement("div");
+            toast.className = "toast-item";
+            toast.textContent = msg;
+            ui.toastContainer.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        };
+
+        const init = async () => {
             try {
-                TCQT.setSettingString("exclude_send_cmd_string", textValue);
-            } catch (e) {
-                console.error("保存 exclude_send_cmd_string 失败", e);
+                renderFeatures();
+                await loadVersions();
+                initSettings();
+            } catch (err) {
+                console.error("初始化失败:", err);
+                setVersionText(ui.qqVersion, "初始化异常", false);
+                setVersionText(ui.moduleVersion, "初始化异常", false);
+                ui.btnSave.classList.add('disabled');
+                ui.btnSave.disabled = true;
+            } finally {
+                ui.loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    ui.loadingOverlay.style.display = 'none';
+                    ui.appContainer.style.display = 'block';
+                }, 300);
             }
-        }
+        };
 
-        const hostName = TCQT.getHostName() || "宿主";
-        const shouldRestart = confirm(`设置已保存，是否立即重启 ${hostName} ？`);
+        ui.btnSave.addEventListener("click", saveSettings);
 
-        if (shouldRestart) {
-            try {
-                TCQT.exitHost();
-            } catch (e) {
-                console.error("调用 exitHost 失败", e);
-                showToast("请手动重启宿主");
-            }
-        } else {
-            showToast(`设置已保存，重启 ${hostName} 后生效`);
-        }
-    }
-
-    function showToast(msg) {
-        if (typeof TCQT !== "undefined" && typeof TCQT.toast === "function") {
-            try {
-                TCQT.toast(msg);
-                return;
-            } catch (e) {}
-        }
-
-        // DOM Toast fallback
-        const toastContainer = document.getElementById("toast-container");
-        const toast = document.createElement("div");
-        toast.className = "toast-item";
-        toast.textContent = msg;
-        toastContainer.appendChild(toast);
-
-        // 自动移除
-        setTimeout(() => {
-            toast.remove();
-        }, 2500);
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("btnSave").addEventListener("click", saveSettings);
+        init();
     });
-
-    (async function init() {
-        try {
-            await loadVersions();
-            renderFeatures();
-            initSettings();
-        } catch (err) {
-            console.error("初始化失败:", err);
-            setVersionText("qqVersion", "初始化失败", false);
-            setVersionText("moduleVersion", "初始化失败", false);
-            document.getElementById("btnSave").disabled = true;
-        } finally {
-            document.getElementById("loading").style.display = "none";
-            document.querySelector(".container").style.display = "block";
-        }
-    })();
 </script>
 </body>
 </html>
