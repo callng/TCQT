@@ -29,6 +29,7 @@ internal object TCQTSetting {
     const val ONE_CLICK_LIKES: String = "one_click_likes"
     const val POKE_NO_COOL_DOWN: String = "poke_no_cool_down"
     const val REMOVE_QR_LOGIN_CHECK: String = "remove_qr_login_check"
+    const val REMOVE_REPLY_MSG_CHECK: String = "remove_reply_msg_check"
     const val RENAME_BASE_APK: String = "rename_base_apk"
     const val REPLY_NO_AT: String = "reply_no_at"
     const val SKIP_QR_LOGIN_WAIT: String = "skip_qr_login_wait"
@@ -57,6 +58,7 @@ internal object TCQTSetting {
         ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, false),
         POKE_NO_COOL_DOWN to Setting(POKE_NO_COOL_DOWN, SettingType.BOOLEAN, false),
         REMOVE_QR_LOGIN_CHECK to Setting(REMOVE_QR_LOGIN_CHECK, SettingType.BOOLEAN, false),
+        REMOVE_REPLY_MSG_CHECK to Setting(REMOVE_REPLY_MSG_CHECK, SettingType.BOOLEAN, false),
         RENAME_BASE_APK to Setting(RENAME_BASE_APK, SettingType.BOOLEAN, false),
         REPLY_NO_AT to Setting(REPLY_NO_AT, SettingType.BOOLEAN, false),
         SKIP_QR_LOGIN_WAIT to Setting(SKIP_QR_LOGIN_WAIT, SettingType.BOOLEAN, false)
