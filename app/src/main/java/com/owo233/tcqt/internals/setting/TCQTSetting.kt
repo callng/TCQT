@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets
 import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
-    const val BROWSER_RESTRICT_MITIGATION: String = "browser_restrict_mitigation"
+    // const val BROWSER_RESTRICT_MITIGATION: String = "browser_restrict_mitigation"
     const val CHANGE_GUID: String = "change_guid"
     const val DEFAULT_BUBBLE: String = "default_bubble"
     const val DEFAULT_FONT: String = "default_font"
@@ -22,7 +22,7 @@ internal object TCQTSetting {
     const val EXCLUDE_SEND_CMD: String = "exclude_send_cmd"
     const val EXCLUDE_SEND_CMD_STRING: String = "exclude_send_cmd_string"
     const val FAKE_MULTI_WINDOW_STATUS: String = "fake_multi_window_status"
-    const val FETCH_SERVICE: String = "fetch_service"
+    const val FETCH_SERVICE: String = "fetch_service" // 防撤回
     const val FLAG_SECURE_BYPASS: String = "flag_secure_bypass"
     const val LOGIN_CHECK_BOX_DEFAULT: String = "login_check_box_default"
     const val MODULE_UPDATE: String = "module_update"
@@ -41,26 +41,25 @@ internal object TCQTSetting {
     private val config: MMKV get() = MMKVUtils.mmkvWithId("TCQT")
 
     val settingMap = hashMapOf<String, Setting<out Any>>(
-        BROWSER_RESTRICT_MITIGATION to Setting(BROWSER_RESTRICT_MITIGATION, SettingType.BOOLEAN, true),
-        CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, true),
-        DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, true),
-        DEFAULT_FONT to Setting(DEFAULT_FONT, SettingType.BOOLEAN, true),
-        DISABLE_FLASH_PIC to Setting(DISABLE_FLASH_PIC, SettingType.BOOLEAN, true),
+        CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, false),
+        DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, false),
+        DEFAULT_FONT to Setting(DEFAULT_FONT, SettingType.BOOLEAN, false),
+        DISABLE_FLASH_PIC to Setting(DISABLE_FLASH_PIC, SettingType.BOOLEAN, false),
         DISABLE_HOT_PATCH to Setting(DISABLE_HOT_PATCH, SettingType.BOOLEAN, false),
-        DISABLE_REACTION_LIMIT to Setting(DISABLE_REACTION_LIMIT, SettingType.BOOLEAN, true),
+        DISABLE_REACTION_LIMIT to Setting(DISABLE_REACTION_LIMIT, SettingType.BOOLEAN, false),
         EXCLUDE_SEND_CMD to Setting(EXCLUDE_SEND_CMD, SettingType.BOOLEAN, false),
         EXCLUDE_SEND_CMD_STRING to Setting(EXCLUDE_SEND_CMD_STRING, SettingType.STRING, ""),
-        FAKE_MULTI_WINDOW_STATUS to Setting(FAKE_MULTI_WINDOW_STATUS, SettingType.BOOLEAN, true),
-        FETCH_SERVICE to Setting(FETCH_SERVICE, SettingType.BOOLEAN, true),
-        FLAG_SECURE_BYPASS to Setting(FLAG_SECURE_BYPASS, SettingType.BOOLEAN, true),
-        LOGIN_CHECK_BOX_DEFAULT to Setting(LOGIN_CHECK_BOX_DEFAULT, SettingType.BOOLEAN, true),
-        MODULE_UPDATE to Setting(MODULE_UPDATE, SettingType.BOOLEAN, true),
-        ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, true),
+        FAKE_MULTI_WINDOW_STATUS to Setting(FAKE_MULTI_WINDOW_STATUS, SettingType.BOOLEAN, false),
+        FETCH_SERVICE to Setting(FETCH_SERVICE, SettingType.BOOLEAN, false),
+        FLAG_SECURE_BYPASS to Setting(FLAG_SECURE_BYPASS, SettingType.BOOLEAN, false),
+        LOGIN_CHECK_BOX_DEFAULT to Setting(LOGIN_CHECK_BOX_DEFAULT, SettingType.BOOLEAN, false),
+        MODULE_UPDATE to Setting(MODULE_UPDATE, SettingType.BOOLEAN, false),
+        ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, false),
         POKE_NO_COOL_DOWN to Setting(POKE_NO_COOL_DOWN, SettingType.BOOLEAN, false),
-        REMOVE_QR_LOGIN_CHECK to Setting(REMOVE_QR_LOGIN_CHECK, SettingType.BOOLEAN, true),
-        RENAME_BASE_APK to Setting(RENAME_BASE_APK, SettingType.BOOLEAN, true),
-        REPLY_NO_AT to Setting(REPLY_NO_AT, SettingType.BOOLEAN, true),
-        SKIP_QR_LOGIN_WAIT to Setting(SKIP_QR_LOGIN_WAIT, SettingType.BOOLEAN, true)
+        REMOVE_QR_LOGIN_CHECK to Setting(REMOVE_QR_LOGIN_CHECK, SettingType.BOOLEAN, false),
+        RENAME_BASE_APK to Setting(RENAME_BASE_APK, SettingType.BOOLEAN, false),
+        REPLY_NO_AT to Setting(REPLY_NO_AT, SettingType.BOOLEAN, false),
+        SKIP_QR_LOGIN_WAIT to Setting(SKIP_QR_LOGIN_WAIT, SettingType.BOOLEAN, false)
     )
 
     val settingUrl: String
