@@ -21,7 +21,7 @@ import de.robv.android.xposed.XposedBridge
 @RegisterAction
 class OneClickLikes: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         // TIM不支持点赞行为
         if (PlatformTools.isMqq()) {
             val vote = VoteHelper::class.java.declaredMethods.firstOrNull {

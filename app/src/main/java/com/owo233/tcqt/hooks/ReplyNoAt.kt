@@ -12,7 +12,7 @@ import com.tencent.mobileqq.aio.msg.AIOMsgItem
 
 @RegisterAction
 class ReplyNoAt: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findMethodByClassName(
             "com.tencent.mobileqq.aio.input.reply"
         ) { it.returnType == Void.TYPE && it.parameterTypes.size == 1

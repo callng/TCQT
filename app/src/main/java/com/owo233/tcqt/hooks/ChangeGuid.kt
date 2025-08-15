@@ -28,7 +28,7 @@ import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
 class ChangeGuid: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         if (!SpManager.isInit()) {
             SpManager.init(ctx)
         }

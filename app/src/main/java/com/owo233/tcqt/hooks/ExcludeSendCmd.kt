@@ -31,7 +31,7 @@ class ExcludeSendCmd: IAction {
     private val pack = PacketUtil()
     private var hook: XC_MethodHook.Unhook? = null
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         msfRollBack() // 还让不让愉快的玩耍了？
 
         codecWarpper.hookMethod("nativeEncodeRequest", beforeHook { param ->

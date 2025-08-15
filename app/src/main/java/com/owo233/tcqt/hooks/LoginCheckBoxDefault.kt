@@ -19,7 +19,7 @@ class LoginCheckBoxDefault: IAction {
         )
     }
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(CheckBox::class.java, afterHook {
             val context = it.args.getOrNull(0) as? Context ?: return@afterHook
             val className = context.javaClass.name

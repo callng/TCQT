@@ -16,7 +16,7 @@ import de.robv.android.xposed.XposedBridge
 @RegisterAction
 class SkipQRLoginWait: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         if (PlatformTools.isMainProcess()) {
             FuzzyClassKit.findClassByMethod(
                 prefix = "com.tencent.biz.qrcode.activity.QRLoginAuthActivity",

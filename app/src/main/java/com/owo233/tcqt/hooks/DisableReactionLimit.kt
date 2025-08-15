@@ -11,7 +11,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class DisableReactionLimit: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
             ?.hookMethod("getFilterEmojiData", replaceHook {
                 return@replaceHook null

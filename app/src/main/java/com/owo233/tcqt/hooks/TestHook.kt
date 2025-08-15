@@ -17,7 +17,7 @@ class TestHook: AlwaysRunAction() {
     /**
      * 仅供测试的hook，在发布版本时必须移除@RegisterAction注解
      */
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.app.Instrumentation")
             ?.hookMethod(
                 "execStartActivity",

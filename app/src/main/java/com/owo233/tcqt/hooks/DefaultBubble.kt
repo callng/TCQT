@@ -11,7 +11,7 @@ import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
 class DefaultBubble: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(VASMsgBubble::class.java, afterHook {
             val v = it.thisObject as VASMsgBubble
             v.bubbleId = 0

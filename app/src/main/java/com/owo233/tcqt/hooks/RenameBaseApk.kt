@@ -20,7 +20,7 @@ import java.io.File
 
 @RegisterAction
 class RenameBaseApk: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findClassByConstructor(
             prefix = "com.tencent.mobileqq.filemanager.uftwrapper.b",
             isSubClass = true

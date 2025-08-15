@@ -17,7 +17,7 @@ import mqq.app.AppRuntime
 
 @RegisterAction
 class DisableHotPatch: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
             ?.hookMethod(beforeHook {

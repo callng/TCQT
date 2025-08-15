@@ -12,7 +12,7 @@ import com.owo233.tcqt.ext.hookMethod
 @RegisterAction
 class BrowserRestrictMitigation: AlwaysRunAction() {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findMethodByClassPrefix(
             prefix = "com.tencent.mobileqq.webview.WebSecurityPluginV2",
             isSubClass = true

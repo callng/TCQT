@@ -24,15 +24,15 @@ abstract class AlwaysRunAction : IAction {
 }
 
 interface IAction {
-    operator fun invoke(ctx: Context) {
+    operator fun invoke(ctx: Context, process: ActionProcess) {
         runCatching {
-            if (canRun()) onRun(ctx)
+            if (canRun()) onRun(ctx, process)
         }.onFailure {
             logE(msg = "invoke Action 异常", cause = it)
         }
     }
 
-    fun onRun(ctx: Context)
+    fun onRun(ctx: Context, process: ActionProcess)
 
     fun canRun(): Boolean {
         val setting by TCQTSetting.getSetting<Boolean>(key)

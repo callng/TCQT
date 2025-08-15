@@ -9,12 +9,11 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import kotlin.system.exitProcess
 
 @RegisterAction
 class ModuleUpdate: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         val intent = IntentFilter()
         intent.addAction("android.intent.action.PACKAGE_ADDED")
         intent.addAction("android.intent.action.PACKAGE_REMOVED")
@@ -28,9 +27,8 @@ class ModuleUpdate: IAction {
                     "android.intent.action.PACKAGE_REMOVED",
                     "android.intent.action.PACKAGE_REPLACED" -> {
                         val packageName = intent.data?.schemeSpecificPart
-                        if (packageName == TCQTBuild.APP_ID) {
-                            Thread.sleep(50)
-                            exitProcess(0)
+                        if (packageName == TCQTBuild.APP_ID && process == ActionProcess.MAIN) {
+                            ModuleCommand.sendCommand(ctx, "exitApp")
                         }
                     }
                 }

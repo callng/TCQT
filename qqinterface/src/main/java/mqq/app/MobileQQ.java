@@ -16,8 +16,16 @@ public abstract class MobileQQ extends BaseApplication {
         throw new UnsupportedOperationException("only view.");
     }
 
+    public void otherProcessExit(boolean isCrashed) {
+        throw new UnsupportedOperationException("only view.");
+    }
+
     public AppRuntime peekAppRuntime() {
         throw new RuntimeException();
+    }
+
+    public void qqProcessExit(boolean stopMSF) {
+        throw new UnsupportedOperationException("only view.");
     }
 
     public AppRuntime waitAppRuntime(BaseActivity baseActivity) {

@@ -12,7 +12,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 @RegisterAction
 class FakeMultiWindowStatus: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         Activity::class.java.getDeclaredMethod("isInMultiWindowMode")
             .hookMethod(afterHook {
                 it.result = false

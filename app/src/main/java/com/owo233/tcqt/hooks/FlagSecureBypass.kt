@@ -11,7 +11,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 
 @RegisterAction
 class FlagSecureBypass: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         Window::class.java.hookMethod("setFlags").before {
             val flag = it.args[0] as Int
             val mask = it.args[1] as Int

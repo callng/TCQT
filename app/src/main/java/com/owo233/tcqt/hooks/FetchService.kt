@@ -17,7 +17,7 @@ import mqq.app.MobileQQ
 @RegisterAction
 class FetchService: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         // killMsfService()
         KernelServiceImpl::class.java.hookMethod("initService").after {
             val service = it.thisObject as IKernelService

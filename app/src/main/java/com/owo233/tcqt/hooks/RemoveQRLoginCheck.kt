@@ -12,7 +12,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 @RegisterAction
 class RemoveQRLoginCheck: IAction {
 
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.open.agent.QrAgentLoginManager")
             ?.declaredMethods
             ?.firstOrNull {

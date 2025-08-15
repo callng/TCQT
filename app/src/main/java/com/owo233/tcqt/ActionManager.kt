@@ -37,7 +37,7 @@ object ActionManager {
                         (ActionProcess.OTHER in action.processes && proc !in baseProcs)
 
             if (shouldRun) {
-                action(ctx)
+                action(ctx, proc)
             }
         }
     }

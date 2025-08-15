@@ -11,7 +11,7 @@ import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
 class DefaultFont: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(VASMsgFont::class.java, afterHook {
             val v = it.thisObject as VASMsgFont
             v.fontId = 0

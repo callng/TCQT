@@ -13,7 +13,7 @@ import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
 class PokeNoCoolDown: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         XposedHelpers.findAndHookMethod(
             "android.content.ContextWrapper",
             XpClassLoader,

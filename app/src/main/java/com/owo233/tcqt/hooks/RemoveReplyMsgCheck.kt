@@ -11,7 +11,7 @@ import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
 
 @RegisterAction
 class RemoveReplyMsgCheck: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         QQNTWrapperUtil.CppProxy::class.java.hookMethod(
             "findSourceOfReplyMsgFrom",
             afterHook { param ->

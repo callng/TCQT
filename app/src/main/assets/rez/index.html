@@ -571,10 +571,10 @@
             const hostName = (typeof TCQT !== "undefined" && TCQT.getHostName()) || "宿主";
             if (confirm(`已保存，是否重启 ${hostName} 以应用更改？`)) {
                 try {
-                    TCQT.exitHost();
+                    TCQT.exitApp();
                 } catch (e) {
-                    console.error("调用 exitHost 失败", e);
-                    showToast("自动重启失败，请手动重启宿主");
+                    console.error("调用 exitApp 失败", e);
+                    showToast("重启 ${hostName} 失败，请手动重启");
                 }
             } else {
                 showToast(`设置已保存，重启 ${hostName} 后生效`);

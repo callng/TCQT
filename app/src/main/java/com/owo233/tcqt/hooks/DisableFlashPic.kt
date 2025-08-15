@@ -13,7 +13,7 @@ import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
 class DisableFlashPic: IAction {
-    override fun onRun(ctx: Context) {
+    override fun onRun(ctx: Context, process: ActionProcess) {
         AIOMsgItemFactoryProvider::class.java.declaredMethods.first {
             it.isPublic && it.returnType != Void.TYPE
                     && it.parameterCount == 1 && it.parameterTypes[0] == Integer.TYPE
