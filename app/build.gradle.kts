@@ -1,5 +1,13 @@
 import com.google.protobuf.gradle.proto
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.internal.storage.file.FileRepository
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+buildscript {
+    dependencies {
+        classpath(libs.eclipse.jgit)
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -17,7 +25,7 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
-        versionCode = 79
+        versionCode = getBuildVersionCode(rootProject)
         versionName = "2.9"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
@@ -30,6 +38,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isCrunchPngs = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -61,7 +70,7 @@ android {
                 if (fileName.endsWith(".apk")) {
                     val projectName = rootProject.name
                     val versionName = defaultConfig.versionName
-                    output.outputFileName = "${projectName}_v${versionName}.apk"
+                    output.outputFileName = "${projectName}_v${versionName}_${getGitHeadRefsSuffix(rootProject)}.apk"
                 }
             }
         }
@@ -97,6 +106,36 @@ protobuf {
                 }
             }
         }
+    }
+}
+
+fun getGitHeadRefsSuffix(project: Project): String {
+    val rootProject = project.rootProject
+    val headFile = File(rootProject.projectDir, ".git" + File.separator + "HEAD")
+    return if (headFile.exists()) {
+        FileRepository(rootProject.file(".git")).use { repo ->
+            val refId = repo.resolve("HEAD")
+            val commitCount = Git(repo).log().add(refId).call().count()
+            ".r" + commitCount + "." + refId.name.substring(0, 7)
+        }
+    } else {
+        println("Git HEAD file not found")
+        ".standalone"
+    }
+}
+
+fun getBuildVersionCode(project: Project): Int {
+    val rootProject = project.rootProject
+    val projectDir = rootProject.projectDir
+    val headFile = File(projectDir, ".git" + File.separator + "HEAD")
+    return if (headFile.exists()) {
+        FileRepository(rootProject.file(".git")).use { repo ->
+            val refId = repo.resolve("HEAD")
+            Git(repo).log().add(refId).call().count()
+        }
+    } else {
+        println("Git HEAD file not found")
+        1
     }
 }
 
