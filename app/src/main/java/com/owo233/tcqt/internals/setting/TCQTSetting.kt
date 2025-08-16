@@ -16,6 +16,7 @@ internal object TCQTSetting {
     const val CHANGE_GUID: String = "change_guid"
     const val DEFAULT_BUBBLE: String = "default_bubble"
     const val DEFAULT_FONT: String = "default_font"
+    const val DISABLE_QQ_CRASH_REPORT_MANAGER: String = "disable_qq_crash_report_manager"
     const val DISABLE_FLASH_PIC: String = "disable_flash_pic"
     const val DISABLE_HOT_PATCH: String = "disable_hot_patch"
     const val DISABLE_REACTION_LIMIT: String = "disable_reaction_limit"
@@ -46,6 +47,7 @@ internal object TCQTSetting {
         CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, false),
         DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, false),
         DEFAULT_FONT to Setting(DEFAULT_FONT, SettingType.BOOLEAN, false),
+        DISABLE_QQ_CRASH_REPORT_MANAGER to Setting(DISABLE_QQ_CRASH_REPORT_MANAGER, SettingType.BOOLEAN, false),
         DISABLE_FLASH_PIC to Setting(DISABLE_FLASH_PIC, SettingType.BOOLEAN, false),
         DISABLE_HOT_PATCH to Setting(DISABLE_HOT_PATCH, SettingType.BOOLEAN, false),
         DISABLE_REACTION_LIMIT to Setting(DISABLE_REACTION_LIMIT, SettingType.BOOLEAN, false),
