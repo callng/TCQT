@@ -4,8 +4,6 @@ object XpClassLoader: ClassLoader() {
     lateinit var hostClassLoader: ClassLoader
     lateinit var ctxClassLoader: ClassLoader
 
-    internal val moduleLoader: ClassLoader = XpClassLoader::class.java.classLoader!!
-
     fun load(name: String): Class<*>? {
         return runCatching {
             loadClass(name)

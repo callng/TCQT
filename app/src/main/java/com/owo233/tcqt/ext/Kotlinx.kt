@@ -127,3 +127,44 @@ fun Context.getDensity(): Float {
 }
 
 fun String.toUtf8ByteArray(): ByteArray = this.toByteArray(Charsets.UTF_8)
+
+fun <T> runRetry(
+    retryNum: Int,
+    sleepMs: Long = 0,
+    exponentialBackoff: Boolean = false,
+    jitter: Boolean = false,
+    onError: ((Exception, attempt: Int) -> Unit)? = null,
+    block: () -> T?
+): T? {
+    var lastException: Exception? = null
+    var currentSleep = sleepMs
+
+    for (i in 1..retryNum) {
+        lastException = null
+
+        try {
+            val  result = block()
+            if (result != null) {
+                return result
+            }
+        } catch (e: Exception) {
+            lastException = e
+            onError?.invoke(e, i)
+            logE(msg = "runRetry failed on attempt $i: ${e.message}", cause = e)
+        }
+
+        if (i < retryNum) {
+            val sleepTime = when {
+                exponentialBackoff -> (currentSleep * 2).also { currentSleep = it }
+                else -> currentSleep
+            } + if (jitter) (Math.random() * 50).toLong() else 0
+
+            if (sleepTime > 0) Thread.sleep(sleepTime)
+        }
+    }
+
+    if (lastException != null) {
+        logE(msg = "runRetry failed after $retryNum attempts", cause = lastException)
+    }
+    return null
+}

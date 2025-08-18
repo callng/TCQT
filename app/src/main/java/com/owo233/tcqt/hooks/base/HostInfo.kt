@@ -1,11 +1,11 @@
-@file:JvmName("HostInfo")
-package com.owo233.tcqt.utils
+package com.owo233.tcqt.hooks.base
 
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import androidx.core.content.pm.PackageInfoCompat
+import com.owo233.tcqt.utils.logE
 
 const val PACKAGE_NAME_QQ = "com.tencent.mobileqq"
 const val PACKAGE_NAME_TIM = "com.tencent.tim"

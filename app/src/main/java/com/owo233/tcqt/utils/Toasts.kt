@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.View
 import android.widget.Toast
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.hostInfo
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 

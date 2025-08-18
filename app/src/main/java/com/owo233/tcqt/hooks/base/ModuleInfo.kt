@@ -1,4 +1,4 @@
-package com.owo233.tcqt.utils
+package com.owo233.tcqt.hooks.base
 
 import android.content.res.XModuleResources
 import com.owo233.tcqt.MainEntry

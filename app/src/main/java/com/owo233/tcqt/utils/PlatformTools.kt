@@ -13,6 +13,8 @@ import android.provider.Settings
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toast
+import com.owo233.tcqt.hooks.base.PACKAGE_NAME_QQ
+import com.owo233.tcqt.hooks.base.PACKAGE_NAME_TIM
 import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers

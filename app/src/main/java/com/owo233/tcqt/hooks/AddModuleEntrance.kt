@@ -16,7 +16,7 @@ import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.injectRes
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
-import com.owo233.tcqt.utils.hostInfo
+import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.new
 import java.lang.reflect.Proxy

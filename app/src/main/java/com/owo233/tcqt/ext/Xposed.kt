@@ -117,6 +117,34 @@ internal fun Class<*>.getStaticObject(
     return this.staticField(objName, type).get(this)!!
 }
 
+typealias MethodCondition = Method.() -> Boolean
+
+internal fun findMethod(
+    clz: Class<*>,
+    findSuper: Boolean = false,
+    condition: MethodCondition
+): Method {
+    return findMethodOrNull(clz, findSuper, condition) ?: throw NoSuchMethodException()
+}
+
+internal fun findMethodOrNull(
+    clz: Class<*>,
+    findSuper: Boolean = false,
+    condition: MethodCondition
+): Method? {
+    var c = clz
+    c.declaredMethods.firstOrNull { it.condition() }
+        ?.let { it.isAccessible = true;return it }
+
+    if (findSuper) {
+        while (c.superclass?.also { c = it } != null) {
+            c.declaredMethods.firstOrNull { it.condition() }
+                ?.let { it.isAccessible = true;return it }
+        }
+    }
+    return null
+}
+
 object FuzzyClassKit {
     private val dic = arrayOf(
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",

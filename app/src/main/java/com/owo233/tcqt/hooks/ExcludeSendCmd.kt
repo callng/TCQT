@@ -11,10 +11,10 @@ import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toUtf8ByteArray
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.utils.HostSpecies
+import com.owo233.tcqt.hooks.base.HostSpecies
 import com.owo233.tcqt.utils.PacketUtil
 import com.owo233.tcqt.utils.PlatformTools.QQ_9_1_90_26520
-import com.owo233.tcqt.utils.hostInfo
+import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
