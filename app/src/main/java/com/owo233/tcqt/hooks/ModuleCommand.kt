@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
@@ -51,7 +52,12 @@ class ModuleCommand: AlwaysRunAction() {
         }
 
         runCatching {
-            ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            } else {
+                ContextCompat.RECEIVER_EXPORTED
+            }
+            ctx.registerReceiver(receiver, filter, flag)
             registeredReceiver = receiver
         }.onFailure {
             logE(msg = "registerReceiver error", cause = it)
