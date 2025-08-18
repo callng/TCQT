@@ -55,6 +55,23 @@ TCQT 是专为 Android QQ/TIM 客户端打造的 Xposed 模块，用于拦截并
 
 ---
 
+## 😄 致谢
+
+**本项目的一些代码借鉴了一些开源项目，特别感谢有这样一群可爱的开发和贡献者，向他们致敬！**
+
+| Name         | Source                                      |
+|--------------|---------------------------------------------|
+| QAuxiliary   | [QAuxiliary](https://github.com/cinit/QAuxiliary) |
+| XAutoDaily   | [XAutoDaily](https://github.com/LuckyPray/XAutoDaily) |
+
+**本项目的开发动力和灵感来源于 QwQ 项目，感谢 fuqiuluo ！**
+
+| Name | Source                                |
+|------|---------------------------------------|
+| QwQ  | [QwQ](https://github.com/fuqiuluo/QwQ) |
+
+---
+
 ## 🙏 声明
 
 本模块仅供学习与技术研究之用，禁止用于任何恶意用途。请尊重他人隐私与社交权利，合理使用本工具。
