@@ -51,7 +51,7 @@ android {
         minSdk = 27
         targetSdk = 36
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
-        versionName = "2.9"
+        versionName = "3.0"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         // buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
