@@ -1,7 +1,7 @@
 package com.owo233.tcqt.internals.setting
 
 import com.owo233.tcqt.utils.MMKVUtils
-import com.owo233.tcqt.utils.moduleClassLoader
+import com.owo233.tcqt.hooks.base.moduleClassLoader
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 import oicq.wlogin_sdk.tools.MD5
@@ -14,6 +14,8 @@ import kotlin.reflect.KProperty
 internal object TCQTSetting {
     // const val BROWSER_RESTRICT_MITIGATION: String = "browser_restrict_mitigation"
     const val CHANGE_GUID: String = "change_guid"
+    const val CUSTOM_SUBAPPID: String = "custom_subappid"
+    const val CUSTOM_SUBAPPID_STRING: String = "custom_subappid_string"
     const val DEFAULT_BUBBLE: String = "default_bubble"
     const val DEFAULT_FONT: String = "default_font"
     const val DISABLE_QQ_CRASH_REPORT_MANAGER: String = "disable_qq_crash_report_manager"
@@ -45,6 +47,8 @@ internal object TCQTSetting {
 
     val settingMap = hashMapOf<String, Setting<out Any>>(
         CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, false),
+        CUSTOM_SUBAPPID to Setting(CUSTOM_SUBAPPID, SettingType.BOOLEAN, false),
+        CUSTOM_SUBAPPID_STRING to Setting(CUSTOM_SUBAPPID_STRING, SettingType.STRING, ""),
         DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, false),
         DEFAULT_FONT to Setting(DEFAULT_FONT, SettingType.BOOLEAN, false),
         DISABLE_QQ_CRASH_REPORT_MANAGER to Setting(DISABLE_QQ_CRASH_REPORT_MANAGER, SettingType.BOOLEAN, false),
@@ -85,6 +89,16 @@ internal object TCQTSetting {
             } else {
                 content
             }
+        }
+
+    val isAppIdDisable: Boolean
+        get() {
+            val file = dataDir.resolve("isAppIdDisable").also {
+                if (!it.exists()) it.createNewFile()
+            }
+            val content = file.readText().lowercase()
+            file.writeText("")
+            return content == "off" || content == "true"
         }
 
     val settingHtml: String

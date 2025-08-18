@@ -55,6 +55,7 @@
             z-index: 10000;
             transition: opacity 0.3s ease;
         }
+
         .loading-overlay .spinner {
             width: 48px;
             height: 48px;
@@ -63,11 +64,13 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+
         .loading-overlay p {
             margin-top: 16px;
             color: var(--text-muted);
             font-weight: 500;
         }
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -83,6 +86,7 @@
             text-align: center;
             margin-bottom: 32px;
         }
+
         .app-header h1 {
             font-size: 2rem;
             font-weight: 700;
@@ -92,6 +96,7 @@
             justify-content: center;
             gap: 12px;
         }
+
         .app-header h1 i {
             color: var(--primary-color);
         }
@@ -102,22 +107,33 @@
             margin-top: 16px;
             font-size: 0.9rem;
         }
+
         .version-info-wrapper {
             display: inline-flex;
             flex-direction: row;
             align-items: center;
             gap: 24px;
         }
+
         .version-item {
             color: var(--text-muted);
         }
+
         .version-item span {
             font-weight: 600;
             padding: 2px 6px;
             border-radius: 4px;
         }
-        .version-success { color: var(--success-color); background-color: rgba(25, 135, 84, 0.1); }
-        .version-fail { color: var(--danger-color); background-color: rgba(220, 53, 69, 0.1); }
+
+        .version-success {
+            color: var(--success-color);
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+
+        .version-fail {
+            color: var(--danger-color);
+            background-color: rgba(220, 53, 69, 0.1);
+        }
 
         .header-notice {
             font-size: 0.85rem;
@@ -130,7 +146,10 @@
             margin-left: auto;
             margin-right: auto;
         }
-        .header-notice strong { color: var(--danger-color); }
+
+        .header-notice strong {
+            color: var(--danger-color);
+        }
 
         /* --- Feature List --- */
         .feature-list {
@@ -145,6 +164,7 @@
             border-bottom: 1px solid var(--border-color);
             transition: background-color var(--transition-fast);
         }
+
         .feature-item:last-child {
             border-bottom: none;
         }
@@ -163,16 +183,19 @@
             align-items: center;
             gap: 12px;
         }
+
         .feature-title .icon-toggle {
             transition: transform var(--transition-smooth);
             color: var(--text-muted);
         }
+
         .feature-item.is-expanded .icon-toggle {
             transform: rotate(180deg);
             color: var(--primary-color);
         }
 
-        .feature-desc, .textarea-container {
+        .feature-desc,
+        .textarea-container {
             font-size: 0.9rem;
             color: var(--text-muted);
             margin-top: 8px;
@@ -182,12 +205,13 @@
             overflow: hidden;
             transition: max-height var(--transition-smooth), opacity var(--transition-smooth), margin-top var(--transition-smooth);
         }
+
         .feature-item.is-expanded .feature-desc,
         .feature-item.is-expanded .textarea-container {
             max-height: 200px; /* Adjust as needed */
             opacity: 1;
         }
-        
+
         /* --- Switch --- */
         .form-switch .form-check-input {
             width: 2.5em;
@@ -197,14 +221,17 @@
             cursor: pointer;
             transition: var(--transition-fast);
         }
+
         .form-switch .form-check-input:checked {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
+
         .form-switch .form-check-input:focus-visible {
             box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.25);
             border-color: var(--primary-color);
         }
+
         .form-switch {
             padding-left: 3.5em; /* Ensure enough space */
         }
@@ -221,6 +248,7 @@
             resize: vertical;
             min-height: 100px;
         }
+
         textarea:focus {
             outline: none;
             border-color: var(--primary-color);
@@ -248,13 +276,16 @@
             transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
             user-select: none;
         }
+
         .fab-save:hover {
             transform: translateY(-4px) scale(1.05);
             box-shadow: 0 10px 25px rgba(67, 97, 238, 0.5);
         }
+
         .fab-save:active {
             transform: translateY(-1px) scale(0.98);
         }
+
         .fab-save.disabled {
             background: #adb5bd;
             box-shadow: none;
@@ -268,6 +299,7 @@
             text-align: center;
             margin: 40px 0;
         }
+
         .footer-link a {
             color: var(--text-muted);
             text-decoration: none;
@@ -276,6 +308,7 @@
             border-radius: 20px;
             transition: var(--transition-fast);
         }
+
         .footer-link a:hover {
             background-color: rgba(67, 97, 238, 0.1);
             color: var(--primary-color);
@@ -294,20 +327,23 @@
             align-items: center;
             gap: 10px;
         }
+
         .toast-item {
             background-color: rgba(33, 37, 41, 0.9);
             color: var(--text-light);
             padding: 12px 24px;
             border-radius: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             font-size: 0.95rem;
             font-weight: 500;
             animation: slideUpFadeIn 0.4s forwards, slideDownFadeOut 0.4s 2.6s forwards;
         }
+
         @keyframes slideUpFadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         @keyframes slideDownFadeOut {
             from { opacity: 1; transform: translateY(0); }
             to { opacity: 0; transform: translateY(20px); }
@@ -325,19 +361,20 @@
             .feature-item { padding: 14px 15px; }
             .fab-save { bottom: 20px; right: 20px; width: 56px; height: 56px; font-size: 1.6rem; }
         }
-
     </style>
 </head>
 <body>
 
+<!-- Loading Overlay -->
 <div id="loading-overlay" class="loading-overlay">
     <div class="spinner"></div>
     <p>正在初始化...</p>
 </div>
 
+<!-- Main App Container -->
 <div id="app-container" class="app-container">
     <header class="app-header">
-        <h1><i class="bi bi-sliders"></i>TCQT 模块设置</h1>
+        <h1><i class="bi bi-sliders"></i> TCQT 模块设置</h1>
         <div class="version-info">
             <div class="version-info-wrapper">
                 <div class="version-item">宿主: <span id="qqVersion">加载中...</span></div>
@@ -359,26 +396,73 @@
             <i class="bi bi-github"></i> 有问题？去反馈
         </a>
     </footer>
-
 </div>
 
+<!-- Save Button (FAB) -->
 <button id="btnSave" class="fab-save" title="保存设置">
     <i class="bi bi-save-fill"></i>
 </button>
 
+<!-- Toast Container -->
 <div id="toast-container" class="toast-container"></div>
 
+<!-- JavaScript -->
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         // --- Data ---
         const features = [
-            { key: "change_guid", label: "自定义 GUID", desc: "启用后在登录页面长按登录按钮即可调出设置窗口。", color: "var(--danger-color)" },
-            { key: "default_bubble", label: "强制使用默认气泡", desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。" },
-            { key: "default_font", label: "强制使用默认字体", desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。" },
-            { key: "disable_qq_crash_report_manager", label: "禁用崩溃报告管理器", desc: "没有实际意义的功能，仅供测试使用。" , color: "var(--danger-color)"},
-            { key: "disable_flash_pic", label: "将闪照视为正常图片", desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。" },
-            { key: "disable_hot_patch", label: "禁用热补丁", desc: "顾名思义，但不会删除已有的热补丁。", color: "var(--danger-color)" },
-            { key: "disable_reaction_limit", label: "禁止过滤反应表情", desc: "将更多的表情（Emoji）显示出来。" },
+            {
+                key: "change_guid",
+                label: "自定义 GUID",
+                desc: "启用后在登录页面长按登录按钮即可调出设置窗口。",
+                color: "var(--danger-color)"
+            },
+            {
+                key: "custom_subappid",
+                label: "自定义SubAppId",
+                desc: `此功能与 '强制平板模式' 功能冲突，启用后可能导致失效!
+                这个功能非常危险，错误的使用可能导致无法登录，除非你知道这是什么，否则请勿启用。
+                如果遇到无法登录且无法打开模块设置，使用MT管理器打开文件
+                '/storage/emulated/0/Android/data/com.tencent.mobileqq/Tencent/TCQT/isAppIdDisable'
+                将isAppIdDisable文件内容修改为'off'保存后重启宿主即可关闭本功能。`,
+                color: "var(--danger-color)",
+                textarea: {
+                    key: "custom_subappid_string",
+                    placeholder: "不了解请勿启用!\n填写SubAppId\n一般以537开头的9位数字"
+                }
+            },
+            {
+                key: "default_bubble",
+                label: "强制使用默认气泡",
+                desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。"
+            },
+            {
+                key: "default_font",
+                label: "强制使用默认字体",
+                desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。"
+            },
+            {
+                key: "disable_qq_crash_report_manager",
+                label: "禁用崩溃报告管理器",
+                desc: "没有实际意义的功能，仅供测试使用。",
+                color: "var(--danger-color)"
+            },
+            {
+                key: "disable_flash_pic",
+                label: "将闪照视为正常图片",
+                desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。"
+            },
+            {
+                key: "disable_hot_patch",
+                label: "禁用热补丁",
+                desc: "顾名思义，但不会删除已有的热补丁。",
+                color: "var(--danger-color)"
+            },
+            {
+                key: "disable_reaction_limit",
+                label: "禁止过滤反应表情",
+                desc: "将更多的表情（Emoji）显示出来。"
+            },
             {
                 key: "exclude_send_cmd",
                 label: "禁止发送指定包体",
@@ -389,19 +473,72 @@
                     placeholder: "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
                 }
             },
-            { key: "fake_multi_window_status", label: "伪造多窗口状态", desc: "不知道有什么用。" },
-            { key: "fetch_service", label: "消息防撤回", desc: "防止消息被撤回，添加灰条提示。" },
-            { key: "flag_secure_bypass", label: "绕过FlagSecure", desc: "绕过FlagSecure，允许截图和录屏。", color: "var(--danger-color)" },
-            { key: "force_tablet_mode", label: "强制平板模式", desc: "唯一的好处就是手机平板双端在线，具体可以干嘛呢？" },
-            { key: "login_check_box_default", label: "自动勾选复选框", desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。" },
-            { key: "module_update", label: "模块更新重启动宿主", desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。" },
-            { key: "one_click_likes", label: "一键20赞", desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。" },
-            { key: "poke_no_cool_down", label: "戳一戳无冷却", desc: "移除戳一戳冷却时间。" },
-            { key: "remove_qr_login_check", label: "移除扫码登录检查", desc: "扫描相册里的二维码时不再拦截登录。" },
-            { key: "remove_reply_msg_check", label: "移除回复消息不存在限制", desc: "常见于解决‘转发的聊天记录中不包含该内容’的提示，允许查看回复消息。"},
-            { key: "rename_base_apk", label: "重命名.apk文件", desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。" },
-            { key: "reply_no_at", label: "回复不带 @", desc: "回复消息时不添加 @ 对方。" },
-            { key: "skip_qr_login_wait", label: "跳过扫码登录等待", desc: "扫码登录时跳过倒计时。" }
+            {
+                key: "fake_multi_window_status",
+                label: "伪造多窗口状态",
+                desc: "不知道有什么用。"
+            },
+            {
+                key: "fetch_service",
+                label: "消息防撤回",
+                desc: "防止消息被撤回，添加灰条提示。"
+            },
+            {
+                key: "flag_secure_bypass",
+                label: "绕过FlagSecure",
+                desc: "绕过FlagSecure，允许截图和录屏。",
+                color: "var(--danger-color)"
+            },
+            {
+                key: "force_tablet_mode",
+                label: "强制平板模式",
+                desc: "唯一的好处就是手机平板双端在线，具体可以干嘛呢？"
+            },
+            {
+                key: "login_check_box_default",
+                label: "自动勾选复选框",
+                desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。"
+            },
+            {
+                key: "module_update",
+                label: "模块更新重启动宿主",
+                desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。"
+            },
+            {
+                key: "one_click_likes",
+                label: "一键20赞",
+                desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。"
+            },
+            {
+                key: "poke_no_cool_down",
+                label: "戳一戳无冷却",
+                desc: "移除戳一戳冷却时间。"
+            },
+            {
+                key: "remove_qr_login_check",
+                label: "移除扫码登录检查",
+                desc: "扫描相册里的二维码时不再拦截登录。"
+            },
+            {
+                key: "remove_reply_msg_check",
+                label: "移除回复消息不存在限制",
+                desc: "常见于解决‘转发的聊天记录中不包含该内容’的提示，允许查看回复消息。"
+            },
+            {
+                key: "rename_base_apk",
+                label: "重命名.apk文件",
+                desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。"
+            },
+            {
+                key: "reply_no_at",
+                label: "回复不带 @",
+                desc: "回复消息时不添加 @ 对方。"
+            },
+            {
+                key: "skip_qr_login_wait",
+                label: "跳过扫码登录等待",
+                desc: "扫码登录时跳过倒计时。"
+            }
         ];
 
         // --- State ---
@@ -419,7 +556,6 @@
         };
 
         // --- Functions ---
-
         const setVersionText = (el, text, success) => {
             if (!el) return;
             el.textContent = text;
@@ -576,7 +712,7 @@
                     TCQT.exitApp();
                 } catch (e) {
                     console.error("调用 exitApp 失败", e);
-                    showToast("重启 ${hostName} 失败，请手动重启");
+                    showToast(`重启 ${hostName} 失败，请手动重启`);
                 }
             } else {
                 showToast(`设置已保存，重启 ${hostName} 后生效`);
@@ -620,9 +756,9 @@
         };
 
         ui.btnSave.addEventListener("click", saveSettings);
-
         init();
     });
 </script>
+
 </body>
 </html>
