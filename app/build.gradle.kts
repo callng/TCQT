@@ -25,7 +25,7 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
-        versionCode = getBuildVersionCode(rootProject)
+        versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
         versionName = "2.9"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
@@ -70,7 +70,8 @@ android {
                 if (fileName.endsWith(".apk")) {
                     val projectName = rootProject.name
                     val versionName = defaultConfig.versionName
-                    output.outputFileName = "${projectName}_v${versionName}_${getGitHeadRefsSuffix(rootProject)}.apk"
+                    val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject) }.get()
+                    output.outputFileName = "${projectName}_v${versionName}_${gitSuffix}.apk"
                 }
             }
         }
