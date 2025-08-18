@@ -1,38 +1,63 @@
 [versions]
+# Android
 agp = "8.12.0"
-kotlin = "2.2.0"
 core = "1.17.0"
-xposed = "82"
-kotlinx-serialization = "1.9.0"
+
+# Google
+protobuf = "0.9.5"
+protobuf-java = "4.32.0"
+
+# Kotlin
+kotlin = "2.2.10"
+
+# KotlinX
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.1.16"
-protobuf-java = "4.31.1"
-protobuf = "0.9.5"
+kotlinx-serialization = "1.9.0"
+
+# Tools
 ksp = "2.2.0-2.0.2"
-nanohttpd = "2.3.1"
+
+# Third-Party
 #noinspection NewerVersionAvailable
 hutool-core = "5.8.0.M1"
-eclipse-jgit = "7.3.0.202506031305-r"
+nanohttpd = "2.3.1"
+
+# Xposed
+xposed = "82"
 
 [libraries]
-androidx-core = { group = "androidx.core", name = "core", version.ref = "core"}
+# AndroidX
+androidx-core = { group = "androidx.core", name = "core", version.ref = "core" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
-eclipse-jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "eclipse-jgit" }
-xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed"}
-kotlinx-io-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-jvm", version.ref = "kotlinx-io" }
+
+# KotlinX
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-io-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-jvm", version.ref = "kotlinx-io" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
+
+# Google / Tools
+ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
-ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp"}
-nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
+
+# Third-Party
 hutool-core = { group = "cn.hutool", name = "hutool-core", version.ref = "hutool-core" }
+nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
+
+# Xposed
+xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
 
 [plugins]
+# Android
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+
+# Kotlin
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+
+# Google
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }

@@ -1,13 +1,9 @@
 import com.google.protobuf.gradle.proto
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.internal.storage.file.FileRepository
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
+import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
-buildscript {
-    dependencies {
-        classpath(libs.eclipse.jgit)
-    }
-}
+import java.io.ByteArrayOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -16,6 +12,35 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
+
+abstract class GitCommitCount : ValueSource<Int, ValueSourceParameters.None> {
+    @get:Inject abstract val execOperations: ExecOperations
+
+    override fun obtain(): Int {
+        val output = ByteArrayOutputStream()
+        execOperations.exec {
+            commandLine("git", "rev-list", "--count", "HEAD")
+            standardOutput = output
+        }
+        return output.toString().trim().toInt()
+    }
+}
+
+abstract class GitShortHash : ValueSource<String, ValueSourceParameters.None> {
+    @get:Inject abstract val execOperations: ExecOperations
+
+    override fun obtain(): String {
+        val output = ByteArrayOutputStream()
+        execOperations.exec {
+            commandLine("git", "rev-parse", "--short=7", "HEAD")
+            standardOutput = output
+        }
+        return output.toString().trim()
+    }
+}
+
+val gitCommitCount = providers.of(GitCommitCount::class.java) {}
+val gitShortHash = providers.of(GitShortHash::class.java) {}
 
 android {
     namespace = "com.owo233.tcqt"
@@ -28,7 +53,7 @@ android {
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
         versionName = "2.9"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
-        buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
+        // buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
 
     buildFeatures {
@@ -71,7 +96,7 @@ android {
                     val projectName = rootProject.name
                     val versionName = defaultConfig.versionName
                     val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject) }.get()
-                    output.outputFileName = "${projectName}_v${versionName}_${gitSuffix}.apk"
+                    output.outputFileName = "${projectName}-v${versionName}.${gitSuffix}.apk"
                 }
             }
         }
@@ -112,12 +137,16 @@ protobuf {
 
 fun getGitHeadRefsSuffix(project: Project): String {
     val rootProject = project.rootProject
-    val headFile = File(rootProject.projectDir, ".git" + File.separator + "HEAD")
+    val projectDir = rootProject.projectDir
+    val headFile = File(projectDir, ".git" + File.separator + "HEAD")
     return if (headFile.exists()) {
-        FileRepository(rootProject.file(".git")).use { repo ->
-            val refId = repo.resolve("HEAD")
-            val commitCount = Git(repo).log().add(refId).call().count()
-            ".r" + commitCount + "." + refId.name.substring(0, 7)
+        try {
+            val commitCount = gitCommitCount.get()
+            val hash = gitShortHash.get()
+            "r$commitCount.$hash"
+        } catch (e: Exception) {
+            println("Failed to get git info: ${e.message}")
+            ".standalone"
         }
     } else {
         println("Git HEAD file not found")
@@ -130,9 +159,11 @@ fun getBuildVersionCode(project: Project): Int {
     val projectDir = rootProject.projectDir
     val headFile = File(projectDir, ".git" + File.separator + "HEAD")
     return if (headFile.exists()) {
-        FileRepository(rootProject.file(".git")).use { repo ->
-            val refId = repo.resolve("HEAD")
-            Git(repo).log().add(refId).call().count()
+        try {
+            gitCommitCount.get()
+        } catch (e: Exception) {
+            println("Failed to get git commit count: ${e.message}")
+            1
         }
     } else {
         println("Git HEAD file not found")
