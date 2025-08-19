@@ -418,20 +418,6 @@
                 color: "var(--danger-color)"
             },
             {
-                key: "custom_subappid",
-                label: "自定义SubAppId",
-                desc: `此功能与 '强制平板模式' 功能冲突，启用后可能导致失效!
-                这个功能非常危险，错误的使用可能导致无法登录，除非你知道这是什么，否则请勿启用。
-                如果遇到无法登录且无法打开模块设置，使用MT管理器打开文件
-                '/storage/emulated/0/Android/data/com.tencent.mobileqq/Tencent/TCQT/isAppIdDisable'
-                将isAppIdDisable文件内容修改为'off'保存后重启宿主即可关闭本功能。`,
-                color: "var(--danger-color)",
-                textarea: {
-                    key: "custom_subappid_string",
-                    placeholder: "不了解请勿启用!\n填写SubAppId\n一般以537开头的9位数字"
-                }
-            },
-            {
                 key: "default_bubble",
                 label: "强制使用默认气泡",
                 desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。"

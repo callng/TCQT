@@ -12,7 +12,7 @@ import de.robv.android.xposed.XposedBridge
 import kotlin.Boolean
 import kotlin.String
 
-@RegisterAction
+// @RegisterAction
 class CustomSubAppId: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookMethod(
