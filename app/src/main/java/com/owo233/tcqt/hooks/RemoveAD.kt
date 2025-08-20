@@ -28,19 +28,14 @@ class RemoveAD: IAction {
 
     private fun removeImmersionBannerAD() {
         ClassCacheUtil.findClass {
-            candidates("cooperation.vip.qqbanner.QbossADImmersionBannerManager",
-                "cooperation.vip.qqbanner.manager.VasADImmersionBannerManager")
+            candidates(
+                "cooperation.vip.qqbanner.QbossADImmersionBannerManager",
+                "cooperation.vip.qqbanner.manager.VasADImmersionBannerManager"
+            )
             syntheticIndex(1, 2)
-        }?.declaredMethods?.forEach { method ->
-            val isViewReturn = method.returnType == View::class.java
-            val isNoArgs = method.emptyParam
-            val isNonStatic = method.isNotStatic
-            if (isViewReturn && isNoArgs && isNonStatic) {
-                method.hookMethod(beforeHook { param ->
-                    param.result = Unit
-                })
-            }
-        }
+        }?.declaredMethods
+            ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
+            ?.onEach { it.hookMethod(beforeHook { p -> p.result = Unit }) }
 
         XpClassLoader.load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"

@@ -37,6 +37,7 @@ internal object TCQTSetting {
     const val REMOVE_REPLY_MSG_CHECK: String = "remove_reply_msg_check"
     const val RENAME_BASE_APK: String = "rename_base_apk"
     const val REPLY_NO_AT: String = "reply_no_at"
+    const val SHOW_HIDE_EMOTICON: String = "show_hide_emoticon"
     const val SKIP_QR_LOGIN_WAIT: String = "skip_qr_login_wait"
 
     val dataDir = MobileQQ.getContext().getExternalFilesDir(null)!!
@@ -71,6 +72,7 @@ internal object TCQTSetting {
         REMOVE_REPLY_MSG_CHECK to Setting(REMOVE_REPLY_MSG_CHECK, SettingType.BOOLEAN, false),
         RENAME_BASE_APK to Setting(RENAME_BASE_APK, SettingType.BOOLEAN, false),
         REPLY_NO_AT to Setting(REPLY_NO_AT, SettingType.BOOLEAN, false),
+        SHOW_HIDE_EMOTICON to Setting(SHOW_HIDE_EMOTICON, SettingType.BOOLEAN, false),
         SKIP_QR_LOGIN_WAIT to Setting(SKIP_QR_LOGIN_WAIT, SettingType.BOOLEAN, false)
     )
 

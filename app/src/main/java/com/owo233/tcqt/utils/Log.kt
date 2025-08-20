@@ -1,7 +1,7 @@
 package com.owo233.tcqt.utils
 
 import android.util.Log
-import com.owo233.tcqt.data.BuildWrapper.DEBUG
+import com.owo233.tcqt.data.TCQTBuild.DEBUG
 import com.owo233.tcqt.data.TCQTBuild.HOOK_TAG
 import de.robv.android.xposed.XposedBridge
 import java.text.SimpleDateFormat
