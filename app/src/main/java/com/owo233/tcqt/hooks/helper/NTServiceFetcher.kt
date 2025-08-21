@@ -3,7 +3,7 @@
 
 package com.owo233.tcqt.hooks.helper
 
-import com.owo233.tcqt.data.BuildWrapper
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.utils.logD
 import com.tencent.qqnt.kernel.api.IKernelService
@@ -43,7 +43,7 @@ internal object NTServiceFetcher {
             }
         }
 
-        if (BuildWrapper.DEBUG) { // 仅供调试
+        if (TCQTBuild.DEBUG) { // 仅供调试
             kernelService.wrapperSession.javaClass.hookMethod("setQimei36").before {
                 logD(msg = "setQimei36: ${it.args[0] as String}")
             }
