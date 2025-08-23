@@ -151,6 +151,22 @@
             color: var(--danger-color);
         }
 
+        .action-status {
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .status-enabled {
+            color: #198754;
+            font-weight: 600;
+        }
+
+        .status-disabled {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
         /* --- Feature List --- */
         .feature-list {
             background-color: var(--bg-card);
@@ -381,6 +397,9 @@
                 <div class="version-item">模块: <span id="moduleVersion">加载中...</span></div>
             </div>
         </div>
+        <div class="action-status">
+            已启用<span class="status-enabled" id="enabledCount">0</span>个功能，<span class="status-disabled" id="disabledCount">0</span>个功能未启用
+        </div>
         <div class="header-notice">
             被 <strong>红色</strong> 标记的功能有一定风险，请自行承担使用风险。<br>
             更改设置后需保存并重启宿主才能生效。
@@ -548,7 +567,9 @@
             moduleVersion: document.getElementById('moduleVersion'),
             featureList: document.getElementById('feature-list'),
             btnSave: document.getElementById('btnSave'),
-            toastContainer: document.getElementById('toast-container')
+            toastContainer: document.getElementById('toast-container'),
+            enabledCount: document.getElementById('enabledCount'),
+            disabledCount: document.getElementById('disabledCount')
         };
 
         // --- Functions ---
@@ -583,6 +604,24 @@
                     resolve();
                 }, 200);
             });
+        };
+
+        const updateActionStatus = () => {
+            if (injected && typeof TCQT !== "undefined") {
+                try {
+                    const enabledCount = TCQT.getEnabledActionCount();
+                    const disabledCount = TCQT.getDisabledActionCount();
+                    ui.enabledCount.textContent = enabledCount;
+                    ui.disabledCount.textContent = disabledCount;
+                } catch (e) {
+                    console.error("获取Action状态失败", e);
+                    ui.enabledCount.textContent = "?";
+                    ui.disabledCount.textContent = "?";
+                }
+            } else {
+                ui.enabledCount.textContent = "-";
+                ui.disabledCount.textContent = "-";
+            }
         };
 
         const createFeatureElement = (feature) => {
@@ -674,6 +713,7 @@
             });
             ui.btnSave.classList.toggle('disabled', !injected);
             ui.btnSave.disabled = !injected;
+            updateActionStatus();
         };
 
         const saveSettings = () => {
@@ -703,6 +743,7 @@
             });
 
             const hostName = (typeof TCQT !== "undefined" && TCQT.getHostName()) || "宿主";
+            updateActionStatus(); // 更新状态统计
             if (confirm(`已保存，是否重启 ${hostName} 以应用更改？`)) {
                 try {
                     TCQT.exitApp();

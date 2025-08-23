@@ -2,6 +2,7 @@ package com.owo233.tcqt.internals.setting
 
 import android.content.Context
 import android.webkit.JavascriptInterface
+import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.hooks.ModuleCommand
@@ -58,5 +59,15 @@ class TCQTJsInterface(private val ctx: Context) {
     fun setSettingBoolean(key: String, value: Boolean) {
         val setting = TCQTSetting.getSetting<Any>(key)
         setting.setValue(setting, null, value)
+    }
+
+    @JavascriptInterface
+    fun getEnabledActionCount(): Int {
+        return ActionManager.getEnabledActionCount()
+    }
+
+    @JavascriptInterface
+    fun getDisabledActionCount(): Int {
+        return ActionManager.getDisabledActionCount()
     }
 }
