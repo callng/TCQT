@@ -15,6 +15,15 @@ class ForcedToB: IAction {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
         val expEntityClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!
 
+        val onlineField = expEntityClz.getDeclaredField("isExpOnline")
+            .apply { isAccessible = true }
+        val assignmentField = expEntityClz.getDeclaredField("mAssignment")
+            .apply { isAccessible = true }
+        val expGrayIdField = expEntityClz.getDeclaredField("mExpGrayId")
+            .apply { isAccessible = true }
+        val layerNameField = expEntityClz.getDeclaredField("mLayerName")
+            .apply { isAccessible = true }
+
         controllerClz.getDeclaredMethod(
             "getExpEntity",
             String::class.java,
@@ -22,23 +31,14 @@ class ForcedToB: IAction {
         ).hookMethod(afterHook { param ->
             val result = param.result ?: return@afterHook
 
-            val onlineField = expEntityClz.getDeclaredField("isExpOnline")
-                .apply { isAccessible = true }
-            val isOnline = onlineField.getBoolean( result)
+            val isOnline = onlineField.getBoolean(result)
+            val assignment = assignmentField.get(result) as String
 
-            if (isOnline) {
+            if (isOnline && !assignment.endsWith("_B")) {
                 val keyName = param.args[1] as String
 
-                val assignmentField = expEntityClz.getDeclaredField("mAssignment")
-                    .apply { isAccessible = true }
                 assignmentField.set(result, "${keyName}_B")
-
-                val expGrayIdField = expEntityClz.getDeclaredField("mExpGrayId")
-                    .apply { isAccessible = true }
                 expGrayIdField.set(result, "114514")
-
-                val layerNameField = expEntityClz.getDeclaredField("mLayerName")
-                    .apply { isAccessible = true }
                 layerNameField.set(result, keyName)
 
                 param.result = result
