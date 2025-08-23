@@ -20,22 +20,29 @@ class ForcedToB: IAction {
             String::class.java,
             String::class.java
         ).hookMethod(afterHook { param ->
-            val key = param.args[1] as String
-            val origin = param.result
+            val result = param.result ?: return@afterHook
 
-            val assignmentField = expEntityClz.getDeclaredField("mAssignment")
+            val onlineField = expEntityClz.getDeclaredField("isExpOnline")
                 .apply { isAccessible = true }
-            assignmentField.set(origin, "${key}_B")
+            val isOnline = onlineField.getBoolean( result)
 
-            val expGrayIdField = expEntityClz.getDeclaredField("mExpGrayId")
-                .apply { isAccessible = true }
-            expGrayIdField.set(origin, "114514")
+            if (isOnline) {
+                val keyName = param.args[1] as String
 
-            val layerNameField = expEntityClz.getDeclaredField("mLayerName")
-                .apply { isAccessible = true }
-            layerNameField.set(origin, key)
+                val assignmentField = expEntityClz.getDeclaredField("mAssignment")
+                    .apply { isAccessible = true }
+                assignmentField.set(result, "${keyName}_B")
 
-            param.result = origin
+                val expGrayIdField = expEntityClz.getDeclaredField("mExpGrayId")
+                    .apply { isAccessible = true }
+                expGrayIdField.set(result, "114514")
+
+                val layerNameField = expEntityClz.getDeclaredField("mLayerName")
+                    .apply { isAccessible = true }
+                layerNameField.set(result, keyName)
+
+                param.result = result
+            }
         })
     }
 
