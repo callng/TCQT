@@ -29,6 +29,7 @@ internal object TCQTSetting {
     const val FLAG_SECURE_BYPASS: String = "flag_secure_bypass"
     const val FORCE_TABLET_MODE: String = "force_tablet_mode"
     const val LOGIN_CHECK_BOX_DEFAULT: String = "login_check_box_default"
+    const val FORCED_TO_B: String = "forced_to_b"
     const val MODULE_UPDATE: String = "module_update"
     const val ONE_CLICK_LIKES: String = "one_click_likes"
     const val POKE_NO_COOL_DOWN: String = "poke_no_cool_down"
@@ -63,6 +64,7 @@ internal object TCQTSetting {
         FETCH_SERVICE to Setting(FETCH_SERVICE, SettingType.BOOLEAN, false),
         FLAG_SECURE_BYPASS to Setting(FLAG_SECURE_BYPASS, SettingType.BOOLEAN, false),
         FORCE_TABLET_MODE to Setting(FORCE_TABLET_MODE, SettingType.BOOLEAN, false),
+        FORCED_TO_B to Setting(FORCED_TO_B, SettingType.BOOLEAN, false),
         LOGIN_CHECK_BOX_DEFAULT to Setting(LOGIN_CHECK_BOX_DEFAULT, SettingType.BOOLEAN, false),
         MODULE_UPDATE to Setting(MODULE_UPDATE, SettingType.BOOLEAN, false),
         ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, false),
