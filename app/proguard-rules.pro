@@ -21,50 +21,27 @@
 #-renamesourcefileattribute SourceFile
 
 # 保留Hook入口
--keep class com.owo233.tcqt.MainEntry implements de.robv.android.xposed.IXposedHookLoadPackage
 -keep class com.owo233.tcqt.MainEntry {
+    public <init>();
     public void handleLoadPackage(de.robv.android.xposed.callbacks.XC_LoadPackage$LoadPackageParam);
+    public void initZygote(de.robv.android.xposed.IXposedHookZygoteInit$StartupParam);
 }
 
-
-# 保留所有 @Serializable 注解的类和它们的序列化器
-#-keep @kotlinx.serialization.Serializable class * {
-#    public static kotlinx.serialization.KSerializer serializer(...);
-#}
-
--if @kotlinx.serialization.Serializable class **
--keepclassmembers class <1> {
-    static <1>$Companion Companion;
-}
-
--if @kotlinx.serialization.Serializable class ** {
-    static **$* *;
-}
--keepclassmembers class <2>$<3> {
-    kotlinx.serialization.KSerializer serializer(...);
-}
-
--if @kotlinx.serialization.Serializable class ** {
-    public static ** INSTANCE;
-}
--keepclassmembers class <1> {
-    public static <1> INSTANCE;
-    kotlinx.serialization.KSerializer serializer(...);
-}
-
-# 保留 IAction 实现类的无参构造
+# 保留所有 IAction 实现类的无参构造函数（用于 newInstance）
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
     public <init>();
 }
 
-# 保留 IAction 接口
--keep interface com.owo233.tcqt.ext.IAction
+# 保留 Kotlin object 的 INSTANCE 字段（用于单例访问）
+-keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
+    public static ** INSTANCE;
+}
 
-# 保留 AlwaysRunAction 接口
--keep interface com.owo233.tcqt.ext.AlwaysRunAction
+# 保留 IAction 接口
+# -keep interface com.owo233.tcqt.ext.IAction
 
 # 保留 ActionProcess 枚举
--keep enum com.owo233.tcqt.ext.ActionProcess
+# -keep enum com.owo233.tcqt.ext.ActionProcess
 
 # 大多数 volatile 字段是由 AtomicFU（Kotlin 的原子操作库）自动处理的，不应该被改名或删除。
 -keepclassmembers class kotlinx.io.** {
@@ -113,4 +90,7 @@
 -allowaccessmodification
 -overloadaggressively
 
--keepattributes LineNumberTable,SourceFile
+-renamesourcefileattribute *
+-keepattributes !SourceFile,!SourceDebugExtension,!LineNumberTable,!LocalVariableTable,!LocalVariableTypeTable
+-dontnote kotlin.jvm.internal.SourceDebugExtension
+-dontwarn kotlin.jvm.internal.SourceDebugExtension
