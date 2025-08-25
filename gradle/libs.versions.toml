@@ -19,8 +19,6 @@ kotlinx-serialization = "1.9.0"
 ksp = "2.2.10-2.0.2"
 
 # Third-Party
-#noinspection NewerVersionAvailable
-hutool-core = "5.8.0.M1"
 nanohttpd = "2.3.1"
 
 # Xposed
@@ -42,7 +40,6 @@ ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", versi
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
 
 # Third-Party
-hutool-core = { group = "cn.hutool", name = "hutool-core", version.ref = "hutool-core" }
 nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 
 # Xposed
