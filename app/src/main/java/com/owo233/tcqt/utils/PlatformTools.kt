@@ -42,6 +42,12 @@ object PlatformTools {
         return packageInfo.versionName ?: "unknown"
     }
 
+    fun getQQChannel(ctx: Context = MobileQQ.getContext()): String {
+        // "537309838#3F9351D357E4AFF5#2017#GuanWang#fffffffffffffffffffffffffffff"
+        val application = ctx.packageManager.getApplicationInfo(ctx.packageName, 128)
+        return application.metaData!!.getString("AppSetting_params")!!.split("#")[3]
+    }
+
     fun getQQVersionCode(ctx: Context = MobileQQ.getContext()): Long {
         val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         return PackageInfoCompat.getLongVersionCode(packageInfo)

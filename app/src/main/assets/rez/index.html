@@ -393,7 +393,7 @@
         <h1><i class="bi bi-sliders"></i> TCQT 模块设置</h1>
         <div class="version-info">
             <div class="version-info-wrapper">
-                <div class="version-item">宿主: <span id="qqVersion">加载中...</span></div>
+                <div class="version-item">宿主: <span id="hostVersion">加载中...</span></div>
                 <div class="version-item">模块: <span id="moduleVersion">加载中...</span></div>
             </div>
         </div>
@@ -569,7 +569,7 @@
         const ui = {
             loadingOverlay: document.getElementById('loading-overlay'),
             appContainer: document.getElementById('app-container'),
-            qqVersion: document.getElementById('qqVersion'),
+            hostVersion: document.getElementById('hostVersion'),
             moduleVersion: document.getElementById('moduleVersion'),
             featureList: document.getElementById('feature-list'),
             btnSave: document.getElementById('btnSave'),
@@ -591,20 +591,21 @@
                     if (typeof TCQT !== "undefined") {
                         try {
                             const hostName = TCQT.getHostName() || "QQ";
-                            const qqVer = TCQT.getQQVersion() || "未知";
+                            const hostVer = TCQT.getHostVersion() || "未知";
+                            const hostChannel = TCQT.getHostChannel() || "未知";
                             const moduleName = TCQT.getModuleName() || "TCQT";
                             const moduleVer = TCQT.getModuleVersion() || "未知";
-                            setVersionText(ui.qqVersion, `${hostName} ${qqVer}`, true);
+                            setVersionText(ui.hostVersion, `${hostName} ${hostVer} ${hostChannel}`, true);
                             setVersionText(ui.moduleVersion, `${moduleName} ${moduleVer}`, true);
                             injected = true;
                         } catch (e) {
                             console.error("获取版本失败", e);
-                            setVersionText(ui.qqVersion, "获取失败", false);
+                            setVersionText(ui.hostVersion, "获取失败", false);
                             setVersionText(ui.moduleVersion, "获取失败", false);
                         }
                     } else {
                         console.warn("TCQT 对象未注入，使用模拟数据。");
-                        setVersionText(ui.qqVersion, "QQ 11.4.5 (14191)", false);
+                        setVersionText(ui.hostVersion, "QQ 11.4.5 (14191) GuanWang", false);
                         setVersionText(ui.moduleVersion, "TCQT (环境异常)", false);
                     }
                     resolve();
@@ -785,7 +786,7 @@
                 initSettings();
             } catch (err) {
                 console.error("初始化失败:", err);
-                setVersionText(ui.qqVersion, "初始化异常", false);
+                setVersionText(ui.hostVersion, "初始化异常", false);
                 setVersionText(ui.moduleVersion, "初始化异常", false);
                 ui.btnSave.classList.add('disabled');
                 ui.btnSave.disabled = true;

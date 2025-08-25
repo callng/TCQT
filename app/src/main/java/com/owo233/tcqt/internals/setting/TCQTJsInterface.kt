@@ -12,13 +12,16 @@ import com.owo233.tcqt.hooks.base.hostInfo
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
-    fun getQQVersion(): String = "${PlatformTools.getQQVersion(ctx)}(${PlatformTools.getQQVersionCode(ctx)})"
+    fun getHostChannel(): String = PlatformTools.getQQChannel(ctx)
+
+    @JavascriptInterface
+    fun getHostVersion(): String = "${PlatformTools.getQQVersion(ctx)}(${PlatformTools.getQQVersionCode(ctx)})"
 
     @JavascriptInterface
     fun getHostName(): String = hostInfo.hostName
 
     @JavascriptInterface
-    fun getModuleVersion(): String = "${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE})"
+    fun getModuleVersion(): String = "${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) BT -> ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }"
 
     @JavascriptInterface
     fun getModuleName(): String = TCQTBuild.APP_NAME
