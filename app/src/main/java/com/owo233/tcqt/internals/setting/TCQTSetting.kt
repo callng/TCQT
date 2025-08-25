@@ -33,6 +33,7 @@ internal object TCQTSetting {
     const val MODULE_UPDATE: String = "module_update"
     const val ONE_CLICK_LIKES: String = "one_click_likes"
     const val POKE_NO_COOL_DOWN: String = "poke_no_cool_down"
+    const val PIC_TYPE_EMOTICON: String = "pic_type_emoticon"
     const val REMOVE_AD: String = "remove_ad"
     const val REMOVE_QR_LOGIN_CHECK: String = "remove_qr_login_check"
     const val REMOVE_REPLY_MSG_CHECK: String = "remove_reply_msg_check"
@@ -69,6 +70,7 @@ internal object TCQTSetting {
         MODULE_UPDATE to Setting(MODULE_UPDATE, SettingType.BOOLEAN, false),
         ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, false),
         POKE_NO_COOL_DOWN to Setting(POKE_NO_COOL_DOWN, SettingType.BOOLEAN, false),
+        PIC_TYPE_EMOTICON to Setting(PIC_TYPE_EMOTICON, SettingType.BOOLEAN, false),
         REMOVE_AD to Setting(REMOVE_AD, SettingType.BOOLEAN, false),
         REMOVE_QR_LOGIN_CHECK to Setting(REMOVE_QR_LOGIN_CHECK, SettingType.BOOLEAN, false),
         REMOVE_REPLY_MSG_CHECK to Setting(REMOVE_REPLY_MSG_CHECK, SettingType.BOOLEAN, false),
