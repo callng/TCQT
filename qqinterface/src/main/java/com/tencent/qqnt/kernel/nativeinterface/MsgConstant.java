@@ -1,11 +1,16 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class MsgConstant {
+    public static final int ARGMSGSTATENEEDUPDATE = 1;
+    public static final int ARGMSGSTATENONE = 0;
+    public static final int ARGMSGSTATENOUPDATE = 2;
+    public static final int ARGMSGSTATEOFFLINE = 3;
+    public static final int ARKSTRUCTELEMENTSUBTYPESHORTVIDEO = 6;
     public static final int ARKSTRUCTELEMENTSUBTYPETENCENTDOCFROMMINIAPP = 1;
     public static final int ARKSTRUCTELEMENTSUBTYPETENCENTDOCFROMPLUSPANEL = 2;
     public static final int ARKSTRUCTELEMENTSUBTYPEUNKNOWN = 0;
-
     public static final int ATTYPEALL = 1;
+    public static final int ATTYPECATEGORY = 512;
     public static final int ATTYPECHANNEL = 16;
     public static final int ATTYPEME = 4;
     public static final int ATTYPEONE = 2;
@@ -15,7 +20,8 @@ public final class MsgConstant {
     public static final int ATTYPESUMMONONLINE = 128;
     public static final int ATTYPESUMMONROLE = 256;
     public static final int ATTYPEUNKNOWN = 0;
-
+    public static final int BUSINESSTYPEFORNOTIFICATIONNONE = 0;
+    public static final int BUSINESSTYPEFORNOTIFICATIONREGISTEREDAGENTADDITIONALBUSINESS = 1;
     public static final int CALENDARELEMSUBTYPECOMMON = 3;
     public static final int CALENDARELEMSUBTYPESTRONG = 1;
     public static final int CALENDARELEMSUBTYPEUNKNOWN = 0;
@@ -40,6 +46,11 @@ public final class MsgConstant {
     public static final int FILEELEMENTSUBTYPETXT = 8;
     public static final int FILEELEMENTSUBTYPEVIDEO = 2;
     public static final int FILEELEMENTSUBTYPEZIP = 9;
+    public static final int GETARKMSGCONFIGINFOTYPELOCAL = 1;
+    public static final int GETARKMSGCONFIGINFOTYPENONE = 0;
+    public static final int GETARKMSGCONFIGINFOTYPESPECIFIED = 2;
+    public static final int GETARKTOMARKDOWNMSGTEMPLATETYPEALL = 1;
+    public static final int GETARKTOMARKDOWNMSGTEMPLATETYPENONE = 0;
     public static final int GRAYTIPELEMENTSUBTYPEAIOOP = 15;
     public static final int GRAYTIPELEMENTSUBTYPEBLOCK = 14;
     public static final int GRAYTIPELEMENTSUBTYPEBUDDY = 5;
@@ -58,12 +69,16 @@ public final class MsgConstant {
     public static final int GRAYTIPELEMENTSUBTYPEUNKNOWN = 0;
     public static final int GRAYTIPELEMENTSUBTYPEWALLET = 16;
     public static final int GRAYTIPELEMENTSUBTYPEXMLMSG = 12;
-
-
+    public static final int INLINEKEYBOARDBUTTONRENDERSTYLEBLUEBLACKGROUND = 4;
+    public static final int INLINEKEYBOARDBUTTONRENDERSTYLEBLUEBORDER = 1;
+    public static final int INLINEKEYBOARDBUTTONRENDERSTYLEGRAYBORDER = 0;
+    public static final int INLINEKEYBOARDBUTTONRENDERSTYLENOBORDER = 2;
+    public static final int INLINEKEYBOARDBUTTONRENDERSTYLEREDCHARACTER = 3;
     public static final int INPUTSTATUSTYPECANCEL = 2;
     public static final int INPUTSTATUSTYPESPEAK = 3;
     public static final int INPUTSTATUSTYPETEXT = 1;
     public static final int KACTIVITYMSG = 22;
+    public static final int KADDLOCALMSGEXTINFOTYPEPROLOGUEMSG = 1;
     public static final int KANONYMOUSATMEMSGTYPEINMSGBOX = 1001;
     public static final int KANONYMOUSFLAGFROMOTHERPEOPLE = 1;
     public static final int KANONYMOUSFLAGFROMOWN = 2;
@@ -71,20 +86,33 @@ public final class MsgConstant {
     public static final int KAPPCHANNELMSG = 16;
     public static final int KATALLMSGTYPEINMSGBOX = 2000;
     public static final int KATMEMSGTYPEINMSGBOX = 1000;
+    public static final int KATTRIBUTETYPEADELIEMSG = 16;
+    public static final int KATTRIBUTETYPEATTAREPORTDATA = 19;
+    public static final int KATTRIBUTETYPEBOTMETADATA = 22;
+    public static final int KATTRIBUTETYPEEXTENDBUSINESS = 13;
+    public static final int KATTRIBUTETYPEFEEDBACKSTATE = 17;
+    public static final int KATTRIBUTETYPEGROUPDRAGONLADDER = 21;
     public static final int KATTRIBUTETYPEGROUPHONOR = 2;
     public static final int KATTRIBUTETYPEKINGHONOR = 3;
+    public static final int KATTRIBUTETYPELITEACTION = 20;
     public static final int KATTRIBUTETYPELONGMSG = 8;
+    public static final int KATTRIBUTETYPEMEMORYSTATEMSGINFO = 18;
     public static final int KATTRIBUTETYPEMSG = 0;
+    public static final int KATTRIBUTETYPEMSGBOXEVENTTYPE = 14;
     public static final int KATTRIBUTETYPEPERSONAL = 1;
     public static final int KATTRIBUTETYPEPUBLICACCOUNT = 4;
+    public static final int KATTRIBUTETYPEQQCONNECT = 12;
+    public static final int KATTRIBUTETYPESENDMSGRSPTRANSSVRINFO = 15;
     public static final int KATTRIBUTETYPESHAREDMSGINFO = 5;
     public static final int KATTRIBUTETYPETEMPCHATGAMESESSION = 6;
     public static final int KATTRIBUTETYPETOROBOTMSG = 9;
     public static final int KATTRIBUTETYPEUININFO = 7;
+    public static final int KATTRIBUTETYPEZPLAN = 11;
     public static final int KAUTOREPLYTEXTNONEINDEX = -1;
     public static final int KAVRECORDMSG = 19;
     public static final int KBUSINESSTYPGUILD = 1;
     public static final int KBUSINESSTYPNT = 0;
+    public static final int KCHATTYPEADELIE = 42;
     public static final int KCHATTYPEBUDDYNOTIFY = 5;
     public static final int KCHATTYPEC2C = 1;
     public static final int KCHATTYPECIRCLE = 113;
@@ -100,6 +128,9 @@ public final class MsgConstant {
     public static final int KCHATTYPEGROUPHELPER = 7;
     public static final int KCHATTYPEGROUPNOTIFY = 6;
     public static final int KCHATTYPEGUILD = 4;
+    public static final int KCHATTYPEGUILDBOX = 61;
+    public static final int KCHATTYPEGUILDCOMMON = 62;
+    public static final int KCHATTYPEGUILDHELPER = 60;
     public static final int KCHATTYPEGUILDMETA = 16;
     public static final int KCHATTYPEMATCHFRIEND = 104;
     public static final int KCHATTYPEMATCHFRIENDFOLDER = 109;
@@ -119,19 +150,36 @@ public final class MsgConstant {
     public static final int KCHATTYPETEMPC2CFROMGROUP = 100;
     public static final int KCHATTYPETEMPC2CFROMUNKNOWN = 99;
     public static final int KCHATTYPETEMPFRIENDVERIFY = 101;
+    public static final int KCHATTYPETEMPNEARBYPRO = 119;
     public static final int KCHATTYPETEMPPUBLICACCOUNT = 103;
     public static final int KCHATTYPETEMPWPA = 117;
     public static final int KCHATTYPEUNKNOWN = 0;
     public static final int KCHATTYPEWEIYUN = 40;
-
-
-
     public static final int KCOMMONREDENVELOPEMSGTYPEINMSGBOX = 1007;
     public static final int KDOWNSOURCETYPEAIOINNER = 1;
     public static final int KDOWNSOURCETYPEBIGSCREEN = 2;
     public static final int KDOWNSOURCETYPEHISTORY = 3;
     public static final int KDOWNSOURCETYPEUNKNOWN = 0;
     public static final int KELEMTYPEACTIVITY = 25;
+    public static final int KELEMTYPEACTIVITYSTATE = 41;
+    public static final int KELEMTYPEACTIVITYSUBTYPECREATEMOBATEAM = 12;
+    public static final int KELEMTYPEACTIVITYSUBTYPEDISBANDMOBATEAM = 11;
+    public static final int KELEMTYPEACTIVITYSUBTYPEFINISHGAME = 16;
+    public static final int KELEMTYPEACTIVITYSUBTYPEFINISHMATCHTEAM = 14;
+    public static final int KELEMTYPEACTIVITYSUBTYPEMINIGAME = 18;
+    public static final int KELEMTYPEACTIVITYSUBTYPEMUSICPLAY = 17;
+    public static final int KELEMTYPEACTIVITYSUBTYPENEWSMOBA = 9;
+    public static final int KELEMTYPEACTIVITYSUBTYPENOLIVE = 2;
+    public static final int KELEMTYPEACTIVITYSUBTYPENOSCREENSHARE = 7;
+    public static final int KELEMTYPEACTIVITYSUBTYPENOVOICE = 3;
+    public static final int KELEMTYPEACTIVITYSUBTYPEONLIVE = 1;
+    public static final int KELEMTYPEACTIVITYSUBTYPEONSCREENSHARE = 6;
+    public static final int KELEMTYPEACTIVITYSUBTYPEONVOICE = 4;
+    public static final int KELEMTYPEACTIVITYSUBTYPESTARTMATCHTEAM = 13;
+    public static final int KELEMTYPEACTIVITYSUBTYPETARTGAME = 15;
+    public static final int KELEMTYPEACTIVITYSUBTYPEUNKNOWN = 0;
+    public static final int KELEMTYPEADELIEACTIONBAR = 44;
+    public static final int KELEMTYPEADELIERECOMMENDEDMSG = 43;
     public static final int KELEMTYPEARKSTRUCT = 10;
     public static final int KELEMTYPEAVRECORD = 21;
     public static final int KELEMTYPECALENDAR = 19;
@@ -139,6 +187,7 @@ public final class MsgConstant {
     public static final int KELEMTYPEFACEBUBBLE = 27;
     public static final int KELEMTYPEFEED = 22;
     public static final int KELEMTYPEFILE = 3;
+    public static final int KELEMTYPEFILTER = 49;
     public static final int KELEMTYPEGIPHY = 15;
     public static final int KELEMTYPEGRAYTIP = 8;
     public static final int KELEMTYPEINLINEKEYBOARD = 17;
@@ -149,10 +198,12 @@ public final class MsgConstant {
     public static final int KELEMTYPEMULTIFORWARD = 16;
     public static final int KELEMTYPEONLINEFILE = 23;
     public static final int KELEMTYPEPIC = 2;
+    public static final int KELEMTYPEPROLOGUE = 46;
     public static final int KELEMTYPEPTT = 4;
     public static final int KELEMTYPEREPLY = 7;
     public static final int KELEMTYPESHARELOCATION = 28;
     public static final int KELEMTYPESTRUCTLONGMSG = 13;
+    public static final int KELEMTYPETASKTOPMSG = 29;
     public static final int KELEMTYPETEXT = 1;
     public static final int KELEMTYPETOFU = 26;
     public static final int KELEMTYPEUNKNOWN = 0;
@@ -161,15 +212,55 @@ public final class MsgConstant {
     public static final int KELEMTYPEYOLOGAMERESULT = 20;
     public static final int KENTERAIO = 1;
     public static final int KEXITAIO = 2;
+    public static final int KEYBOARDROWCOLSTYLENONE = 0;
+    public static final int KEYBOARDROWCOLSTYLEONEFIFTH = 4;
+    public static final int KEYBOARDROWCOLSTYLEONEFOURTH = 3;
+    public static final int KEYBOARDROWCOLSTYLEONEHALF = 1;
+    public static final int KEYBOARDROWCOLSTYLEONETHIRD = 2;
+    public static final int KFEEDBACKBUTTONTYPEDISLIKE = 2;
+    public static final int KFEEDBACKBUTTONTYPELIKE = 1;
+    public static final int KFEEDBACKBUTTONTYPEPROMPTCLICK = 5;
+    public static final int KFEEDBACKBUTTONTYPEREGENERATE = 4;
+    public static final int KFEEDBACKBUTTONTYPEUNKNOWN = 0;
+    public static final int KFEEDBACKOPTLIKE = 1;
+    public static final int KFEEDBACKOPTSHAREMSG = 6;
+    public static final int KFEEDBACKOPTUNKNOWN = 0;
+    public static final int KFEEDBACKOPTUNLIKE = 2;
     public static final int KFRIENDNEWADDEDMSGTYPEINMSGBOX = 1008;
+    public static final int KGAMEBOXNEWMSGTYPEINMSGBOX = 3000;
+    public static final int KGAMERELATIONPFRIENDGFRIEND = 4;
+    public static final int KGAMERELATIONPFRIENDGSTRANGER = 3;
+    public static final int KGAMERELATIONPSTRANGERGFRIEND = 2;
+    public static final int KGAMERELATIONPSTRANGERGSTRANGER = 1;
+    public static final int KGAMERELATIONUNKNOWN = 0;
+    public static final int KGAMESESSIONSOURCEGAME = 1;
+    public static final int KGAMESESSIONSOURCEPARTNERPLAZA = 2;
+    public static final int KGAMESESSIONSOURCEUNKNOWN = 0;
     public static final int KGIFTATMEMSGTYPEINMSGBOX = 1005;
+    public static final int KGROUPANNOUNCENEW = 20002;
     public static final int KGROUPFILEATALLMSGTYPEINMSGBOX = 2001;
+    public static final int KGROUPHOMEWORK = 20000;
+    public static final int KGROUPHOMEWORKTASK = 20001;
     public static final int KGROUPKEYWORDMSGTYPEINMSGBOX = 2006;
     public static final int KGROUPMANNOUNCEATALLMSGTYPEINMSGBOX = 2004;
     public static final int KGROUPTASKATALLMSGTYPEINMSGBOX = 2003;
+    public static final int KGROUPTEAMUP = 20003;
     public static final int KGROUPUNREADTYPEINMSGBOX = 2007;
+    public static final int KGUILDABSTRACTICONFEEDDRAFT = 1;
+    public static final int KGUILDABSTRACTICONNONE = 0;
+    public static final int KGUILDCHANNELLIST = 10;
+    public static final int KHIGHABSTRACTCOLORGRAY = 2;
+    public static final int KHIGHABSTRACTCOLORRED = 1;
     public static final int KHIGHLIGHTWORDINTEMPCHATTYPEINMSGBOX = 1009;
+    public static final int KHOMEWORKREMINDER = 10000;
+    public static final int KLIKEORDISLIKESTATEDISLIKE = 2;
+    public static final int KLIKEORDISLIKESTATELIKE = 1;
+    public static final int KLIKEORDISLIKESTATENONESELECTED = 0;
     public static final int KMARKETFACE = 17;
+    public static final int KMEMORYSTATEMSGTYPEADELIEDISCLAIMER = 2;
+    public static final int KMEMORYSTATEMSGTYPEADELIEMINIPROFILE = 3;
+    public static final int KMEMORYSTATEMSGTYPEADELIEWELCOME = 1;
+    public static final int KMEMORYSTATEMSGTYPEUNKNOWN = 0;
     public static final int KMINIPROGRAMNOTICE = 114;
     public static final int KMSGSUBTYPEARKGROUPANNOUNCE = 3;
     public static final int KMSGSUBTYPEARKGROUPANNOUNCECONFIRMREQUIRED = 4;
@@ -177,6 +268,7 @@ public final class MsgConstant {
     public static final int KMSGSUBTYPEARKGROUPTASKATALL = 6;
     public static final int KMSGSUBTYPEARKMULTIMSG = 7;
     public static final int KMSGSUBTYPEARKNORMAL = 0;
+    public static final int KMSGSUBTYPEARKSHORTVIDEO = 8;
     public static final int KMSGSUBTYPEARKTENCENTDOCFROMMINIAPP = 1;
     public static final int KMSGSUBTYPEARKTENCENTDOCFROMPLUSPANEL = 2;
     public static final int KMSGSUBTYPEEMOTICON = 15;
@@ -196,6 +288,8 @@ public final class MsgConstant {
     public static final int KMSGSUBTYPEFILEVIDEO = 2;
     public static final int KMSGSUBTYPEFILEZIP = 9;
     public static final int KMSGSUBTYPELINK = 5;
+    public static final int KMSGSUBTYPEMARKDOWNFLASHTRANSFER = 2;
+    public static final int KMSGSUBTYPEMARKDOWNUNKNOWN = 1;
     public static final int KMSGSUBTYPEMARKETFACE = 1;
     public static final int KMSGSUBTYPEMIXEMOTICON = 7;
     public static final int KMSGSUBTYPEMIXFACE = 3;
@@ -207,13 +301,17 @@ public final class MsgConstant {
     public static final int KMSGTYPEARKSTRUCT = 11;
     public static final int KMSGTYPEFACEBUBBLE = 24;
     public static final int KMSGTYPEFILE = 3;
+    public static final int KMSGTYPEFILTER = 32;
     public static final int KMSGTYPEGIFT = 14;
     public static final int KMSGTYPEGIPHY = 13;
     public static final int KMSGTYPEGRAYTIPS = 5;
+    public static final int KMSGTYPEMARKDOWN = 31;
     public static final int KMSGTYPEMIX = 2;
     public static final int KMSGTYPEMULTIMSGFORWARD = 8;
     public static final int KMSGTYPENULL = 1;
     public static final int KMSGTYPEONLINEFILE = 21;
+    public static final int KMSGTYPEONLINEFOLDER = 27;
+    public static final int KMSGTYPEPROLOGUE = 29;
     public static final int KMSGTYPEPTT = 6;
     public static final int KMSGTYPEREPLY = 9;
     public static final int KMSGTYPESHARELOCATION = 25;
@@ -224,6 +322,7 @@ public final class MsgConstant {
     public static final int KMSGTYPEVIDEO = 7;
     public static final int KMSGTYPEWALLET = 10;
     public static final int KNEEDCONFIRMGROUPMANNOUNCEATALLMSGTYPEINMSGBOX = 2005;
+    public static final int KNOTPASSTHROUGHEVENTTYPEUPPERBOUNDARY = 9999;
     public static final int KPTTFORMATTYPEAMR = 0;
     public static final int KPTTFORMATTYPESILK = 1;
     public static final int KPTTTRANSLATESTATUSFAIL = 3;
@@ -254,7 +353,9 @@ public final class MsgConstant {
     public static final int KPTTVOICETYPESOUNDRECORD = 2;
     public static final int KPTTVOICETYPEUNKNOW = 0;
     public static final int KPTTVOICETYPEVOICECHANGE = 3;
+    public static final int KPUBLICACCOUNTTIANSHUHIGHLIGHTWORDTYPEINMSGBOX = 1010;
     public static final int KREPLYABSELEMTYPEFACE = 2;
+    public static final int KREPLYABSELEMTYPEPIC = 3;
     public static final int KREPLYABSELEMTYPETEXT = 1;
     public static final int KREPLYABSELEMTYPEUNKNOWN = 0;
     public static final int KREPLYATMEMSGTYPEINMSGBOX = 1002;
@@ -290,6 +391,9 @@ public final class MsgConstant {
     public static final int KRMTRNASFERSTATUSUNKOW = 0;
     public static final int KRMTRNASFERSTATUSUPLOADING = 2;
     public static final int KRMTRNASFERSTATUSUSERCANCEL = 6;
+    public static final int KSEEKINGPARTNERFLAGSEEKING = 1;
+    public static final int KSEEKINGPARTNERFLAGUNKNOWN = 0;
+    public static final int KSENDSTATUSATALLREVIEWING = 4;
     public static final int KSENDSTATUSFAILED = 0;
     public static final int KSENDSTATUSSENDING = 1;
     public static final int KSENDSTATUSSUCCESS = 2;
@@ -308,7 +412,11 @@ public final class MsgConstant {
     public static final int KSESSIONTYPEGROUP = 2;
     public static final int KSESSIONTYPEGROUPBLESS = 52;
     public static final int KSESSIONTYPEGUILD = 4;
+    public static final int KSESSIONTYPEGUILDBOX = 61;
+    public static final int KSESSIONTYPEGUILDCOMMON = 62;
+    public static final int KSESSIONTYPEGUILDHELPER = 60;
     public static final int KSESSIONTYPEGUILDMETA = 16;
+    public static final int KSESSIONTYPENEARBYPRO = 54;
     public static final int KSESSIONTYPEQQNOTIFY = 51;
     public static final int KSESSIONTYPERELATEACCOUNT = 50;
     public static final int KSESSIONTYPESERVICEASSISTANT = 19;
@@ -340,6 +448,8 @@ public final class MsgConstant {
     public static final int KTENCENTDOCTYPESPEECH = 102;
     public static final int KTENCENTDOCTYPEUNKNOWN = 10;
     public static final int KTOFURECORDMSG = 23;
+    public static final int KTOPMSGTYPETASK = 1;
+    public static final int KTOPMSGTYPEUNKNOWN = 0;
     public static final int KTRIGGERTYPEAUTO = 1;
     public static final int KTRIGGERTYPEMANUAL = 0;
     public static final int KUNKNOWN = 0;
@@ -354,11 +464,14 @@ public final class MsgConstant {
     public static final int KUNREADCNTUPTYPEGUILDGROUP = 7;
     public static final int KUNREADSHOWTTYPEGRAYPOINT = 2;
     public static final int KUNREADSHOWTYPEREDPOINT = 1;
+    public static final int KUNREADSHOWTYPESMALLGRAYPOINT = 4;
+    public static final int KUNREADSHOWTYPESMALLREDPOINT = 3;
     public static final int KUNREADSHOWTYPEUNKNOWN = 0;
     public static final int KVASGIFTCOINTYPECOIN = 0;
     public static final int KVASGIFTCOINTYPEMARKETCOIN = 1;
     public static final int KYOLOGAMERESULTMSG = 18;
     public static final int PIC_800_RECOMMENDED = 7;
+    public static final int PIC_AIGC_EMOJI = 14;
     public static final int PIC_ALBUM_GIF = 11;
     public static final int PIC_COMMERCIAL_ADVERTISING = 9;
     public static final int PIC_FIND = 10;
@@ -378,8 +491,4 @@ public final class MsgConstant {
     public static final int TEXTELEMENTSUBTYPELINK = 1;
     public static final int TEXTELEMENTSUBTYPETENCENTDOC = 2;
     public static final int TEXTELEMENTSUBTYPEUNKNOWN = 0;
-
-    public String toString() {
-        return "MsgConstant{}";
-    }
 }

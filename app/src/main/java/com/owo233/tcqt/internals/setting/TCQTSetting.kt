@@ -32,6 +32,7 @@ internal object TCQTSetting {
     const val FORCED_TO_B: String = "forced_to_b"
     const val MODULE_UPDATE: String = "module_update"
     const val ONE_CLICK_LIKES: String = "one_click_likes"
+    const val REPEAT_MESSAGE: String = "repeat_message"
     const val POKE_NO_COOL_DOWN: String = "poke_no_cool_down"
     const val PIC_TYPE_EMOTICON: String = "pic_type_emoticon"
     const val REMOVE_AD: String = "remove_ad"
@@ -50,7 +51,7 @@ internal object TCQTSetting {
     private val config: MMKV get() = MMKVUtils.mmkvWithId("TCQT")
 
     val settingMap = hashMapOf<String, Setting<out Any>>(
-        CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, false),
+        CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, true),
         CUSTOM_SUBAPPID to Setting(CUSTOM_SUBAPPID, SettingType.BOOLEAN, false),
         CUSTOM_SUBAPPID_STRING to Setting(CUSTOM_SUBAPPID_STRING, SettingType.STRING, ""),
         DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, false),
@@ -69,6 +70,7 @@ internal object TCQTSetting {
         LOGIN_CHECK_BOX_DEFAULT to Setting(LOGIN_CHECK_BOX_DEFAULT, SettingType.BOOLEAN, false),
         MODULE_UPDATE to Setting(MODULE_UPDATE, SettingType.BOOLEAN, false),
         ONE_CLICK_LIKES to Setting(ONE_CLICK_LIKES, SettingType.BOOLEAN, false),
+        REPEAT_MESSAGE to Setting(REPEAT_MESSAGE, SettingType.BOOLEAN, false),
         POKE_NO_COOL_DOWN to Setting(POKE_NO_COOL_DOWN, SettingType.BOOLEAN, false),
         PIC_TYPE_EMOTICON to Setting(PIC_TYPE_EMOTICON, SettingType.BOOLEAN, false),
         REMOVE_AD to Setting(REMOVE_AD, SettingType.BOOLEAN, false),
