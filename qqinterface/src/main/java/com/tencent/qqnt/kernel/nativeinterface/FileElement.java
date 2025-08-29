@@ -2,7 +2,7 @@ package com.tencent.qqnt.kernel.nativeinterface;
 
 import java.util.HashMap;
 
-public final class FileElement {
+public final class FileElement implements IKernelModel {
     public Long expireTime;
     public byte[] extensionFields;
     public FileAssistantSource faSource;
@@ -20,6 +20,7 @@ public final class FileElement {
     public String fileUuid;
     public String folderId;
     public Integer invalidState;
+    public Boolean isInApplicationDataPath;
     public Integer picHeight;
     public HashMap<Integer, String> picThumbPath;
     public Integer picWidth;
@@ -108,6 +109,10 @@ public final class FileElement {
 
     public Integer getInvalidState() {
         return this.invalidState;
+    }
+
+    public Boolean getIsInApplicationDataPath() {
+        return this.isInApplicationDataPath;
     }
 
     public Integer getPicHeight() {
@@ -218,6 +223,10 @@ public final class FileElement {
         this.invalidState = num;
     }
 
+    public void setIsInApplicationDataPath(Boolean bool) {
+        this.isInApplicationDataPath = bool;
+    }
+
     public void setPicHeight(Integer num) {
         this.picHeight = num;
     }
@@ -256,10 +265,6 @@ public final class FileElement {
 
     public void setVideoDuration(Integer num) {
         this.videoDuration = num;
-    }
-
-    public String toString() {
-        return "FileElement{fileMd5=" + this.fileMd5 + ",fileName=" + this.fileName + ",filePath=" + this.filePath + ",fileSize=" + this.fileSize + ",picHeight=" + this.picHeight + ",picWidth=" + this.picWidth + ",picThumbPath=" + this.picThumbPath + ",expireTime=" + this.expireTime + ",file10MMd5=" + this.file10MMd5 + ",fileSha=" + this.fileSha + ",fileSha3=" + this.fileSha3 + ",videoDuration=" + this.videoDuration + ",transferStatus=" + this.transferStatus + ",progress=" + this.progress + ",invalidState=" + this.invalidState + ",fileUuid=" + this.fileUuid + ",fileSubId=" + this.fileSubId + ",thumbFileSize=" + this.thumbFileSize + ",fileBizId=" + this.fileBizId + ",thumbMd5=" + this.thumbMd5 + ",folderId=" + this.folderId + ",fileGroupIndex=" + this.fileGroupIndex + ",fileTransType=" + this.fileTransType + ",subElementType=" + this.subElementType + ",storeID=" + this.storeID + ",faSource=" + this.faSource + ",extensionFields=" + this.extensionFields + ",}";
     }
 
     public FileElement(String str, String str2, String str3, long j, Integer num, Integer num2, HashMap<Integer, String> hashMap, Long l, String str4, String str5, String str6, Integer num3, Integer num4, Integer num5, Integer num6, String str7, String str8, int i, Integer num7, String str9, String str10, Integer num8, Integer num9, Integer num10, int i2, FileAssistantSource fileAssistantSource, byte[] bArr) {

@@ -12,7 +12,7 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toUtf8ByteArray
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.hooks.base.HostSpecies
-import com.owo233.tcqt.utils.PacketUtil
+import com.owo233.tcqt.utils.PacketUtils
 import com.owo233.tcqt.utils.PlatformTools.QQ_9_1_90_26520
 import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.logI
@@ -28,7 +28,7 @@ class ExcludeSendCmd: IAction {
     private val configClass = XpClassLoader.load("com.tencent.freesia.UnitedConfig")!!
     private val codecWarpper = XpClassLoader.load("com.tencent.qphone.base.util.CodecWarpper")!!
     private val teaKey = ByteArray(16)
-    private val pack = PacketUtil()
+    private val pack = PacketUtils()
     private var hook: XC_MethodHook.Unhook? = null
 
     override fun onRun(ctx: Context, process: ActionProcess) {

@@ -13,7 +13,6 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.fieldValue
-import com.owo233.tcqt.utils.injectRes
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.hooks.base.hostInfo
@@ -89,8 +88,6 @@ class AddModuleEntrance: AlwaysRunAction() {
                 val resId = context.resources.getIdentifier(
                     "qui_tuning", "drawable", hostInfo.packageName
                 )
-
-                injectRes()
 
                 // 创建 SimpleItemProcessor 实例
                 val item = simpleItemProcessorClass.new(

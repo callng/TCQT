@@ -1,18 +1,18 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-public final class TextElement {
-    Long atChannelId;
-    String atNtUid;
-    Integer atRoleColor;
-    Long atRoleId;
-    String atRoleName;
-    long atTinyId;
-    int atType;
-    long atUid;
-    String content;
-    LinkInfo linkInfo;
-    Integer needNotify;
-    Integer subElementType;
+public final class TextElement implements IKernelModel {
+    public Long atChannelId;
+    public String atNtUid;
+    public Integer atRoleColor;
+    public Long atRoleId;
+    public String atRoleName;
+    public long atTinyId;
+    public int atType;
+    public long atUid;
+    public String content;
+    public LinkInfo linkInfo;
+    public Integer needNotify;
+    public Integer subElementType;
 
     public TextElement() {
         this.content = "";
@@ -66,8 +66,8 @@ public final class TextElement {
         return this.subElementType;
     }
 
-    public void setAtChannelId(Long l2) {
-        this.atChannelId = l2;
+    public void setAtChannelId(Long l) {
+        this.atChannelId = l;
     }
 
     public void setAtNtUid(String str) {
@@ -78,24 +78,24 @@ public final class TextElement {
         this.atRoleColor = num;
     }
 
-    public void setAtRoleId(Long l2) {
-        this.atRoleId = l2;
+    public void setAtRoleId(Long l) {
+        this.atRoleId = l;
     }
 
     public void setAtRoleName(String str) {
         this.atRoleName = str;
     }
 
-    public void setAtTinyId(long j2) {
-        this.atTinyId = j2;
+    public void setAtTinyId(long j) {
+        this.atTinyId = j;
     }
 
-    public void setAtType(int i2) {
-        this.atType = i2;
+    public void setAtType(int i) {
+        this.atType = i;
     }
 
-    public void setAtUid(long j2) {
-        this.atUid = j2;
+    public void setAtUid(long j) {
+        this.atUid = j;
     }
 
     public void setContent(String str) {
@@ -114,21 +114,16 @@ public final class TextElement {
         this.subElementType = num;
     }
 
-    public String toString() {
-        return "TextElement{content=" + this.content + ",atType=" + this.atType + ",atUid=" + this.atUid + ",atTinyId=" + this.atTinyId + ",atNtUid=" + this.atNtUid + ",subElementType=" + this.subElementType + ",atChannelId=" + this.atChannelId + ",linkInfo=" + this.linkInfo + ",atRoleId=" + this.atRoleId + ",atRoleColor=" + this.atRoleColor + ",atRoleName=" + this.atRoleName + ",needNotify=" + this.needNotify + ",}";
-    }
-
-    public TextElement(String str, int i2, long j2, long j3, String str2, Integer num, Long l2, LinkInfo linkInfo, Long l3, Integer num2, String str3, Integer num3) {
-        this.content = "";
+    public TextElement(String str, int i, long j, long j2, String str2, Integer num, Long l, LinkInfo linkInfo, Long l2, Integer num2, String str3, Integer num3) {
         this.content = str;
-        this.atType = i2;
-        this.atUid = j2;
-        this.atTinyId = j3;
+        this.atType = i;
+        this.atUid = j;
+        this.atTinyId = j2;
         this.atNtUid = str2;
         this.subElementType = num;
-        this.atChannelId = l2;
+        this.atChannelId = l;
         this.linkInfo = linkInfo;
-        this.atRoleId = l3;
+        this.atRoleId = l2;
         this.atRoleColor = num2;
         this.atRoleName = str3;
         this.needNotify = num3;

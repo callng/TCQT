@@ -1,15 +1,31 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class LinkInfo {
-    String icon;
-    Integer tencentDocType;
-    String title;
+    public String desc;
+    public String icon;
+    public boolean isDefaultPicture;
+    public RichStatus richStatus;
+    public Integer tencentDocType;
+    public String title;
 
     public LinkInfo() {
+        this.richStatus = RichStatus.values()[0];
+    }
+
+    public String getDesc() {
+        return this.desc;
     }
 
     public String getIcon() {
         return this.icon;
+    }
+
+    public boolean getIsDefaultPicture() {
+        return this.isDefaultPicture;
+    }
+
+    public RichStatus getRichStatus() {
+        return this.richStatus;
     }
 
     public Integer getTencentDocType() {
@@ -20,13 +36,12 @@ public final class LinkInfo {
         return this.title;
     }
 
-    public String toString() {
-        return "LinkInfo{title=" + this.title + ",icon=" + this.icon + ",tencentDocType=" + this.tencentDocType + ",}";
-    }
-
-    public LinkInfo(String str, String str2, Integer num) {
+    public LinkInfo(String str, String str2, String str3, RichStatus richStatus, Integer num) {
+        RichStatus richStatus2 = RichStatus.values()[0];
         this.title = str;
         this.icon = str2;
+        this.desc = str3;
+        this.richStatus = richStatus;
         this.tencentDocType = num;
     }
 }

@@ -1,9 +1,8 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-
-public  final class MarketFaceSupportSize {
-    int height;
-    int width;
+public final class MarketFaceSupportSize {
+    public int height;
+    public int width;
 
     public MarketFaceSupportSize() {
     }
@@ -16,12 +15,8 @@ public  final class MarketFaceSupportSize {
         return this.width;
     }
 
-    public String toString() {
-        return "MarketFaceSupportSize{width=" + this.width + ",height=" + this.height + ",}";
-    }
-
-    public MarketFaceSupportSize(int i2, int i3) {
-        this.width = i2;
-        this.height = i3;
+    public MarketFaceSupportSize(int i, int i2) {
+        this.width = i;
+        this.height = i2;
     }
 }

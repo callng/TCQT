@@ -2,31 +2,33 @@ package com.tencent.qqnt.kernel.nativeinterface;
 
 import java.util.HashMap;
 
-
-
-public final class VideoElement {
-    int busiType;
-    Integer fileBizId;
-    int fileFormat;
-    String fileName;
-    String filePath;
-    long fileSize;
-    String fileSubId;
-    int fileTime;
-    String fileUuid;
-    byte[] importRichMediaContext;
-    Integer invalidState;
-    String originVideoMd5;
-    Integer progress;
-    VideoCodecFormatType sourceVideoCodecFormat;
-    int subBusiType;
-    int thumbHeight;
-    String thumbMd5;
-    HashMap<Integer, String> thumbPath;
-    int thumbSize;
-    int thumbWidth;
-    Integer transferStatus;
-    String videoMd5;
+public final class VideoElement implements IKernelModel {
+    public int busiType;
+    public Integer fileBizId;
+    public int fileFormat;
+    public String fileName;
+    public String filePath;
+    public long fileSize;
+    public String fileSubId;
+    public int fileTime;
+    public String fileUuid;
+    public byte[] importRichMediaContext;
+    public Integer invalidState;
+    public Boolean isInApplicationDataPath;
+    public String originVideoMd5;
+    public boolean original;
+    public Integer progress;
+    public VideoCodecFormatType sourceVideoCodecFormat;
+    public int storeID;
+    public int subBusiType;
+    public int thumbHeight;
+    public String thumbMd5;
+    public HashMap<Integer, String> thumbPath;
+    public int thumbSize;
+    public int thumbWidth;
+    public Integer transferStatus;
+    public int videoFrom;
+    public String videoMd5;
 
     public VideoElement() {
         this.filePath = "";
@@ -83,8 +85,16 @@ public final class VideoElement {
         return this.invalidState;
     }
 
+    public Boolean getIsInApplicationDataPath() {
+        return this.isInApplicationDataPath;
+    }
+
     public String getOriginVideoMd5() {
         return this.originVideoMd5;
+    }
+
+    public boolean getOriginal() {
+        return this.original;
     }
 
     public Integer getProgress() {
@@ -93,6 +103,10 @@ public final class VideoElement {
 
     public VideoCodecFormatType getSourceVideoCodecFormat() {
         return this.sourceVideoCodecFormat;
+    }
+
+    public int getStoreID() {
+        return this.storeID;
     }
 
     public int getSubBusiType() {
@@ -123,20 +137,24 @@ public final class VideoElement {
         return this.transferStatus;
     }
 
+    public int getVideoFrom() {
+        return this.videoFrom;
+    }
+
     public String getVideoMd5() {
         return this.videoMd5;
     }
 
-    public void setBusiType(int i2) {
-        this.busiType = i2;
+    public void setBusiType(int i) {
+        this.busiType = i;
     }
 
     public void setFileBizId(Integer num) {
         this.fileBizId = num;
     }
 
-    public void setFileFormat(int i2) {
-        this.fileFormat = i2;
+    public void setFileFormat(int i) {
+        this.fileFormat = i;
     }
 
     public void setFileName(String str) {
@@ -147,16 +165,16 @@ public final class VideoElement {
         this.filePath = str;
     }
 
-    public void setFileSize(long j2) {
-        this.fileSize = j2;
+    public void setFileSize(long j) {
+        this.fileSize = j;
     }
 
     public void setFileSubId(String str) {
         this.fileSubId = str;
     }
 
-    public void setFileTime(int i2) {
-        this.fileTime = i2;
+    public void setFileTime(int i) {
+        this.fileTime = i;
     }
 
     public void setFileUuid(String str) {
@@ -171,8 +189,16 @@ public final class VideoElement {
         this.invalidState = num;
     }
 
+    public void setIsInApplicationDataPath(Boolean bool) {
+        this.isInApplicationDataPath = bool;
+    }
+
     public void setOriginVideoMd5(String str) {
         this.originVideoMd5 = str;
+    }
+
+    public void setOriginal(boolean z) {
+        this.original = z;
     }
 
     public void setProgress(Integer num) {
@@ -183,12 +209,16 @@ public final class VideoElement {
         this.sourceVideoCodecFormat = videoCodecFormatType;
     }
 
-    public void setSubBusiType(int i2) {
-        this.subBusiType = i2;
+    public void setStoreID(int i) {
+        this.storeID = i;
     }
 
-    public void setThumbHeight(int i2) {
-        this.thumbHeight = i2;
+    public void setSubBusiType(int i) {
+        this.subBusiType = i;
+    }
+
+    public void setThumbHeight(int i) {
+        this.thumbHeight = i;
     }
 
     public void setThumbMd5(String str) {
@@ -199,27 +229,27 @@ public final class VideoElement {
         this.thumbPath = hashMap;
     }
 
-    public void setThumbSize(int i2) {
-        this.thumbSize = i2;
+    public void setThumbSize(int i) {
+        this.thumbSize = i;
     }
 
-    public void setThumbWidth(int i2) {
-        this.thumbWidth = i2;
+    public void setThumbWidth(int i) {
+        this.thumbWidth = i;
     }
 
     public void setTransferStatus(Integer num) {
         this.transferStatus = num;
     }
 
+    public void setVideoFrom(int i) {
+        this.videoFrom = i;
+    }
+
     public void setVideoMd5(String str) {
         this.videoMd5 = str;
     }
 
-    public String toString() {
-        return "VideoElement{filePath=" + this.filePath + ",fileName=" + this.fileName + ",videoMd5=" + this.videoMd5 + ",thumbMd5=" + this.thumbMd5 + ",fileTime=" + this.fileTime + ",thumbSize=" + this.thumbSize + ",fileFormat=" + this.fileFormat + ",fileSize=" + this.fileSize + ",thumbWidth=" + this.thumbWidth + ",thumbHeight=" + this.thumbHeight + ",busiType=" + this.busiType + ",subBusiType=" + this.subBusiType + ",thumbPath=" + this.thumbPath + ",transferStatus=" + this.transferStatus + ",progress=" + this.progress + ",invalidState=" + this.invalidState + ",fileUuid=" + this.fileUuid + ",fileSubId=" + this.fileSubId + ",fileBizId=" + this.fileBizId + ",originVideoMd5=" + this.originVideoMd5 + ",importRichMediaContext=" + this.importRichMediaContext + ",sourceVideoCodecFormat=" + this.sourceVideoCodecFormat + ",}";
-    }
-
-    public VideoElement(String str, String str2, String str3, String str4, int i2, int i3, int i4, long j2, int i5, int i6, int i7, int i8, HashMap<Integer, String> hashMap, Integer num, Integer num2, Integer num3, String str5, String str6, Integer num4, String str7, byte[] bArr, VideoCodecFormatType videoCodecFormatType) {
+    public VideoElement(String str, String str2, String str3, String str4, int i, int i2, int i3, long j, int i4, int i5, int i6, int i7, HashMap<Integer, String> hashMap, Integer num, Integer num2, Integer num3, String str5, String str6, Integer num4, String str7, byte[] bArr, VideoCodecFormatType videoCodecFormatType, int i8) {
         this.filePath = "";
         this.fileName = "";
         this.videoMd5 = "";
@@ -227,19 +257,18 @@ public final class VideoElement {
         this.fileUuid = "";
         this.fileSubId = "";
         this.originVideoMd5 = "";
-        this.sourceVideoCodecFormat = VideoCodecFormatType.values()[0];
         this.filePath = str;
         this.fileName = str2;
         this.videoMd5 = str3;
         this.thumbMd5 = str4;
-        this.fileTime = i2;
-        this.thumbSize = i3;
-        this.fileFormat = i4;
-        this.fileSize = j2;
-        this.thumbWidth = i5;
-        this.thumbHeight = i6;
-        this.busiType = i7;
-        this.subBusiType = i8;
+        this.fileTime = i;
+        this.thumbSize = i2;
+        this.fileFormat = i3;
+        this.fileSize = j;
+        this.thumbWidth = i4;
+        this.thumbHeight = i5;
+        this.busiType = i6;
+        this.subBusiType = i7;
         this.thumbPath = hashMap;
         this.transferStatus = num;
         this.progress = num2;
@@ -250,5 +279,6 @@ public final class VideoElement {
         this.originVideoMd5 = str7;
         this.importRichMediaContext = bArr;
         this.sourceVideoCodecFormat = videoCodecFormatType;
+        this.storeID = i8;
     }
 }

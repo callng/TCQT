@@ -1,9 +1,9 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class ArkElement {
-    String bytesData;
-    LinkInfo linkInfo;
-    Integer subElementType;
+    public String bytesData;
+    public LinkInfo linkInfo;
+    public Integer subElementType;
 
     public ArkElement() {
         this.bytesData = "";
@@ -21,12 +21,8 @@ public final class ArkElement {
         return this.subElementType;
     }
 
-    public String toString() {
-        return "ArkElement{bytesData=" + this.bytesData + ",linkInfo=" + this.linkInfo + ",subElementType=" + this.subElementType + ",}";
-    }
-
-    public ArkElement(String data, LinkInfo linkInfo, Integer num) {
-        this.bytesData = data;
+    public ArkElement(String str, LinkInfo linkInfo, Integer num) {
+        this.bytesData = str;
         this.linkInfo = linkInfo;
         this.subElementType = num;
     }

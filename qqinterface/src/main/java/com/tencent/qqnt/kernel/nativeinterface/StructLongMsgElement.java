@@ -1,10 +1,8 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-
-
 public final class StructLongMsgElement {
-    String resId;
-    String xmlContent;
+    public String resId;
+    public String xmlContent;
 
     public StructLongMsgElement() {
     }
@@ -15,10 +13,6 @@ public final class StructLongMsgElement {
 
     public String getXmlContent() {
         return this.xmlContent;
-    }
-
-    public String toString() {
-        return "StructLongMsgElement{xmlContent=" + this.xmlContent + ",resId=" + this.resId + ",}";
     }
 
     public StructLongMsgElement(String str, String str2) {

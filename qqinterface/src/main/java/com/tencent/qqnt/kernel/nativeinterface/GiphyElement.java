@@ -1,10 +1,10 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class GiphyElement {
-    int height;
-    String id;
-    boolean isClip;
-    int width;
+    public int height;
+    public String id;
+    public boolean isClip;
+    public int width;
 
     public GiphyElement() {
         this.id = "";
@@ -26,15 +26,10 @@ public final class GiphyElement {
         return this.width;
     }
 
-    public String toString() {
-        return "GiphyElement{id=" + this.id + ",isClip=" + this.isClip + ",width=" + this.width + ",height=" + this.height + ",}";
-    }
-
-    public GiphyElement(String str, boolean z, int i2, int i3) {
-        this.id = "";
+    public GiphyElement(String str, boolean z, int i, int i2) {
         this.id = str;
         this.isClip = z;
-        this.width = i2;
-        this.height = i3;
+        this.width = i;
+        this.height = i2;
     }
 }

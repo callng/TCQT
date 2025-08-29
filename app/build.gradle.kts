@@ -53,7 +53,7 @@ android {
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
         versionName = "3.1"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
-        // buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
+        buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
 
     buildFeatures {
@@ -66,6 +66,12 @@ android {
             isCrunchPngs = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+    }
+    androidResources {
+        additionalParameters += arrayOf(
+            "--allow-reserved-package-id",
+            "--package-id", "0x53"
+        )
     }
     packaging {
         resources.excludes.addAll(

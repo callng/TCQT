@@ -3,10 +3,10 @@ package com.tencent.qqnt.kernel.nativeinterface;
 
 
 public final class SmallYellowFaceInfo {
-    String buf;
-    String compatibleText;
-    int index;
-    String text;
+    public String buf;
+    public String compatibleText;
+    public int index;
+    public String text;
 
     public SmallYellowFaceInfo() {
     }
@@ -35,20 +35,16 @@ public final class SmallYellowFaceInfo {
         this.compatibleText = str;
     }
 
-    public void setIndex(int i2) {
-        this.index = i2;
+    public void setIndex(int i) {
+        this.index = i;
     }
 
     public void setText(String str) {
         this.text = str;
     }
 
-    public String toString() {
-        return "SmallYellowFaceInfo{index=" + this.index + ",text=" + this.text + ",compatibleText=" + this.compatibleText + ",buf=" + this.buf + ",}";
-    }
-
-    public SmallYellowFaceInfo(int i2, String str, String str2, String str3) {
-        this.index = i2;
+    public SmallYellowFaceInfo(int i, String str, String str2, String str3) {
+        this.index = i;
         this.text = str;
         this.compatibleText = str2;
         this.buf = str3;

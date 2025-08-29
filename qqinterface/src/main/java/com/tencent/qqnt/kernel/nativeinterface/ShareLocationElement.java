@@ -1,10 +1,8 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-
-
 public final class ShareLocationElement {
-    String ext;
-    String text;
+    public String ext;
+    public String text;
 
     public ShareLocationElement() {
     }
@@ -23,10 +21,6 @@ public final class ShareLocationElement {
 
     public void setText(String str) {
         this.text = str;
-    }
-
-    public String toString() {
-        return "ShareLocationElement{text=" + this.text + ",ext=" + this.ext + ",}";
     }
 
     public ShareLocationElement(String str, String str2) {

@@ -3,12 +3,15 @@ package com.owo233.tcqt
 import android.app.Application
 import android.content.Context
 import android.content.res.XModuleResources
+import android.os.Build
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.hooks.base.ProcUtil
+import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.hooks.base.initHostInfo
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.utils.field
@@ -17,6 +20,9 @@ import com.owo233.tcqt.hooks.base.moduleClassLoader
 import com.owo233.tcqt.hooks.base.moduleLoadInit
 import com.owo233.tcqt.hooks.base.modulePath
 import com.owo233.tcqt.hooks.base.moduleRes
+import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.injectRes
+import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.callbacks.XC_LoadPackage
@@ -84,6 +90,20 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
             } else return
 
             secStaticStageInited = true
+
+            if (ProcUtil.isMain) {
+                injectRes()
+
+                logI(msg = """
+
+
+                    android version: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
+                    module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }
+                    host version: ${PlatformTools.getQQVersion()}(${PlatformTools.getQQVersionCode()}) ${PlatformTools.getQQChannel()}
+
+
+                """.trimIndent())
+            }
 
             ActionManager.runFirst(ctx, when {
                 ProcUtil.isMain -> ActionProcess.MAIN

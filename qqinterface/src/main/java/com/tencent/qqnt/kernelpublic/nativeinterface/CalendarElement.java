@@ -1,16 +1,14 @@
-package com.tencent.qqnt.kernel.nativeinterface;
+package com.tencent.qqnt.kernelpublic.nativeinterface;
 
 import java.io.Serializable;
 
 public final class CalendarElement implements Serializable {
-    long expireTimeMs;
-
-    /* renamed from: msg  reason: collision with root package name */
-    String msg;
-    String schema;
-    int schemaType;
+    public long expireTimeMs;
+    public String msg;
+    public String schema;
+    public int schemaType;
     long serialVersionUID;
-    String summary;
+    public String summary;
 
     public CalendarElement() {
         this.serialVersionUID = 1L;
@@ -39,16 +37,12 @@ public final class CalendarElement implements Serializable {
         return this.summary;
     }
 
-    public String toString() {
-        return "CalendarElement{summary=" + this.summary + ",msg=" + this.msg + ",expireTimeMs=" + this.expireTimeMs + ",schemaType=" + this.schemaType + ",schema=" + this.schema + ",}";
-    }
-
-    public CalendarElement(String str, String str2, long j2, int i2, String str3) {
+    public CalendarElement(String str, String str2, long j, int i, String str3) {
         this.serialVersionUID = 1L;
         this.summary = str;
         this.msg = str2;
-        this.expireTimeMs = j2;
-        this.schemaType = i2;
+        this.expireTimeMs = j;
+        this.schemaType = i;
         this.schema = str3;
     }
 }

@@ -3,7 +3,7 @@ package com.owo233.tcqt.utils
 import android.os.Handler
 import android.os.Looper
 
-object SyncUtil {
+object SyncUtils {
 
     private lateinit var sHandler: Handler
 

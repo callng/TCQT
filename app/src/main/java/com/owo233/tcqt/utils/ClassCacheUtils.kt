@@ -3,7 +3,7 @@ package com.owo233.tcqt.utils
 import com.owo233.tcqt.ext.XpClassLoader
 import java.util.concurrent.ConcurrentHashMap
 
-object ClassCacheUtil {
+object ClassCacheUtils {
 
     private val classCache = ConcurrentHashMap<String, Class<*>>()
 

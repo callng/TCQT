@@ -2,35 +2,34 @@ package com.tencent.qqnt.kernel.nativeinterface;
 
 import java.util.ArrayList;
 
-
-public  final class MarketFaceElement {
-    ArrayList<MarketFaceSupportSize> apngSupportSize;
-    String backColor;
-    String dynamicFacePath;
-    String emojiId;
-    int emojiPackageId;
-    Integer emojiType;
-    Integer endTime;
-    int faceInfo;
-    String faceName;
-    Integer hasIpProduct;
-    int imageHeight;
-    int imageWidth;
-    int itemType;
-    String key;
-    int mediaType;
-    byte[] mobileParam;
-    byte[] param;
-    String sourceJumpUrl;
-    String sourceName;
-    Integer sourceType;
-    String sourceTypeName;
-    Integer startTime;
-    String staticFacePath;
-    int subType;
-    ArrayList<MarketFaceSupportSize> supportSize;
-    ArrayList<Integer> voiceItemHeightArr;
-    String volumeColor;
+public final class MarketFaceElement {
+    public ArrayList<MarketFaceSupportSize> apngSupportSize;
+    public String backColor;
+    public String dynamicFacePath;
+    public String emojiId;
+    public int emojiPackageId;
+    public Integer emojiType;
+    public Integer endTime;
+    public int faceInfo;
+    public String faceName;
+    public Integer hasIpProduct;
+    public int imageHeight;
+    public int imageWidth;
+    public int itemType;
+    public String key;
+    public int mediaType;
+    public byte[] mobileParam;
+    public byte[] param;
+    public String sourceJumpUrl;
+    public String sourceName;
+    public Integer sourceType;
+    public String sourceTypeName;
+    public Integer startTime;
+    public String staticFacePath;
+    public int subType;
+    public ArrayList<MarketFaceSupportSize> supportSize;
+    public ArrayList<Integer> voiceItemHeightArr;
+    public String volumeColor;
 
     public MarketFaceElement() {
     }
@@ -143,47 +142,33 @@ public  final class MarketFaceElement {
         return this.volumeColor;
     }
 
-    public String toString() {
-        return "MarketFaceElement{itemType=" + this.itemType + ",faceInfo=" + this.faceInfo + ",emojiPackageId=" + this.emojiPackageId + ",subType=" + this.subType + ",mediaType=" + this.mediaType + ",imageWidth=" + this.imageWidth + ",imageHeight=" + this.imageHeight + ",faceName=" + this.faceName + ",emojiId=" + this.emojiId + ",key=" + this.key + ",param=" + this.param + ",mobileParam=" + this.mobileParam + ",sourceType=" + this.sourceType + ",startTime=" + this.startTime + ",endTime=" + this.endTime + ",emojiType=" + this.emojiType + ",hasIpProduct=" + this.hasIpProduct + ",voiceItemHeightArr=" + this.voiceItemHeightArr + ",sourceName=" + this.sourceName + ",sourceJumpUrl=" + this.sourceJumpUrl + ",sourceTypeName=" + this.sourceTypeName + ",backColor=" + this.backColor + ",volumeColor=" + this.volumeColor + ",staticFacePath=" + this.staticFacePath + ",dynamicFacePath=" + this.dynamicFacePath + ",supportSize=" + this.supportSize + ",apngSupportSize=" + this.apngSupportSize + ",}";
-    }
-
-    public MarketFaceElement(int itemType, int faceInfo, int packageId, int subtype, int mediaType,
-                             int width, int height, String faceName, String emojiId, String key,
-                             byte[] param, byte[] mobileParam,
-                             Integer sourceType, Integer startTime, Integer endTime,
-                             Integer emojiType, Integer hasIpProduct,
-                             ArrayList<Integer> voiceItemHeightArr,
-                             String sourceName, String jumpurl, String sourceTypeName,
-                             String backgroundColor, String volumColor,
-                             String staticPath, String dynamicPath,
-                             ArrayList<MarketFaceSupportSize> supportSize,
-                             ArrayList<MarketFaceSupportSize> apngSupportSize) {
-        this.itemType = itemType;
-        this.faceInfo = faceInfo;
-        this.emojiPackageId = packageId;
-        this.subType = subtype;
-        this.mediaType = mediaType;
-        this.imageWidth = width;
-        this.imageHeight = height;
-        this.faceName = faceName;
-        this.emojiId = emojiId;
-        this.key = key;
-        this.param = param;
-        this.mobileParam = mobileParam;
-        this.sourceType = sourceType;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.emojiType = emojiType;
-        this.hasIpProduct = hasIpProduct;
-        this.voiceItemHeightArr = voiceItemHeightArr;
-        this.sourceName = sourceName;
-        this.sourceJumpUrl = jumpurl;
-        this.sourceTypeName = sourceTypeName;
-        this.backColor = backgroundColor;
-        this.volumeColor = volumColor;
-        this.staticFacePath = staticPath;
-        this.dynamicFacePath = dynamicPath;
-        this.supportSize = supportSize;
-        this.apngSupportSize = apngSupportSize;
+    public MarketFaceElement(int i, int i2, int i3, int i4, int i5, int i6, int i7, String str, String str2, String str3, byte[] bArr, byte[] bArr2, Integer num, Integer num2, Integer num3, Integer num4, Integer num5, ArrayList<Integer> arrayList, String str4, String str5, String str6, String str7, String str8, String str9, String str10, ArrayList<MarketFaceSupportSize> arrayList2, ArrayList<MarketFaceSupportSize> arrayList3) {
+        this.itemType = i;
+        this.faceInfo = i2;
+        this.emojiPackageId = i3;
+        this.subType = i4;
+        this.mediaType = i5;
+        this.imageWidth = i6;
+        this.imageHeight = i7;
+        this.faceName = str;
+        this.emojiId = str2;
+        this.key = str3;
+        this.param = bArr;
+        this.mobileParam = bArr2;
+        this.sourceType = num;
+        this.startTime = num2;
+        this.endTime = num3;
+        this.emojiType = num4;
+        this.hasIpProduct = num5;
+        this.voiceItemHeightArr = arrayList;
+        this.sourceName = str4;
+        this.sourceJumpUrl = str5;
+        this.sourceTypeName = str6;
+        this.backColor = str7;
+        this.volumeColor = str8;
+        this.staticFacePath = str9;
+        this.dynamicFacePath = str10;
+        this.supportSize = arrayList2;
+        this.apngSupportSize = arrayList3;
     }
 }

@@ -1,36 +1,52 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-public final class MsgElement {
-    ArkElement arkElement; // JSON MSG
-    AVRecordElement avRecordElement; // 录音
-    CalendarElement calendarElement;
-    long elementId;
-    int elementType;
-    byte[] extBufForUI;
-    FaceBubbleElement faceBubbleElement;
-    FaceElement faceElement; // 表情 | Poke
-    FileElement fileElement; // 文件
-    GiphyElement giphyElement;
-    //GrayTipElement grayTipElement; // 灰色提示
-    InlineKeyboardElement inlineKeyboardElement; // 内联键盘
-    //LiveGiftElement liveGiftElement; // 直播礼物
-    MarkdownElement markdownElement; // MD
-    MarketFaceElement marketFaceElement;
-    MultiForwardMsgElement multiForwardMsgElement;
-    PicElement picElement;
-    PttElement pttElement;
-    ReplyElement replyElement;
-    ShareLocationElement shareLocationElement;
-    StructLongMsgElement structLongMsgElement;
-    StructMsgElement structMsgElement; // xml
-    TextElement textElement;
-    //TextGiftElement textGiftElement;
-    //TofuRecordElement tofuRecordElement;
-    VideoElement videoElement; // 视频
-    //WalletElement walletElement;
-    //YoloGameResultElement yoloGameResultElement;
+import com.tencent.qqnt.kernelpublic.nativeinterface.CalendarElement;
+import com.tencent.qqnt.kernelpublic.nativeinterface.GrayTipElement;
+import com.tencent.qqnt.kernelpublic.nativeinterface.TextGiftElement;
+import java.io.Serializable;
+
+public final class MsgElement implements IKernelModel, Serializable {
+    public AdelieActionBarElement actionBarElement;
+    public ArkElement arkElement;
+    public AVRecordElement avRecordElement;
+    public CalendarElement calendarElement;
+    public int elementGroupId;
+    public long elementId;
+    public int elementType;
+    public byte[] extBufForUI;
+    public FaceBubbleElement faceBubbleElement;
+    public FaceElement faceElement;
+    public FileElement fileElement;
+    public FilterMsgElement filterMsgElement;
+    public GiphyElement giphyElement;
+    public GrayTipElement grayTipElement;
+    public InlineKeyboardElement inlineKeyboardElement;
+    public LiveGiftElement liveGiftElement;
+    public MarkdownElement markdownElement;
+    public MarketFaceElement marketFaceElement;
+    public MultiForwardMsgElement multiForwardMsgElement;
+    public PicElement picElement;
+    public PrologueMsgElement prologueMsgElement;
+    public PttElement pttElement;
+    public AdelieRecommendedMsgElement recommendedMsgElement;
+    public ReplyElement replyElement;
+    long serialVersionUID = 1;
+    public ShareLocationElement shareLocationElement;
+    public StructLongMsgElement structLongMsgElement;
+    public StructMsgElement structMsgElement;
+    public TaskTopMsgElement taskTopMsgElement;
+    public TextElement textElement;
+    public TextGiftElement textGiftElement;
+    public TofuRecordElement tofuRecordElement;
+    public VideoElement videoElement;
+    public WalletElement walletElement;
+    public YoloGameResultElement yoloGameResultElement;
 
     public MsgElement() {
+    }
+
+    public AdelieActionBarElement getActionBarElement() {
+        return this.actionBarElement;
     }
 
     public ArkElement getArkElement() {
@@ -43,6 +59,10 @@ public final class MsgElement {
 
     public CalendarElement getCalendarElement() {
         return this.calendarElement;
+    }
+
+    public int getElementGroupId() {
+        return this.elementGroupId;
     }
 
     public long getElementId() {
@@ -69,21 +89,25 @@ public final class MsgElement {
         return this.fileElement;
     }
 
+    public FilterMsgElement getFilterMsgElement() {
+        return this.filterMsgElement;
+    }
+
     public GiphyElement getGiphyElement() {
         return this.giphyElement;
     }
 
-/*    public GrayTipElement getGrayTipElement() {
+    public GrayTipElement getGrayTipElement() {
         return this.grayTipElement;
-    }*/
+    }
 
     public InlineKeyboardElement getInlineKeyboardElement() {
         return this.inlineKeyboardElement;
     }
 
-/*    public LiveGiftElement getLiveGiftElement() {
+    public LiveGiftElement getLiveGiftElement() {
         return this.liveGiftElement;
-    }*/
+    }
 
     public MarkdownElement getMarkdownElement() {
         return this.markdownElement;
@@ -101,8 +125,16 @@ public final class MsgElement {
         return this.picElement;
     }
 
+    public PrologueMsgElement getPrologueMsgElement() {
+        return this.prologueMsgElement;
+    }
+
     public PttElement getPttElement() {
         return this.pttElement;
+    }
+
+    public AdelieRecommendedMsgElement getRecommendedMsgElement() {
+        return this.recommendedMsgElement;
     }
 
     public ReplyElement getReplyElement() {
@@ -121,29 +153,37 @@ public final class MsgElement {
         return this.structMsgElement;
     }
 
+    public TaskTopMsgElement getTaskTopMsgElement() {
+        return this.taskTopMsgElement;
+    }
+
     public TextElement getTextElement() {
         return this.textElement;
     }
 
-/*    public TextGiftElement getTextGiftElement() {
+    public TextGiftElement getTextGiftElement() {
         return this.textGiftElement;
     }
 
     public TofuRecordElement getTofuRecordElement() {
         return this.tofuRecordElement;
-    }*/
+    }
 
     public VideoElement getVideoElement() {
         return this.videoElement;
     }
-/*
+
     public WalletElement getWalletElement() {
         return this.walletElement;
     }
 
     public YoloGameResultElement getYoloGameResultElement() {
         return this.yoloGameResultElement;
-    }*/
+    }
+
+    public void setActionBarElement(AdelieActionBarElement adelieActionBarElement) {
+        this.actionBarElement = adelieActionBarElement;
+    }
 
     public void setArkElement(ArkElement arkElement) {
         this.arkElement = arkElement;
@@ -157,12 +197,16 @@ public final class MsgElement {
         this.calendarElement = calendarElement;
     }
 
-    public void setElementId(long j2) {
-        this.elementId = j2;
+    public void setElementGroupId(int i) {
+        this.elementGroupId = i;
     }
 
-    public void setElementType(int i2) {
-        this.elementType = i2;
+    public void setElementId(long j) {
+        this.elementId = j;
+    }
+
+    public void setElementType(int i) {
+        this.elementType = i;
     }
 
     public void setExtBufForUI(byte[] bArr) {
@@ -181,25 +225,25 @@ public final class MsgElement {
         this.fileElement = fileElement;
     }
 
+    public void setFilterMsgElement(FilterMsgElement filterMsgElement) {
+        this.filterMsgElement = filterMsgElement;
+    }
+
     public void setGiphyElement(GiphyElement giphyElement) {
         this.giphyElement = giphyElement;
     }
-/*
 
     public void setGrayTipElement(GrayTipElement grayTipElement) {
         this.grayTipElement = grayTipElement;
     }
-*/
 
     public void setInlineKeyboardElement(InlineKeyboardElement inlineKeyboardElement) {
         this.inlineKeyboardElement = inlineKeyboardElement;
     }
 
-/*
     public void setLiveGiftElement(LiveGiftElement liveGiftElement) {
         this.liveGiftElement = liveGiftElement;
     }
-*/
 
     public void setMarkdownElement(MarkdownElement markdownElement) {
         this.markdownElement = markdownElement;
@@ -217,8 +261,16 @@ public final class MsgElement {
         this.picElement = picElement;
     }
 
+    public void setPrologueMsgElement(PrologueMsgElement prologueMsgElement) {
+        this.prologueMsgElement = prologueMsgElement;
+    }
+
     public void setPttElement(PttElement pttElement) {
         this.pttElement = pttElement;
+    }
+
+    public void setRecommendedMsgElement(AdelieRecommendedMsgElement adelieRecommendedMsgElement) {
+        this.recommendedMsgElement = adelieRecommendedMsgElement;
     }
 
     public void setReplyElement(ReplyElement replyElement) {
@@ -237,11 +289,14 @@ public final class MsgElement {
         this.structMsgElement = structMsgElement;
     }
 
+    public void setTaskTopMsgElement(TaskTopMsgElement taskTopMsgElement) {
+        this.taskTopMsgElement = taskTopMsgElement;
+    }
+
     public void setTextElement(TextElement textElement) {
         this.textElement = textElement;
     }
 
-/*
     public void setTextGiftElement(TextGiftElement textGiftElement) {
         this.textGiftElement = textGiftElement;
     }
@@ -249,13 +304,11 @@ public final class MsgElement {
     public void setTofuRecordElement(TofuRecordElement tofuRecordElement) {
         this.tofuRecordElement = tofuRecordElement;
     }
-*/
 
     public void setVideoElement(VideoElement videoElement) {
         this.videoElement = videoElement;
     }
 
-/*
     public void setWalletElement(WalletElement walletElement) {
         this.walletElement = walletElement;
     }
@@ -263,16 +316,10 @@ public final class MsgElement {
     public void setYoloGameResultElement(YoloGameResultElement yoloGameResultElement) {
         this.yoloGameResultElement = yoloGameResultElement;
     }
-*/
 
-    public String toString() {
-        //return "MsgElement{elementType=" + this.elementType + ",elementId=" + this.elementId + ",extBufForUI=" + this.extBufForUI + ",textElement=" + this.textElement + ",faceElement=" + this.faceElement + ",marketFaceElement=" + this.marketFaceElement + ",replyElement=" + this.replyElement + ",picElement=" + this.picElement + ",pttElement=" + this.pttElement + ",videoElement=" + this.videoElement + ",grayTipElement=" + this.grayTipElement + ",arkElement=" + this.arkElement + ",fileElement=" + this.fileElement + ",liveGiftElement=" + this.liveGiftElement + ",markdownElement=" + this.markdownElement + ",structLongMsgElement=" + this.structLongMsgElement + ",multiForwardMsgElement=" + this.multiForwardMsgElement + ",giphyElement=" + this.giphyElement + ",walletElement=" + this.walletElement + ",inlineKeyboardElement=" + this.inlineKeyboardElement + ",textGiftElement=" + this.textGiftElement + ",calendarElement=" + this.calendarElement + ",yoloGameResultElement=" + this.yoloGameResultElement + ",avRecordElement=" + this.avRecordElement + ",structMsgElement=" + this.structMsgElement + ",faceBubbleElement=" + this.faceBubbleElement + ",shareLocationElement=" + this.shareLocationElement + ",tofuRecordElement=" + this.tofuRecordElement + ",}";
-        return "";
-    }
-
-/*    public MsgElement(int i2, long j2, byte[] bArr, TextElement textElement, FaceElement faceElement, MarketFaceElement marketFaceElement, ReplyElement replyElement, PicElement picElement, PttElement pttElement, VideoElement videoElement, GrayTipElement grayTipElement, ArkElement arkElement, FileElement fileElement, LiveGiftElement liveGiftElement, MarkdownElement markdownElement, StructLongMsgElement structLongMsgElement, MultiForwardMsgElement multiForwardMsgElement, GiphyElement giphyElement, WalletElement walletElement, InlineKeyboardElement inlineKeyboardElement, TextGiftElement textGiftElement, CalendarElement calendarElement, YoloGameResultElement yoloGameResultElement, AVRecordElement aVRecordElement, StructMsgElement structMsgElement, FaceBubbleElement faceBubbleElement, ShareLocationElement shareLocationElement, TofuRecordElement tofuRecordElement) {
-        this.elementType = i2;
-        this.elementId = j2;
+    public MsgElement(int i, long j, byte[] bArr, TextElement textElement, FaceElement faceElement, MarketFaceElement marketFaceElement, ReplyElement replyElement, PicElement picElement, PttElement pttElement, VideoElement videoElement, GrayTipElement grayTipElement, ArkElement arkElement, FileElement fileElement, LiveGiftElement liveGiftElement, MarkdownElement markdownElement, StructLongMsgElement structLongMsgElement, MultiForwardMsgElement multiForwardMsgElement, GiphyElement giphyElement, WalletElement walletElement, InlineKeyboardElement inlineKeyboardElement, TextGiftElement textGiftElement, CalendarElement calendarElement, YoloGameResultElement yoloGameResultElement, AVRecordElement aVRecordElement, StructMsgElement structMsgElement, FaceBubbleElement faceBubbleElement, ShareLocationElement shareLocationElement, TofuRecordElement tofuRecordElement, TaskTopMsgElement taskTopMsgElement, AdelieRecommendedMsgElement adelieRecommendedMsgElement, AdelieActionBarElement adelieActionBarElement, PrologueMsgElement prologueMsgElement, FilterMsgElement filterMsgElement) {
+        this.elementType = i;
+        this.elementId = j;
         this.extBufForUI = bArr;
         this.textElement = textElement;
         this.faceElement = faceElement;
@@ -299,5 +346,10 @@ public final class MsgElement {
         this.faceBubbleElement = faceBubbleElement;
         this.shareLocationElement = shareLocationElement;
         this.tofuRecordElement = tofuRecordElement;
-    }*/
+        this.taskTopMsgElement = taskTopMsgElement;
+        this.recommendedMsgElement = adelieRecommendedMsgElement;
+        this.actionBarElement = adelieActionBarElement;
+        this.prologueMsgElement = prologueMsgElement;
+        this.filterMsgElement = filterMsgElement;
+    }
 }

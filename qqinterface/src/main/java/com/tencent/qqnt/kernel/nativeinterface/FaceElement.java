@@ -1,30 +1,35 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
-public final class FaceElement {
-    Integer doubleHit;
-    Integer faceBubbleCount;
-    int faceIndex;
-    String faceText;
-    int faceType;
-    Integer imageType;
-    Integer msgType;
-    String oldVersionStr;
-    String packId;
-    Integer pokeFlag;
-    Integer pokeStrength;
-    Integer pokeType;
-    Integer randomType;
-    String resultId;
-    Integer sourceType;
-    String spokeSummary;
-    String stickerId;
-    Integer stickerType;
-    String surpriseId;
-    Integer vaspokeId;
-    String vaspokeMinver;
-    String vaspokeName;
+public final class FaceElement implements IKernelModel {
+    public Integer chainCount;
+    public Integer doubleHit;
+    public Integer faceBubbleCount;
+    public int faceIndex;
+    public String faceText;
+    public int faceType;
+    public Integer imageType;
+    public Integer msgType;
+    public String oldVersionStr;
+    public String packId;
+    public Integer pokeFlag;
+    public Integer pokeStrength;
+    public Integer pokeType;
+    public Integer randomType;
+    public String resultId;
+    public Integer sourceType;
+    public String spokeSummary;
+    public String stickerId;
+    public Integer stickerType;
+    public String surpriseId;
+    public Integer vaspokeId;
+    public String vaspokeMinver;
+    public String vaspokeName;
 
     public FaceElement() {
+    }
+
+    public Integer getChainCount() {
+        return this.chainCount;
     }
 
     public Integer getDoubleHit() {
@@ -115,6 +120,10 @@ public final class FaceElement {
         return this.vaspokeName;
     }
 
+    public void setChainCount(Integer num) {
+        this.chainCount = num;
+    }
+
     public void setDoubleHit(Integer num) {
         this.doubleHit = num;
     }
@@ -123,16 +132,16 @@ public final class FaceElement {
         this.faceBubbleCount = num;
     }
 
-    public void setFaceIndex(int i2) {
-        this.faceIndex = i2;
+    public void setFaceIndex(int i) {
+        this.faceIndex = i;
     }
 
     public void setFaceText(String str) {
         this.faceText = str;
     }
 
-    public void setFaceType(int i2) {
-        this.faceType = i2;
+    public void setFaceType(int i) {
+        this.faceType = i;
     }
 
     public void setImageType(Integer num) {
@@ -203,14 +212,10 @@ public final class FaceElement {
         this.vaspokeName = str;
     }
 
-    public String toString() {
-        return "FaceElement{faceIndex=" + this.faceIndex + ",faceText=" + this.faceText + ",faceType=" + this.faceType + ",packId=" + this.packId + ",stickerId=" + this.stickerId + ",sourceType=" + this.sourceType + ",stickerType=" + this.stickerType + ",resultId=" + this.resultId + ",surpriseId=" + this.surpriseId + ",randomType=" + this.randomType + ",imageType=" + this.imageType + ",pokeType=" + this.pokeType + ",spokeSummary=" + this.spokeSummary + ",doubleHit=" + this.doubleHit + ",vaspokeId=" + this.vaspokeId + ",vaspokeName=" + this.vaspokeName + ",vaspokeMinver=" + this.vaspokeMinver + ",pokeStrength=" + this.pokeStrength + ",msgType=" + this.msgType + ",faceBubbleCount=" + this.faceBubbleCount + ",oldVersionStr=" + this.oldVersionStr + ",pokeFlag=" + this.pokeFlag + ",}";
-    }
-
-    public FaceElement(int i2, String str, int i3, String str2, String str3, Integer num, Integer num2, String str4, String str5, Integer num3, Integer num4, Integer num5, String str6, Integer num6, Integer num7, String str7, String str8, Integer num8, Integer num9, Integer num10, String str9, Integer num11) {
-        this.faceIndex = i2;
+    public FaceElement(int i, String str, int i2, String str2, String str3, Integer num, Integer num2, String str4, String str5, Integer num3, Integer num4, Integer num5, String str6, Integer num6, Integer num7, String str7, String str8, Integer num8, Integer num9, Integer num10, String str9, Integer num11, Integer num12) {
+        this.faceIndex = i;
         this.faceText = str;
-        this.faceType = i3;
+        this.faceType = i2;
         this.packId = str2;
         this.stickerId = str3;
         this.sourceType = num;
@@ -230,5 +235,6 @@ public final class FaceElement {
         this.faceBubbleCount = num10;
         this.oldVersionStr = str9;
         this.pokeFlag = num11;
+        this.chainCount = num12;
     }
 }

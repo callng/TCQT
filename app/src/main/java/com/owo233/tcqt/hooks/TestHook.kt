@@ -38,7 +38,13 @@ class TestHook: AlwaysRunAction() {
                     intent.extras?.let { extras ->
                         for (key in extras.keySet()) {
                             val value = extras.get(key)
-                            logI(msg = "Extra: $key = $value (${value?.javaClass?.name})")
+                            logI(msg = """
+
+
+                                Extra: $key = $value (${value?.javaClass?.name})
+
+
+                            """.trimIndent())
                         }
                     }
                 }

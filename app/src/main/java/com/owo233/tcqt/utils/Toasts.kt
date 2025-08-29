@@ -53,7 +53,7 @@ internal object Toasts {
 
     private fun showToast(context: Context?, type: Int, text: CharSequence, duration: Int) {
         val ctx = context ?: hostInfo.application
-        SyncUtil.runOnUiThread {
+        SyncUtils.runOnUiThread {
             if (type == TYPE_PLAIN) {
                 Toast.makeText(ctx, text, duration).show()
                 return@runOnUiThread

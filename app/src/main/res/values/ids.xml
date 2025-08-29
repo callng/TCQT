@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="setting2Activity_settingEntryItem" type="id" />
+    <item name="item_ptt_forward" type="id" />
 </resources>

@@ -1,9 +1,9 @@
 package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class MultiForwardMsgElement {
-    String fileName;
-    String resId;
-    String xmlContent;
+    public String fileName;
+    public String resId;
+    public String xmlContent;
 
     public MultiForwardMsgElement() {
     }
@@ -18,10 +18,6 @@ public final class MultiForwardMsgElement {
 
     public String getXmlContent() {
         return this.xmlContent;
-    }
-
-    public String toString() {
-        return "MultiForwardMsgElement{xmlContent=" + this.xmlContent + ",resId=" + this.resId + ",fileName=" + this.fileName + ",}";
     }
 
     public MultiForwardMsgElement(String str, String str2, String str3) {

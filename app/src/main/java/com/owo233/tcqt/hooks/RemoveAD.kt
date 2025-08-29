@@ -10,7 +10,7 @@ import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.utils.ClassCacheUtil
+import com.owo233.tcqt.utils.ClassCacheUtils
 import com.owo233.tcqt.utils.emptyParam
 import com.owo233.tcqt.utils.isFinal
 import com.owo233.tcqt.utils.isNotStatic
@@ -27,7 +27,7 @@ class RemoveAD: IAction {
     }
 
     private fun removeImmersionBannerAD() {
-        ClassCacheUtil.findClass {
+        ClassCacheUtils.findClass {
             candidates(
                 "cooperation.vip.qqbanner.QbossADImmersionBannerManager",
                 "cooperation.vip.qqbanner.manager.VasADImmersionBannerManager"

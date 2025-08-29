@@ -1,14 +1,18 @@
 package com.tencent.qqnt.kernelpublic.nativeinterface;
 
 
-public  final class JsonGrayElement {
-    long busiId;
-    boolean isServer;
-    String jsonStr;
-    String recentAbstract;
-    XmlToJsonParam xmlToJsonParam;
+import java.io.Serializable;
+
+public final class JsonGrayElement implements Serializable {
+    public long busiId;
+    public boolean isServer;
+    public String jsonStr;
+    public String recentAbstract;
+    long serialVersionUID;
+    public XmlToJsonParam xmlToJsonParam;
 
     public JsonGrayElement() {
+        this.serialVersionUID = 1L;
         this.jsonStr = "";
         this.recentAbstract = "";
     }
@@ -33,14 +37,9 @@ public  final class JsonGrayElement {
         return this.xmlToJsonParam;
     }
 
-    public String toString() {
-        return "JsonGrayElement{busiId=" + this.busiId + ",jsonStr=" + this.jsonStr + ",recentAbstract=" + this.recentAbstract + ",isServer=" + this.isServer + ",xmlToJsonParam=" + this.xmlToJsonParam + ",}";
-    }
-
-    public JsonGrayElement(long j2, String str, String str2, boolean z, XmlToJsonParam xmlToJsonParam) {
-        this.jsonStr = "";
-        this.recentAbstract = "";
-        this.busiId = j2;
+    public JsonGrayElement(long j, String str, String str2, boolean z, XmlToJsonParam xmlToJsonParam) {
+        this.serialVersionUID = 1L;
+        this.busiId = j;
         this.jsonStr = str;
         this.recentAbstract = str2;
         this.isServer = z;

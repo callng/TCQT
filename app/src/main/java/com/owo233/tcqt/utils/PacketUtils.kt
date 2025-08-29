@@ -3,7 +3,7 @@ package com.owo233.tcqt.utils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
+class PacketUtils(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
 
     // 每个线程一个 ByteBuffer
     private val threadLocalBuffer = ThreadLocal<ByteBuffer>()
@@ -37,7 +37,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 设置字节序
      */
-    fun setByteOrder(order: ByteOrder): PacketUtil {
+    fun setByteOrder(order: ByteOrder): PacketUtils {
         val buffer = ensureBufferInitialized()
         threadLocalBuffer.set(buffer.order(order))
         return this
@@ -46,7 +46,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 清空当前 buffer（position = 0）
      */
-    fun clear(): PacketUtil {
+    fun clear(): PacketUtils {
         val buffer = ensureBufferInitialized()
         buffer.clear()
         return this
@@ -55,7 +55,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入单个字节
      */
-    fun putByte(value: Byte): PacketUtil {
+    fun putByte(value: Byte): PacketUtils {
         ensureCapacity(1)
         ensureBufferInitialized().put(value)
         return this
@@ -64,7 +64,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入 short（2 字节）
      */
-    fun putShort(value: Short): PacketUtil {
+    fun putShort(value: Short): PacketUtils {
         ensureCapacity(2)
         ensureBufferInitialized().putShort(value)
         return this
@@ -73,7 +73,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入 int（4 字节）
      */
-    fun putInt(value: Int): PacketUtil {
+    fun putInt(value: Int): PacketUtils {
         ensureCapacity(4)
         ensureBufferInitialized().putInt(value)
         return this
@@ -82,7 +82,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入 long（8 字节）
      */
-    fun putLong(value: Long): PacketUtil {
+    fun putLong(value: Long): PacketUtils {
         ensureCapacity(8)
         ensureBufferInitialized().putLong(value)
         return this
@@ -91,7 +91,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入 float
      */
-    fun putFloat(value: Float): PacketUtil {
+    fun putFloat(value: Float): PacketUtils {
         ensureCapacity(4)
         ensureBufferInitialized().putFloat(value)
         return this
@@ -100,7 +100,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入 double
      */
-    fun putDouble(value: Double): PacketUtil {
+    fun putDouble(value: Double): PacketUtils {
         ensureCapacity(8)
         ensureBufferInitialized().putDouble(value)
         return this
@@ -109,7 +109,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入字节数组
      */
-    fun putBytes(data: ByteArray): PacketUtil {
+    fun putBytes(data: ByteArray): PacketUtils {
         if (data.isEmpty()) return this
         ensureCapacity(data.size)
         ensureBufferInitialized().put(data)
@@ -119,7 +119,7 @@ class PacketUtil(private val defaultOrder: ByteOrder = ByteOrder.BIG_ENDIAN) {
     /**
      * 写入十六进制字符串（如 "0A 0B 0C"）
      */
-    fun putHex(hex: String): PacketUtil {
+    fun putHex(hex: String): PacketUtils {
         val bytes = hexStringToByteArray(hex)
         return putBytes(bytes)
     }
