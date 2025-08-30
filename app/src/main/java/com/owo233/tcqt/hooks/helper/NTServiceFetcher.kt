@@ -5,6 +5,7 @@ package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.logD
 import com.tencent.qqnt.kernel.api.IKernelService
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -23,7 +24,11 @@ internal object NTServiceFetcher {
         curKernelHash = curHash
         this.iKernelService = service
 
-        initHookOnMsfPush()
+        val setting = TCQTSetting.getSetting<Any>(TCQTSetting.FETCH_SERVICE)
+        if (setting.type == TCQTSetting.SettingType.BOOLEAN &&
+            setting.getValue(setting, null) as? Boolean == true) {
+            initHookOnMsfPush()
+        }
     }
 
     private fun isInitForNt(hash: Int) = hash == curKernelHash
