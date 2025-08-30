@@ -16,6 +16,18 @@ public interface QQNTWrapperUtil {
             throw new RuntimeException("nativeRef is zero");
         }
 
+        public static native boolean fileIsExist(String str);
+
+        public static native byte[] genFileMd5Buf(String str);
+
+        public static native String genFileMd5Hex(String str);
+
+        public static native byte[] genFileShaBuf(String str);
+
+        public static native String genFileShaHex(String str);
+
+        public static native long getFileSize(String str);
+
         private native void nativeDestroy(long j);
 
         public static native long findSourceOfReplyMsgFrom(ArrayList<ReplySourceMsgMainInfo> arrayList, ReplyMsgMainInfo replyMsgMainInfo);

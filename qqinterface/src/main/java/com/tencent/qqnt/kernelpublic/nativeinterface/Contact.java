@@ -1,10 +1,11 @@
 package com.tencent.qqnt.kernelpublic.nativeinterface;
 
+import java.io.Serializable;
 
-public final class Contact {
-    int chatType;
-    String guildId;
-    String peerUid;
+public final class Contact implements Serializable {
+    public int chatType;
+    public String guildId;
+    public String peerUid;
     long serialVersionUID;
 
     public Contact() {
@@ -25,8 +26,8 @@ public final class Contact {
         return this.peerUid;
     }
 
-    public void setChatType(int i2) {
-        this.chatType = i2;
+    public void setChatType(int i) {
+        this.chatType = i;
     }
 
     public void setGuildId(String str) {
@@ -37,13 +38,9 @@ public final class Contact {
         this.peerUid = str;
     }
 
-    public String toString() {
-        return "Contact{chatType=" + this.chatType + ",peerUid=" + this.peerUid + ",guildId=" + this.guildId + ",}";
-    }
-
-    public Contact(int i2, String str, String str2) {
+    public Contact(int i, String str, String str2) {
         this.serialVersionUID = 1L;
-        this.chatType = i2;
+        this.chatType = i;
         this.peerUid = str;
         this.guildId = str2;
     }

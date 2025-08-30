@@ -25,10 +25,6 @@ public final class VASMsgBubble {
         return this.subBubbleId;
     }
 
-    public String toString() {
-        return "VASMsgBubble{bubbleId=" + this.bubbleId + ",bubbleDiyTextId=" + this.bubbleDiyTextId + ",subBubbleId=" + this.subBubbleId + ",canConvertToText=" + this.canConvertToText + ",}";
-    }
-
     public VASMsgBubble(Integer num, Integer num2, Integer num3, Integer num4) {
         this.bubbleId = num;
         this.bubbleDiyTextId = num2;

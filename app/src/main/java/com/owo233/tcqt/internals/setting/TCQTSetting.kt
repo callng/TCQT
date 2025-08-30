@@ -35,6 +35,7 @@ internal object TCQTSetting {
     const val REPEAT_MESSAGE: String = "repeat_message"
     const val POKE_NO_COOL_DOWN: String = "poke_no_cool_down"
     const val PIC_TYPE_EMOTICON: String = "pic_type_emoticon"
+    const val PTT_FORWARD: String = "ptt_forward"
     const val REMOVE_AD: String = "remove_ad"
     const val REMOVE_QR_LOGIN_CHECK: String = "remove_qr_login_check"
     const val REMOVE_REPLY_MSG_CHECK: String = "remove_reply_msg_check"
@@ -73,6 +74,7 @@ internal object TCQTSetting {
         REPEAT_MESSAGE to Setting(REPEAT_MESSAGE, SettingType.BOOLEAN, false),
         POKE_NO_COOL_DOWN to Setting(POKE_NO_COOL_DOWN, SettingType.BOOLEAN, false),
         PIC_TYPE_EMOTICON to Setting(PIC_TYPE_EMOTICON, SettingType.BOOLEAN, false),
+        PTT_FORWARD to Setting(PTT_FORWARD, SettingType.BOOLEAN, false),
         REMOVE_AD to Setting(REMOVE_AD, SettingType.BOOLEAN, false),
         REMOVE_QR_LOGIN_CHECK to Setting(REMOVE_QR_LOGIN_CHECK, SettingType.BOOLEAN, false),
         REMOVE_REPLY_MSG_CHECK to Setting(REMOVE_REPLY_MSG_CHECK, SettingType.BOOLEAN, false),

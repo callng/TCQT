@@ -30,10 +30,6 @@ public final class VASMsgFont {
         return this.subFontId;
     }
 
-    public String toString() {
-        return "VASMsgFont{fontId=" + this.fontId + ",subFontId=" + this.subFontId + ",diyFontCfgUpdateTime=" + this.diyFontCfgUpdateTime + ",diyFontImageId=" + this.diyFontImageId + ",magicFontType=" + this.magicFontType + ",}";
-    }
-
     public VASMsgFont(Integer num, Long l, Integer num2, Integer num3, Integer num4) {
         this.fontId = num;
         this.subFontId = l;

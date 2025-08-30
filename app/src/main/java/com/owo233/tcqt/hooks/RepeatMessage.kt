@@ -11,7 +11,6 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookMethod
@@ -78,9 +77,7 @@ class RepeatMessage: IAction {
                                 }
                             }
                         }
-                        is MapleContact.Contact -> {
-                            Toasts.error(ctx, "不支持的版本，该升级了！")
-                        }
+                        else -> {}
                     }
                     lastClickTime = 0L
                 } else {

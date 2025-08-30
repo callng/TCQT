@@ -7,40 +7,40 @@ import java.io.Serializable;
 
 public final class MsgElement implements IKernelModel, Serializable {
     public AdelieActionBarElement actionBarElement;
-    public ArkElement arkElement;
-    public AVRecordElement avRecordElement;
-    public CalendarElement calendarElement;
+    public ArkElement arkElement; // ark (json)
+    public AVRecordElement avRecordElement; // 录音
+    public CalendarElement calendarElement; // 日历
     public int elementGroupId;
     public long elementId;
     public int elementType;
     public byte[] extBufForUI;
-    public FaceBubbleElement faceBubbleElement;
-    public FaceElement faceElement;
-    public FileElement fileElement;
-    public FilterMsgElement filterMsgElement;
-    public GiphyElement giphyElement;
-    public GrayTipElement grayTipElement;
-    public InlineKeyboardElement inlineKeyboardElement;
-    public LiveGiftElement liveGiftElement;
-    public MarkdownElement markdownElement;
+    public FaceBubbleElement faceBubbleElement; // 泡泡
+    public FaceElement faceElement; // 表情，Poke
+    public FileElement fileElement; // 文件
+    public FilterMsgElement filterMsgElement; // 滤镜
+    public GiphyElement giphyElement; // Giphy
+    public GrayTipElement grayTipElement; // 灰色提醒
+    public InlineKeyboardElement inlineKeyboardElement; // 内联键盘
+    public LiveGiftElement liveGiftElement; // 直播礼物
+    public MarkdownElement markdownElement; // markdown
     public MarketFaceElement marketFaceElement;
-    public MultiForwardMsgElement multiForwardMsgElement;
-    public PicElement picElement;
+    public MultiForwardMsgElement multiForwardMsgElement; // 多转发
+    public PicElement picElement; // 表情图片
     public PrologueMsgElement prologueMsgElement;
-    public PttElement pttElement;
+    public PttElement pttElement; // 语音
     public AdelieRecommendedMsgElement recommendedMsgElement;
-    public ReplyElement replyElement;
+    public ReplyElement replyElement; // 回复
     long serialVersionUID = 1;
-    public ShareLocationElement shareLocationElement;
-    public StructLongMsgElement structLongMsgElement;
+    public ShareLocationElement shareLocationElement; // 地理位置
+    public StructLongMsgElement structLongMsgElement; // 长消息
     public StructMsgElement structMsgElement;
     public TaskTopMsgElement taskTopMsgElement;
-    public TextElement textElement;
+    public TextElement textElement; // 文本消息
     public TextGiftElement textGiftElement;
     public TofuRecordElement tofuRecordElement;
-    public VideoElement videoElement;
-    public WalletElement walletElement;
-    public YoloGameResultElement yoloGameResultElement;
+    public VideoElement videoElement; // 视频
+    public WalletElement walletElement; // 钱包
+    public YoloGameResultElement yoloGameResultElement; // 游艺
 
     public MsgElement() {
     }
