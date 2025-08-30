@@ -61,11 +61,11 @@ class PttForward: IAction, OnMenuBuilder {
                 val thisObj = param.thisObject
                 val data = mExtraDataField.get(thisObj) as? Bundle ?: return@beforeHook
 
-                for (key in data.keySet()) {
+                /*for (key in data.keySet()) {
                     val value = data.get(key)
                     val className = value?.javaClass?.name
                     logI(msg = "Bundle key = $key, value = $value, class = $className")
-                }
+                }*/
 
                 if (data.getString("ptt_forward") != "114514" ||
                     (!data.containsKey("isBack2Root") && !data.containsKey("from_dataline_aio")) ||
