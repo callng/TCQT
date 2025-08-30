@@ -12,21 +12,29 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.ContextUtils
+import com.owo233.tcqt.utils.logI
 import com.tencent.mobileqq.qroute.QRoute
+import com.tencent.mobileqq.selectmember.ResultRecord
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernel.nativeinterface.PttElement
 import com.tencent.qqnt.msg.api.IMsgService
 import de.robv.android.xposed.XC_MethodHook
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import java.io.File
+import java.lang.reflect.Method
+import java.util.ArrayList
 import kotlin.random.Random
 
 @RegisterAction
 class PttForward: IAction, OnMenuBuilder {
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
         val forwardBaseOption = XpClassLoader.load(
             "com.tencent.mobileqq.forward.ForwardBaseOption"
@@ -36,42 +44,88 @@ class PttForward: IAction, OnMenuBuilder {
             .apply { isAccessible = true }
             ?: error("mExtraData field not found")
 
-        val isNeedShowToast = forwardBaseOption.getDeclaredMethod(
-            "isNeedShowToast",
-            Int::class.javaPrimitiveType,
-            String::class.java,
-            Int::class.javaPrimitiveType
-        ) ?: error("buildConfirmDialog method not found")
+        val methods = getMethods(
+            forwardBaseOption,
+            listOf(
+                "isNeedShowToast" to arrayOf(
+                    Int::class.javaPrimitiveType!!,
+                    String::class.java,
+                    Int::class.javaPrimitiveType!!
+                ),
+                "getMultiTargetWithoutDataLine" to emptyArray()
+            )
+        )
 
-        isNeedShowToast.hookMethod(beforeHook(51) { param ->
-            val thisObj = param.thisObject
-            val data = mExtraDataField.get(thisObj) as? Bundle ?: return@beforeHook
+        methods.forEach { method ->
+            method.hookMethod(beforeHook(51) { param ->
+                val thisObj = param.thisObject
+                val data = mExtraDataField.get(thisObj) as? Bundle ?: return@beforeHook
 
-            val uid = data.getString("Uid") ?: return@beforeHook
-            val homo = data.getString("ptt_forward") ?: return@beforeHook
-            val uinType = data.getInt("uintype", -1)
-
-            if (homo != "114514" || !data.containsKey("isBack2Root") || ptt == null) return@beforeHook
-
-            val elem = MsgElement()
-            elem.elementType = MsgConstant.KELEMTYPEPTT
-            elem.pttElement = ptt
-
-            val contact = ContactHelper.generateContactByUid(if (uinType == 0) 1 else 2, uid)
-            val newMsgId = generateMsgUniSeq(if (uinType == 0) 1 else 2)
-            val msgService = QRoute.api(IMsgService::class.java)
-            when (contact) {
-                is MapleContact.PublicContact -> {
-                    msgService.sendMsgWithMsgId(contact.inner,
-                        newMsgId,
-                        arrayListOf(elem),
-                        null)
+                for (key in data.keySet()) {
+                    val value = data.get(key)
+                    val className = value?.javaClass?.name
+                    logI(msg = "Bundle key = $key, value = $value, class = $className")
                 }
-                else -> {}
-            }
 
-            ptt = null
-        })
+                if (data.getString("ptt_forward") != "114514" ||
+                    (!data.containsKey("isBack2Root") && !data.containsKey("from_dataline_aio")) ||
+                    ptt == null) {
+                    return@beforeHook
+                }
+
+                val msgService = QRoute.api(IMsgService::class.java)
+
+                GlobalScope.launchWithCatch {
+                    try {
+                        data.getString("Uid")?.let { uid ->
+                            val uinType = data.getInt("uintype", -1)
+                            sendPtt(uid, uinType, msgService)
+                        }
+
+                        // 兼容多选
+                        if (data.containsKey("forward_multi_target")) {
+                            @Suppress("DEPRECATION")
+                            val mForwardTargets: ArrayList<ResultRecord>? = data.getParcelableArrayList("forward_multi_target")
+                            mForwardTargets?.forEach { t ->
+                                sendPtt(t.uin, t.uinType, msgService)
+                            }
+                        }
+                    } finally {
+                        ptt =  null
+                    }
+                }
+            })
+        }
+    }
+
+    private fun getMethods(clazz: Class<*>, methodInfos: List<Pair<String, Array<Class<*>>>>): List<Method> {
+        return methodInfos.map { (name, params) ->
+            clazz.getDeclaredMethod(name, *params).apply { isAccessible = true }
+        }
+    }
+
+    private suspend fun sendPtt(uin: String, uinType: Int, msgService: IMsgService) {
+        val sendUid = if (uinType == 0) { // 私聊类型
+            if (!uin.startsWith("u_")) {
+                ContactHelper.getUidByUinAsync(uin.toLong())
+            } else uin
+        } else uin
+
+        val elem = MsgElement().apply {
+            elementType = MsgConstant.KELEMTYPEPTT
+            pttElement = ptt
+        }
+
+        val contact = ContactHelper.generateContactByUid(if (uinType == 0) 1 else 2, sendUid)
+        val newMsgId = generateMsgUniSeq(if (uinType == 0) 1 else 2)
+
+        if (contact is MapleContact.PublicContact) {
+            msgService.sendMsgWithMsgId(
+                contact.inner,
+                newMsgId,
+                arrayListOf(elem),
+                null)
+        }
     }
 
     private fun generateMsgUniSeq(chatType: Int): Long {
@@ -89,11 +143,13 @@ class PttForward: IAction, OnMenuBuilder {
         intent.putExtra("direct_send_if_dataline_forward", false)
         intent.putExtra("forward_text", path)
         intent.putExtra("forward_type", -1)
+        intent.putExtra("forward_from_jump", true)
         intent.putExtra("ptt_forward", "114514")
         intent.putExtra("forward_type", -1)
         intent.putExtra("caller_name", "ChatActivity")
         intent.putExtra("k_smartdevice", false)
         intent.putExtra("k_dataline", false)
+        intent.putExtra("is_need_show_toast", true)
         intent.putExtra("k_forward_title", "语音转发")
         context.startActivity(intent)
     }
