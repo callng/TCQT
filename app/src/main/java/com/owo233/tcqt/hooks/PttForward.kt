@@ -17,7 +17,6 @@ import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.ContextUtils
-import com.owo233.tcqt.utils.logI
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.selectmember.ResultRecord
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -60,12 +59,6 @@ class PttForward: IAction, OnMenuBuilder {
             method.hookMethod(beforeHook(51) { param ->
                 val thisObj = param.thisObject
                 val data = mExtraDataField.get(thisObj) as? Bundle ?: return@beforeHook
-
-                /*for (key in data.keySet()) {
-                    val value = data.get(key)
-                    val className = value?.javaClass?.name
-                    logI(msg = "Bundle key = $key, value = $value, class = $className")
-                }*/
 
                 if (data.getString("ptt_forward") != "114514" ||
                     (!data.containsKey("isBack2Root") && !data.containsKey("from_dataline_aio")) ||

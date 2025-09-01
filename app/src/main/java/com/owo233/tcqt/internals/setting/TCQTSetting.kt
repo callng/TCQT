@@ -42,6 +42,7 @@ internal object TCQTSetting {
     const val RENAME_BASE_APK: String = "rename_base_apk"
     const val REPLY_NO_AT: String = "reply_no_at"
     const val SHOW_HIDE_EMOTICON: String = "show_hide_emoticon"
+    const val SHOW_PRECISE_BAN_TIME: String = "show_precise_ban_time"
     const val SKIP_QR_LOGIN_WAIT: String = "skip_qr_login_wait"
 
     val dataDir = MobileQQ.getContext().getExternalFilesDir(null)!!
@@ -81,6 +82,7 @@ internal object TCQTSetting {
         RENAME_BASE_APK to Setting(RENAME_BASE_APK, SettingType.BOOLEAN, false),
         REPLY_NO_AT to Setting(REPLY_NO_AT, SettingType.BOOLEAN, false),
         SHOW_HIDE_EMOTICON to Setting(SHOW_HIDE_EMOTICON, SettingType.BOOLEAN, false),
+        SHOW_PRECISE_BAN_TIME to Setting(SHOW_PRECISE_BAN_TIME, SettingType.BOOLEAN, false),
         SKIP_QR_LOGIN_WAIT to Setting(SKIP_QR_LOGIN_WAIT, SettingType.BOOLEAN, false)
     )
 
