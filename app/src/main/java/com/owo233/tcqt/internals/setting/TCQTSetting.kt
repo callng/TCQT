@@ -14,6 +14,10 @@ import kotlin.reflect.KProperty
 internal object TCQTSetting {
     // const val BROWSER_RESTRICT_MITIGATION: String = "browser_restrict_mitigation"
     const val CHANGE_GUID: String = "change_guid"
+    const val CUSTOM_DEVICE: String = "custom_device"
+    const val CUSTOM_DEVICE_STRING_DEVICE: String = "custom_device_string_device"
+    const val CUSTOM_DEVICE_STRING_MODEL: String = "custom_device_string_model"
+    const val CUSTOM_DEVICE_STRING_MANUFACTURER: String = "custom_device_string_manufacturer"
     const val CUSTOM_SUBAPPID: String = "custom_subappid"
     const val CUSTOM_SUBAPPID_STRING: String = "custom_subappid_string"
     const val DEFAULT_BUBBLE: String = "default_bubble"
@@ -54,6 +58,10 @@ internal object TCQTSetting {
 
     val settingMap = hashMapOf<String, Setting<out Any>>(
         CHANGE_GUID to Setting(CHANGE_GUID, SettingType.BOOLEAN, true),
+        CUSTOM_DEVICE to Setting(CUSTOM_DEVICE, SettingType.BOOLEAN, false),
+        CUSTOM_DEVICE_STRING_DEVICE to Setting(CUSTOM_DEVICE_STRING_DEVICE, SettingType.STRING, ""),
+        CUSTOM_DEVICE_STRING_MODEL to Setting(CUSTOM_DEVICE_STRING_MODEL, SettingType.STRING, ""),
+        CUSTOM_DEVICE_STRING_MANUFACTURER to Setting(CUSTOM_DEVICE_STRING_MANUFACTURER, SettingType.STRING, ""),
         CUSTOM_SUBAPPID to Setting(CUSTOM_SUBAPPID, SettingType.BOOLEAN, false),
         CUSTOM_SUBAPPID_STRING to Setting(CUSTOM_SUBAPPID_STRING, SettingType.STRING, ""),
         DEFAULT_BUBBLE to Setting(DEFAULT_BUBBLE, SettingType.BOOLEAN, false),

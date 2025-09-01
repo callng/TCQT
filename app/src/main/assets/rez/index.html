@@ -222,9 +222,15 @@
             transition: max-height var(--transition-smooth), opacity var(--transition-smooth), margin-top var(--transition-smooth);
         }
 
+        .textarea-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
         .feature-item.is-expanded .feature-desc,
         .feature-item.is-expanded .textarea-container {
-            max-height: 200px; /* Adjust as needed */
+            max-height: 400px; /* Adjusted for multiple textareas */
             opacity: 1;
         }
 
@@ -262,7 +268,7 @@
             border: 1px solid var(--border-color);
             background-color: #fdfdfd;
             resize: vertical;
-            min-height: 100px;
+            min-height: 80px;
         }
 
         textarea:focus {
@@ -381,13 +387,11 @@
 </head>
 <body>
 
-<!-- Loading Overlay -->
 <div id="loading-overlay" class="loading-overlay">
     <div class="spinner"></div>
     <p>正在初始化...</p>
 </div>
 
-<!-- Main App Container -->
 <div id="app-container" class="app-container">
     <header class="app-header">
         <h1><i class="bi bi-sliders"></i> TCQT 模块设置</h1>
@@ -417,15 +421,12 @@
     </footer>
 </div>
 
-<!-- Save Button (FAB) -->
 <button id="btnSave" class="fab-save" title="保存设置">
     <i class="bi bi-save-fill"></i>
 </button>
 
-<!-- Toast Container -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- JavaScript -->
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         // --- Data ---
@@ -435,6 +436,26 @@
                 label: "自定义 GUID",
                 desc: "启用后在登录页面长按登录按钮即可调出设置窗口。",
                 color: "var(--danger-color)"
+            },
+            {
+                key: "custom_device",
+                label: "自定义设备信息",
+                desc: "自定义宿主获取的[device, model, manufacturer]，如果按照下面例子填写每个编辑框内容，则宿主会识别设备为[Redmi K50 电竞版]",
+                color: "var(--danger-color)",
+                textareas: [
+                    {
+                        key: "custom_device_string_device",
+                        placeholder: "填写device内容, e.g: ingres"
+                    },
+                    {
+                        key: "custom_device_string_model",
+                        placeholder: "填写model内容, e.g: 21121210C"
+                    },
+                    {
+                        key: "custom_device_string_manufacturer",
+                        placeholder: "填写manufacturer内容, e.g: Xiaomi"
+                    }
+                ]
             },
             {
                 key: "default_bubble",
@@ -473,10 +494,12 @@
                 label: "禁止发送指定包体",
                 desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。",
                 color: "var(--danger-color)",
-                textarea: {
-                    key: "exclude_send_cmd_string",
-                    placeholder: "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
-                }
+                textareas: [
+                    {
+                        key: "exclude_send_cmd_string",
+                        placeholder: "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
+                    }
+                ]
             },
             {
                 key: "fake_multi_window_status",
@@ -682,14 +705,18 @@
 
             item.append(header, desc);
 
-            if (feature.textarea) {
+            if (feature.textareas && Array.isArray(feature.textareas)) {
                 const textareaContainer = document.createElement("div");
                 textareaContainer.className = "textarea-container";
-                const textarea = document.createElement("textarea");
-                textarea.id = `textarea-${feature.key}`;
-                textarea.placeholder = feature.textarea.placeholder || "";
-                textarea.rows = 4;
-                textareaContainer.appendChild(textarea);
+
+                feature.textareas.forEach(ta => {
+                    const textarea = document.createElement("textarea");
+                    textarea.id = `textarea-${ta.key}`;
+                    textarea.placeholder = ta.placeholder || "";
+                    textarea.rows = 3;
+                    textareaContainer.appendChild(textarea);
+                });
+
                 item.appendChild(textareaContainer);
             }
 
@@ -720,21 +747,25 @@
                         checkbox.checked = false;
                     }
 
-                    if (feature.textarea) {
-                        const textarea = document.getElementById(`textarea-${feature.key}`);
-                        if (textarea) {
-                            try {
-                                textarea.value = JSON.parse(TCQT.getSetting(feature.textarea.key)).value || "";
-                            } catch {
-                                textarea.value = "";
-                            }
-                        }
+                    if (feature.textareas && Array.isArray(feature.textareas)) {
+                        feature.textareas.forEach(ta => {
+                             const textarea = document.getElementById(`textarea-${ta.key}`);
+                             if (textarea) {
+                                try {
+                                    textarea.value = JSON.parse(TCQT.getSetting(ta.key)).value || "";
+                                } catch {
+                                    textarea.value = "";
+                                }
+                             }
+                        });
                     }
                 } else {
                     checkbox.disabled = true;
-                    if (feature.textarea) {
-                        const textarea = document.getElementById(`textarea-${feature.key}`);
-                        if (textarea) textarea.disabled = true;
+                    if (feature.textareas && Array.isArray(feature.textareas)) {
+                        feature.textareas.forEach(ta => {
+                            const textarea = document.getElementById(`textarea-${ta.key}`);
+                            if (textarea) textarea.disabled = true;
+                        });
                     }
                 }
             });
@@ -757,15 +788,17 @@
                     console.error(`设置 ${feature.key} 失败`, e);
                 }
 
-                if (feature.textarea) {
-                    const textarea = document.getElementById(`textarea-${feature.key}`);
-                    if (textarea) {
-                        try {
-                            TCQT.setSettingString(feature.textarea.key, textarea.value.trim());
-                        } catch (e) {
-                            console.error(`保存 ${feature.textarea.key} 失败`, e);
+                if (feature.textareas && Array.isArray(feature.textareas)) {
+                    feature.textareas.forEach(ta => {
+                        const textarea = document.getElementById(`textarea-${ta.key}`);
+                        if (textarea) {
+                            try {
+                                TCQT.setSettingString(ta.key, textarea.value.trim());
+                            } catch (e) {
+                                console.error(`保存 ${ta.key} 失败`, e);
+                            }
                         }
-                    }
+                    });
                 }
             });
 

@@ -1,5 +1,6 @@
 package com.owo233.tcqt.ext
 
+import com.owo233.tcqt.utils.isStatic
 import com.owo233.tcqt.utils.logE
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodReplacement
@@ -92,6 +93,13 @@ internal fun replaceHook(
             }.getOrNull()
         }
     }
+}
+
+internal fun XC_MethodHook.MethodHookParam.invokeOriginal(vararg newArgs: Any?): Any? {
+    val isStatic = method.isStatic
+    val receiver = if (isStatic) null else thisObject
+    val argsToUse = if (newArgs.isNotEmpty()) newArgs else args
+    return XposedBridge.invokeOriginalMethod(method, receiver, argsToUse)
 }
 
 internal fun Any.field(
