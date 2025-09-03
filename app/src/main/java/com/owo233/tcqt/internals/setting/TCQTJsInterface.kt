@@ -12,10 +12,10 @@ import com.owo233.tcqt.hooks.base.hostInfo
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
-    fun getHostChannel(): String = PlatformTools.getQQChannel(ctx)
+    fun getHostChannel(): String = PlatformTools.getHostChannel(ctx)
 
     @JavascriptInterface
-    fun getHostVersion(): String = "${PlatformTools.getQQVersion(ctx)}(${PlatformTools.getQQVersionCode(ctx)})"
+    fun getHostVersion(): String = "${PlatformTools.getHostVersion(ctx)}(${PlatformTools.getHostVersionCode(ctx)})"
 
     @JavascriptInterface
     fun getHostName(): String = hostInfo.hostName

@@ -6,7 +6,7 @@ import com.owo233.tcqt.utils.PlatformTools.QQ_9_0_70_VER
 import com.owo233.tcqt.utils.PlatformTools.TIM_4_0_95_VER
 import com.tencent.common.app.AppInterface
 import com.owo233.tcqt.utils.PlatformTools.isMqqPackage
-import com.owo233.tcqt.utils.PlatformTools.getQQVersionCode
+import com.owo233.tcqt.utils.PlatformTools.getHostVersionCode
 import mqq.app.MobileQQ
 
 open class QQInterfaces {
@@ -19,7 +19,7 @@ open class QQInterfaces {
         }
 
         val maple by lazy {
-            val ver = getQQVersionCode()
+            val ver = getHostVersionCode()
             val usePublic = (PlatformTools.isMqq() && ver >= QQ_9_0_70_VER) ||
                     (PlatformTools.isTim() && ver >= TIM_4_0_95_VER)
             if (usePublic) Maple.PublicKernel else Maple.Kernel

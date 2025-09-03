@@ -25,7 +25,7 @@ class MenuBuilder : AlwaysRunAction() {
         val activeDecorators = decorators.filter { it.canRun() }
         if (activeDecorators.isEmpty()) return
 
-        if (PlatformTools.isQQNt()) {
+        if (PlatformTools.isNt()) {
             val msgClass = XpClassLoader.load("com.tencent.mobileqq.aio.msg.AIOMsgItem")
                 ?: error("MenuBuilder Load AIOMsgItem Error")
             val baseContentComponentClass = XpClassLoader.load(

@@ -11,7 +11,6 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.hooks.base.ProcUtil
-import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.hooks.base.initHostInfo
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.utils.field
@@ -99,7 +98,7 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
 
                     android version: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
                     module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }
-                    host version: ${PlatformTools.getQQVersion()}(${PlatformTools.getQQVersionCode()}) ${PlatformTools.getQQChannel()}
+                    host version: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
 
 
                 """.trimIndent())

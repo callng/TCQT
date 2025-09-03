@@ -15,6 +15,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toast
 import com.owo233.tcqt.hooks.base.PACKAGE_NAME_QQ
 import com.owo233.tcqt.hooks.base.PACKAGE_NAME_TIM
+import com.owo233.tcqt.hooks.base.hostInfo
 import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +30,7 @@ object PlatformTools {
     const val QQ_9_1_90_26520 = 10248L
     const val TIM_4_0_95_VER = 4002L
 
-    fun isQQNt(): Boolean {
+    fun isNt(): Boolean {
         return try {
             XpClassLoader.load("com.tencent.qqnt.base.BaseActivity") != null
         } catch (_: Exception) {
@@ -37,23 +38,25 @@ object PlatformTools {
         }
     }
 
-    fun getQQVersion(ctx: Context = MobileQQ.getContext()): String {
+    fun getHostVersion(ctx: Context = MobileQQ.getContext()): String {
         val packageInfo: PackageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         return packageInfo.versionName ?: "unknown"
     }
 
-    fun getQQChannel(ctx: Context = MobileQQ.getContext()): String {
+    fun getHostChannel(ctx: Context = MobileQQ.getContext()): String {
         // "537309838#3F9351D357E4AFF5#2017#GuanWang#fffffffffffffffffffffffffffff"
         val application = ctx.packageManager.getApplicationInfo(ctx.packageName, 128)
         return application.metaData!!.getString("AppSetting_params")!!.split("#")[3]
     }
 
-    fun getQQVersionCode(ctx: Context = MobileQQ.getContext()): Long {
+    fun getHostVersionCode(ctx: Context = MobileQQ.getContext()): Long {
         val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         return PackageInfoCompat.getLongVersionCode(packageInfo)
     }
 
-    fun getClientVersion(ctx: Context = MobileQQ.getContext()): String = "android ${getQQVersion(ctx)}"
+    fun getHostName(): String = hostInfo.hostName
+
+    fun getClientVersion(ctx: Context = MobileQQ.getContext()): String = "android ${getHostVersion(ctx)}"
 
     fun isMsfProcess(): Boolean {
         return MobileQQ.getMobileQQ().qqProcessName.contains("msf", ignoreCase = true)
