@@ -16,7 +16,13 @@ import com.owo233.tcqt.utils.PlatformTools
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "skip_qr_login_wait", name = "跳过扫码登录等待", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "skip_qr_login_wait",
+    name = "跳过扫码登录等待",
+    type = SettingType.BOOLEAN,
+    desc = "扫码登录时跳过倒计时。",
+    uiOrder = 29
+)
 class SkipQRLoginWait: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

@@ -21,7 +21,13 @@ import com.owo233.tcqt.utils.paramCount
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "remove_ad", name = "移除部分广告", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "remove_ad",
+    name = "移除部分广告",
+    type = SettingType.BOOLEAN,
+    desc = "移除一些常见的广告弹窗。",
+    uiOrder = 21
+)
 class RemoveAD: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         removeImmersionBannerAD()

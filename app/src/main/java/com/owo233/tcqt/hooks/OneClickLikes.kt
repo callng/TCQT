@@ -21,7 +21,13 @@ import com.tencent.mobileqq.vas.api.IVasSingedApi
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "one_click_likes", name = "一键点赞", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "one_click_likes",
+    name = "一键20赞",
+    type = SettingType.BOOLEAN,
+    desc = "开启后点赞时将自动点赞20个（非SVIP为10个）。",
+    uiOrder = 17
+)
 class OneClickLikes: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

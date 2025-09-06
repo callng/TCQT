@@ -12,7 +12,13 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "fake_multi_window_status", name = "伪装多窗口状态", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "fake_multi_window_status",
+    name = "伪装多窗口状态",
+    type = SettingType.BOOLEAN,
+    desc = "不知道有什么用。",
+    uiOrder = 10
+)
 class FakeMultiWindowStatus: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

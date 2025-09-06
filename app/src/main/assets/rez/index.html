@@ -430,180 +430,27 @@
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         // --- Data ---
-        const features = [
-            {
-                key: "change_guid",
-                label: "自定义 GUID",
-                desc: "启用后在登录页面长按登录按钮即可调出设置窗口。",
-                color: "var(--danger-color)"
-            },
-            {
-                key: "custom_device",
-                label: "自定义设备信息",
-                desc: "自定义宿主获取的[device, model, manufacturer]，如果按照下面例子填写每个编辑框内容，则宿主会识别设备为[Redmi K50 电竞版]",
-                color: "var(--danger-color)",
-                textareas: [
-                    {
-                        key: "custom_device.string.device",
-                        placeholder: "填写device内容, e.g: ingres"
-                    },
-                    {
-                        key: "custom_device.string.model",
-                        placeholder: "填写model内容, e.g: 21121210C"
-                    },
-                    {
-                        key: "custom_device.string.manufacturer",
-                        placeholder: "填写manufacturer内容, e.g: Xiaomi"
-                    }
-                ]
-            },
-            {
-                key: "default_bubble",
-                label: "强制使用默认气泡",
-                desc: "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。"
-            },
-            {
-                key: "default_font",
-                label: "强制使用默认字体",
-                desc: "使用默认字体，让花里胡哨的字体不那么花里胡哨。"
-            },
-            {
-                key: "disable_qq_crash_report_manager",
-                label: "禁用崩溃报告管理器",
-                desc: "没有实际意义的功能，仅供测试使用。",
-                color: "var(--danger-color)"
-            },
-            {
-                key: "disable_flash_pic",
-                label: "将闪照视为正常图片",
-                desc: "好友发送的闪照将作为正常图片显示并添加灰条提示。"
-            },
-            {
-                key: "disable_hot_patch",
-                label: "禁用热补丁",
-                desc: "顾名思义，但不会删除已有的热补丁。",
-                color: "var(--danger-color)"
-            },
-            {
-                key: "disable_reaction_limit",
-                label: "禁止过滤反应表情",
-                desc: "将更多的表情（Emoji）显示出来。"
-            },
-            {
-                key: "exclude_send_cmd",
-                label: "禁止发送指定包体",
-                desc: "启用后，宿主发送的指定包体(cmd)将会被拦截。",
-                color: "var(--danger-color)",
-                textareas: [
-                    {
-                        key: "exclude_send_cmd.string.cmd",
-                        placeholder: "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
-                    }
-                ]
-            },
-            {
-                key: "fake_multi_window_status",
-                label: "伪造多窗口状态",
-                desc: "不知道有什么用。"
-            },
-            {
-                key: "fetch_service",
-                label: "消息防撤回",
-                desc: "防止消息被撤回，添加灰条提示。"
-            },
-            {
-                key: "flag_secure_bypass",
-                label: "绕过FlagSecure",
-                desc: "绕过FlagSecure，允许截图和录屏。",
-                color: "var(--danger-color)"
-            },
-            {
-                key: "force_tablet_mode",
-                label: "强制平板模式",
-                desc: "唯一的好处就是手机平板双端在线，具体可以干嘛呢？"
-            },
-            {
-                key: "forced_to_b",
-                label: "AB测试强制转B组",
-                desc: "启用后，在AB测试对照组中，将全部测试强制转为B组（实验组），注意，此功能有一定的风险，请自行斟酌是否启用。",
-                color: "var(--danger-color)"
-            },
-            {
-                key: "login_check_box_default",
-                label: "自动勾选复选框",
-                desc: "登录界面自动勾选复选框（用户协议，有人看了吗）。"
-            },
-            {
-                key: "module_update",
-                label: "模块更新重启动宿主",
-                desc: "启用后，每次本模块更新后，将自动重启（杀死）宿主进程。"
-            },
-            {
-                key: "one_click_likes",
-                label: "一键20赞",
-                desc: "开启后点赞时将自动点赞20个（非SVIP为10个）。"
-            },
-            {
-                key: "repeat_message",
-                label: "复读机 +1",
-                desc: "人类的本质是什么？不支持修改+1图标，为了防止误触，需要在200ms内重复点击才能触发。"
-            },
-            {
-                key: "poke_no_cool_down",
-                label: "戳一戳无冷却",
-                desc: "移除戳一戳冷却时间。"
-            },
-            {
-                key: "pic_type_emoticon",
-                label: "以图片方式打开表情",
-                desc: "可以保存一些不让保存的表情。"
-            },
-            {
-                key: "ptt_forward",
-                label: "允许转发语音消息",
-                desc: "启用后，长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。"
-            },
-            {
-                key: "remove_ad",
-                label: "移除部分广告",
-                desc: "移除一些常见的广告弹窗。"
-            },
-            {
-                key: "remove_qr_login_check",
-                label: "移除扫码登录检查",
-                desc: "扫描相册里的二维码时不再拦截登录。"
-            },
-            {
-                key: "remove_reply_msg_check",
-                label: "移除回复消息不存在限制",
-                desc: "常见于解决‘转发的聊天记录中不包含该内容’的提示，允许查看回复消息。"
-            },
-            {
-                key: "rename_base_apk",
-                label: "重命名.apk文件",
-                desc: "上传群文件时自动重命名 .apk 文件，防止添加.1。"
-            },
-            {
-                key: "reply_no_at",
-                label: "回复不带 @",
-                desc: "回复消息时不添加 @ 对方。"
-            },
-            {
-                key: "show_hide_emoticon",
-                label: "显示隐藏表情",
-                desc: "一些表情只会在特定时间内可见，启用后，这些隐藏表情将显示到表情列表中。"
-            },
-            {
-                key: "show_precise_ban_time",
-                label: "显示精确禁言时间",
-                desc: "启用后，禁言状态下在聊天页文字输入框中将替换显示精确的禁言时间，而非只显示单独的<天，分，秒>"
-            },
-            {
-                key: "skip_qr_login_wait",
-                label: "跳过扫码登录等待",
-                desc: "扫码登录时跳过倒计时。"
-            }
-        ];
+        let features = [];
+
+        const loadFeaturesConfig = () => {
+           if (typeof TCQT !== "undefined" && typeof TCQT.getFeaturesConfig === "function") {
+               try {
+                   const configJson = TCQT.getFeaturesConfig();
+                   const dynamicFeatures = JSON.parse(configJson);
+                   if (Array.isArray(dynamicFeatures) && dynamicFeatures.length > 0) {
+                       features = dynamicFeatures.sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
+                       return true;
+                   }
+               } catch (e) {
+                   console.error("解析动态配置失败!!!", e);
+               }
+           }
+           return false;
+        }
+
+        if (!loadFeaturesConfig()) {
+            console.error("动态配置加载失败!!!");
+        }
 
         // --- State ---
         let injected = false;

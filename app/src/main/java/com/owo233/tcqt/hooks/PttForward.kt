@@ -34,7 +34,13 @@ import java.util.ArrayList
 import kotlin.random.Random
 
 @RegisterAction
-@RegisterSetting(key = "ptt_forward", name = "Ptt转发", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "ptt_forward",
+    name = "允许转发语音消息",
+    type = SettingType.BOOLEAN,
+    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
+    uiOrder = 20
+)
 class PttForward: IAction, OnMenuBuilder {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {

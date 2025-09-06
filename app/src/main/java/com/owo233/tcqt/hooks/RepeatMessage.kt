@@ -26,7 +26,13 @@ import de.robv.android.xposed.XposedHelpers
 import kotlin.random.Random
 
 @RegisterAction
-@RegisterSetting(key = "repeat_message", name = "复读机 +1", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "repeat_message",
+    name = "复读机 +1",
+    type = SettingType.BOOLEAN,
+    desc = "人类的本质是什么？不支持修改+1图标，为了防止误触，需要在200ms内重复点击才能触发。",
+    uiOrder = 25
+)
 class RepeatMessage: IAction {
 
     private var lastClickTime = 0L

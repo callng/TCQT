@@ -5,6 +5,7 @@ import android.webkit.JavascriptInterface
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.json
+import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
@@ -72,5 +73,10 @@ class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
     fun getDisabledActionCount(): Int {
         return ActionManager.getDisabledActionCount()
+    }
+
+    @JavascriptInterface
+    fun getFeaturesConfig(): String {
+        return GeneratedFeaturesData.toJsonString()
     }
 }

@@ -12,7 +12,14 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "forced_to_b", name = "AB测试，强制跳转到实验组", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "forced_to_b",
+    name = "AB测试强制转B组",
+    type = SettingType.BOOLEAN,
+    desc = "启用后，在AB测试对照组中，将全部测试强制转为B组（实验组），注意，此功能有一定的风险，请自行斟酌是否启用。",
+    isRedMark = true,
+    uiOrder = 13
+)
 class ForcedToB: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!

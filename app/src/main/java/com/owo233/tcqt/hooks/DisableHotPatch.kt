@@ -18,7 +18,14 @@ import com.tencent.mobileqq.pb.PBRepeatMessageField
 import mqq.app.AppRuntime
 
 @RegisterAction
-@RegisterSetting(key = "disable_hot_patch", name = "禁用热补丁", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "disable_hot_patch",
+    name = "禁用热补丁",
+    type = SettingType.BOOLEAN,
+    desc = "顾名思义，但不会删除已有的热补丁。",
+    isRedMark = true,
+    uiOrder = 6
+)
 class DisableHotPatch: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")

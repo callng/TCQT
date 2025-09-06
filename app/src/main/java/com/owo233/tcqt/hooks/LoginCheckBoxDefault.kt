@@ -12,7 +12,13 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "login_check_box_default", name = "默认勾选登录协议", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "login_check_box_default",
+    name = "默认勾选登录协议",
+    type = SettingType.BOOLEAN,
+    desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
+    uiOrder = 15
+)
 class LoginCheckBoxDefault: IAction {
 
     companion object {

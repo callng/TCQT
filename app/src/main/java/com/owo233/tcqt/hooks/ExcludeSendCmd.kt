@@ -24,8 +24,21 @@ import oicq.wlogin_sdk.tools.cryptor
 import java.lang.reflect.Method
 
 @RegisterAction
-@RegisterSetting(key = "exclude_send_cmd", name = "排除指定的CMD发送", type = SettingType.BOOLEAN)
-@RegisterSetting(key = "exclude_send_cmd.string.cmd", name = "排除的CMD列表", type = SettingType.STRING)
+@RegisterSetting(
+    key = "exclude_send_cmd",
+    name = "禁止发送指定包体",
+    type = SettingType.BOOLEAN,
+    desc = "启用后，宿主发送的指定包体(cmd)将会被拦截。",
+    isRedMark = true,
+    hasTextAreas = true,
+    uiOrder = 9
+)
+@RegisterSetting(
+    key = "exclude_send_cmd.string.cmd",
+    name = "排除的CMD列表",
+    type = SettingType.STRING,
+    textAreaPlaceholder = "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
+)
 class ExcludeSendCmd: IAction {
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }
     private val cachedBytes by lazy { concatPackets(cachePackets) }

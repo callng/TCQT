@@ -12,7 +12,13 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "remove_qr_login_check", name = "移除扫码登录检查", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "remove_qr_login_check",
+    name = "移除扫码登录检查",
+    type = SettingType.BOOLEAN,
+    desc = "扫描相册里的二维码时不再拦截登录。",
+    uiOrder = 22
+)
 class RemoveQRLoginCheck: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

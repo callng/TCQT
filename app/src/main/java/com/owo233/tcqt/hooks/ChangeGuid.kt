@@ -29,7 +29,15 @@ import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
-@RegisterSetting(key = "change_guid", name = "修改GUID", type = SettingType.BOOLEAN, defaultValue = "true")
+@RegisterSetting(
+    key = "change_guid",
+    name = "自定义GUID",
+    type = SettingType.BOOLEAN,
+    defaultValue = "true",
+    desc = "启用后在登录页面长按登录按钮即可调出设置窗口。",
+    isRedMark = true,
+    uiOrder = 1
+)
 class ChangeGuid: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (!SpManager.isInit()) {

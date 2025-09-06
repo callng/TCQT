@@ -19,6 +19,7 @@ class ActionRegistrarProcessor(
     override fun process(resolver: Resolver): List<KSAnnotated> {
         processActions(resolver)
         processSettings(resolver)
+        generateFeaturesJson(resolver)
         return emptyList()
     }
 
@@ -134,6 +135,11 @@ class ActionRegistrarProcessor(
 
                 val key = (args["key"]?.value as? String)?.ifBlank { null }
                 val name = args["name"]?.value as? String ?: ""
+                val desc = args["desc"]?.value as? String ?: ""
+                val isRedMark = args["isRedMark"]?.value as? Boolean ?: false
+                val hasTextAreas = args["hasTextAreas"]?.value as? Boolean ?: false
+                val uiOrder = args["uiOrder"]?.value as? Int ?: 1000
+                val textAreaPlaceholder = args["textAreaPlaceholder"]?.value as? String ?: ""
 
                 val type = (args["type"]?.value?.toString() ?: "BOOLEAN").let {
                     try {
@@ -157,62 +163,181 @@ class ActionRegistrarProcessor(
                         .replace("\"", "\\\"") + "\""
                 }
 
-                SettingInfo(actualKey, name, type, formattedDefaultValue)
+                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder)
             }
     }
 
     private fun generateSafeConstantName(key: String): String {
         return key
-            .replace(".", "_")  // device.model -> device_model
-            .replace("-", "_")  // app-config -> app_config
-            .replace(" ", "_")  // app config -> app_config
-            .replace("+", "_PLUS_")  // version+ -> version_PLUS_
-            .replace("@", "_AT_")   // user@domain -> user_AT_domain
-            .replace("#", "_HASH_") // config#1 -> config_HASH_1
-            .replace("$", "_DOLLAR_") // price$ -> price_DOLLAR_
-            .replace("%", "_PERCENT_") // rate% -> rate_PERCENT_
-            .replace("&", "_AND_")   // A&B -> A_AND_B
-            .replace("*", "_STAR_")  // level* -> level_STAR_
-            .replace("(", "_LPAREN_") // func( -> func_LPAREN_
-            .replace(")", "_RPAREN_") // )end -> _RPAREN_end
-            .replace("[", "_LBRACKET_") // arr[ -> arr_LBRACKET_
-            .replace("]", "_RBRACKET_") // ]end -> _RBRACKET_end
-            .replace("{", "_LBRACE_") // obj{ -> obj_LBRACE_
-            .replace("}", "_RBRACE_") // }end -> _RBRACE_end
-            .replace("=", "_EQUALS_") // key=value -> key_EQUALS_value
-            .replace("?", "_QUESTION_") // opt? -> opt_QUESTION_
-            .replace("!", "_EXCLAMATION_") // alert! -> alert_EXCLAMATION_
-            .replace("<", "_LT_")    // less< -> less_LT_
-            .replace(">", "_GT_")    // greater> -> greater_GT_
-            .replace("/", "_SLASH_") // path/to -> path_SLASH_to
-            .replace("\\", "_BACKSLASH_") // path\to -> path_BACKSLASH_to
-            .replace(":", "_COLON_") // time:now -> time_COLON_now
-            .replace(";", "_SEMICOLON_") // cmd; -> cmd_SEMICOLON_
-            .replace(",", "_COMMA_") // a,b -> a_COMMA_b
-            .replace("'", "_QUOTE_") // it's -> it_QUOTE_s
-            .replace("\"", "_DOUBLEQUOTE_") // "text" -> _DOUBLEQUOTE_text_DOUBLEQUOTE_
-            .replace("`", "_BACKTICK_") // `code` -> _BACKTICK_code_BACKTICK_
-            .replace("~", "_TILDE_") // ~temp -> _TILDE_temp
-            .replace("^", "_CARET_") // ^start -> _CARET_start
-            .replace("|", "_PIPE_")  // a|b -> a_PIPE_b
-            // 移除其他非字母数字下划线的字符
+            .replace(".", "_")
+            .replace("-", "_")
+            .replace(" ", "_")
             .replace(Regex("[^a-zA-Z0-9_]"), "_")
-            // 处理连续的下划线
             .replace(Regex("_{2,}"), "_")
-            // 处理开头和结尾的下划线
             .trim('_')
-            // 如果以数字开头，加上前缀
             .let { if (it.firstOrNull()?.isDigit() == true) "KEY_$it" else it }
-            // 转为大写
             .uppercase()
-            // 确保不为空或全为下划线
             .takeIf { it.isNotBlank() && it != "_" } ?: "UNKNOWN_KEY"
+    }
+
+    private fun generateFeaturesJson(resolver: Resolver) {
+        val annotatedClasses = resolver
+            .getSymbolsWithAnnotation(RegisterSetting::class.qualifiedName!!)
+            .filterIsInstance<KSClassDeclaration>()
+
+        if (!annotatedClasses.iterator().hasNext()) return
+
+        // 收集所有设置信息，按主键分组
+        val allSettings = annotatedClasses
+            .flatMap { extractAllSettings(it) }
+            .toList()
+
+        // 按主键分组，找出主设置和子设置
+        val settingGroups = allSettings.groupBy { setting ->
+            if (setting.key.contains('.')) {
+                setting.key.substringBefore('.')
+            } else {
+                setting.key
+            }
+        }
+
+        // 同时生成Kotlin数据类
+        val kotlinFile = codeGenerator.createNewFile(
+            Dependencies.ALL_FILES,
+            "com.owo233.tcqt.generated",
+            "GeneratedFeaturesData"
+        )
+
+        kotlinFile.bufferedWriter().use { writer ->
+            val kotlinFeatures = generateKotlinFeatures(settingGroups)
+
+            writer.write("""
+package com.owo233.tcqt.generated
+
+object GeneratedFeaturesData {
+
+    data class TextAreaConfig(
+        val key: String,
+        val placeholder: String
+    )
+
+    data class FeatureConfig(
+        val key: String,
+        val label: String,
+        val desc: String,
+        val color: String? = null,
+        val textareas: List<TextAreaConfig>? = null,
+        val uiOrder: Int = 1000
+    )
+
+    val FEATURES: List<FeatureConfig> = listOf(
+$kotlinFeatures
+    )
+
+    fun toJsonString(): String {
+        return buildString {
+            append("[")
+            FEATURES.forEachIndexed { index, feature ->
+                if (index > 0) append(",")
+                append("\n        {")
+                append("\n            \"key\": \"${'$'}{feature.key}\",")
+                append("\n            \"label\": \"${'$'}{escapeJsonString(feature.label)}\",")
+                append("\n            \"desc\": \"${'$'}{escapeJsonString(feature.desc)}\",")
+                feature.color?.let { 
+                    append("\n            \"color\": \"${'$'}it\",")
+                }
+                feature.textareas?.let { textareas ->
+                    append("\n            \"textareas\": [")
+                    textareas.forEachIndexed { taIndex, ta ->
+                        if (taIndex > 0) append(",")
+                        append("\n                {")
+                        append("\n                    \"key\": \"${'$'}{ta.key}\",")
+                        append("\n                    \"placeholder\": \"${'$'}{escapeJsonString(ta.placeholder)}\"")
+                        append("\n                }")
+                    }
+                    append("\n            ],")
+                }
+                append("\n            \"uiOrder\": ${'$'}{feature.uiOrder}")
+                append("\n        }")
+            }
+            append("\n    ]")
+        }
+    }
+
+    private fun escapeJsonString(str: String): String {
+        return str.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+    }
+}
+
+""".trimIndent())
+        }
+    }
+
+    private fun generateKotlinFeatures(settingGroups: Map<String, List<SettingInfo>>): String {
+        return settingGroups.map { (mainKey, settings) ->
+            val mainSetting = settings.find { it.key == mainKey } ?: settings.first()
+            val subSettings = settings.filter { it.key != mainKey && it.key.startsWith("$mainKey.") }
+
+            buildString {
+                append("        FeatureConfig(")
+                append("\n            key = \"${mainSetting.key}\",")
+                append("\n            label = \"${escapeKotlinString(mainSetting.name)}\",")
+                append("\n            desc = \"${escapeKotlinString(mainSetting.desc)}\",")
+
+                if (mainSetting.isRedMark) {
+                    append("\n            color = \"var(--danger-color)\",")
+                }
+
+                // 处理文本框
+                if (mainSetting.hasTextAreas || subSettings.any { it.type == SettingType.STRING }) {
+                    append("\n            textareas = listOf(")
+
+                    val textAreaSettings = if (mainSetting.hasTextAreas && mainSetting.type == SettingType.STRING) {
+                        listOf(mainSetting) + subSettings.filter { it.type == SettingType.STRING }
+                    } else {
+                        subSettings.filter { it.type == SettingType.STRING }
+                    }
+
+                    textAreaSettings.forEachIndexed { index, textSetting ->
+                        if (index > 0) append(",")
+                        append("\n                TextAreaConfig(")
+                        append("\n                    key = \"${textSetting.key}\",")
+                        val placeholder = textSetting.textAreaPlaceholder.ifEmpty { "填写${textSetting.name}内容" }
+                        append("\n                    placeholder = \"${escapeKotlinString(placeholder)}\"")
+                        append("\n                )")
+                    }
+                    append("\n            ),")
+                }
+
+                append("\n            uiOrder = ${mainSetting.uiOrder}")
+                append("\n        )")
+            }
+        }.sortedBy { settingGroups[it.substringAfter("key = \"").substringBefore("\"")]?.first()?.uiOrder ?: 1000 }
+            .joinToString(",\n")
+    }
+
+    private fun escapeKotlinString(str: String): String {
+        return str.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            .replace("$", "\\$")
     }
 
     private data class SettingInfo(
         val key: String,
         val name: String,
         val type: SettingType,
-        val defaultValue: String
+        val defaultValue: String = "",
+        val desc: String = "",
+        val isRedMark: Boolean = false,
+        val hasTextAreas: Boolean = false,
+        val uiOrder: Int = 1000,
+        val textAreaPlaceholder: String = ""
     )
 }

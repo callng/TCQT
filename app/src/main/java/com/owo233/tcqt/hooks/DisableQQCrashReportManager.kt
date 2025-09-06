@@ -13,7 +13,14 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.isStatic
 
 @RegisterAction
-@RegisterSetting(key = "disable_qq_crash_report_manager", name = "禁用QQ崩溃报告管理器", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "disable_qq_crash_report_manager",
+    name = "禁用QQ崩溃报告管理器",
+    type = SettingType.BOOLEAN,
+    desc = "没有实际意义的功能，仅供测试使用。",
+    isRedMark = true,
+    uiOrder = 7
+)
 class DisableQQCrashReportManager: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {

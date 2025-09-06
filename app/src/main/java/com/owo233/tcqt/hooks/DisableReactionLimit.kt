@@ -12,7 +12,13 @@ import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "disable_reaction_limit", name = "禁止过滤反应表情", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "disable_reaction_limit",
+    name = "禁止过滤反应表情",
+    type = SettingType.BOOLEAN,
+    desc = "将更多的表情（Emoji）显示出来。",
+    uiOrder = 8
+)
 class DisableReactionLimit: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")

@@ -13,7 +13,13 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "module_update", name = "模块更新干掉宿主", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "module_update",
+    name = "模块更新干掉宿主",
+    type = SettingType.BOOLEAN,
+    desc = "每次本模块更新后将自动重启（杀死）宿主进程。",
+    uiOrder = 16
+)
 class ModuleUpdate: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

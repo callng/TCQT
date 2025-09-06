@@ -13,7 +13,13 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.common.config.pad.DeviceType
 
 @RegisterAction
-@RegisterSetting(key = "force_tablet_mode", name = "强制平板模式", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "force_tablet_mode",
+    name = "强制平板模式",
+    type = SettingType.BOOLEAN,
+    desc = "唯一的好处就是手机平板双端在线，具体可以干嘛呢？",
+    uiOrder = 14
+)
 class ForceTabletMode: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.common.config.pad.PadUtil")

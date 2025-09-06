@@ -12,7 +12,13 @@ import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 
 @RegisterAction
-@RegisterSetting(key = "fetch_service", name = "防撤回", type = SettingType.BOOLEAN)
+@RegisterSetting(
+    key = "fetch_service",
+    name = "消息防撤回",
+    type = SettingType.BOOLEAN,
+    desc = "防止消息被撤回，添加灰条提示。",
+    uiOrder = 11
+)
 class FetchService: AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

@@ -15,10 +15,33 @@ import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.utils.getMethods
 
 @RegisterAction
-@RegisterSetting(key = "custom_device", name = "自定义设备信息", type = SettingType.BOOLEAN)
-@RegisterSetting(key = "custom_device.string.device", name = "设备代号", type = SettingType.STRING)
-@RegisterSetting(key = "custom_device.string.model", name = "设备型号", type = SettingType.STRING)
-@RegisterSetting(key = "custom_device.string.manufacturer", name = "设备制造商", type = SettingType.STRING)
+@RegisterSetting(
+    key = "custom_device",
+    name = "自定义设备信息",
+    type = SettingType.BOOLEAN,
+    desc = "自定义宿主获取的[device, model, manufacturer]，如果按照下面例子填写每个编辑框内容，则宿主会识别设备为[Redmi K50 电竞版]",
+    isRedMark = true,
+    hasTextAreas = true,
+    uiOrder = 2
+)
+@RegisterSetting(
+    key = "custom_device.string.device",
+    name = "设备代号",
+    type = SettingType.STRING,
+    textAreaPlaceholder = "填写device内容, e.g: ingres"
+)
+@RegisterSetting(
+    key = "custom_device.string.model",
+    name = "设备型号",
+    type = SettingType.STRING,
+    textAreaPlaceholder = "填写model内容, e.g: 21121210C"
+)
+@RegisterSetting(
+    key = "custom_device.string.manufacturer",
+    name = "设备制造商",
+    type = SettingType.STRING,
+    textAreaPlaceholder = "填写manufacturer内容, e.g: Xiaomi"
+)
 class CustomDevice: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.os.SystemProperties")!!
