@@ -64,7 +64,5 @@ class ModuleCommand: AlwaysRunAction() {
         }
     }
 
-    override val name: String get() = "模块主动指令"
-
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

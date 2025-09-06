@@ -3,19 +3,22 @@ package com.owo233.tcqt.hooks
 import android.content.Context
 import android.content.Intent
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.mobileqq.earlydownload.xmldata.XmlData
 import com.tencent.mobileqq.pb.PBInt32Field
 import com.tencent.mobileqq.pb.PBRepeatMessageField
 import mqq.app.AppRuntime
 
 @RegisterAction
+@RegisterSetting(key = "disable_hot_patch", name = "禁用热补丁", type = SettingType.BOOLEAN, defaultValue = "false")
 class DisableHotPatch: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
@@ -114,9 +117,7 @@ class DisableHotPatch: IAction {
         })
     }
 
-    override val name: String get() = "禁用热补丁"
-
-    override val key: String get() = TCQTSetting.DISABLE_HOT_PATCH
+    override val key: String get() = GeneratedSettingList.DISABLE_HOT_PATCH
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL)
 }

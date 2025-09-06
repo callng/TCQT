@@ -51,7 +51,5 @@ class TestHook: AlwaysRunAction() {
             )
     }
 
-    override val name: String get() = "仅供测试"
-
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

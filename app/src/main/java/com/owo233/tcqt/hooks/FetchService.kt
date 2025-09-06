@@ -2,6 +2,8 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.hookMethod
@@ -10,6 +12,7 @@ import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 
 @RegisterAction
+@RegisterSetting(key = "fetch_service", name = "防撤回", type = SettingType.BOOLEAN, defaultValue = "false")
 class FetchService: AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -18,8 +21,6 @@ class FetchService: AlwaysRunAction() {
             NTServiceFetcher.onFetch(service)
         }
     }
-
-    override val name: String get() = "消息防撤回"
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

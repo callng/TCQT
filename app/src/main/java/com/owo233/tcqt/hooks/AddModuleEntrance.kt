@@ -155,7 +155,5 @@ class AddModuleEntrance: AlwaysRunAction() {
         }
     }
 
-    override val name: String get() = "创建模块设置入口"
-
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

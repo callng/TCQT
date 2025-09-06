@@ -2,16 +2,19 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.isPublic
 import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
+@RegisterSetting(key = "disable_flash_pic", name = "将闪照视为正常图片", type = SettingType.BOOLEAN, defaultValue = "false")
 class DisableFlashPic: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         AIOMsgItemFactoryProvider::class.java.declaredMethods.first {
@@ -27,9 +30,7 @@ class DisableFlashPic: IAction {
         })
     }
 
-    override val name: String get() = "将闪照视为正常图片"
-
-    override val key: String get() = TCQTSetting.DISABLE_FLASH_PIC
+    override val key: String get() = GeneratedSettingList.DISABLE_FLASH_PIC
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

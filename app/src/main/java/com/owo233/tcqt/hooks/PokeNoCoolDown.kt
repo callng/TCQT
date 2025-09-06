@@ -3,15 +3,18 @@ package com.owo233.tcqt.hooks
 import android.content.Context
 import android.content.SharedPreferences
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.MockSharedPreferences
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
+@RegisterSetting(key = "poke_no_cool_down", name = "禁用戳一戳10秒冷却", type = SettingType.BOOLEAN, defaultValue = "false")
 class PokeNoCoolDown: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedHelpers.findAndHookMethod(
@@ -33,9 +36,7 @@ class PokeNoCoolDown: IAction {
         )
     }
 
-    override val name: String get() = "禁用戳一戳10秒冷却"
-
-    override val key: String get() = TCQTSetting.POKE_NO_COOL_DOWN
+    override val key: String get() = GeneratedSettingList.POKE_NO_COOL_DOWN
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

@@ -5,12 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
+@RegisterSetting(key = "module_update", name = "模块更新干掉宿主", type = SettingType.BOOLEAN, defaultValue = "false")
 class ModuleUpdate: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -38,9 +41,7 @@ class ModuleUpdate: IAction {
         ctx.registerReceiver(companion, intent)
     }
 
-    override val name: String get() = "模块更新干掉宿主"
-
-    override val key: String get() = TCQTSetting.MODULE_UPDATE
+    override val key: String get() = GeneratedSettingList.MODULE_UPDATE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

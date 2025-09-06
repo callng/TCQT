@@ -3,17 +3,20 @@ package com.owo233.tcqt.hooks
 import android.content.Context
 import android.os.CountDownTimer
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
+@RegisterSetting(key = "skip_qr_login_wait", name = "跳过扫码登录等待", type = SettingType.BOOLEAN, defaultValue = "false")
 class SkipQRLoginWait: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -42,9 +45,7 @@ class SkipQRLoginWait: IAction {
         }
     }
 
-    override val name: String get() = "跳过扫码登录等待"
-
-    override val key: String get() = TCQTSetting.SKIP_QR_LOGIN_WAIT
+    override val key: String get() = GeneratedSettingList.SKIP_QR_LOGIN_WAIT
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.OPENSDK)
 }

@@ -2,17 +2,20 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.isNotAbstract
 import com.tencent.qqnt.kernel.nativeinterface.CommonTabEmojiInfo
 import com.tencent.qqnt.kernel.nativeinterface.SysEmoji
 
 @RegisterAction
+@RegisterSetting(key = "show_hide_emoticon", name = "显示被隐藏的表情", type = SettingType.BOOLEAN, defaultValue = "false")
 class ShowHideEmoticon: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.emoticon.QQSysAndEmojiResInfo")
@@ -31,7 +34,5 @@ class ShowHideEmoticon: IAction {
         })
     }
 
-    override val name: String get() = "显示被隐藏的表情"
-
-    override val key: String get() = TCQTSetting.SHOW_HIDE_EMOTICON
+    override val key: String get() = GeneratedSettingList.SHOW_HIDE_EMOTICON
 }

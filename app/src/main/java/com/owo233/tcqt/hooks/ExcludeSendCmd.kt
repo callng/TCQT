@@ -2,6 +2,8 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.EMPTY_BYTE_ARRAY
 import com.owo233.tcqt.ext.IAction
@@ -10,7 +12,7 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toUtf8ByteArray
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.HostSpecies
 import com.owo233.tcqt.utils.PacketUtils
 import com.owo233.tcqt.utils.PlatformTools.QQ_9_1_90_26520
@@ -22,6 +24,8 @@ import oicq.wlogin_sdk.tools.cryptor
 import java.lang.reflect.Method
 
 @RegisterAction
+@RegisterSetting(key = "exclude_send_cmd", name = "排除指定的CMD发送", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "exclude_send_cmd.string.cmd", name = "排除的CMD列表", type = SettingType.STRING)
 class ExcludeSendCmd: IAction {
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }
     private val cachedBytes by lazy { concatPackets(cachePackets) }
@@ -126,8 +130,12 @@ class ExcludeSendCmd: IAction {
     }
 
     companion object {
-        private val excludeCmdString by TCQTSetting.getSetting<String>(TCQTSetting.EXCLUDE_SEND_CMD_STRING)
-        private val excludeCmdEnabled by TCQTSetting.getSetting<Boolean>(TCQTSetting.EXCLUDE_SEND_CMD)
+        private val excludeCmdString by lazy { GeneratedSettingList.getString(
+            GeneratedSettingList.EXCLUDE_SEND_CMD_STRING_CMD)
+        }
+        private val excludeCmdEnabled by lazy { GeneratedSettingList.getBoolean(
+            GeneratedSettingList.EXCLUDE_SEND_CMD)
+        }
         private val excludeCmdSet by lazy {
             excludeCmdString.lines()
                 .map { it.trim() }
@@ -148,9 +156,7 @@ class ExcludeSendCmd: IAction {
         return regexList.any { it.matches(cmd) }
     }
 
-    override val name: String get() = "排除指定的CMD发送"
-
-    override val key: String get() = TCQTSetting.EXCLUDE_SEND_CMD
+    override val key: String get() = GeneratedSettingList.EXCLUDE_SEND_CMD
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MSF)
 

@@ -3,13 +3,15 @@ package com.owo233.tcqt.hooks
 import android.content.Context
 import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.replaceHook
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.ClassCacheUtils
 import com.owo233.tcqt.utils.emptyParam
 import com.owo233.tcqt.utils.isFinal
@@ -19,6 +21,7 @@ import com.owo233.tcqt.utils.paramCount
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
+@RegisterSetting(key = "remove_ad", name = "移除部分广告", type = SettingType.BOOLEAN, defaultValue = "false")
 class RemoveAD: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         removeImmersionBannerAD()
@@ -71,7 +74,5 @@ class RemoveAD: IAction {
             }?.hookMethod(beforeHook { param -> param.result = Unit })
     }
 
-    override val name: String get() = "移除部分广告"
-
-    override val key: String get() = TCQTSetting.REMOVE_AD
+    override val key: String get() = GeneratedSettingList.REMOVE_AD
 }

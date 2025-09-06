@@ -2,14 +2,17 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.replaceHook
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
+@RegisterSetting(key = "disable_reaction_limit", name = "禁止过滤反应表情", type = SettingType.BOOLEAN, defaultValue = "false")
 class DisableReactionLimit: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
@@ -29,9 +32,7 @@ class DisableReactionLimit: IAction {
             })
     }
 
-    override val name: String get() = "禁止过滤反应表情"
-
-    override val key: String get() = TCQTSetting.DISABLE_REACTION_LIMIT
+    override val key: String get() = GeneratedSettingList.DISABLE_REACTION_LIMIT
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

@@ -4,13 +4,15 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.setObjectField
@@ -19,6 +21,7 @@ import de.robv.android.xposed.XposedBridge
 import java.io.File
 
 @RegisterAction
+@RegisterSetting(key = "rename_base_apk", name = "上传群文件时重命名.apk文件", type = SettingType.BOOLEAN, defaultValue = "false")
 class RenameBaseApk: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findClassByConstructor(
@@ -99,9 +102,7 @@ class RenameBaseApk: IAction {
             .replace("%c", versionCode.toString())
     }
 
-    override val name: String get() = "上传群文件时重命名.apk文件"
-
-    override val key: String get() = TCQTSetting.RENAME_BASE_APK
+    override val key: String get() = GeneratedSettingList.RENAME_BASE_APK
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

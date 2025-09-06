@@ -61,8 +61,6 @@ class MenuBuilder : AlwaysRunAction() {
             }
         }
     }
-
-    override val name: String get() = "创建消息长按菜单项"
 }
 
 interface OnMenuBuilder : IAction {

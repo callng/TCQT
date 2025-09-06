@@ -2,14 +2,17 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
+@RegisterSetting(key = "show_precise_ban_time", name = "显示精准禁言时间", type = SettingType.BOOLEAN, defaultValue = "false")
 class ShowPreciseBanTime: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
@@ -37,7 +40,5 @@ class ShowPreciseBanTime: IAction {
         }
     }
 
-    override val name: String get() = "显示精准禁言时间"
-
-    override val key: String get() = TCQTSetting.SHOW_PRECISE_BAN_TIME
+    override val key: String get() = GeneratedSettingList.SHOW_PRECISE_BAN_TIME
 }

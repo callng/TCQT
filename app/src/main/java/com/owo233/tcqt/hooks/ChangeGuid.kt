@@ -13,13 +13,15 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.SpManager
 import com.owo233.tcqt.utils.logI
@@ -27,6 +29,7 @@ import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
+@RegisterSetting(key = "change_guid", name = "修改GUID", type = SettingType.BOOLEAN, defaultValue = "true")
 class ChangeGuid: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (!SpManager.isInit()) {
@@ -170,9 +173,7 @@ class ChangeGuid: IAction {
         return null
     }
 
-    override val name: String get() = "自定义GUID"
-
-    override val key: String get() = TCQTSetting.CHANGE_GUID
+    override val key: String get() = GeneratedSettingList.CHANGE_GUID
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 }

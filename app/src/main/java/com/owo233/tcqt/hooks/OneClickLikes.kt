@@ -4,11 +4,13 @@ import android.content.Context
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.logE
 import com.tencent.mobileqq.activity.VisitorsActivity
@@ -19,6 +21,7 @@ import com.tencent.mobileqq.vas.api.IVasSingedApi
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
+@RegisterSetting(key = "one_click_likes", name = "一键点赞", type = SettingType.BOOLEAN, defaultValue = "false")
 class OneClickLikes: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -76,10 +79,7 @@ class OneClickLikes: IAction {
         return false
     }
 
-    override val name: String get() = "一键点赞"
-
-    override val key: String get() = TCQTSetting.ONE_CLICK_LIKES
+    override val key: String get() = GeneratedSettingList.ONE_CLICK_LIKES
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
-
 }

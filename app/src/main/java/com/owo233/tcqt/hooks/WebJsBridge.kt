@@ -101,7 +101,5 @@ class WebJsBridge: AlwaysRunAction() {
         }
     }
 
-    override val name: String get() = "WebJsBridge"
-
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

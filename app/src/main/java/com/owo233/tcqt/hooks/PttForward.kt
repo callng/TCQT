@@ -8,14 +8,16 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.utils.CustomMenu
 import com.owo233.tcqt.R
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.launchWithCatch
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.ContextUtils
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.selectmember.ResultRecord
@@ -32,6 +34,7 @@ import java.util.ArrayList
 import kotlin.random.Random
 
 @RegisterAction
+@RegisterSetting(key = "ptt_forward", name = "Ptt转发", type = SettingType.BOOLEAN, defaultValue = "false")
 class PttForward: IAction, OnMenuBuilder {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -176,9 +179,7 @@ class PttForward: IAction, OnMenuBuilder {
         }
     }
 
-    override val name: String get() = "语音转发"
-
-    override val key: String get() = TCQTSetting.PTT_FORWARD
+    override val key: String get() = GeneratedSettingList.PTT_FORWARD
 
     override val targetComponentTypes: Array<String> get() = arrayOf(
         "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"

@@ -39,8 +39,6 @@ interface IAction {
         return setting
     }
 
-    val name: String
-
     val key: String
 
     val processes: Set<ActionProcess>

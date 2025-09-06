@@ -2,6 +2,9 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
@@ -9,11 +12,13 @@ import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.invokeOriginal
 import com.owo233.tcqt.ext.replaceHook
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.getMethods
-import com.owo233.tcqt.utils.logE
 
 @RegisterAction
+@RegisterSetting(key = "custom_device", name = "自定义设备信息", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "custom_device.string.device", name = "设备型号", type = SettingType.STRING)
+@RegisterSetting(key = "custom_device.string.model", name = "设备模型", type = SettingType.STRING)
+@RegisterSetting(key = "custom_device.string.manufacturer", name = "设备制造商", type = SettingType.STRING)
 class CustomDevice: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.os.SystemProperties")!!
@@ -43,9 +48,7 @@ class CustomDevice: IAction {
         })
     }
 
-    override val name: String get() = "自定义设备信息"
-
-    override val key: String get() = TCQTSetting.CUSTOM_DEVICE
+    override val key: String get() = GeneratedSettingList.CUSTOM_DEVICE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 
@@ -54,19 +57,14 @@ class CustomDevice: IAction {
         const val MODEL_KEY = "ro.product.model"
         const val MANUFACTURER_KEY = "ro.product.manufacturer"
 
-        private fun getSettingValue(settingKey: String): String {
-            return try {
-                (TCQTSetting.getSetting<Any>(settingKey).getValue(this, null) as? String)
-                    .orEmpty()
-                    .trim()
-            } catch (e: Exception) {
-                logE(msg = "getSettingValue error", cause = e)
-                ""
-            }
+        val device by lazy { GeneratedSettingList.getString(
+            GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE)
         }
-
-        val device by lazy { getSettingValue(TCQTSetting.CUSTOM_DEVICE_STRING_DEVICE) }
-        val model by lazy { getSettingValue(TCQTSetting.CUSTOM_DEVICE_STRING_MODEL) }
-        val manufacturer by lazy { getSettingValue(TCQTSetting.CUSTOM_DEVICE_STRING_MANUFACTURER) }
+        val model by lazy { GeneratedSettingList.getString(
+            GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL)
+        }
+        val manufacturer by lazy { GeneratedSettingList.getString(
+            GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER)
+        }
     }
 }

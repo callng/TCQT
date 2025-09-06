@@ -2,15 +2,18 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.isStatic
 
 @RegisterAction
+@RegisterSetting(key = "disable_qq_crash_report_manager", name = "禁用QQ崩溃报告管理器", type = SettingType.BOOLEAN, defaultValue = "false")
 class DisableQQCrashReportManager: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
@@ -36,7 +39,5 @@ class DisableQQCrashReportManager: IAction {
         }
     }
 
-    override val name: String get() = "禁用QQ崩溃报告管理器"
-
-    override val key: String get() = TCQTSetting.DISABLE_QQ_CRASH_REPORT_MANAGER
+    override val key: String get() = GeneratedSettingList.DISABLE_QQ_CRASH_REPORT_MANAGER
 }

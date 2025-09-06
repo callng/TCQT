@@ -2,14 +2,17 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
+@RegisterSetting(key = "forced_to_b", name = "AB测试，强制跳转到实验组", type = SettingType.BOOLEAN, defaultValue = "false")
 class ForcedToB: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
@@ -46,9 +49,7 @@ class ForcedToB: IAction {
         })
     }
 
-    override val name: String get() = "AB测试，强制跳转到实验组"
-
-    override val key: String get() = TCQTSetting.FORCED_TO_B
+    override val key: String get() = GeneratedSettingList.FORCED_TO_B
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

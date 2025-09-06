@@ -4,13 +4,15 @@ import android.content.Context
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookMethod
@@ -24,6 +26,7 @@ import de.robv.android.xposed.XposedHelpers
 import kotlin.random.Random
 
 @RegisterAction
+@RegisterSetting(key = "repeat_message", name = "复读机 +1", type = SettingType.BOOLEAN, defaultValue = "false")
 class RepeatMessage: IAction {
 
     private var lastClickTime = 0L
@@ -108,7 +111,5 @@ class RepeatMessage: IAction {
         }
     }
 
-    override val name: String get() = "复读机 +1"
-
-    override val key: String get() = TCQTSetting.REPEAT_MESSAGE
+    override val key: String get() = GeneratedSettingList.REPEAT_MESSAGE
 }
