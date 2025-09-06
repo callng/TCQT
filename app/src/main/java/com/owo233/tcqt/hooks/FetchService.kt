@@ -12,7 +12,7 @@ import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 
 @RegisterAction
-@RegisterSetting(key = "fetch_service", name = "防撤回", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "fetch_service", name = "防撤回", type = SettingType.BOOLEAN)
 class FetchService: AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

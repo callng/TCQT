@@ -34,7 +34,7 @@ import java.util.ArrayList
 import kotlin.random.Random
 
 @RegisterAction
-@RegisterSetting(key = "ptt_forward", name = "Ptt转发", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "ptt_forward", name = "Ptt转发", type = SettingType.BOOLEAN)
 class PttForward: IAction, OnMenuBuilder {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {

@@ -21,7 +21,7 @@ import com.tencent.mobileqq.vas.api.IVasSingedApi
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "one_click_likes", name = "一键点赞", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "one_click_likes", name = "一键点赞", type = SettingType.BOOLEAN)
 class OneClickLikes: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

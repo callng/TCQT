@@ -12,7 +12,7 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "flag_secure_bypass", name = "绕过 FLAG_SECURE", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "flag_secure_bypass", name = "绕过 FLAG_SECURE", type = SettingType.BOOLEAN)
 class FlagSecureBypass: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         Window::class.java.hookMethod("setFlags").before {

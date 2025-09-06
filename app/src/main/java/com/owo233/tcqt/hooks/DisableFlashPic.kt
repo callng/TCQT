@@ -14,7 +14,7 @@ import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "disable_flash_pic", name = "将闪照视为正常图片", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "disable_flash_pic", name = "将闪照视为正常图片", type = SettingType.BOOLEAN)
 class DisableFlashPic: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         AIOMsgItemFactoryProvider::class.java.declaredMethods.first {

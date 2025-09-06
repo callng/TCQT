@@ -14,7 +14,7 @@ import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
-@RegisterSetting(key = "poke_no_cool_down", name = "禁用戳一戳10秒冷却", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "poke_no_cool_down", name = "禁用戳一戳10秒冷却", type = SettingType.BOOLEAN)
 class PokeNoCoolDown: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedHelpers.findAndHookMethod(

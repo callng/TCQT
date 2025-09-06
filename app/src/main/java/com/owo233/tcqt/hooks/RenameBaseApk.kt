@@ -21,7 +21,7 @@ import de.robv.android.xposed.XposedBridge
 import java.io.File
 
 @RegisterAction
-@RegisterSetting(key = "rename_base_apk", name = "上传群文件时重命名.apk文件", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "rename_base_apk", name = "上传群文件时重命名.apk文件", type = SettingType.BOOLEAN)
 class RenameBaseApk: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findClassByConstructor(

@@ -15,7 +15,7 @@ import com.tencent.qqnt.kernel.nativeinterface.CommonTabEmojiInfo
 import com.tencent.qqnt.kernel.nativeinterface.SysEmoji
 
 @RegisterAction
-@RegisterSetting(key = "show_hide_emoticon", name = "显示被隐藏的表情", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "show_hide_emoticon", name = "显示被隐藏的表情", type = SettingType.BOOLEAN)
 class ShowHideEmoticon: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.emoticon.QQSysAndEmojiResInfo")

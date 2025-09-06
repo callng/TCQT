@@ -12,7 +12,7 @@ import com.tencent.qqnt.kernel.nativeinterface.VASMsgBubble
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "default_bubble", name = "强制使用默认气泡", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "default_bubble", name = "强制使用默认气泡", type = SettingType.BOOLEAN)
 class DefaultBubble: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(VASMsgBubble::class.java, afterHook {

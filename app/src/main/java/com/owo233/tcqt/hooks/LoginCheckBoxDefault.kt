@@ -12,7 +12,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
-@RegisterSetting(key = "login_check_box_default", name = "默认勾选登录协议", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "login_check_box_default", name = "默认勾选登录协议", type = SettingType.BOOLEAN)
 class LoginCheckBoxDefault: IAction {
 
     companion object {

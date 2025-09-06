@@ -13,7 +13,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "module_update", name = "模块更新干掉宿主", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "module_update", name = "模块更新干掉宿主", type = SettingType.BOOLEAN)
 class ModuleUpdate: IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {

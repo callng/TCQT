@@ -12,7 +12,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
 
 @RegisterAction
-@RegisterSetting(key = "remove_reply_msg_check", name = "移除回复消息不存在限制", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "remove_reply_msg_check", name = "移除回复消息不存在限制", type = SettingType.BOOLEAN)
 class RemoveReplyMsgCheck: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         QQNTWrapperUtil.CppProxy::class.java.hookMethod(

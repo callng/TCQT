@@ -24,7 +24,7 @@ import oicq.wlogin_sdk.tools.cryptor
 import java.lang.reflect.Method
 
 @RegisterAction
-@RegisterSetting(key = "exclude_send_cmd", name = "排除指定的CMD发送", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "exclude_send_cmd", name = "排除指定的CMD发送", type = SettingType.BOOLEAN)
 @RegisterSetting(key = "exclude_send_cmd.string.cmd", name = "排除的CMD列表", type = SettingType.STRING)
 class ExcludeSendCmd: IAction {
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }

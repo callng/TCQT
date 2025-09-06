@@ -13,7 +13,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 
 @RegisterAction
-@RegisterSetting(key = "reply_no_at", name = "移除群回复消息添加@", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "reply_no_at", name = "移除群回复消息添加@", type = SettingType.BOOLEAN)
 class ReplyNoAt: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findMethodByClassName(

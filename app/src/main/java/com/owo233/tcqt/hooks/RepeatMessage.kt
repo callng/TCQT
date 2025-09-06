@@ -26,7 +26,7 @@ import de.robv.android.xposed.XposedHelpers
 import kotlin.random.Random
 
 @RegisterAction
-@RegisterSetting(key = "repeat_message", name = "复读机 +1", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "repeat_message", name = "复读机 +1", type = SettingType.BOOLEAN)
 class RepeatMessage: IAction {
 
     private var lastClickTime = 0L

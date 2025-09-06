@@ -12,7 +12,7 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "show_precise_ban_time", name = "显示精准禁言时间", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "show_precise_ban_time", name = "显示精准禁言时间", type = SettingType.BOOLEAN)
 class ShowPreciseBanTime: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!

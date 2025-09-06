@@ -15,9 +15,9 @@ import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.utils.getMethods
 
 @RegisterAction
-@RegisterSetting(key = "custom_device", name = "自定义设备信息", type = SettingType.BOOLEAN, defaultValue = "false")
-@RegisterSetting(key = "custom_device.string.device", name = "设备型号", type = SettingType.STRING)
-@RegisterSetting(key = "custom_device.string.model", name = "设备模型", type = SettingType.STRING)
+@RegisterSetting(key = "custom_device", name = "自定义设备信息", type = SettingType.BOOLEAN)
+@RegisterSetting(key = "custom_device.string.device", name = "设备代号", type = SettingType.STRING)
+@RegisterSetting(key = "custom_device.string.model", name = "设备型号", type = SettingType.STRING)
 @RegisterSetting(key = "custom_device.string.manufacturer", name = "设备制造商", type = SettingType.STRING)
 class CustomDevice: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {

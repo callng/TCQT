@@ -12,7 +12,7 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
-@RegisterSetting(key = "pic_type_emoticon", name = "以图片方式打开表情", type = SettingType.BOOLEAN, defaultValue = "false")
+@RegisterSetting(key = "pic_type_emoticon", name = "以图片方式打开表情", type = SettingType.BOOLEAN)
 class PicTypeEmoticon: IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl")!!
