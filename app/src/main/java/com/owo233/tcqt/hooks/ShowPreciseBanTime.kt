@@ -19,7 +19,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "禁言状态下在聊天页文字输入框中将替换显示精确的禁言时间，而非只显示单独的<天，分，秒>",
     uiOrder = 28
 )
-class ShowPreciseBanTime: IAction {
+class ShowPreciseBanTime : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
             .hookMethod("remainingTimeToStringCountDown", beforeHook {

@@ -19,7 +19,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "不知道有什么用。",
     uiOrder = 10
 )
-class FakeMultiWindowStatus: IAction {
+class FakeMultiWindowStatus : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         Activity::class.java.getDeclaredMethod("isInMultiWindowMode")

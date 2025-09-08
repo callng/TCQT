@@ -10,7 +10,7 @@ import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 
 @RegisterAction
-class BrowserRestrictMitigation: AlwaysRunAction() {
+class BrowserRestrictMitigation : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findMethodByClassPrefix(

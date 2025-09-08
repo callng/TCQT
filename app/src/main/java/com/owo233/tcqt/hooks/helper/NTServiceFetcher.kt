@@ -3,10 +3,6 @@
 
 package com.owo233.tcqt.hooks.helper
 
-import com.owo233.tcqt.data.TCQTBuild
-import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.logD
 import com.tencent.qqnt.kernel.api.IKernelService
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -23,35 +19,9 @@ internal object NTServiceFetcher {
 
         curKernelHash = curHash
         this.iKernelService = service
-
-        if (GeneratedSettingList.getBoolean(GeneratedSettingList.FETCH_SERVICE)) {
-            initHookOnMsfPush()
-        }
     }
 
     private fun isInitForNt(hash: Int) = hash == curKernelHash
-
-    private fun initHookOnMsfPush() {
-        kernelService.wrapperSession.javaClass.hookMethod("onMsfPush").before { param ->
-            val cmd = param.args[0] as String
-            val buffer = param.args[1] as ByteArray
-            when(cmd) {
-                "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
-                    AioListener.handleInfoSyncPush(buffer, param)
-                }
-                "trpc.msg.olpush.OlPushService.MsgPush" -> {
-                    AioListener.handleMsgPush(buffer, param)
-                }
-                else -> { }
-            }
-        }
-
-        if (TCQTBuild.DEBUG) { // 仅供调试
-            kernelService.wrapperSession.javaClass.hookMethod("setQimei36").before {
-                logD(msg = "setQimei36: ${it.args[0] as String}")
-            }
-        }
-    }
 
     val kernelService: IKernelService
         get() = iKernelService

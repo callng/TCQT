@@ -20,7 +20,7 @@ import com.tencent.mobileqq.aio.msg.AIOMsgItem
     desc = "回复消息时不添加 @ 对方。",
     uiOrder = 26
 )
-class ReplyNoAt: IAction {
+class ReplyNoAt : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findMethodByClassName(
             "com.tencent.mobileqq.aio.input.reply"

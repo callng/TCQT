@@ -20,7 +20,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     isRedMark = true,
     uiOrder = 13
 )
-class ForcedToB: IAction {
+class ForcedToB : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
         val expEntityClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!

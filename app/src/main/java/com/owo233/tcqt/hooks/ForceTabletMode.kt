@@ -20,7 +20,7 @@ import com.tencent.common.config.pad.DeviceType
     desc = "唯一的好处就是手机平板双端在线，具体可以干嘛呢？",
     uiOrder = 14
 )
-class ForceTabletMode: IAction {
+class ForceTabletMode : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.common.config.pad.PadUtil")
             ?.declaredMethods?.first {

@@ -21,7 +21,7 @@ import de.robv.android.xposed.XposedHelpers
     desc = "移除戳一戳冷却时间(每天上限200次)。",
     uiOrder = 19
 )
-class PokeNoCoolDown: IAction {
+class PokeNoCoolDown : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedHelpers.findAndHookMethod(
             "android.content.ContextWrapper",

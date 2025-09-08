@@ -19,7 +19,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "将更多的表情（Emoji）显示出来。",
     uiOrder = 8
 )
-class DisableReactionLimit: IAction {
+class DisableReactionLimit : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
             ?.hookMethod("getFilterEmojiData", replaceHook {

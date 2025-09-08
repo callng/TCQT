@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.isStatic
     isRedMark = true,
     uiOrder = 7
 )
-class DisableQQCrashReportManager: IAction {
+class DisableQQCrashReportManager : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
             it.declaredMethods.first { method ->

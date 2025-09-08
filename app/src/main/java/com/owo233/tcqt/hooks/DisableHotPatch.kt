@@ -26,7 +26,7 @@ import mqq.app.AppRuntime
     isRedMark = true,
     uiOrder = 6
 )
-class DisableHotPatch: IAction {
+class DisableHotPatch : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")

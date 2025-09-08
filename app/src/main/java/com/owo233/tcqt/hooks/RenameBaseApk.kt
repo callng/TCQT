@@ -28,7 +28,7 @@ import java.io.File
     desc = "上传群文件时自动重命名 .apk 文件，防止添加.1。",
     uiOrder = 24
 )
-class RenameBaseApk: IAction {
+class RenameBaseApk : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         FuzzyClassKit.findClassByConstructor(
             prefix = "com.tencent.mobileqq.filemanager.uftwrapper.b",

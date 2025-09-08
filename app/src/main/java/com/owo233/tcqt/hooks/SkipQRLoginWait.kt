@@ -23,7 +23,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "扫码登录时跳过倒计时。",
     uiOrder = 29
 )
-class SkipQRLoginWait: IAction {
+class SkipQRLoginWait : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (PlatformTools.isMainProcess()) {

@@ -19,7 +19,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
     uiOrder = 15
 )
-class LoginCheckBoxDefault: IAction {
+class LoginCheckBoxDefault : IAction {
 
     companion object {
         private val loginContextNames = setOf(

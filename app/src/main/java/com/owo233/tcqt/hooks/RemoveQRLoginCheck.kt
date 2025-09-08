@@ -19,7 +19,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "扫描相册里的二维码时不再拦截登录。",
     uiOrder = 22
 )
-class RemoveQRLoginCheck: IAction {
+class RemoveQRLoginCheck : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.open.agent.QrAgentLoginManager")

@@ -19,7 +19,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "可以保存一些不让保存的表情。",
     uiOrder = 18
 )
-class PicTypeEmoticon: IAction {
+class PicTypeEmoticon : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl")!!
             .hookMethod("checkIsFavPicAndShowPreview", beforeHook {

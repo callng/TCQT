@@ -28,7 +28,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "开启后点赞时将自动点赞20个（非SVIP为10个）。",
     uiOrder = 17
 )
-class OneClickLikes: IAction {
+class OneClickLikes : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         // TIM不支持点赞行为

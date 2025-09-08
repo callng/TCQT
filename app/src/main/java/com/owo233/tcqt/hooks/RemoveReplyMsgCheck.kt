@@ -19,7 +19,7 @@ import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
     desc = "常见于解决‘转发的聊天记录中不包含该内容’的提示，允许查看回复消息。",
     uiOrder = 23
 )
-class RemoveReplyMsgCheck: IAction {
+class RemoveReplyMsgCheck : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         QQNTWrapperUtil.CppProxy::class.java.hookMethod(
             "findSourceOfReplyMsgFrom",

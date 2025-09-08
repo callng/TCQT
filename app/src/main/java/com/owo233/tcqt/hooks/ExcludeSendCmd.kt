@@ -39,7 +39,7 @@ import java.lang.reflect.Method
     type = SettingType.STRING,
     textAreaPlaceholder = "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
 )
-class ExcludeSendCmd: IAction {
+class ExcludeSendCmd : IAction {
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }
     private val cachedBytes by lazy { concatPackets(cachePackets) }
     private val configClass = XpClassLoader.load("com.tencent.freesia.UnitedConfig")!!

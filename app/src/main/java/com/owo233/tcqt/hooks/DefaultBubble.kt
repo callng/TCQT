@@ -19,7 +19,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。",
     uiOrder = 3
 )
-class DefaultBubble: IAction {
+class DefaultBubble : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(VASMsgBubble::class.java, afterHook {
             val v = it.thisObject as VASMsgBubble

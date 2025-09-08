@@ -12,7 +12,7 @@ import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.logI
 
 // @RegisterAction
-class TestHook: AlwaysRunAction() {
+class TestHook : AlwaysRunAction() {
 
     /**
      * 仅供测试的hook，在发布版本时必须移除@RegisterAction注解

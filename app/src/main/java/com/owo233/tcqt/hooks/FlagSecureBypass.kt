@@ -20,7 +20,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     isRedMark = true,
     uiOrder = 12
 )
-class FlagSecureBypass: IAction {
+class FlagSecureBypass : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         Window::class.java.hookMethod("setFlags").before {
             val flag = it.args[0] as Int

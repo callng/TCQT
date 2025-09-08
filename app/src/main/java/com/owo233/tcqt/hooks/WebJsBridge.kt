@@ -18,7 +18,7 @@ import java.net.Socket
 import java.net.URL
 
 @RegisterAction
-class WebJsBridge: AlwaysRunAction() {
+class WebJsBridge : AlwaysRunAction() {
 
     internal lateinit var server: LocalWebServer
 

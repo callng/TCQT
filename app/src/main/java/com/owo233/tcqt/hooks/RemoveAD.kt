@@ -28,7 +28,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "移除一些常见的广告弹窗。",
     uiOrder = 21
 )
-class RemoveAD: IAction {
+class RemoveAD : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         removeImmersionBannerAD()
         removeKeywordAD()

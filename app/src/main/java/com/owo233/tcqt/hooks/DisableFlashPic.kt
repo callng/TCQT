@@ -21,7 +21,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "好友发送的闪照将作为正常图片显示并添加灰条提示。",
     uiOrder = 5
 )
-class DisableFlashPic: IAction {
+class DisableFlashPic : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         AIOMsgItemFactoryProvider::class.java.declaredMethods.first {
             it.isPublic && it.returnType != Void.TYPE

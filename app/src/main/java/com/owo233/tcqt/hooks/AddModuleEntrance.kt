@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.new
 import java.lang.reflect.Proxy
 
 @RegisterAction
-class AddModuleEntrance: AlwaysRunAction() {
+class AddModuleEntrance : AlwaysRunAction() {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val cMainSettingFragment =
             XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingFragment")

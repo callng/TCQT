@@ -41,7 +41,7 @@ import kotlin.random.Random
     desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
     uiOrder = 20
 )
-class PttForward: IAction, OnMenuBuilder {
+class PttForward : IAction, OnMenuBuilder {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
         val forwardBaseOption = XpClassLoader.load(

@@ -15,7 +15,7 @@ import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 
 @RegisterAction
-class ModuleCommand: AlwaysRunAction() {
+class ModuleCommand : AlwaysRunAction() {
 
     private var registeredReceiver: BroadcastReceiver? = null
 

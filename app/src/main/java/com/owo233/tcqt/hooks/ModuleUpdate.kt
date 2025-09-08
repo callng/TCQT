@@ -20,7 +20,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     desc = "每次本模块更新后将自动重启（杀死）宿主进程。",
     uiOrder = 16
 )
-class ModuleUpdate: IAction {
+class ModuleUpdate : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         val intent = IntentFilter()

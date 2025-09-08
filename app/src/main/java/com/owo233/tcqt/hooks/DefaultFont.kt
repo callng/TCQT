@@ -19,7 +19,7 @@ import de.robv.android.xposed.XposedBridge
     desc = "使用默认字体，让花里胡哨的字体不那么花里胡哨。",
     uiOrder = 4
 )
-class DefaultFont: IAction {
+class DefaultFont : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XposedBridge.hookAllConstructors(VASMsgFont::class.java, afterHook {
             val v = it.thisObject as VASMsgFont

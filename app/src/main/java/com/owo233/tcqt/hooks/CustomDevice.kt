@@ -42,7 +42,7 @@ import com.owo233.tcqt.utils.getMethods
     type = SettingType.STRING,
     textAreaPlaceholder = "填写manufacturer内容, e.g: Xiaomi"
 )
-class CustomDevice: IAction {
+class CustomDevice : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.os.SystemProperties")!!
             .getMethods(false)
