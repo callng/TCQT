@@ -150,7 +150,7 @@ fun <T> runRetry(
         } catch (e: Exception) {
             lastException = e
             onError?.invoke(e, i)
-            logE(msg = "runRetry failed on attempt $i: ${e.message}", cause = e)
+            // logE(msg = "runRetry failed on attempt $i: ${e.message}", cause = e)
         }
 
         if (i < retryNum) {
