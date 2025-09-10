@@ -5,9 +5,13 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.owo233.tcqt.utils.logE
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -109,12 +113,22 @@ fun String.hex2ByteArray(replace: Boolean = false): ByteArray {
 fun CoroutineScope.launchWithCatch(
     context: CoroutineContext = EmptyCoroutineContext,
     start: CoroutineStart = CoroutineStart.DEFAULT,
-    onError: (Throwable) -> Unit = { e -> logE(msg = "launchWithCatch 异常", cause = e) },
+    errorDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    onError: suspend (Throwable) -> Unit = { e -> logE(msg = "launchWithCatch 异常", cause = e) },
     block: suspend CoroutineScope.() -> Unit
 ): Job {
     return launch(context, start) {
-        runCatching { block() }
-            .onFailure { onError(it) }
+        try {
+            block()
+        } catch (e: Throwable) {
+            if (e !is CancellationException) {
+                launch(errorDispatcher + NonCancellable) {
+                    onError(e)
+                }
+            } else {
+                throw e
+            }
+        }
     }
 }
 
