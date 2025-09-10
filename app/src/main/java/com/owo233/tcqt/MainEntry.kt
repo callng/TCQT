@@ -20,7 +20,6 @@ import com.owo233.tcqt.hooks.base.moduleLoadInit
 import com.owo233.tcqt.hooks.base.modulePath
 import com.owo233.tcqt.hooks.base.moduleRes
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.injectRes
 import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
@@ -91,8 +90,6 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
             secStaticStageInited = true
 
             if (ProcUtil.isMain) {
-                injectRes()
-
                 logI(msg = """
 
 

@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,7 @@ import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.ContextUtils
@@ -191,21 +193,25 @@ class PttForward : IAction, OnMenuBuilder {
         "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"
     )
 
+    @SuppressLint("DiscouragedApi")
+    @Suppress("UNCHECKED_CAST")
     override fun onGetMenuNt(msg: Any, componentType: String, param: XC_MethodHook.MethodHookParam) {
         ptt = getPttElement(msg)
 
         val context: Activity = ContextUtils.getCurrentActivity() ?: error("getCurrentActivity null")
+        val resId = context.resources.getIdentifier(
+            "guild_title_share_btn_icon_white", "drawable", hostInfo.packageName
+        )
         val item = CustomMenu.createItemIconNt(
             msg = msg,
             text = "转发",
-            icon = R.drawable.ic_item_share_72dp,
+            icon = resId,
             id = R.id.item_ptt_forward,
             click = {
                 startForwardActivity(context, getPttFileByMsgNt(msg).absolutePath)
             }
         )
 
-        @Suppress("UNCHECKED_CAST")
         val list = param.result as MutableList<Any>
         list.add(item)
     }

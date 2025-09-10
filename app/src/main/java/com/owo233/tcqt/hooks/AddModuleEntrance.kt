@@ -86,7 +86,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 val result = param.result as? MutableList<*> ?: return@afterHook
 
                 val resId = context.resources.getIdentifier(
-                    "qui_tuning", "drawable", hostInfo.packageName
+                    "qui_setting", "drawable", hostInfo.packageName
                 )
 
                 // 创建 SimpleItemProcessor 实例
