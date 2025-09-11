@@ -117,7 +117,11 @@ class PttForward : IAction, OnMenuBuilder {
 
         val elem = MsgElement().apply {
             elementType = MsgConstant.KELEMTYPEPTT
-            pttElement = ptt
+            pttElement = ptt!!.apply {
+                voiceType = 2 // 普通语音消息
+                voiceChangeType = 0 // 不是变声语音
+                otherBusinessInfo.aiVoiceType = 0 // 不是AI语音消息
+            }
         }
 
         val contact = ContactHelper.generateContactByUid(if (uinType == 0) 1 else 2, sendUid)
