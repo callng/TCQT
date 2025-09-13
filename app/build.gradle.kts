@@ -60,11 +60,17 @@ android {
         buildConfig = true
     }
     buildTypes {
+        debug {
+            val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject, "debug") }.get()
+            versionNameSuffix = ".${gitSuffix}"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             isCrunchPngs = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject, "release") }.get()
+            versionNameSuffix = ".${gitSuffix}"
         }
     }
     androidResources {
@@ -100,9 +106,8 @@ android {
             output.outputFileName?.let { fileName ->
                 if (fileName.endsWith(".apk")) {
                     val projectName = rootProject.name
-                    val versionName = defaultConfig.versionName
-                    val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject) }.get()
-                    output.outputFileName = "${projectName}-v${versionName}.${gitSuffix}.apk"
+                    val currentVersionName = versionName
+                    output.outputFileName = "${projectName}-v${currentVersionName}.APK"
                 }
             }
         }
@@ -141,7 +146,7 @@ protobuf {
     }
 }
 
-fun getGitHeadRefsSuffix(project: Project): String {
+fun getGitHeadRefsSuffix(project: Project, buildType: String): String {
     val rootProject = project.rootProject
     val projectDir = rootProject.projectDir
     val headFile = File(projectDir, ".git" + File.separator + "HEAD")
@@ -149,7 +154,8 @@ fun getGitHeadRefsSuffix(project: Project): String {
         try {
             val commitCount = gitCommitCount.get()
             val hash = gitShortHash.get()
-            "r$commitCount.$hash"
+            val prefix = if (buildType == "debug") "d" else "r"
+            "$prefix$commitCount.$hash"
         } catch (e: Exception) {
             println("Failed to get git info: ${e.message}")
             ".standalone"
