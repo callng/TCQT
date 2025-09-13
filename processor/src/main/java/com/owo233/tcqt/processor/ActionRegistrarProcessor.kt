@@ -104,21 +104,14 @@ class ActionRegistrarProcessor(
             sb.appendLine("    )")
             sb.appendLine()
 
-            sb.appendLine("    @Suppress(\"UNCHECKED_CAST\")")
-            sb.appendLine("    private inline fun <reified T : Any> getSettingValue(settingKey: String): T? {")
-            sb.appendLine("        return try {")
-            sb.appendLine("            val setting: Setting<T> = TCQTSetting.getSetting(settingKey)")
-            sb.appendLine("            setting.getValue(null, null)")
-            sb.appendLine("        } catch (e: Exception) {")
-            sb.appendLine("            logE(msg = \"getSettingValue error for key: \$settingKey\", cause = e)")
-            sb.appendLine("            null")
-            sb.appendLine("        }")
-            sb.appendLine("    }")
+            sb.appendLine("    fun getString(settingKey: String): String = TCQTSetting.getValue<String>(settingKey).orEmpty().trim()")
+            sb.appendLine("    fun getInt(settingKey: String): Int = TCQTSetting.getValue<Int>(settingKey) ?: 0")
+            sb.appendLine("    fun getBoolean(settingKey: String): Boolean = TCQTSetting.getValue<Boolean>(settingKey) ?: false")
             sb.appendLine()
 
-            sb.appendLine("    fun getString(settingKey: String): String = getSettingValue<String>(settingKey).orEmpty().trim()")
-            sb.appendLine("    fun getInt(settingKey: String): Int = getSettingValue<Int>(settingKey) ?: 0")
-            sb.appendLine("    fun getBoolean(settingKey: String): Boolean = getSettingValue<Boolean>(settingKey) ?: false")
+            sb.appendLine("    fun setString(settingKey: String, value: String) = TCQTSetting.setValue(settingKey, value)")
+            sb.appendLine("    fun setInt(settingKey: String, value: Int) = TCQTSetting.setValue(settingKey, value)")
+            sb.appendLine("    fun setBoolean(settingKey: String, value: Boolean) = TCQTSetting.setValue(settingKey, value)")
 
             sb.appendLine("}")
 

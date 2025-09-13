@@ -1,7 +1,7 @@
 package com.owo233.tcqt.ext
 
 import android.content.Context
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.logE
 
 enum class ActionProcess {
@@ -34,13 +34,9 @@ interface IAction {
 
     fun onRun(ctx: Context, process: ActionProcess)
 
-    fun canRun(): Boolean {
-        val setting by TCQTSetting.getSetting<Boolean>(key)
-        return setting
-    }
+    fun canRun(): Boolean = GeneratedSettingList.getBoolean(key)
 
     val key: String
 
-    val processes: Set<ActionProcess>
-        get() = setOf(ActionProcess.MAIN)
+    val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

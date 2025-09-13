@@ -630,7 +630,7 @@
             features.forEach(feature => {
                 const checked = document.getElementById(`switch-${feature.key}`).checked;
                 try {
-                    TCQT.setSettingBoolean(feature.key, checked);
+                    TCQT.saveValueB(feature.key, checked);
                 } catch (e) {
                     console.error(`设置 ${feature.key} 失败`, e);
                 }
@@ -640,7 +640,7 @@
                         const textarea = document.getElementById(`textarea-${ta.key}`);
                         if (textarea) {
                             try {
-                                TCQT.setSettingString(ta.key, textarea.value.trim());
+                                TCQT.saveValueS(ta.key, textarea.value.trim());
                             } catch (e) {
                                 console.error(`保存 ${ta.key} 失败`, e);
                             }

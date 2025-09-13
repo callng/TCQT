@@ -10,6 +10,7 @@ import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.hooks.base.hostInfo
+import com.owo233.tcqt.utils.logE
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
@@ -39,30 +40,29 @@ class TCQTJsInterface(private val ctx: Context) {
 
     @JavascriptInterface
     fun getSetting(key: String): String {
-        val setting = TCQTSetting.getSetting<Any>(key)
-        val value = when (setting.type) {
-            TCQTSetting.SettingType.BOOLEAN -> setting.getValue(setting, null) as  Boolean
-            TCQTSetting.SettingType.INT -> setting.getValue(setting, null) as  Int
-            TCQTSetting.SettingType.STRING -> setting.getValue(setting, null) as String
-        }
-        return mapOf(
-            "value" to value
-        ).json.toString()
+        return runCatching {
+            val value: Any = TCQTSetting.getValue<Any>(key) ?: return "{}"
+
+            val result = when (value) {
+                is Boolean, Int, String -> value
+                else -> value.toString()
+            }
+
+            mapOf("value" to result).json.toString()
+
+        }.onFailure {
+            logE("TCQTSetting", "Failed to get setting for key: $key", it)
+        }.getOrNull() ?: "{}"
     }
 
     @JavascriptInterface
-    fun setSettingString(key: String, value: String) {
-        val setting = TCQTSetting.getSetting<Any>(key)
-        if (setting.type == TCQTSetting.SettingType.BOOLEAN) {
-            return // 不支持 boolean
-        }
-        setting.setValue(setting, null, value)
+    fun saveValueS(key: String, value: String) {
+        TCQTSetting.setValue(key, value)
     }
 
     @JavascriptInterface
-    fun setSettingBoolean(key: String, value: Boolean) {
-        val setting = TCQTSetting.getSetting<Any>(key)
-        setting.setValue(setting, null, value)
+    fun saveValueB(key: String, value: Boolean) {
+        TCQTSetting.setValue(key, value)
     }
 
     @JavascriptInterface

@@ -3,6 +3,7 @@ package com.owo233.tcqt.internals.setting
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.hooks.base.moduleClassLoader
+import com.owo233.tcqt.utils.logE
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 import oicq.wlogin_sdk.tools.MD5
@@ -66,11 +67,36 @@ internal object TCQTSetting {
             }
         }
 
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T : Any> getSetting(key: String): Setting<T> {
-        val result = settingMap[key] ?: Setting(key, SettingType.BOOLEAN)
-        return result as Setting<T>
+    inline fun <reified T : Any> getValue(key: String): T? {
+        return runCatching {
+            getSetting<T>(key).getValue(null, null)
+        }.onFailure {
+            logE("TCQTSetting", "Failed to get value for key: $key", it)
+        }.getOrNull()
     }
+
+    inline fun <reified T : Any> setValue(key: String, value: T) {
+        runCatching {
+            getSetting<T>(key).setValue(this, null, value)
+        }.onFailure {
+            logE("TCQTSetting", "Failed to set value for key: $key", it)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private inline fun <reified T : Any> getSetting(key: String): Setting<T> {
+        return settingMap.getOrPut(key) {
+            Setting(key, inferSettingType<T>(), null)
+        } as Setting<T>
+    }
+
+    private inline fun <reified T : Any> inferSettingType(): SettingType =
+        when (T::class) {
+            Boolean::class -> SettingType.BOOLEAN
+            Int::class     -> SettingType.INT
+            String::class  -> SettingType.STRING
+            else           -> throw IllegalArgumentException("Unsupported setting type: ${T::class}")
+        }
 
     enum class SettingType {
         BOOLEAN, INT, STRING
@@ -86,15 +112,23 @@ internal object TCQTSetting {
             return when (type) {
                 SettingType.BOOLEAN -> config.getBoolean(key, default as? Boolean ?: false)
                 SettingType.INT     -> config.getInt(key, default as? Int ?: 0)
-                SettingType.STRING  -> config.getString(key, default as? String ?: "")!!
+                SettingType.STRING  -> config.getString(key, default as? String ?: "") ?: ""
             } as T
         }
 
         @Suppress("UNCHECKED_CAST")
         operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
             when (type) {
-                SettingType.BOOLEAN -> config.putBoolean(key, (value as? Boolean) ?: value.toString().toBooleanStrict())
-                SettingType.INT     -> config.putInt(key, (value as? Int) ?: value.toString().toInt())
+                SettingType.BOOLEAN -> config.putBoolean(
+                    key,
+                    value as? Boolean ?: runCatching { value.toString().toBooleanStrict() }
+                        .getOrDefault(false)
+                )
+                SettingType.INT     -> config.putInt(
+                    key,
+                    value as? Int ?: runCatching { value.toString().toInt() }
+                        .getOrDefault(0)
+                )
                 SettingType.STRING  -> config.putString(key, value.toString())
             }
         }

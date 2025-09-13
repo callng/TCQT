@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
+import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -74,6 +75,30 @@ class CustomDevice : IAction {
     override val key: String get() = GeneratedSettingList.CUSTOM_DEVICE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
+
+    override fun canRun(): Boolean {
+        val isEnabled = GeneratedSettingList.getBoolean(key)
+
+        if (!isEnabled) {
+            if (device.isBlank()) {
+                GeneratedSettingList.setString(
+                    GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE,
+                    Build.DEVICE)
+            }
+            if (model.isBlank()) {
+                GeneratedSettingList.setString(
+                    GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL,
+                    Build.MODEL)
+            }
+            if (manufacturer.isBlank()) {
+                GeneratedSettingList.setString(
+                    GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER,
+                    Build.MANUFACTURER)
+            }
+        }
+
+        return isEnabled
+    }
 
     companion object {
         const val DEVICE_KEY = "ro.product.device"
