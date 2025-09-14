@@ -23,7 +23,7 @@ class TCQTJsInterface(private val ctx: Context) {
     fun getHostName(): String = hostInfo.hostName
 
     @JavascriptInterface
-    fun getModuleVersion(): String = "${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) BT -> ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }"
+    fun getModuleVersion(): String = TCQTBuild.VER_NAME
 
     @JavascriptInterface
     fun getModuleName(): String = TCQTBuild.APP_NAME
