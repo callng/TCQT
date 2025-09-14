@@ -1,5 +1,9 @@
 package com.owo233.tcqt.ext
 
+import com.owo233.tcqt.hooks.base.moduleClassLoader
+import com.owo233.tcqt.utils.field
+import com.owo233.tcqt.utils.logE
+
 object XpClassLoader: ClassLoader() {
     lateinit var hostClassLoader: ClassLoader
     lateinit var ctxClassLoader: ClassLoader
@@ -39,5 +43,28 @@ object XpClassLoader: ClassLoader() {
                 super.loadClass(name)
             }
         }
+    }
+
+    fun injectClassloader(): Boolean {
+        val moduleLoader = moduleClassLoader
+        if (runCatching { moduleLoader.loadClass("mqq.app.MobileQQ") }.isSuccess) return true
+
+        val parent = moduleLoader.parent
+        val field = ClassLoader::class.java.field("parent")!!
+
+        field.set(XpClassLoader, parent)
+
+        if (load("mqq.app.MobileQQ") == null) {
+            logE(msg = "XpClassLoader inject failed.")
+            return false
+        }
+
+        field.set(moduleLoader, XpClassLoader)
+
+        return runCatching {
+            Class.forName("mqq.app.MobileQQ")
+        }.onFailure {
+            logE(msg = "Classloader inject failed.")
+        }.isSuccess
     }
 }
