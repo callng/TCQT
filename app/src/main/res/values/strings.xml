@@ -1,4 +1,5 @@
 <resources>
     <string name="module_name">TCQT</string>
     <string name="module_desc">TCQT by callng@github</string>
+    <string name="module_res_injection">query module resource injection</string>
 </resources>

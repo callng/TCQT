@@ -10,6 +10,7 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.invoke
@@ -99,6 +100,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                     "qui_setting", "drawable", context.packageName
                 )
 
+                resInjection(context)
                 //  创建一个设置项（Setting Item）实例
                 val settingItem = processorClass.new(
                     *listOf(

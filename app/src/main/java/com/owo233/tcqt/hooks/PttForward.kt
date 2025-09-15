@@ -18,6 +18,7 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.hostInfo
+import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.ContextUtils
@@ -202,6 +203,7 @@ class PttForward : IAction, OnMenuBuilder {
     override fun onGetMenuNt(msg: Any, componentType: String, param: XC_MethodHook.MethodHookParam) {
         ptt = getPttElement(msg)
 
+        resInjection()
         val context: Activity = ContextUtils.getCurrentActivity() ?: error("getCurrentActivity null")
         val resId = context.resources.getIdentifier(
             "guild_title_share_btn_icon_white", "drawable", hostInfo.packageName

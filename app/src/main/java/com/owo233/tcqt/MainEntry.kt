@@ -15,6 +15,7 @@ import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.hooks.base.moduleLoadInit
 import com.owo233.tcqt.hooks.base.modulePath
 import com.owo233.tcqt.hooks.base.moduleRes
+import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.isStatic
 import com.owo233.tcqt.utils.logI
@@ -83,20 +84,12 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
     }
 
     private fun execStartupInit(ctx: Context) {
-        if (secStaticStageInited) return
-
         initHostInfo(ctx as Application)
 
         val classLoader = ctx.classLoader.also { requireNotNull(it) }
         XpClassLoader.hostClassLoader = classLoader
 
         if (XpClassLoader.injectClassloader()) {
-            if ("114514" != System.getProperty("TCQT_flag")) {
-                System.setProperty("TCQT_flag", "114514")
-            } else return
-
-            secStaticStageInited = true
-
             if (ProcUtil.isMain) {
                 logI(msg = """
 
@@ -109,6 +102,10 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
                 """.trimIndent())
             }
 
+            if (ProcUtil.isMain) {
+                resInjection(ctx)
+            }
+
             ActionManager.runFirst(ctx, when {
                 ProcUtil.isMain -> ActionProcess.MAIN
                 ProcUtil.isMsf -> ActionProcess.MSF
@@ -119,10 +116,5 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
 
             moduleLoadInit = true
         }
-    }
-
-    companion object {
-        @JvmStatic
-        var secStaticStageInited = false
     }
 }
