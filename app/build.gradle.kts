@@ -41,6 +41,7 @@ abstract class GitShortHash : ValueSource<String, ValueSourceParameters.None> {
 
 val gitCommitCount = providers.of(GitCommitCount::class.java) {}
 val gitShortHash = providers.of(GitShortHash::class.java) {}
+val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
 android {
     namespace = "com.owo233.tcqt"
@@ -56,21 +57,39 @@ android {
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
     }
 
+    signingConfigs {
+        if (!keystorePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }
     buildTypes {
         debug {
-            val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject, "debug") }.get()
-            versionNameSuffix = ".${gitSuffix}"
+            versionNameSuffix = providers.provider {
+                getGitHeadRefsSuffix(rootProject, "debug")
+            }.get()
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             isCrunchPngs = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            val gitSuffix = providers.provider { getGitHeadRefsSuffix(rootProject, "release") }.get()
-            versionNameSuffix = ".${gitSuffix}"
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            versionNameSuffix = providers.provider {
+                getGitHeadRefsSuffix(rootProject, "release")
+            }.get()
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
     androidResources {
@@ -154,7 +173,7 @@ fun getGitHeadRefsSuffix(project: Project, buildType: String): String {
         try {
             val commitCount = gitCommitCount.get()
             val hash = gitShortHash.get()
-            val prefix = if (buildType == "debug") "d" else "r"
+            val prefix = if (buildType == "debug") ".d" else ".r"
             "$prefix$commitCount.$hash"
         } catch (e: Exception) {
             println("Failed to get git info: ${e.message}")
@@ -182,6 +201,15 @@ fun getBuildVersionCode(project: Project): Int {
         1
     }
 }
+
+tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }
+    .configureEach {
+        val variantName = name.removePrefix("ksp").removeSuffix("Kotlin")
+        val protoTaskName = "generate${variantName}Proto"
+        tasks.findByName(protoTaskName)?.let { protoTask ->
+            dependsOn(protoTask)
+        }
+    }
 
 dependencies {
     compileOnly(libs.xposed.api)
