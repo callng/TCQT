@@ -90,8 +90,13 @@ jobs:
           sha256=$(sha256sum ${{ env.APK_FILE }} | awk '{print $1}')
           echo "|app|$sha256|" >> $GITHUB_STEP_SUMMARY
 
+      - name: Get short SHA
+        id: get_short_sha
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ${{ env.APK_FILE }}
-          name: TCQT-Release-${{ github.sha::7 }}-App
+          name: TCQT-Release-${{ steps.get_short_sha.outputs.SHORT_SHA }}-App
