@@ -40,7 +40,7 @@ on:
         type: boolean
         default: false
       clear_cache:
-        description: '是否删除所有ccache缓存？'
+        description: '是否删除所有gradle、android-build、ksp、protobuf缓存？'
         required: false
         type: boolean
         default: false
@@ -199,13 +199,14 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: 删除并重置 ccache 缓存
+      - name: 删除并重置 gradle、android-build、ksp、protobuf 缓存
         uses: actions/github-script@v6
         with:
           script: |
             const { owner, repo } = context.repo;
             let totalDeleted = 0;
             let page = 1;
+            const cacheTypes = ['gradle-', 'android-build-', 'ksp-', 'protobuf-'];
 
             core.info('🔍 开始扫描缓存...');
 
@@ -221,7 +222,8 @@ jobs:
               if (!caches || caches.length === 0) break;
 
               for (const cache of caches) {
-                if (cache.key.startsWith('ccache-')) {
+                const shouldDelete = cacheTypes.some(prefix => cache.key.startsWith(prefix));
+                if (shouldDelete) {
                   core.info(`🧹 删除缓存: ${cache.key} (ID: ${cache.id})`);
                   await github.rest.actions.deleteActionsCacheById({
                     owner,
@@ -237,7 +239,7 @@ jobs:
             }
 
             if (totalDeleted === 0) {
-              core.info('✅ 未找到以 "ccache-" 开头的缓存，无需清理。');
+              core.info('✅ 未找到以 "gradle-"、"android-build-"、"ksp-"、"protobuf-" 开头的缓存，无需清理。');
             } else {
               core.info(`✅ 共删除缓存数量: ${totalDeleted}`);
             }
