@@ -1,4 +1,4 @@
-name: main
+name: Build TCQT
 
 on:
   workflow_dispatch:
