@@ -63,7 +63,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            app/build/generated/source/proto/
+            app/build/generated/sources/proto/
+            app/build/extracted-protos/
+            app/build/extracted-include-protos/
           key: protobuf-${{ runner.os }}-${{ hashFiles('**/src/main/proto/**') }}
           restore-keys: |
             protobuf-${{ runner.os }}-
