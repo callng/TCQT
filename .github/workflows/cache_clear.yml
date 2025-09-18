@@ -33,17 +33,17 @@ on:
         description: '删除指定工作流取消的运行记录？'
         required: false
         type: boolean
-        default: false
+        default: true
       reverse_order:
         description: '从旧到新开始清理？'
         required: false
         type: boolean
         default: false
       clear_cache:
-        description: '是否删除所有gradle、android-build、ksp、protobuf缓存？'
+        description: '是否删除所有缓存？'
         required: false
         type: boolean
-        default: false
+        default: true
       cancel_all:
         description: '是否一键取消指定工作流的所有运行？'
         required: false
