@@ -19,7 +19,6 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
-import com.owo233.tcqt.ext.dp2px
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
@@ -38,8 +37,8 @@ import de.robv.android.xposed.XposedHelpers
     isRedMark = true,
     uiOrder = 1
 )
-@RegisterSetting(key = "change_guid.string.defaultGuid", name = "默认GUID", type = SettingType.STRING)
-@RegisterSetting(key = "change_guid.string.newGuid", name = "新GUID", type = SettingType.STRING)
+@RegisterSetting(key = "change_guid.string.defaultGuid", name = "默认GUID", type = SettingType.STRING, hidden = true)
+@RegisterSetting(key = "change_guid.string.newGuid", name = "新GUID", type = SettingType.STRING, hidden = true)
 @RegisterSetting(
     key = "change_guid.boolean.isEnabled",
     name = "是否启用更改",

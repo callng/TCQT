@@ -55,7 +55,12 @@ annotation class RegisterSetting(
     /**
      * 文本框占位符（当hasTextAreas为true时使用）
      */
-    val textAreaPlaceholder: String = ""
+    val textAreaPlaceholder: String = "",
+
+    /**
+     * 是否在前端UI中隐藏此配置项
+     */
+    val hidden: Boolean = false
 )
 
 enum class SettingType {

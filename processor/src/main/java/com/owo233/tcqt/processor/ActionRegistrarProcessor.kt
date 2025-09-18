@@ -133,6 +133,7 @@ class ActionRegistrarProcessor(
                 val hasTextAreas = args["hasTextAreas"]?.value as? Boolean ?: false
                 val uiOrder = args["uiOrder"]?.value as? Int ?: 1000
                 val textAreaPlaceholder = args["textAreaPlaceholder"]?.value as? String ?: ""
+                val hidden = args["hidden"]?.value as? Boolean ?: false
 
                 val type = (args["type"]?.value?.toString() ?: "BOOLEAN").let {
                     try {
@@ -156,7 +157,7 @@ class ActionRegistrarProcessor(
                         .replace("\"", "\\\"") + "\""
                 }
 
-                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder)
+                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder, hidden)
             }
     }
 
@@ -271,8 +272,12 @@ $kotlinFeatures
     }
 
     private fun generateKotlinFeatures(settingGroups: Map<String, List<SettingInfo>>): String {
-        return settingGroups.map { (mainKey, settings) ->
+        return settingGroups.mapNotNull { (mainKey, settings) ->
             val mainSetting = settings.find { it.key == mainKey } ?: settings.first()
+
+            // 如果主设置被隐藏，则跳过整个功能组
+            if (mainSetting.hidden) return@mapNotNull null
+
             val subSettings = settings.filter { it.key != mainKey && it.key.startsWith("$mainKey.") }
 
             buildString {
@@ -290,9 +295,9 @@ $kotlinFeatures
                     append("\n            textareas = listOf(")
 
                     val textAreaSettings = if (mainSetting.hasTextAreas && mainSetting.type == SettingType.STRING) {
-                        listOf(mainSetting) + subSettings.filter { it.type == SettingType.STRING }
+                        listOf(mainSetting) + subSettings.filter { it.type == SettingType.STRING && !it.hidden }
                     } else {
-                        subSettings.filter { it.type == SettingType.STRING }
+                        subSettings.filter { it.type == SettingType.STRING && !it.hidden }
                     }
 
                     textAreaSettings.forEachIndexed { index, textSetting ->
@@ -331,6 +336,7 @@ $kotlinFeatures
         val isRedMark: Boolean = false,
         val hasTextAreas: Boolean = false,
         val uiOrder: Int = 1000,
-        val textAreaPlaceholder: String = ""
+        val textAreaPlaceholder: String = "",
+        val hidden: Boolean = false
     )
 }
