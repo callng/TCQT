@@ -176,13 +176,17 @@
         }
 
         .feature-item {
-            padding: 16px 20px;
+            padding: 20px;
             border-bottom: 1px solid var(--border-color);
             transition: background-color var(--transition-fast);
         }
 
         .feature-item:last-child {
             border-bottom: none;
+        }
+
+        .feature-item.is-expanded {
+            background-color: #fafbfc;
         }
 
         .feature-header {
@@ -214,8 +218,8 @@
         .textarea-container {
             font-size: 0.9rem;
             color: var(--text-muted);
-            margin-top: 8px;
-            padding-left: 28px;
+            margin-top: 0;
+            padding: 0 16px;
             max-height: 0;
             opacity: 0;
             overflow: hidden;
@@ -225,12 +229,31 @@
         .textarea-container {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+            padding: 0 16px;
+            margin: 0;
+        }
+
+        .feature-item.is-expanded .feature-desc {
+            margin-top: 12px;
+        }
+
+        .feature-item.is-expanded .textarea-container:not(:empty) {
+            margin-top: 12px;
+            padding: 16px;
+            background-color: #fafbfc;
+            border-radius: 12px;
+        }
+
+        .feature-item.is-expanded .textarea-container:empty {
+            margin-top: 0;
+            padding: 0;
+            background-color: transparent;
         }
 
         .feature-item.is-expanded .feature-desc,
         .feature-item.is-expanded .textarea-container {
-            max-height: 400px; /* Adjusted for multiple textareas */
+            max-height: 500px; /* Increased for better content display */
             opacity: 1;
         }
 
@@ -261,20 +284,27 @@
         /* --- Textarea --- */
         textarea {
             width: 100%;
-            font-family: 'SF Mono', 'Courier New', monospace;
-            font-size: 0.85rem;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background-color: #fdfdfd;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border-color);
+            background-color: #ffffff;
             resize: vertical;
-            min-height: 80px;
+            min-height: 120px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
         }
 
         textarea:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+        }
+
+        textarea::placeholder {
+            color: #9ca3af;
+            font-size: 0.85rem;
         }
 
         /* --- Floating Action Button (FAB) for Save --- */
@@ -380,7 +410,20 @@
                 align-items: flex-start;
                 gap: 8px;
             }
-            .feature-item { padding: 14px 15px; }
+            .feature-item { padding: 16px; }
+            .feature-desc,
+            .textarea-container {
+                padding: 0 12px;
+            }
+            .feature-item.is-expanded .textarea-container:not(:empty) {
+                padding: 12px;
+                margin-top: 8px;
+            }
+            textarea {
+                padding: 12px;
+                min-height: 100px;
+                font-size: 0.85rem;
+            }
             .fab-save { bottom: 20px; right: 20px; width: 56px; height: 56px; font-size: 1.6rem; }
         }
     </style>
