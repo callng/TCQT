@@ -2,22 +2,20 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import android.os.Build
-import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.setObjectField
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
-import de.robv.android.xposed.XposedBridge
 import java.io.File
 
 @RegisterAction
@@ -25,46 +23,17 @@ import java.io.File
     key = "rename_base_apk",
     name = "重命名.apk文件",
     type = SettingType.BOOLEAN,
-    desc = "上传群文件时自动重命名 .apk 文件，防止添加.1。",
+    desc = "发送文件时自动重命名 .apk 文件，防止添加.1。",
     uiOrder = 24
 )
 class RenameBaseApk : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
-        FuzzyClassKit.findClassByConstructor(
-            prefix = "com.tencent.mobileqq.filemanager.uftwrapper.b",
-            isSubClass = true
-        ) { _, ctor ->
-            ctor.parameterCount == 5 &&
-                    ctor.parameterTypes[1] == Long::class.java &&
-                    ctor.parameterTypes[3] == Bundle::class.java
-        }?.let { targetClass ->
+        removeSuffix()
+        renameGroupUploadApk(ctx)
+        renameFriendUploadApk(ctx)
+    }
 
-            XposedBridge.hookAllConstructors(targetClass, afterHook { param ->
-                val thisObj = param.thisObject
-
-                val item = thisObj::class.java.declaredFields.firstOrNull {
-                    it.isAccessible = true
-                    it.get(thisObj)?.javaClass?.name?.contains("TroopFileTransferManager\$Item") == true
-                }?.get(thisObj) ?: return@afterHook
-
-                val superClass = item.javaClass.superclass ?: return@afterHook
-
-                val fileName = superClass.getDeclaredField("FileName").get(item) as String
-                if (!fileName.endsWith(".apk")) return@afterHook
-
-                val localFile = superClass.getDeclaredField("LocalFile").get(item) as String
-                val file = File(localFile)
-                if (!file.exists()) {
-                    logE(msg = "file not exists: $localFile")
-                    return@afterHook
-                }
-
-                val newFileName = getFormattedFileNameByPath(ctx, localFile)
-                superClass.getDeclaredField("FileName").set(item, newFileName)
-            })
-        }
-
-        // 测试.
+    private fun removeSuffix() {
         FileElement::class.java.hookMethod("getFileName", beforeHook {
             val fileName = it.thisObject.getObjectField("fileName") as String
             if (fileName.endsWith(".1")) {
@@ -76,7 +45,63 @@ class RenameBaseApk : IAction {
         })
     }
 
-    fun getFormattedFileNameByPath(
+    private fun renameGroupUploadApk(ctx: Context) {
+        val clz = XpClassLoader.load("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
+            ?: error("renameGroupUploadApk: 找不到TroopFileTransferMgr类!!!")
+        val method = clz.declaredMethods.firstOrNull {
+            it.returnType == Void.TYPE && it.paramCount == 2 &&
+                    it.parameterTypes[0] == Long::class.javaPrimitiveType &&
+                    it.parameterTypes[1].name.contains("TroopFileTransferManager\$Item")
+        } ?: error("renameGroupUploadApk: 没有找到合适的方法!!!")
+
+        method.hookMethod(beforeHook { param ->
+            val item = param.args[1]
+            val fileName = item.getObjectField("FileName") as String
+            val localFile = item.getObjectField("LocalFile") as String
+
+            if (!fileName.endsWith(".apk")) return@beforeHook
+            File(localFile).also {
+                if (!it.exists()) {
+                    logE(msg = "renameGroupUploadApk: File not exists: $localFile")
+                    return@beforeHook
+                }
+            }
+
+            val newFileName = getFormattedFileNameByPath(ctx, localFile)
+            item.setObjectField("FileName", newFileName)
+        })
+    }
+
+    private fun renameFriendUploadApk(ctx: Context) {
+        val clz = XpClassLoader.load("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
+            ?: error("renameFriendUploadApk: 找不到NTFileManageBridger类!!!")
+        val method = clz.declaredMethods.firstOrNull {
+            it.returnType == Void.TYPE && it.paramCount == 4 &&
+                    it.parameterTypes[0].name.contains("FileManagerEntity") &&
+                    it.parameterTypes[1] == Runnable::class.java &&
+                    it.parameterTypes[2] == String::class.java &&
+                    it.parameterTypes[3] == String::class.java
+        } ?: error("renameFriendUploadApk: 没有找到合适方法!!!")
+
+        method.hookMethod(beforeHook { param ->
+            val fileManagerEntity = param.args[0]
+            val fileName = fileManagerEntity.getObjectField("fileName") as String
+            val localFile = fileManagerEntity.getObjectField("strFilePath") as String
+
+            if (!fileName.endsWith(".apk")) return@beforeHook
+            File(localFile).also {
+                if (!it.exists()) {
+                    logE(msg = "renameFriendUploadApk: File not exists: $localFile")
+                    return@beforeHook
+                }
+            }
+
+            val newFileName = getFormattedFileNameByPath(ctx, localFile)
+            param.args[2] = newFileName
+        })
+    }
+
+    private fun getFormattedFileNameByPath(
         ctx: Context,
         apkPath: String,
         format: String = "%n_%v(%c).APK"
