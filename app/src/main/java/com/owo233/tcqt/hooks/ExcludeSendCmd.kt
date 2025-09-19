@@ -23,7 +23,7 @@ import de.robv.android.xposed.XposedHelpers
 import oicq.wlogin_sdk.tools.cryptor
 import java.lang.reflect.Method
 
-@RegisterAction
+/*@RegisterAction
 @RegisterSetting(
     key = "exclude_send_cmd",
     name = "禁止发送指定包体",
@@ -38,7 +38,7 @@ import java.lang.reflect.Method
     name = "排除的CMD列表",
     type = SettingType.STRING,
     textAreaPlaceholder = "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
-)
+)*/
 class ExcludeSendCmd : IAction {
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }
     private val cachedBytes by lazy { concatPackets(cachePackets) }
