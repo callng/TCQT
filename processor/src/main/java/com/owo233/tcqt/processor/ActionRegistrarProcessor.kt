@@ -26,6 +26,11 @@ class ActionRegistrarProcessor(
     private fun processActions(resolver: Resolver) {
         val annotated = resolver.getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
             .filterIsInstance<KSClassDeclaration>()
+            .filter { classDecl ->
+                val ann = classDecl.annotations.find { it.shortName.asString() == "RegisterAction" }
+                val enabled = ann?.arguments?.find { it.name?.asString() == "enabled" }?.value as? Boolean
+                enabled ?: true
+            }
 
         if (!annotated.iterator().hasNext()) return
 
@@ -175,9 +180,23 @@ class ActionRegistrarProcessor(
     }
 
     private fun generateFeaturesJson(resolver: Resolver) {
+        val enabledActionClasses = resolver
+            .getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
+            .filterIsInstance<KSClassDeclaration>()
+            .filter { classDecl ->
+                val ann = classDecl.annotations.find { it.shortName.asString() == "RegisterAction" }
+                val enabled = ann?.arguments?.find { it.name?.asString() == "enabled" }?.value as? Boolean
+                enabled ?: true
+            }
+            .map { it.qualifiedName?.asString() }
+            .toSet()
+
         val annotatedClasses = resolver
             .getSymbolsWithAnnotation(RegisterSetting::class.qualifiedName!!)
             .filterIsInstance<KSClassDeclaration>()
+            .filter { classDecl ->
+                enabledActionClasses.contains(classDecl.qualifiedName?.asString())
+            }
 
         if (!annotatedClasses.iterator().hasNext()) return
 
