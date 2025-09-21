@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap
     key = "united_config_hook.string.saveConfig",
     name = "保存的配置",
     type = SettingType.STRING,
-    defaultValue = "s:9220_group_cron_mute_action:未开启禁言,始终禁言,定时禁言",
     textAreaPlaceholder = "s:<string>:<string>\nb:<string>:<boolean>\ne.g: b:i_like_you:true\n一行一个配置项"
 )
 class UnitedConfigHook : IAction {

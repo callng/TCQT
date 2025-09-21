@@ -20,6 +20,7 @@
             --border-color: #e9ecef;
             --success-color: #198754;
             --danger-color: #dc3545;
+            --warning-color: #ffc107;
             --shadow: 0 8px 24px rgba(67, 97, 238, 0.1);
             --radius: 16px;
             --transition-fast: all 0.2s ease-in-out;
@@ -79,7 +80,7 @@
         .app-container {
             max-width: 720px;
             margin: 0 auto;
-            display: none; /* Hidden until loaded */
+            display: none;
         }
 
         .app-header {
@@ -158,12 +159,12 @@
         }
 
         .status-enabled {
-            color: #198754;
+            color: var(--success-color);
             font-weight: 600;
         }
 
         .status-disabled {
-            color: #ffc107;
+            color: var(--warning-color);
             font-weight: 600;
         }
 
@@ -253,7 +254,7 @@
 
         .feature-item.is-expanded .feature-desc,
         .feature-item.is-expanded .textarea-container {
-            max-height: 500px; /* Increased for better content display */
+            max-height: 500px;
             opacity: 1;
         }
 
@@ -278,13 +279,13 @@
         }
 
         .form-switch {
-            padding-left: 3.5em; /* Ensure enough space */
+            padding-left: 3.5em;
         }
 
         /* --- Textarea --- */
         textarea {
             width: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: inherit;
             font-size: 0.9rem;
             line-height: 1.5;
             padding: 14px 16px;
@@ -307,7 +308,7 @@
             font-size: 0.85rem;
         }
 
-        /* --- Floating Action Button (FAB) for Save --- */
+        /* --- Floating Action Button --- */
         .fab-save {
             position: fixed;
             bottom: 30px;
@@ -471,100 +472,239 @@
 <div id="toast-container" class="toast-container"></div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        // --- Data ---
-        let features = [];
+    'use strict';
 
-        const loadFeaturesConfig = () => {
-           if (typeof TCQT !== "undefined" && typeof TCQT.getFeaturesConfig === "function") {
-               try {
-                   const configJson = TCQT.getFeaturesConfig();
-                   const dynamicFeatures = JSON.parse(configJson);
-                   if (Array.isArray(dynamicFeatures) && dynamicFeatures.length > 0) {
-                       features = dynamicFeatures.sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
-                       return true;
-                   }
-               } catch (e) {
-                   console.error("解析动态配置失败!!!", e);
-               }
-           }
-           return false;
+    // ===== TCQT Service Layer =====
+    class TCQTService {
+        constructor() {
+            this.isAvailable = typeof TCQT !== 'undefined';
+            this.hostInfo = null;
+            this.moduleInfo = null;
         }
 
-        if (!loadFeaturesConfig()) {
-            console.error("动态配置加载失败!!!");
+        // 检查TCQT是否可用
+        checkAvailability() {
+            return this.isAvailable;
         }
 
-        // --- State ---
-        let injected = false;
+        // 获取宿主信息
+        getHostInfo() {
+            if (!this.isAvailable) return null;
 
-        // --- DOM Elements ---
-        const ui = {
-            loadingOverlay: document.getElementById('loading-overlay'),
-            appContainer: document.getElementById('app-container'),
-            hostVersion: document.getElementById('hostVersion'),
-            moduleVersion: document.getElementById('moduleVersion'),
-            featureList: document.getElementById('feature-list'),
-            btnSave: document.getElementById('btnSave'),
-            toastContainer: document.getElementById('toast-container'),
-            enabledCount: document.getElementById('enabledCount'),
-            disabledCount: document.getElementById('disabledCount')
-        };
-
-        // --- Functions ---
-        const setVersionText = (el, text, success) => {
-            if (!el) return;
-            el.textContent = text;
-            el.className = success ? 'version-success' : 'version-fail';
-        };
-
-        const loadVersions = async () => {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    if (typeof TCQT !== "undefined") {
-                        try {
-                            const hostName = TCQT.getHostName() || "QQ";
-                            const hostVer = TCQT.getHostVersion() || "未知";
-                            const hostChannel = TCQT.getHostChannel() || "未知";
-                            const moduleName = TCQT.getModuleName() || "TCQT";
-                            const moduleVer = TCQT.getModuleVersion() || "未知";
-                            setVersionText(ui.hostVersion, `${hostName} ${hostVer} ${hostChannel}`, true);
-                            setVersionText(ui.moduleVersion, `${moduleName} ${moduleVer}`, true);
-                            injected = true;
-                        } catch (e) {
-                            console.error("获取版本失败", e);
-                            setVersionText(ui.hostVersion, "获取失败", false);
-                            setVersionText(ui.moduleVersion, "获取失败", false);
-                        }
-                    } else {
-                        console.warn("TCQT 对象未注入，使用模拟数据。");
-                        setVersionText(ui.hostVersion, "QQ 11.4.5 (14191) GuanWang", false);
-                        setVersionText(ui.moduleVersion, "TCQT (环境异常)", false);
-                    }
-                    resolve();
-                }, 200);
-            });
-        };
-
-        const updateActionStatus = () => {
-            if (injected && typeof TCQT !== "undefined") {
+            if (!this.hostInfo) {
                 try {
-                    const enabledCount = TCQT.getEnabledActionCount();
-                    const disabledCount = TCQT.getDisabledActionCount();
-                    ui.enabledCount.textContent = enabledCount;
-                    ui.disabledCount.textContent = disabledCount;
-                } catch (e) {
-                    console.error("获取Action状态失败", e);
-                    ui.enabledCount.textContent = "?";
-                    ui.disabledCount.textContent = "?";
+                    this.hostInfo = {
+                        name: TCQT.getHostName() || 'QQ',
+                        version: TCQT.getHostVersion() || '未知',
+                        channel: TCQT.getHostChannel() || '未知'
+                    };
+                } catch (error) {
+                    console.error('获取宿主信息失败:', error);
+                    return null;
                 }
-            } else {
-                ui.enabledCount.textContent = "-";
-                ui.disabledCount.textContent = "-";
             }
-        };
+            return this.hostInfo;
+        }
 
-        const createFeatureElement = (feature) => {
+        // 获取模块信息
+        getModuleInfo() {
+            if (!this.isAvailable) return null;
+
+            if (!this.moduleInfo) {
+                try {
+                    this.moduleInfo = {
+                        name: TCQT.getModuleName() || 'TCQT',
+                        version: TCQT.getModuleVersion() || '未知'
+                    };
+                } catch (error) {
+                    console.error('获取模块信息失败:', error);
+                    return null;
+                }
+            }
+            return this.moduleInfo;
+        }
+
+        // 获取功能配置
+        getFeaturesConfig() {
+            if (!this.isAvailable) return [];
+
+            try {
+                const configJson = TCQT.getFeaturesConfig();
+                const features = JSON.parse(configJson);
+                return Array.isArray(features) ? features.sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000)) : [];
+            } catch (error) {
+                console.error('获取功能配置失败:', error);
+                return [];
+            }
+        }
+
+        // 获取设置值
+        getSetting(key) {
+            if (!this.isAvailable) return { value: false };
+
+            try {
+                return JSON.parse(TCQT.getSetting(key));
+            } catch (error) {
+                console.error(`获取设置 ${key} 失败:`, error);
+                return { value: false };
+            }
+        }
+
+        // 保存布尔值设置
+        saveBooleanSetting(key, value) {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.saveValueB(key, value);
+                return true;
+            } catch (error) {
+                console.error(`保存布尔设置 ${key} 失败:`, error);
+                return false;
+            }
+        }
+
+        // 保存字符串设置
+        saveStringSetting(key, value) {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.saveValueS(key, value);
+                return true;
+            } catch (error) {
+                console.error(`保存字符串设置 ${key} 失败:`, error);
+                return false;
+            }
+        }
+
+        // 获取启用的功能数量
+        getEnabledActionCount() {
+            if (!this.isAvailable) return 0;
+
+            try {
+                return TCQT.getEnabledActionCount();
+            } catch (error) {
+                console.error('获取启用功能数量失败:', error);
+                return 0;
+            }
+        }
+
+        // 获取禁用的功能数量
+        getDisabledActionCount() {
+            if (!this.isAvailable) return 0;
+
+            try {
+                return TCQT.getDisabledActionCount();
+            } catch (error) {
+                console.error('获取禁用功能数量失败:', error);
+                return 0;
+            }
+        }
+
+        // 显示Toast消息
+        showToast(message) {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.toast(message);
+                return true;
+            } catch (error) {
+                console.error('显示Toast失败:', error);
+                return false;
+            }
+        }
+
+        // 清空配置
+        clearConfig() {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.clear();
+                return true;
+            } catch (error) {
+                console.error('清空配置失败:', error);
+                return false;
+            }
+        }
+
+        // 退出应用
+        exitApp() {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.exitApp();
+                return true;
+            } catch (error) {
+                console.error('退出应用失败:', error);
+                return false;
+            }
+        }
+    }
+
+    // ===== Application State Management =====
+    class AppState {
+        constructor() {
+            this.features = [];
+            this.isInjected = false;
+            this.hostInfo = null;
+            this.moduleInfo = null;
+        }
+
+        setFeatures(features) {
+            this.features = features;
+        }
+
+        setInjected(injected) {
+            this.isInjected = injected;
+        }
+
+        setHostInfo(hostInfo) {
+            this.hostInfo = hostInfo;
+        }
+
+        setModuleInfo(moduleInfo) {
+            this.moduleInfo = moduleInfo;
+        }
+
+        getHostName() {
+            return this.hostInfo?.name || '宿主';
+        }
+    }
+
+    // ===== UI Manager =====
+    class UIManager {
+        constructor() {
+            this.elements = this.initializeElements();
+        }
+
+        initializeElements() {
+            return {
+                loadingOverlay: document.getElementById('loading-overlay'),
+                appContainer: document.getElementById('app-container'),
+                hostVersion: document.getElementById('hostVersion'),
+                moduleVersion: document.getElementById('moduleVersion'),
+                featureList: document.getElementById('feature-list'),
+                btnSave: document.getElementById('btnSave'),
+                toastContainer: document.getElementById('toast-container'),
+                enabledCount: document.getElementById('enabledCount'),
+                disabledCount: document.getElementById('disabledCount')
+            };
+        }
+
+        // 设置版本信息显示
+        setVersionDisplay(element, text, isSuccess) {
+            if (!element) return;
+            element.textContent = text;
+            element.className = isSuccess ? 'version-success' : 'version-fail';
+        }
+
+        // 更新功能状态统计
+        updateActionStatus(enabledCount, disabledCount) {
+            this.elements.enabledCount.textContent = enabledCount;
+            this.elements.disabledCount.textContent = disabledCount;
+        }
+
+        // 创建功能项元素
+        createFeatureElement(feature) {
             const item = document.createElement('div');
             item.className = 'feature-item';
             item.dataset.key = feature.key;
@@ -595,14 +735,15 @@
 
             item.append(header, desc);
 
+            // 添加文本域
             if (feature.textareas && Array.isArray(feature.textareas)) {
-                const textareaContainer = document.createElement("div");
-                textareaContainer.className = "textarea-container";
+                const textareaContainer = document.createElement('div');
+                textareaContainer.className = 'textarea-container';
 
                 feature.textareas.forEach(ta => {
-                    const textarea = document.createElement("textarea");
+                    const textarea = document.createElement('textarea');
                     textarea.id = `textarea-${ta.key}`;
-                    textarea.placeholder = ta.placeholder || "";
+                    textarea.placeholder = ta.placeholder || '';
                     textarea.rows = 3;
                     textareaContainer.appendChild(textarea);
                 });
@@ -610,46 +751,249 @@
                 item.appendChild(textareaContainer);
             }
 
+            // 添加展开/收起事件
             header.addEventListener('click', () => {
                 item.classList.toggle('is-expanded');
             });
 
             return item;
-        };
+        }
 
-        const renderFeatures = () => {
-            ui.featureList.innerHTML = "";
+        // 渲染功能列表
+        renderFeatures(features) {
+            this.elements.featureList.innerHTML = '';
             features.forEach(feature => {
-                const el = createFeatureElement(feature);
-                ui.featureList.appendChild(el);
+                const element = this.createFeatureElement(feature);
+                this.elements.featureList.appendChild(element);
             });
-        };
+        }
 
-        const initSettings = () => {
-            features.forEach(feature => {
+        // 设置保存按钮状态
+        setSaveButtonState(enabled) {
+            this.elements.btnSave.classList.toggle('disabled', !enabled);
+            this.elements.btnSave.disabled = !enabled;
+        }
+
+        // 显示DOM Toast
+        showDOMToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-item';
+            toast.textContent = message;
+            this.elements.toastContainer.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // 显示/隐藏加载界面
+        showLoading() {
+            this.elements.loadingOverlay.style.display = 'flex';
+            this.elements.loadingOverlay.style.opacity = '1';
+            this.elements.appContainer.style.display = 'none';
+        }
+
+        hideLoading() {
+            this.elements.loadingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                this.elements.loadingOverlay.style.display = 'none';
+                this.elements.appContainer.style.display = 'block';
+            }, 300);
+        }
+    }
+
+    // ===== Event Manager =====
+    class EventManager {
+        constructor(app) {
+            this.app = app;
+            this.longPressTimer = null;
+            this.isLongPress = false;
+            this.LONG_PRESS_DURATION = 500;
+        }
+
+        // 初始化所有事件监听器
+        initializeEvents() {
+            this.initializeSaveButtonEvents();
+        }
+
+        // 初始化保存按钮事件
+        initializeSaveButtonEvents() {
+            const saveButton = this.app.ui.elements.btnSave;
+
+            // 鼠标事件
+            saveButton.addEventListener('mousedown', (e) => this.handlePressStart(e));
+            saveButton.addEventListener('mouseup', () => this.handlePressEnd());
+            saveButton.addEventListener('mouseleave', () => this.handlePressCancel());
+
+            // 触摸事件
+            saveButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handlePressStart(e);
+            });
+
+            saveButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handlePressEnd();
+                if (!this.isLongPress) {
+                    this.app.saveSettings();
+                }
+            });
+
+            saveButton.addEventListener('touchcancel', () => this.handlePressCancel());
+
+            // 点击事件
+            saveButton.addEventListener('click', (e) => {
+                if (this.isLongPress) {
+                    this.isLongPress = false;
+                    return;
+                }
+                this.app.saveSettings();
+            });
+        }
+
+        // 处理按压开始
+        handlePressStart(e) {
+            if (e.type === 'mousedown' && e.button !== 0) return;
+
+            this.isLongPress = false;
+            this.longPressTimer = setTimeout(() => {
+                this.isLongPress = true;
+                this.app.handleLongPress();
+            }, this.LONG_PRESS_DURATION);
+        }
+
+        // 处理按压结束
+        handlePressEnd() {
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+        }
+
+        // 处理按压取消
+        handlePressCancel() {
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+        }
+    }
+
+    // ===== Main Application Class =====
+    class TCQTApp {
+        constructor() {
+            this.tcqtService = new TCQTService();
+            this.state = new AppState();
+            this.ui = new UIManager();
+            this.eventManager = new EventManager(this);
+        }
+
+        // 应用初始化
+        async initialize() {
+            try {
+                this.ui.showLoading();
+
+                // 加载功能配置
+                await this.loadFeaturesConfig();
+
+                // 加载版本信息
+                await this.loadVersionInfo();
+
+                // 渲染界面
+                this.renderUI();
+
+                // 初始化设置
+                this.initializeSettings();
+
+                // 初始化事件
+                this.eventManager.initializeEvents();
+
+            } catch (error) {
+                console.error('应用初始化失败:', error);
+                this.handleInitializationError();
+            } finally {
+                this.ui.hideLoading();
+            }
+        }
+
+        // 加载功能配置
+        async loadFeaturesConfig() {
+            const features = this.tcqtService.getFeaturesConfig();
+            this.state.setFeatures(features);
+
+            if (features.length === 0) {
+                console.warn('未加载到功能配置');
+            }
+        }
+
+        // 加载版本信息
+        async loadVersionInfo() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    if (this.tcqtService.checkAvailability()) {
+                        const hostInfo = this.tcqtService.getHostInfo();
+                        const moduleInfo = this.tcqtService.getModuleInfo();
+
+                        if (hostInfo && moduleInfo) {
+                            this.state.setHostInfo(hostInfo);
+                            this.state.setModuleInfo(moduleInfo);
+                            this.state.setInjected(true);
+
+                            this.ui.setVersionDisplay(
+                                this.ui.elements.hostVersion,
+                                `${hostInfo.name} ${hostInfo.version} ${hostInfo.channel}`,
+                                true
+                            );
+                            this.ui.setVersionDisplay(
+                                this.ui.elements.moduleVersion,
+                                `${moduleInfo.name} ${moduleInfo.version}`,
+                                true
+                            );
+                        } else {
+                            this.setFallbackVersionInfo();
+                        }
+                    } else {
+                        this.setFallbackVersionInfo();
+                    }
+                    resolve();
+                }, 200);
+            });
+        }
+
+        // 设置备用版本信息
+        setFallbackVersionInfo() {
+            console.warn('TCQT对象未注入，使用模拟数据');
+            this.ui.setVersionDisplay(this.ui.elements.hostVersion, 'QQ 11.4.5 (14191) GuanWang', false);
+            this.ui.setVersionDisplay(this.ui.elements.moduleVersion, 'TCQT (环境异常)', false);
+        }
+
+        // 渲染UI
+        renderUI() {
+            this.ui.renderFeatures(this.state.features);
+            this.updateActionStatus();
+        }
+
+        // 初始化设置
+        initializeSettings() {
+            this.state.features.forEach(feature => {
                 const checkbox = document.getElementById(`switch-${feature.key}`);
                 if (!checkbox) return;
 
-                if (injected) {
-                    try {
-                        checkbox.checked = JSON.parse(TCQT.getSetting(feature.key)).value;
-                    } catch {
-                        checkbox.checked = false;
-                    }
+                if (this.state.isInjected) {
+                    // 设置开关状态
+                    const setting = this.tcqtService.getSetting(feature.key);
+                    checkbox.checked = setting.value;
 
+                    // 设置文本域内容
                     if (feature.textareas && Array.isArray(feature.textareas)) {
                         feature.textareas.forEach(ta => {
-                             const textarea = document.getElementById(`textarea-${ta.key}`);
-                             if (textarea) {
-                                try {
-                                    textarea.value = JSON.parse(TCQT.getSetting(ta.key)).value || "";
-                                } catch {
-                                    textarea.value = "";
-                                }
-                             }
+                            const textarea = document.getElementById(`textarea-${ta.key}`);
+                            if (textarea) {
+                                const textSetting = this.tcqtService.getSetting(ta.key);
+                                textarea.value = textSetting.value || '';
+                            }
                         });
                     }
                 } else {
+                    // 禁用控件
                     checkbox.disabled = true;
                     if (feature.textareas && Array.isArray(feature.textareas)) {
                         feature.textareas.forEach(ta => {
@@ -659,91 +1003,113 @@
                     }
                 }
             });
-            ui.btnSave.classList.toggle('disabled', !injected);
-            ui.btnSave.disabled = !injected;
-            updateActionStatus();
-        };
 
-        const saveSettings = () => {
-            if (!injected) {
-                showToast("模块接口未注入，无法保存设置");
+            this.ui.setSaveButtonState(this.state.isInjected);
+        }
+
+        // 更新功能状态统计
+        updateActionStatus() {
+            if (this.state.isInjected) {
+                const enabledCount = this.tcqtService.getEnabledActionCount();
+                const disabledCount = this.tcqtService.getDisabledActionCount();
+                this.ui.updateActionStatus(enabledCount, disabledCount);
+            } else {
+                this.ui.updateActionStatus('-', '-');
+            }
+        }
+
+        // 保存设置
+        saveSettings() {
+            if (!this.state.isInjected) {
+                this.showToast('模块接口未注入，无法保存设置');
                 return;
             }
 
-            features.forEach(feature => {
-                const checked = document.getElementById(`switch-${feature.key}`).checked;
-                try {
-                    TCQT.saveValueB(feature.key, checked);
-                } catch (e) {
-                    console.error(`设置 ${feature.key} 失败`, e);
+            let hasError = false;
+
+            // 保存所有功能设置
+            this.state.features.forEach(feature => {
+                const checkbox = document.getElementById(`switch-${feature.key}`);
+                if (checkbox) {
+                    if (!this.tcqtService.saveBooleanSetting(feature.key, checkbox.checked)) {
+                        hasError = true;
+                    }
                 }
 
+                // 保存文本域设置
                 if (feature.textareas && Array.isArray(feature.textareas)) {
                     feature.textareas.forEach(ta => {
                         const textarea = document.getElementById(`textarea-${ta.key}`);
                         if (textarea) {
-                            try {
-                                TCQT.saveValueS(ta.key, textarea.value.trim());
-                            } catch (e) {
-                                console.error(`保存 ${ta.key} 失败`, e);
+                            if (!this.tcqtService.saveStringSetting(ta.key, textarea.value.trim())) {
+                                hasError = true;
                             }
                         }
                     });
                 }
             });
 
-            const hostName = (typeof TCQT !== "undefined" && TCQT.getHostName()) || "宿主";
-            updateActionStatus(); // 更新状态统计
+            if (hasError) {
+                this.showToast('部分设置保存失败，请重试');
+                return;
+            }
+
+            // 更新状态统计
+            this.updateActionStatus();
+
+            // 询问是否重启
+            const hostName = this.state.getHostName();
             if (confirm(`已保存，是否重启 ${hostName} 以应用更改？`)) {
-                try {
-                    TCQT.exitApp();
-                } catch (e) {
-                    console.error("调用 exitApp 失败", e);
-                    showToast(`重启 ${hostName} 失败，请手动重启`);
+                if (!this.tcqtService.exitApp()) {
+                    this.showToast(`重启 ${hostName} 失败，请手动重启`);
                 }
             } else {
-                showToast(`设置已保存，重启 ${hostName} 后生效`);
+                this.showToast(`设置已保存，重启 ${hostName} 后生效`);
             }
-        };
+        }
 
-        const showToast = (msg) => {
-            if (injected && typeof TCQT.toast === "function") {
-                try {
-                    TCQT.toast(msg);
-                    return;
-                } catch (e) { /* Fallback to DOM toast */ }
+        // 处理长按事件
+        handleLongPress() {
+            if (!this.state.isInjected) {
+                this.showToast('模块接口未注入，无法执行此操作');
+                return;
             }
 
-            const toast = document.createElement("div");
-            toast.className = "toast-item";
-            toast.textContent = msg;
-            ui.toastContainer.appendChild(toast);
+            if (confirm('清空所有配置？此操作不可撤销！')) {
+                if (this.tcqtService.clearConfig()) {
+                    this.initializeSettings(); // 重新初始化设置显示
 
-            setTimeout(() => toast.remove(), 3000);
-        };
-
-        const init = async () => {
-            try {
-                renderFeatures();
-                await loadVersions();
-                initSettings();
-            } catch (err) {
-                console.error("初始化失败:", err);
-                setVersionText(ui.hostVersion, "初始化异常", false);
-                setVersionText(ui.moduleVersion, "初始化异常", false);
-                ui.btnSave.classList.add('disabled');
-                ui.btnSave.disabled = true;
-            } finally {
-                ui.loadingOverlay.style.opacity = '0';
-                setTimeout(() => {
-                    ui.loadingOverlay.style.display = 'none';
-                    ui.appContainer.style.display = 'block';
-                }, 300);
+                    if (confirm('配置已清空，重启以应用更改？')) {
+                        if (!this.tcqtService.exitApp()) {
+                            const hostName = this.state.getHostName();
+                            this.showToast(`重启 ${hostName} 失败，请手动重启`);
+                        }
+                    }
+                } else {
+                    this.showToast('清空配置失败，请重试');
+                }
             }
-        };
+        }
 
-        ui.btnSave.addEventListener("click", saveSettings);
-        init();
+        // 显示Toast消息
+        showToast(message) {
+            if (!this.tcqtService.showToast(message)) {
+                this.ui.showDOMToast(message);
+            }
+        }
+
+        // 处理初始化错误
+        handleInitializationError() {
+            this.ui.setVersionDisplay(this.ui.elements.hostVersion, '初始化异常', false);
+            this.ui.setVersionDisplay(this.ui.elements.moduleVersion, '初始化异常', false);
+            this.ui.setSaveButtonState(false);
+        }
+    }
+
+    // ===== Application Entry Point =====
+    document.addEventListener('DOMContentLoaded', () => {
+        const app = new TCQTApp();
+        app.initialize();
     });
 </script>
 

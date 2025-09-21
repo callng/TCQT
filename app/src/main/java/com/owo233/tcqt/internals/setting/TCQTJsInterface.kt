@@ -39,6 +39,11 @@ class TCQTJsInterface(private val ctx: Context) {
     }
 
     @JavascriptInterface
+    fun clear() {
+        ModuleCommand.sendCommand(ctx, "config_clear")
+    }
+
+    @JavascriptInterface
     fun getSetting(key: String): String {
         return runCatching {
             val value: Any = TCQTSetting.getValue<Any>(key) ?: return "{}"

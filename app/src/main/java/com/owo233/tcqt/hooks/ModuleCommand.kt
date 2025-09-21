@@ -44,8 +44,10 @@ class ModuleCommand : AlwaysRunAction() {
                         }
                     }
                     "config_clear" -> {
-                        val config: MMKV = MMKVUtils.mmkvWithId("TCQT")
-                        config.clearAll()
+                        if (process == ActionProcess.MAIN) {
+                            val config: MMKV = MMKVUtils.mmkvWithId("TCQT")
+                            config.clearAll()
+                        }
                     }
                 }
             }
