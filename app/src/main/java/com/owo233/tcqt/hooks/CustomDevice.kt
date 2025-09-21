@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.getMethods
     key = "custom_device",
     name = "自定义设备信息",
     type = SettingType.BOOLEAN,
-    desc = "自定义宿主获取的[device, model, manufacturer]，如果按照下面例子填写每个编辑框内容，则宿主会识别设备为[Redmi K50 电竞版]",
+    desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
     isRedMark = true,
     hasTextAreas = true,
     uiOrder = 2
