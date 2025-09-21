@@ -1,7 +1,7 @@
 package com.owo233.tcqt.ext
 
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.isStatic
-import com.owo233.tcqt.utils.logE
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge
@@ -59,7 +59,7 @@ internal fun beforeHook(
             kotlin.runCatching {
                 block(param)
             }.onFailure {
-                logE(msg = "beforeHook 异常", cause = it)
+                Log.e("beforeHook 异常", it)
             }
         }
     }
@@ -74,7 +74,7 @@ internal fun afterHook(
             kotlin.runCatching {
                 block(param)
             }.onFailure {
-                logE(msg = "afterHook 异常", cause = it)
+                Log.e("afterHook 异常", it)
             }
         }
     }
@@ -89,7 +89,7 @@ internal fun replaceHook(
             return kotlin.runCatching {
                 block(param)
             }.onFailure {
-                logE(msg = "replaceHook 异常", cause = it)
+                Log.e("replaceHook 异常", it)
             }.getOrNull()
         }
     }

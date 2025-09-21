@@ -1,8 +1,8 @@
 package com.owo233.tcqt.ext
 
 import com.owo233.tcqt.hooks.base.moduleClassLoader
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.field
-import com.owo233.tcqt.utils.logE
 
 object XpClassLoader: ClassLoader() {
     lateinit var hostClassLoader: ClassLoader
@@ -55,7 +55,7 @@ object XpClassLoader: ClassLoader() {
         field.set(XpClassLoader, parent)
 
         if (load("mqq.app.MobileQQ") == null) {
-            logE(msg = "XpClassLoader inject failed.")
+            Log.e("XpClassLoader inject failed.")
             return false
         }
 
@@ -64,7 +64,7 @@ object XpClassLoader: ClassLoader() {
         return runCatching {
             Class.forName("mqq.app.MobileQQ")
         }.onFailure {
-            logE(msg = "Classloader inject failed.")
+            Log.e("Classloader inject failed.")
         }.isSuccess
     }
 }

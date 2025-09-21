@@ -11,8 +11,8 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.logE
 import com.tencent.mobileqq.activity.VisitorsActivity
 import com.tencent.mobileqq.data.CardProfile
 import com.tencent.mobileqq.profile.vote.VoteHelper
@@ -41,7 +41,7 @@ class OneClickLikes : IAction {
             }
 
             if (vote == null || voteHelperField == null) {
-                logE(msg = "获取点赞方法失败")
+                Log.e("获取点赞方法失败")
                 return
             }
 
@@ -79,7 +79,7 @@ class OneClickLikes : IAction {
             val service = QQInterfaces.app.getRuntimeService(IVasSingedApi::class.java, "all")
             return service.vipStatus.isSVip
         }.onFailure {
-            logE(msg = "获取账号会员状态失败", cause = it)
+            Log.e("获取账号会员状态失败", it)
         }
 
         return false

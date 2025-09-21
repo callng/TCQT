@@ -88,7 +88,6 @@ class ActionRegistrarProcessor(
             sb.appendLine()
             sb.appendLine("import com.owo233.tcqt.internals.setting.TCQTSetting")
             sb.appendLine("import com.owo233.tcqt.internals.setting.TCQTSetting.Setting")
-            sb.appendLine("import com.owo233.tcqt.utils.logE")
             sb.appendLine()
             sb.appendLine("internal object GeneratedSettingList {")
             sb.appendLine()

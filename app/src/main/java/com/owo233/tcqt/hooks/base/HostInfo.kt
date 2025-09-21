@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import androidx.core.content.pm.PackageInfoCompat
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 
 const val PACKAGE_NAME_QQ = "com.tencent.mobileqq"
 const val PACKAGE_NAME_TIM = "com.tencent.tim"
@@ -39,7 +39,7 @@ private fun getHostInfo(ctx: Context): PackageInfo {
     return try {
         ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_META_DATA)
     } catch (e: PackageManager.NameNotFoundException) {
-        logE("HostInfo", "Can not get PackageInfo", e)
+        Log.e("Can not get PackageInfo", e)
         throw e
     }
 }

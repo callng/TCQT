@@ -11,8 +11,8 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.getObjectField
-import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.setObjectField
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
@@ -62,7 +62,7 @@ class RenameBaseApk : IAction {
             if (!fileName.endsWith(".apk")) return@beforeHook
             File(localFile).also {
                 if (!it.exists()) {
-                    logE(msg = "renameGroupUploadApk: File not exists: $localFile")
+                    Log.e("renameGroupUploadApk: File not exists: $localFile")
                     return@beforeHook
                 }
             }
@@ -91,7 +91,7 @@ class RenameBaseApk : IAction {
             if (!fileName.endsWith(".apk")) return@beforeHook
             File(localFile).also {
                 if (!it.exists()) {
-                    logE(msg = "renameFriendUploadApk: File not exists: $localFile")
+                    Log.e("renameFriendUploadApk: File not exists: $localFile")
                     return@beforeHook
                 }
             }

@@ -22,8 +22,8 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.logI
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 
@@ -64,7 +64,7 @@ class ChangeGuid : IAction {
 
     private fun setupMsfHook() {
         if (GuidConfig.isEnabled && GuidConfig.newGuid.isNotBlank()) {
-            logI(msg = """
+            Log.i("""
 
                 设置GUID: ${GuidConfig.newGuid}
                 原始GUID: ${GuidConfig.defaultGuid}

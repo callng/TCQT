@@ -13,10 +13,10 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.paramCount
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -82,7 +82,7 @@ class RepeatMessage : IAction {
                         is MapleContact.PublicContact -> {
                             msgService.sendMsgWithMsgId(contact.inner, newMsgId, msgRecord.elements) { result, _ ->
                                 if (result != 0) {
-                                    logE(msg = "repeat message failed: (msgType = ${msgRecord.msgType})")
+                                    Log.e("repeat message failed: (msgType = ${msgRecord.msgType})")
                                 }
                             }
                         }

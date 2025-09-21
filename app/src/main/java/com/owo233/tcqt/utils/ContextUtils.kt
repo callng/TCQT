@@ -38,7 +38,7 @@ internal object ContextUtils {
             }
             null
         } catch (e: Exception) {
-            logE(msg = "getCurrentActivity error", cause = e)
+            Log.e("getCurrentActivity error", e)
             null
         }
     }

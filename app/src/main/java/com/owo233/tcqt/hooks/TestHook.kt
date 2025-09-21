@@ -8,14 +8,14 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.beforeHook
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.logI
 
-// @RegisterAction
+@RegisterAction(enabled = false)
 class TestHook : AlwaysRunAction() {
 
     /**
-     * 仅供测试的hook，在发布版本时必须移除@RegisterAction注解
+     * 仅供测试的hook
      */
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.app.Instrumentation")
@@ -33,16 +33,14 @@ class TestHook : AlwaysRunAction() {
                     val comp = intent.component
                     val className = comp?.className
 
-                    logI(msg = "启动 Intent: $className")
+                    Log.i("启动 Intent: $className")
 
                     intent.extras?.let { extras ->
                         for (key in extras.keySet()) {
                             val value = extras.get(key)
-                            logI(msg = """
-
+                            Log.i("""
 
                                 Extra: $key = $value (${value?.javaClass?.name})
-
 
                             """.trimIndent())
                         }

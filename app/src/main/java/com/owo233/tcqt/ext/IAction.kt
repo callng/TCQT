@@ -2,7 +2,7 @@ package com.owo233.tcqt.ext
 
 import android.content.Context
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 
 enum class ActionProcess {
     MSF, MAIN, TOOL, OPENSDK,
@@ -28,7 +28,7 @@ interface IAction {
         runCatching {
             if (canRun()) onRun(ctx, process)
         }.onFailure {
-            logE(msg = "invoke Action 异常", cause = it)
+            Log.e("invoke Action 异常", it)
         }
     }
 

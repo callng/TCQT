@@ -10,7 +10,7 @@ import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.hooks.base.hostInfo
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
@@ -51,7 +51,7 @@ class TCQTJsInterface(private val ctx: Context) {
             mapOf("value" to result).json.toString()
 
         }.onFailure {
-            logE("TCQTSetting", "Failed to get setting for key: $key", it)
+            Log.e("Failed to get setting for key: $key", it)
         }.getOrNull() ?: "{}"
     }
 

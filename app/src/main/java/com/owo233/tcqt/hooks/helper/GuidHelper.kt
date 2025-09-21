@@ -5,7 +5,7 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.beforeHook
 import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 
 object GuidHelper {
 
@@ -22,7 +22,7 @@ object GuidHelper {
             hookSaveCurGuid(guid)
             hookSetupBusinessInfo(guid)
         }.onFailure {
-            logE(msg = "Hook Guid Failure", cause = it)
+            Log.e("Hook Guid Failure", it)
         }
     }
 

@@ -12,7 +12,7 @@ import kotlinx.serialization.modules.subclass
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.ext.asJsonObject
 import com.owo233.tcqt.ext.json
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayElement as JGE
 import com.tencent.qqnt.kernelpublic.nativeinterface.JsonGrayElement as PJGE
 
@@ -44,14 +44,14 @@ object LocalGrayTips {
             val json = Builder().apply(builder).build(align)
             val msgService = NTServiceFetcher.kernelService.wrapperSession?.msgService
             if (msgService == null) {
-                logE(msg = "addLocalGrayTip failed, msgService is null")
+                Log.e("addLocalGrayTip failed, msgService is null")
             } else {
                 when(contact) {
                     is MapleContact.Contact -> {
                         val element = JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
                         msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
                             if (result != 0) {
-                                logE(msg = "addLocalJsonGrayTipMsg failed, result: $result")
+                                Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                             }
                         }
                     }
@@ -59,14 +59,14 @@ object LocalGrayTips {
                         val element = PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
                         msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
                             if (result != 0) {
-                                logE(msg = "addLocalJsonGrayTipMsg failed, result: $result")
+                                Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                             }
                         }
                     }
                 }
             }
         }.onFailure {
-            logE(msg = "addLocalGrayTip failed", cause = it)
+            Log.e("addLocalGrayTip failed", it)
         }
     }
 

@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -114,7 +114,7 @@ fun CoroutineScope.launchWithCatch(
     context: CoroutineContext = EmptyCoroutineContext,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     errorDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
-    onError: suspend (Throwable) -> Unit = { e -> logE(msg = "launchWithCatch 异常", cause = e) },
+    onError: suspend (Throwable) -> Unit = { e -> Log.e("launchWithCatch 异常", e) },
     block: suspend CoroutineScope.() -> Unit
 ): Job {
     return launch(context, start) {
@@ -178,7 +178,7 @@ fun <T> runRetry(
     }
 
     if (lastException != null) {
-        logE(msg = "runRetry failed after $retryNum attempts", cause = lastException)
+        Log.e("runRetry failed after $retryNum attempts", lastException)
     }
     return null
 }

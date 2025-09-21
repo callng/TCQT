@@ -16,9 +16,9 @@ import com.owo233.tcqt.hooks.base.moduleLoadInit
 import com.owo233.tcqt.hooks.base.modulePath
 import com.owo233.tcqt.hooks.base.moduleRes
 import com.owo233.tcqt.hooks.base.resInjection
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.isStatic
-import com.owo233.tcqt.utils.logI
 import com.owo233.tcqt.utils.paramCount
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
@@ -91,13 +91,11 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
 
         if (XpClassLoader.injectClassloader()) {
             if (ProcUtil.isMain) {
-                logI(msg = """
-
+                Log.i("""
 
                     android version: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
                     module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }
                     host version: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
-
 
                 """.trimIndent())
             }

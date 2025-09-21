@@ -22,52 +22,52 @@ typealias Hooker = (MethodHookParam) -> Unit
 fun Class<*>.hookMethod(method: String?, vararg args: Any?) = try {
     findAndHookMethod(this, method, *args)
 } catch (e: NoSuchMethodError) {
-    logE(msg = "Hook Method failed $method", cause = e)
+    Log.e("Hook Method failed $method", e)
     null
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook Method failed $method", cause = e)
+    Log.e("Hook Method failed $method", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook Method failed $method", cause = e)
+    Log.e("Hook Method failed $method", e)
     null
 }
 
 fun Member.hookMethod(callback: XC_MethodHook) = try {
     hookMethod(this, callback)
 } catch (e: Throwable) {
-    logE(msg = "Hook Method failed", cause = e)
+    Log.e("Hook Method failed", e)
     null
 }
 
-inline fun MethodHookParam.callHooker(crossinline hooker: Hooker) = try {
+internal inline fun MethodHookParam.callHooker(crossinline hooker: Hooker) = try {
     hooker(this)
 } catch (e: Throwable) {
-    logE(msg = "Error occurred calling hooker on ${this.method}", cause = e)
+    Log.e("Error occurred calling hooker on ${this.method}", e)
 }
 
-inline fun MethodHookParam.callReplacer(crossinline replacer: Replacer) = try {
+internal inline fun MethodHookParam.callReplacer(crossinline replacer: Replacer) = try {
     replacer(this)
 } catch (e: Throwable) {
-    logE(msg = "Error occurred calling replacer on ${this.method}", cause = e)
+    Log.e("Error occurred calling replacer on ${this.method}", e)
     null
 }
 
-inline fun Member.replaceMethod(crossinline replacer: Replacer) =
+internal inline fun Member.replaceMethod(crossinline replacer: Replacer) =
     hookMethod(object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
     })
 
-inline fun Member.hookAfterMethod(crossinline hooker: Hooker) =
+internal inline fun Member.hookAfterMethod(crossinline hooker: Hooker) =
     hookMethod(object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Member.hookBeforeMethod(crossinline hooker: (MethodHookParam) -> Unit) =
+internal inline fun Member.hookBeforeMethod(crossinline hooker: (MethodHookParam) -> Unit) =
     hookMethod(object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.hookBeforeMethod(
+internal inline fun Class<*>.hookBeforeMethod(
     method: String?,
     vararg args: Any?,
     crossinline hooker: Hooker
@@ -75,7 +75,7 @@ inline fun Class<*>.hookBeforeMethod(
     override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
 })
 
-inline fun Class<*>.hookAfterMethod(
+internal inline fun Class<*>.hookAfterMethod(
     method: String?,
     vararg args: Any?,
     crossinline hooker: Hooker
@@ -83,7 +83,7 @@ inline fun Class<*>.hookAfterMethod(
     override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
 })
 
-inline fun Class<*>.replaceMethod(
+internal inline fun Class<*>.replaceMethod(
     method: String?,
     vararg args: Any?,
     crossinline replacer: Replacer
@@ -95,28 +95,28 @@ fun Class<*>.hookAllMethods(methodName: String?, hooker: XC_MethodHook): Set<XC_
     try {
         hookAllMethods(this, methodName, hooker)
     } catch (e: NoSuchMethodError) {
-        logE(msg = "Hook Method failed $methodName", cause = e)
+        Log.e("Hook Method failed $methodName", e)
         emptySet()
     } catch (e: ClassNotFoundError) {
-        logE(msg = "Hook Method failed $methodName", cause = e)
+        Log.e("Hook Method failed $methodName", e)
         emptySet()
     } catch (e: ClassNotFoundException) {
-        logE(msg = "Hook Method failed $methodName", cause = e)
+        Log.e("Hook Method failed $methodName", e)
         emptySet()
     }
 
-inline fun Class<*>.hookBeforeAllMethods(methodName: String?, crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookBeforeAllMethods(methodName: String?, crossinline hooker: Hooker) =
     hookAllMethods(methodName, object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.hookAfterAllMethods(methodName: String?, crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookAfterAllMethods(methodName: String?, crossinline hooker: Hooker) =
     hookAllMethods(methodName, object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
 
     })
 
-inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer: Replacer) =
+internal inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer: Replacer) =
     hookAllMethods(methodName, object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
     })
@@ -124,27 +124,27 @@ inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer:
 fun Class<*>.hookConstructor(vararg args: Any?) = try {
     findAndHookConstructor(this, *args)
 } catch (e: NoSuchMethodError) {
-    logE(msg = "Hook Constructor failed", cause = e)
+    Log.e("Hook Constructor failed", e)
     null
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook Constructor failed", cause = e)
+    Log.e("Hook Constructor failed", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook Constructor failed", cause = e)
+    Log.e("Hook Constructor failed", e)
     null
 }
 
-inline fun Class<*>.hookBeforeConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookBeforeConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.hookAfterConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookAfterConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+internal inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
@@ -152,27 +152,27 @@ inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Ho
 fun Class<*>.hookAllConstructors(hooker: XC_MethodHook): Set<XC_MethodHook.Unhook> = try {
     hookAllConstructors(this, hooker)
 } catch (e: NoSuchMethodError) {
-    logE(msg = "Hook Constructors failed", cause = e)
+    Log.e("Hook Constructors failed", e)
     emptySet()
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook Constructors failed", cause = e)
+    Log.e("Hook Constructors failed", e)
     emptySet()
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook Constructors failed", cause = e)
+    Log.e("Hook Constructors failed", e)
     emptySet()
 }
 
-inline fun Class<*>.hookAfterAllConstructors(crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookAfterAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.hookBeforeAllConstructors(crossinline hooker: Hooker) =
+internal inline fun Class<*>.hookBeforeAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) =
+internal inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
@@ -180,14 +180,14 @@ inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) =
 fun String.hookMethod(classLoader: ClassLoader, method: String?, vararg args: Any?) = try {
     findClass(classLoader).hookMethod(method, *args)
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook Method failed $method", cause = e)
+    Log.e("Hook Method failed $method", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook Method failed $method", cause = e)
+    Log.e("Hook Method failed $method", e)
     null
 }
 
-inline fun String.hookBeforeMethod(
+internal inline fun String.hookBeforeMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -195,14 +195,14 @@ inline fun String.hookBeforeMethod(
 ) = try {
     findClass(classLoader).hookBeforeMethod(method, *args, hooker = hooker)
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook Before Method failed $method", cause = e)
+    Log.e("Hook Before Method failed $method", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook Before Method failed $method", cause = e)
+    Log.e("Hook Before Method failed $method", e)
     null
 }
 
-inline fun String.hookAfterMethod(
+internal inline fun String.hookAfterMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -210,14 +210,14 @@ inline fun String.hookAfterMethod(
 ) = try {
     findClass(classLoader).hookAfterMethod(method, *args, hooker = hooker)
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Hook After Method failed $method", cause = e)
+    Log.e("Hook After Method failed $method", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Hook After Method failed $method", cause = e)
+    Log.e("Hook After Method failed $method", e)
     null
 }
 
-inline fun String.replaceMethod(
+internal inline fun String.replaceMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -225,10 +225,10 @@ inline fun String.replaceMethod(
 ) = try {
     findClass(classLoader).replaceMethod(method, *args, replacer = replacer)
 } catch (e: ClassNotFoundError) {
-    logE(msg = "Replace Method failed $method", cause = e)
+    Log.e("Replace Method failed $method", e)
     null
 } catch (e: ClassNotFoundException) {
-    logE(msg = "Replace Method failed $method", cause = e)
+    Log.e(msg = "Replace Method failed $method", e)
     null
 }
 
@@ -399,7 +399,7 @@ fun <T> T.setFloatField(field: String?, value: Float) = apply {
     setFloatField(this, field, value)
 }
 
-inline fun XResources.hookLayout(
+internal inline fun XResources.hookLayout(
     id: Int,
     crossinline hooker: (XC_LayoutInflated.LayoutInflatedParam) -> Unit
 ) {
@@ -409,16 +409,16 @@ inline fun XResources.hookLayout(
                 try {
                     hooker(liparam)
                 } catch (e: Throwable) {
-                    logE(msg = "XResources handleLayoutInflated error", cause = e)
+                    Log.e("XResources handleLayoutInflated error", e)
                 }
             }
         })
     } catch (e: Throwable) {
-        logE(msg = "XResources handleLayoutInflated error", cause = e)
+        Log.e("XResources handleLayoutInflated error", e)
     }
 }
 
-inline fun XResources.hookLayout(
+internal inline fun XResources.hookLayout(
     pkg: String,
     type: String,
     name: String,
@@ -428,7 +428,7 @@ inline fun XResources.hookLayout(
         val id = getIdentifier(name, type, pkg)
         hookLayout(id, hooker)
     } catch (e: Throwable) {
-        logE(msg = "XResources hookLayout error", cause = e)
+        Log.e("XResources hookLayout error", e)
     }
 }
 

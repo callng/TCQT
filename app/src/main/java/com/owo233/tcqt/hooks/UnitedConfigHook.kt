@@ -11,7 +11,7 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toUtf8ByteArray
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 import java.util.concurrent.ConcurrentHashMap
 
 @RegisterAction
@@ -60,7 +60,7 @@ class UnitedConfigHook : IAction {
     private fun safeParseBoolean(key: String, value: String): Boolean? {
         return value.lowercase().toBooleanStrictOrNull().also {
             if (it == null) {
-                logE(msg = "UnitedConfigHook: Invalid boolean value for key: $key, value: $value")
+                Log.e("UnitedConfigHook: Invalid boolean value for key: $key, value: $value")
             }
         }
     }

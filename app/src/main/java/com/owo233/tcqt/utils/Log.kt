@@ -1,43 +1,38 @@
 package com.owo233.tcqt.utils
 
-import android.util.Log
-import com.owo233.tcqt.data.TCQTBuild.DEBUG
-import com.owo233.tcqt.data.TCQTBuild.HOOK_TAG
+import com.owo233.tcqt.data.TCQTBuild
 import de.robv.android.xposed.XposedBridge
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.Executors
 
-private val logExecutor = Executors.newSingleThreadExecutor()
+internal object Log {
 
-private fun parseLog(level: Int, tag: String, msg: String, cause: Throwable? = null) = buildString {
-    val levelStr = when (level) {
-        Log.DEBUG -> "DEBUG"
-        Log.INFO -> "INFO"
-        Log.WARN -> "WARN"
-        Log.ERROR -> "ERROR"
-        else -> "?????"
+    private const val TAG = "TCQT"
+
+    fun i(msg: String, e: Throwable? = null) = log(android.util.Log.INFO, msg, e)
+
+    fun w(msg: String, e: Throwable? = null) = log(android.util.Log.WARN, msg, e)
+
+    fun e(msg: String, e: Throwable? = null) = log(android.util.Log.ERROR, msg, e)
+
+    fun d(msg: String, e: Throwable? = null) = log(android.util.Log.DEBUG, msg, e)
+
+    private fun log(level: Int, msg: String, e: Throwable? = null) {
+        if (level <= android.util.Log.DEBUG && !TCQTBuild.DEBUG) return
+        val logStr = parseLog(level, msg, e)
+        XposedBridge.log(logStr)
     }
-    val date = SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-    append("[$levelStr] $date ($tag) $msg")
-    if (!endsWith('\n')) append('\n')
-    if (cause != null) append(Log.getStackTraceString(cause))
-    if (!endsWith('\n')) append('\n')
-}
 
-private fun log(level: Int, tag: String, msg: String, cause: Throwable? = null) {
-    if (level <= Log.DEBUG && !DEBUG) return
-    logExecutor.execute {
-        val parsedLog = parseLog(level, tag, msg, cause)
-        XposedBridge.log(parsedLog)
+    private fun parseLog(level: Int, msg: String, e: Throwable? = null) = buildString {
+        val levelStr = when (level) {
+            android.util.Log.DEBUG -> "D"
+            android.util.Log.INFO -> "I"
+            android.util.Log.WARN -> "W"
+            android.util.Log.ERROR -> "E"
+            else -> "?"
+        }
+
+        append("[${TAG}][$levelStr] $msg")
+        if (!endsWith('\n')) append('\n')
+        if (e != null) append(android.util.Log.getStackTraceString(e))
+        if (!endsWith('\n')) append('\n')
     }
 }
-
-fun logD(tag: String = HOOK_TAG, msg: String, cause: Throwable? = null) = log(Log.DEBUG, tag, msg, cause)
-
-fun logI(tag: String = HOOK_TAG, msg: String, cause: Throwable? = null) = log(Log.INFO, tag, msg, cause)
-
-fun logW(tag: String = HOOK_TAG, msg: String, cause: Throwable? = null) = log(Log.WARN, tag, msg, cause)
-
-fun logE(tag: String = HOOK_TAG, msg: String, cause: Throwable? = null) = log(Log.ERROR, tag, msg, cause)

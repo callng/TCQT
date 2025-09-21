@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
-import com.owo233.tcqt.utils.logD
+import com.owo233.tcqt.utils.Log
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -25,7 +25,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 class MsgAntiRecall : IAction {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
-        logD(msg = "Oh baby baby tell me why")
+        Log.d("Oh baby baby tell me why")
     }
 
     override val key: String get() = GeneratedSettingList.MSG_ANTI_RECALL

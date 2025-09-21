@@ -64,7 +64,7 @@ internal object Toasts {
                 methodToastShow?.invoke(qqToastObj)
                     ?: Toast.makeText(ctx, text, duration).show()
             }.onFailure {
-                logE(msg = "Toasts error", cause = it)
+                Log.e("Toasts error", it)
                 Toast.makeText(ctx, text, duration).show()
             }
         }

@@ -9,8 +9,8 @@ import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MMKVUtils
-import com.owo233.tcqt.utils.logE
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 
@@ -60,7 +60,7 @@ class ModuleCommand : AlwaysRunAction() {
             ctx.registerReceiver(receiver, filter, flag)
             registeredReceiver = receiver
         }.onFailure {
-            logE(msg = "registerReceiver error", cause = it)
+            Log.e(msg = "registerReceiver error", it)
         }
     }
 

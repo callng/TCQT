@@ -17,7 +17,7 @@ import com.owo233.tcqt.hooks.base.HostSpecies
 import com.owo233.tcqt.utils.PacketUtils
 import com.owo233.tcqt.utils.PlatformTools.QQ_9_1_90_26520
 import com.owo233.tcqt.hooks.base.hostInfo
-import com.owo233.tcqt.utils.logI
+import com.owo233.tcqt.utils.Log
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import oicq.wlogin_sdk.tools.cryptor
@@ -55,7 +55,7 @@ class ExcludeSendCmd : IAction {
             val cmd = param.args[5] as? String ?: return@beforeHook
             if (isCmdBlocked(cmd)) {
                 param.result = EMPTY_BYTE_ARRAY
-                logI(tag = "ExcludeSendCmd", msg = "已处决CMD: $cmd")
+                Log.d("已处决CMD: $cmd")
             }
         })
     }

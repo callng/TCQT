@@ -6,9 +6,8 @@ import android.content.res.AssetManager
 import android.content.res.Resources
 import android.content.res.XModuleResources
 import com.owo233.tcqt.MainEntry
-import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.R
-import com.owo233.tcqt.utils.logD
+import com.owo233.tcqt.utils.Log
 import java.lang.reflect.Method
 
 lateinit var modulePath: String
@@ -20,7 +19,7 @@ var moduleLoadInit = false
 @SuppressLint("DiscouragedPrivateApi")
 internal fun resInjection(context: Context = hostInfo.application): Boolean {
     if (!::modulePath.isInitialized) {
-        logE(msg = "modulePath is not initialized")
+        Log.e("modulePath is not initialized")
         return false
     }
 
@@ -34,14 +33,14 @@ internal fun resInjection(context: Context = hostInfo.application): Boolean {
         val result = method.invoke(res.assets, modulePath) as Int
 
         if (result > 0) {
-            logD(msg = "resInjection: ${R.string.module_res_injection}")
+            Log.d("resInjection: ${R.string.module_res_injection}")
             true
         } else {
-            logE(msg = "resInjection failed: modulePath=$modulePath, id=$result")
+            Log.e("resInjection failed: modulePath=$modulePath, id=$result")
             false
         }
     }.getOrElse {
-        logE(msg = "resInjection exception: modulePath=$modulePath", cause = it)
+        Log.e("resInjection exception: modulePath=$modulePath", it)
         false
     }
 }

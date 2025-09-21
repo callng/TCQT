@@ -8,9 +8,9 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.isAbstract
-import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.paramCount
 import de.robv.android.xposed.XC_MethodHook
 
@@ -53,7 +53,7 @@ class MenuBuilder : AlwaysRunAction() {
                             try {
                                 decorator.onGetMenuNt(msg, target, it)
                             } catch (e: Exception) {
-                                logE(msg = "MenuBuilder error", cause = e)
+                                Log.e(msg = "MenuBuilder error", e)
                             }
                         }
                     }

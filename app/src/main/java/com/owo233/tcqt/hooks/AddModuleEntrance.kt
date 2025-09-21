@@ -12,10 +12,10 @@ import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
-import com.owo233.tcqt.utils.logE
 import com.owo233.tcqt.utils.new
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -25,7 +25,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingFragment")
-            ?: logE(msg = "找不到MainSettingFragment类,无法创建模块入口!!!")
+            ?: Log.e("找不到MainSettingFragment类,无法创建模块入口!!!")
 
         val oldEntry =
             XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingConfigProvider")
@@ -33,7 +33,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             XpClassLoader.load("com.tencent.mobileqq.setting.main.NewSettingConfigProvider")
 
         if (oldEntry == null && newEntry == null) {
-            logE(msg = "找不到SettingConfigProvider,无法创建模块入口!!!")
+            Log.e("找不到SettingConfigProvider,无法创建模块入口!!!")
         }
 
         // 创建入口
@@ -58,7 +58,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 it.parameterTypes.size == 1 &&
                         it.parameterTypes[0] == Context::class.java &&
                         it.returnType.name.startsWith("com.tencent.mobileqq.setting.processor")
-            }?.returnType ?: return@runCatching logE(msg = "无法找到返回 processor.* 类")
+            }?.returnType ?: return@runCatching Log.e("无法找到返回 processor.* 类")
 
             // 2. 找到合适的构造函数, 用于创建item
             val processorArgCount = processorClass.constructors.firstOrNull {
@@ -68,14 +68,14 @@ class AddModuleEntrance : AlwaysRunAction() {
                         it.parameterTypes[2] == CharSequence::class.java &&
                         it.parameterTypes[3] == Int::class.javaPrimitiveType &&
                         (it.parameterTypes.size < 5 || it.parameterTypes[4] == String::class.java)
-            }?.parameterTypes?.size ?: return@runCatching logE(msg = "无法找到processor的构造函数")
+            }?.parameterTypes?.size ?: return@runCatching Log.e("无法找到processor的构造函数")
 
             // 3. 找到 build 方法,用于生成setting item 列表
             val buildMethod = methods.singleOrNull {
                 it.parameterTypes.size == 1 &&
                         it.parameterTypes[0] == Context::class.java &&
                         it.returnType == List::class.java
-            }?: return@runCatching logE(msg = "无法找到build方法")
+            }?: return@runCatching Log.e("无法找到build方法")
 
             // 4. 找到点击事件方法
             val listeners = processorClass.getMethods(false).filter {
@@ -121,7 +121,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
             buildMethod.hookMethod(hooker)
 
-        }.onFailure { logE(msg = "模块入口创建失败", cause = it) }
+        }.onFailure { Log.e("模块入口创建失败", it) }
     }
 
     /**
@@ -134,7 +134,7 @@ class AddModuleEntrance : AlwaysRunAction() {
         val proxy = Proxy.newProxyInstance(XpClassLoader.hostClassLoader, arrayOf(function0Class)) { _, method, _ ->
             if (method.name == "invoke") {
                 runCatching {
-                    browserClass ?: return@runCatching logE(msg = "无法加载内置浏览器类")
+                    browserClass ?: return@runCatching Log.e("无法加载内置浏览器类")
 
                     val intent = Intent(context, browserClass).apply {
                         putExtra("fling_action_key", 2)
@@ -154,7 +154,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                     }
 
                     context.startActivity(intent)
-                }.onFailure { logE(msg = "进入模块设置入口失败", cause = it) }
+                }.onFailure { Log.e("进入模块设置入口失败", it) }
             }
             unit
         }

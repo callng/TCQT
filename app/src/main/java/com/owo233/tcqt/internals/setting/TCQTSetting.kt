@@ -3,7 +3,7 @@ package com.owo233.tcqt.internals.setting
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.hooks.base.moduleClassLoader
-import com.owo233.tcqt.utils.logE
+import com.owo233.tcqt.utils.Log
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 import oicq.wlogin_sdk.tools.MD5
@@ -71,7 +71,7 @@ internal object TCQTSetting {
         return runCatching {
             getSetting<T>(key).getValue(null, null)
         }.onFailure {
-            logE("TCQTSetting", "Failed to get value for key: $key", it)
+            Log.e("Failed to get value for key: $key", it)
         }.getOrNull()
     }
 
@@ -79,7 +79,7 @@ internal object TCQTSetting {
         runCatching {
             getSetting<T>(key).setValue(this, null, value)
         }.onFailure {
-            logE("TCQTSetting", "Failed to set value for key: $key", it)
+            Log.e("Failed to set value for key: $key", it)
         }
     }
 
