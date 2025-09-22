@@ -206,7 +206,7 @@ jobs:
             const { owner, repo } = context.repo;
             let totalDeleted = 0;
             let page = 1;
-            const cacheTypes = ['gradle-', 'android-build-', 'ksp-', 'protobuf-'];
+            const cacheTypes = ['gradle-deps-', 'android-build-', 'ksp-', 'protobuf-'];
 
             core.info('🔍 开始扫描缓存...');
 
@@ -239,7 +239,7 @@ jobs:
             }
 
             if (totalDeleted === 0) {
-              core.info('✅ 未找到以 "gradle-"、"android-build-"、"ksp-"、"protobuf-" 开头的缓存，无需清理。');
+              core.info('✅ 未找到以 "gradle-deps-"、"android-build-"、"ksp-"、"protobuf-" 开头的缓存，无需清理。');
             } else {
               core.info(`✅ 共删除缓存数量: ${totalDeleted}`);
             }

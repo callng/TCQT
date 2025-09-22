@@ -37,17 +37,27 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Cache Android build cache
+      - name: Cache Gradle dependencies and wrapper
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            .gradle/
+          key: gradle-deps-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', 'gradle.properties') }}
+          restore-keys: |
+            gradle-deps-${{ runner.os }}-
+
+      - name: Cache Android build outputs
         uses: actions/cache@v4
         with:
           path: |
             ~/.android/build-cache
-            .gradle/
-            app/build/
+            app/build/intermediates
             annotations/build/
             processor/build/
             qqinterface/build/
-          key: android-build-${{ runner.os }}-${{ github.sha }}
+          key: android-build-${{ runner.os }}-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java', 'annotations/src/**', 'processor/src/**', 'qqinterface/src/**') }}
           restore-keys: |
             android-build-${{ runner.os }}-
 
@@ -57,7 +67,7 @@ jobs:
           path: |
             app/build/generated/ksp/
             processor/build/generated/ksp/
-          key: ksp-${{ runner.os }}-${{ hashFiles('**/*.kt', '**/*.java') }}
+          key: ksp-${{ runner.os }}-${{ hashFiles('processor/src/**', 'annotations/src/**', 'app/src/**/*.kt', 'app/src/**/*.java') }}
           restore-keys: |
             ksp-${{ runner.os }}-
 
