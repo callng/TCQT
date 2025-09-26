@@ -11,7 +11,7 @@ import mqq.app.MobileQQ
 
 open class QQInterfaces {
     companion object {
-        val app by lazy {
+        val appRuntime by lazy {
             (if (isMqqPackage())
                 MobileQQ.getMobileQQ().waitAppRuntime()
             else

@@ -76,7 +76,7 @@ class OneClickLikes : IAction {
 
     private fun isSVip(): Boolean {
         runCatching {
-            val service = QQInterfaces.app.getRuntimeService(IVasSingedApi::class.java, "all")
+            val service = QQInterfaces.appRuntime.getRuntimeService(IVasSingedApi::class.java, "all")
             return service.vipStatus.isSVip
         }.onFailure {
             Log.e("获取账号会员状态失败", it)

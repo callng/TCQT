@@ -7,20 +7,15 @@ import com.tencent.qqnt.kernel.api.IKernelService
 
 internal object NTServiceFetcher {
     private lateinit var iKernelService: IKernelService
-    private var curKernelHash = 0
+    private var isMsgHookInitialized = false
 
     fun onFetch(service: IKernelService) {
-        val session = service.wrapperSession ?: return
-        val curHash = service.hashCode() + session.hashCode()
-
-        if (isInitForNt(curHash)) return
-
-        curKernelHash = curHash
-        this.iKernelService = service
+        this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
         val key = GeneratedSettingList.MSG_ANTI_RECALL
-        if (GeneratedSettingList.getBoolean(key)) {
+        if (GeneratedSettingList.getBoolean(key) && !isMsgHookInitialized) {
             msgHook()
+            isMsgHookInitialized = true // msgHook方法只需要调用一次
         }
     }
 
@@ -38,8 +33,6 @@ internal object NTServiceFetcher {
             }
         })
     }
-
-    private fun isInitForNt(hash: Int) = hash == curKernelHash
 
     val kernelService: IKernelService
         get() = iKernelService
