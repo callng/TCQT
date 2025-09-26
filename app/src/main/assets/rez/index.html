@@ -819,8 +819,16 @@
             const saveButton = this.app.ui.elements.btnSave;
 
             // 鼠标事件
-            saveButton.addEventListener('mousedown', (e) => this.handlePressStart(e));
-            saveButton.addEventListener('mouseup', () => this.handlePressEnd());
+            saveButton.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.handlePressStart(e);
+            });
+
+            saveButton.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                this.handlePressEnd();
+            });
+
             saveButton.addEventListener('mouseleave', () => this.handlePressCancel());
 
             // 触摸事件
@@ -832,26 +840,32 @@
             saveButton.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 this.handlePressEnd();
-                if (!this.isLongPress) {
-                    this.app.saveSettings();
-                }
             });
 
             saveButton.addEventListener('touchcancel', () => this.handlePressCancel());
 
             // 点击事件
             saveButton.addEventListener('click', (e) => {
-                if (this.isLongPress) {
-                    this.isLongPress = false;
-                    return;
-                }
-                this.app.saveSettings();
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            // 右键菜单禁用
+            saveButton.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                return false;
             });
         }
 
         // 处理按压开始
         handlePressStart(e) {
+            // 只处理鼠标左键或触摸事件
             if (e.type === 'mousedown' && e.button !== 0) return;
+
+            // 清除之前的定时器
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+            }
 
             this.isLongPress = false;
             this.longPressTimer = setTimeout(() => {
@@ -866,6 +880,14 @@
                 clearTimeout(this.longPressTimer);
                 this.longPressTimer = null;
             }
+
+            if (!this.isLongPress) {
+                setTimeout(() => {
+                    if (!this.isLongPress) {
+                        this.app.saveSettings();
+                    }
+                }, 10);
+            }
         }
 
         // 处理按压取消
@@ -874,6 +896,7 @@
                 clearTimeout(this.longPressTimer);
                 this.longPressTimer = null;
             }
+            this.isLongPress = false;
         }
     }
 
