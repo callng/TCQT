@@ -14,6 +14,9 @@ object XpClassLoader: ClassLoader() {
         }.getOrNull()
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun <T> loadAs(name: String): Class<T> = load(name) as Class<T>
+
     private fun getSimpleName(className: String): String {
         var name = className
         if (name.startsWith('L') && name.endsWith(';') || name.contains('/')) {
