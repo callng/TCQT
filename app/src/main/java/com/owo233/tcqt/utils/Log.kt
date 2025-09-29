@@ -5,7 +5,7 @@ import de.robv.android.xposed.XposedBridge
 
 internal object Log {
 
-    private const val TAG = "TCQT"
+    private const val TAG = TCQTBuild.HOOK_TAG
 
     fun i(msg: String, e: Throwable? = null) = log(android.util.Log.INFO, msg, e)
 

@@ -2,4 +2,5 @@
 <resources>
     <item name="setting2Activity_settingEntryItem" type="id" />
     <item name="item_ptt_forward" type="id" />
+    <item name="check_ban_url" type="id" />
 </resources>
