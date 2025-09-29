@@ -1,5 +1,6 @@
 package com.owo233.tcqt.utils
 
+import com.owo233.tcqt.ext.toHexString
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -36,23 +37,24 @@ internal object CalculationUtils {
     }
 
     fun getSuperToken(superKey: String): String {
-        val md5Bytes = MessageDigest.getInstance("MD5")
-            .digest(superKey.toByteArray(Charsets.UTF_8))
-        val last4 = md5Bytes.takeLast(4)
-        val value = (
-                ((last4[0].toLong() and 0xFF) shl 24) or
-                ((last4[1].toLong() and 0xFF) shl 16) or
-                ((last4[2].toLong() and 0xFF) shl 8) or
-                (last4[3].toLong() and 0xFF)).toInt()
-        return value.toString()
+        val md5Bytes = superKey.toByteArray(Charsets.UTF_8).md5()
+        val n = ((md5Bytes[md5Bytes.size - 4].toInt() and 0xFF) shl 24) or
+                ((md5Bytes[md5Bytes.size - 3].toInt() and 0xFF) shl 16) or
+                ((md5Bytes[md5Bytes.size - 2].toInt() and 0xFF) shl 8) or
+                (md5Bytes[md5Bytes.size - 1].toInt() and 0xFF)
+
+        // 以无符号 32 位形式输出
+        return n.toLong().and(0xFFFFFFFFL).toString()
     }
 
     fun getAuthToken(key: String): String {
-        var hash: Long = 0L
-        for (char in key) {
-            hash = (hash * 33 + char.code) and 0xFFFFFFFFL
+        var hash = 0L
+        for (c in key) {
+            hash = hash * 33 + c.code
         }
-        return hash.toString()
+
+        // 取无符号 32 位
+        return (hash and 0xFFFFFFFFL).toString()
     }
 
     private fun getMd5ByString(str: String): String? {
@@ -60,11 +62,12 @@ internal object CalculationUtils {
             val bytes = str.toByteArray()
             val messageDigest = MessageDigest.getInstance("MD5")
             messageDigest.update(bytes, 0, bytes.size)
-            toHexString(messageDigest.digest())
+            messageDigest.digest().toHexString(false)
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun toHexString(bArr: ByteArray): String = bArr.joinToString("") { "%02x".format(it) }
+    private fun ByteArray.md5(): ByteArray =
+        MessageDigest.getInstance("MD5").digest(this)
 }

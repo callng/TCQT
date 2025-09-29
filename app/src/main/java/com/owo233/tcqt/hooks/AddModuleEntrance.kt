@@ -10,10 +10,15 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.resInjection
+import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
@@ -202,8 +207,56 @@ class AddModuleEntrance : AlwaysRunAction() {
             title = "历史冻结记录 (显示空白则重新进入)",
             iconName = "qui_tuning",
             onClick = ::openBanRecordQuery
+        ),
+        SettingEntryConfig(
+            id = R.id.account_get_ticket,
+            title = "复制账号票据 (高风险行为)",
+            iconName = "qui_check_account",
+            onClick = ::copyTicket
         )
     )
+
+    // 复制账号票据
+    private fun copyTicket(context: Context) {
+        if (!TCQTBuild.DEBUG) {
+            Toasts.error(context, "当前版本不支持此操作!")
+            return
+        }
+
+        val ticket = TicketManager.getA2AndD2()
+        val superKey = TicketManager.getSuperKey()
+        val stWeb = TicketManager.getStweb()
+        val (superToken, authToken) = CalculationUtils.getSuperToken(superKey).let { st ->
+            st to CalculationUtils.getAuthToken(st)
+        }
+
+        //A2 -> 010A _TGT, D2 -> 0143, D2Key -> 0305 sessionKey
+        val info = """
+            这是账号票据信息
+            泄露有被盗风险!!!
+
+            请及时清空剪切板中的内容
+            以免被第三方APP读取!!!
+
+            Uin: ${TicketManager.currentUin}
+
+            A2: ${ticket.a2}
+
+            D2: ${ticket.d2.toHexString(true)}
+
+            D2Key: ${ticket.d2Key.toHexString(true)}
+
+            StWeb: $stWeb
+
+            SuperKey: $superKey
+ 
+            SuperToken: $superToken
+
+            AuthToken: $authToken
+        """.trimIndent()
+
+        context.copyToClipboard(info, true)
+    }
 
     // 冻结记录查询
     private fun openBanRecordQuery(context: Context) {

@@ -1,10 +1,13 @@
 package com.owo233.tcqt.ext
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.Toasts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -181,4 +184,26 @@ fun <T> runRetry(
         Log.e("runRetry failed after $retryNum attempts", lastException)
     }
     return null
+}
+
+fun Context.copyToClipboard(text: String, showToast: Boolean = true) {
+    try {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Copied Text", text)
+        clipboard.setPrimaryClip(clip)
+
+        if (showToast) Toasts.success(this, "已复制到剪贴板")
+    } catch (e: Exception) {
+        Log.e("复制到剪贴板失败", e)
+        if (showToast) Toasts.error(this, "复制到剪贴板失败")
+    }
+}
+
+fun Context.clearClipboard() {
+    try {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+    } catch (e: Exception) {
+        Log.e("清空剪贴板失败", e)
+    }
 }

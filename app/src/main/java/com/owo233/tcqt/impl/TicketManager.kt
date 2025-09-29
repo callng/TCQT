@@ -40,9 +40,11 @@ internal object TicketManager {
 
     fun getSuperKey(): String {
         initThirdSigService()
+
         thirdSigService?.let { service ->
             val countDownLatch = CountDownLatch(1)
             var superKey: String? = null
+
             try {
                 val getSuperKeyMethod = service.getMethods(false).first {
                     it.name == "getSuperKey"
@@ -66,9 +68,14 @@ internal object TicketManager {
                         Log.e("getSuperKey fail", it)
                     }
                 }
-                getSuperKeyMethod.invoke(service, currentUin, 16, callback)
+                getSuperKeyMethod.invoke(service, currentUin.toLong(), 16, callback)
                 countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
             } catch (_: InterruptedException) {}
+
+            return superKey ?: run {
+                Log.e("getSuperKey fail, superKey is null")
+                ""
+            }
         }
         return getTicketManager().getSuperkey(currentUin)
     }
