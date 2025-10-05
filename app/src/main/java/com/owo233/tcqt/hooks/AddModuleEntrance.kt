@@ -15,10 +15,10 @@ import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.impl.TicketManager
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
@@ -103,8 +103,13 @@ class AddModuleEntrance : AlwaysRunAction() {
 
                 resInjection(context)
 
+                // 非调试版本时排除仅调试版本显示的入口
+                val filteredConfigs = entryConfigs.filter { config ->
+                    !config.debugOnly || TCQTBuild.DEBUG
+                }
+
                 // 为每个配置创建设置项
-                val settingItems = entryConfigs.map { config ->
+                val settingItems = filteredConfigs.map { config ->
                     createSettingItem(context, config, processorClass, processorArgCount, onClickMethod)
                 }
 
@@ -212,17 +217,14 @@ class AddModuleEntrance : AlwaysRunAction() {
             id = R.id.account_get_ticket,
             title = "复制账号票据 (高风险行为)",
             iconName = "qui_check_account",
+            debugOnly = false,
             onClick = ::copyTicket
         )
     )
 
     // 复制账号票据
     private fun copyTicket(context: Context) {
-        if (!TCQTBuild.DEBUG) {
-            Toasts.error(context, "当前版本不支持此操作!")
-            return
-        }
-
+        val uin = "${QQInterfaces.currentUin}"
         val ticket = TicketManager.getA2AndD2()
         val superKey = TicketManager.getSuperKey()
         val stWeb = TicketManager.getStweb()
@@ -233,12 +235,12 @@ class AddModuleEntrance : AlwaysRunAction() {
         //A2 -> 010A _TGT, D2 -> 0143, D2Key -> 0305 sessionKey
         val info = """
             这是账号票据信息
-            泄露有被盗风险!!!
+            泄露会导致账号被盗!!!
 
             请及时清空剪切板中的内容
             以免被第三方APP读取!!!
 
-            Uin: ${TicketManager.currentUin}
+            Uin: $uin
 
             A2: ${ticket.a2}
 
@@ -311,5 +313,6 @@ data class SettingEntryConfig(
     val id: Int,
     val title: String,
     val iconName: String = "qui_setting",
+    val debugOnly: Boolean = false,
     val onClick: (Context) -> Unit
 )
