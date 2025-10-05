@@ -6,6 +6,7 @@ import com.owo233.tcqt.entries.MsgPushOuterClass
 import com.owo233.tcqt.entries.QQMessageOuterClass
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
@@ -33,7 +34,9 @@ object AioListener {
                 17 -> onGroupRecallByMsgPush(operationInfoByteArray, msgPush, param)
             }
             166 -> when (subType) { // 好友私聊消息
-                11 -> onC2CFlashPicByMsgPush(buffer, msgPush, param)
+                11 -> GeneratedSettingList.DISABLE_FLASH_PIC
+                    .takeIf { GeneratedSettingList.getBoolean(it) }
+                    .let { onC2CFlashPicByMsgPush(buffer, msgPush, param) }
             }
         }
     }
