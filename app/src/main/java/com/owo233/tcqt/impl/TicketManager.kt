@@ -17,15 +17,15 @@ import java.util.concurrent.TimeUnit
 internal object TicketManager {
 
     private val ticketManagerMap = mutableMapOf<String, TicketManager>()
-    val currentUin: String get() = "${QQInterfaces.appRuntime.longAccountUin}"
+    val uin: String get() = "${QQInterfaces.currentUin}"
     private var thirdSigService: Any? = null
 
     private fun getTicketManager(): TicketManager {
-        if (ticketManagerMap.containsKey(currentUin)) {
-            return ticketManagerMap[currentUin]!!
+        if (ticketManagerMap.containsKey(uin)) {
+            return ticketManagerMap[uin]!!
         }
         val manager = QQInterfaces.appRuntime.getManager(2) as TicketManager
-        ticketManagerMap[currentUin] = manager
+        ticketManagerMap[uin] = manager
         return manager
     }
 
@@ -68,7 +68,7 @@ internal object TicketManager {
                         Log.e("getSuperKey fail", it)
                     }
                 }
-                getSuperKeyMethod.invoke(service, currentUin.toLong(), 16, callback)
+                getSuperKeyMethod.invoke(service, uin.toLong(), 16, callback)
                 countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
             } catch (_: InterruptedException) {}
 
@@ -77,27 +77,27 @@ internal object TicketManager {
                 ""
             }
         }
-        return getTicketManager().getSuperkey(currentUin)
+        return getTicketManager().getSuperkey(uin)
     }
 
     fun getSkey(): String {
-        return getTicketManager().getRealSkey(currentUin)
+        return getTicketManager().getRealSkey(uin)
     }
 
     fun getPskey(domain: String): String {
-        return getTicketManager().getPskey(currentUin, domain)
+        return getTicketManager().getPskey(uin, domain)
     }
 
     fun getPt4Token(domain: String): String {
-        return getTicketManager().getPt4Token(currentUin, domain)
+        return getTicketManager().getPt4Token(uin, domain)
     }
 
     fun getStweb(): String {
-        return getTicketManager().getStweb(currentUin)
+        return getTicketManager().getStweb(uin)
     }
 
     fun getA2Sync(): String {
-        return getTicketManager().getA2(currentUin)
+        return getTicketManager().getA2(uin)
     }
 
     fun getA2(): MainTicketInfo {
@@ -116,7 +116,7 @@ internal object TicketManager {
             }
         }
 
-        getTicketManager().getA2(currentUin.toLong(), 16, callback)
+        getTicketManager().getA2(uin.toLong(), 16, callback)
         countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
         return mainTicketInfo ?: throw Exception("获取A2失败")
     }
@@ -137,7 +137,7 @@ internal object TicketManager {
             }
         }
 
-        getTicketManager().getD2(currentUin.toLong(), 16, callback)
+        getTicketManager().getD2(uin.toLong(), 16, callback)
         countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
         return mainTicketInfo ?: throw Exception("获取D2失败")
     }
@@ -158,13 +158,13 @@ internal object TicketManager {
             }
         }
 
-        getTicketManager().getMainTicket(currentUin.toLong(), 16, callback)
+        getTicketManager().getMainTicket(uin.toLong(), 16, callback)
         countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
         return mainTicketInfo ?: throw Exception("获取A2和D2失败")
     }
 
     fun getCookie(domain: String): String {
-        var uin = currentUin
+        var uin = uin
         val skey = getSkey()
         val pksey = getPskey(domain)
         val pt4Token = getPt4Token(domain)

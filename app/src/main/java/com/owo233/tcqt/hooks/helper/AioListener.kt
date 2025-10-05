@@ -57,7 +57,7 @@ object AioListener {
                 delay(233L)
 
                 val operatorUid = msgPush.qqMessage.messageHead.senderUid
-                if (operatorUid == QQInterfaces.appRuntime.currentUid) return@launchWithCatch
+                if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
 
                 val msgSeq = msgPush.qqMessage.messageContentInfo.msgSeqId
 
@@ -107,7 +107,7 @@ object AioListener {
         param.args[1] = newMsgPush.toByteArray()
 
         val operatorUid = operationInfo.info.operatorUid
-        if (operatorUid == QQInterfaces.appRuntime.currentUid) return
+        if (operatorUid == QQInterfaces.currentUid) return
 
         GlobalScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId // 群号
@@ -175,7 +175,7 @@ object AioListener {
 
         GlobalScope.launchWithCatch{
             val operatorUid = operationInfo.info.operatorUid
-            if (operatorUid == QQInterfaces.appRuntime.currentUid) return@launchWithCatch
+            if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
 
             val recallMsgSeq = operationInfo.info.msgSeq
 

@@ -225,6 +225,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     // 复制账号票据
     private fun copyTicket(context: Context) {
         val uin = "${QQInterfaces.currentUin}"
+        val uid = QQInterfaces.currentUid
         val ticket = TicketManager.getA2AndD2()
         val superKey = TicketManager.getSuperKey()
         val stWeb = TicketManager.getStweb()
@@ -241,6 +242,8 @@ class AddModuleEntrance : AlwaysRunAction() {
             以免被第三方APP读取!!!
 
             Uin: $uin
+
+            Uid: $uid
 
             A2: ${ticket.a2}
 
