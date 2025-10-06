@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.invokeOriginalMethod
+import com.owo233.tcqt.utils.invokeOriginalWithArgs
 import com.owo233.tcqt.utils.isPublic
 import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
 
@@ -28,9 +28,9 @@ class DisableFlashPic : IAction {
         }.hookAfterMethod {
             val id = it.args[0] as Int
             if (id == 84) {
-                it.result = it.invokeOriginalMethod(arrayOf(5))
+                it.result = it.invokeOriginalWithArgs(5)
             } else if (id == 85) {
-                it.result = it.invokeOriginalMethod(arrayOf(4))
+                it.result = it.invokeOriginalWithArgs(4)
             }
         }
     }

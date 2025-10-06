@@ -11,6 +11,7 @@ import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge.hookAllConstructors
 import de.robv.android.xposed.XposedBridge.hookAllMethods
 import de.robv.android.xposed.XposedBridge.hookMethod
+import de.robv.android.xposed.XposedBridge.invokeOriginalMethod
 import de.robv.android.xposed.XposedHelpers.ClassNotFoundError
 import de.robv.android.xposed.XposedHelpers.callMethod
 import de.robv.android.xposed.XposedHelpers.callStaticMethod
@@ -301,7 +302,9 @@ inline fun String.replaceMethod(
 
 fun MethodHookParam.invokeOriginalMethod(): Any? = invokeOriginalMethod(method, thisObject, args)
 
-fun  MethodHookParam.invokeOriginalMethod(vararg args: Any?): Any? = invokeOriginalMethod(method, thisObject, args)
+fun  MethodHookParam.invokeOriginalWithArgs(
+    vararg args: Any?
+): Any? = invokeOriginalMethod(method, thisObject, args)
 
 inline fun <T, R> T.runCatchingOrNull(func: T.() -> R?) = try {
     func()

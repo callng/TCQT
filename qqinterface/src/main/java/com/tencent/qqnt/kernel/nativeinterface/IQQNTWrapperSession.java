@@ -5,6 +5,11 @@ import java.util.ArrayList;
 public interface IQQNTWrapperSession {
     final class CppProxy implements IQQNTWrapperSession {
         @Override
+        public void onMsfPush(String str, byte[] bArr, PushExtraInfo pushExtraInfo) {
+
+        }
+
+        @Override
         public IKernelTicketService getTicketService() {
             return null;
         }
@@ -79,6 +84,8 @@ public interface IQQNTWrapperSession {
 
         }
     }
+
+    void onMsfPush(String str, byte[] bArr, PushExtraInfo pushExtraInfo);
 
     IKernelTicketService getTicketService();
 

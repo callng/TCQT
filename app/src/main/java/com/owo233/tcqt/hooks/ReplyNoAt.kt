@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.FuzzyClassKit
-import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.replaceHook
+import com.owo233.tcqt.utils.replaceMethod
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 
 @RegisterAction
@@ -26,9 +25,7 @@ class ReplyNoAt : IAction {
             "com.tencent.mobileqq.aio.input.reply"
         ) { it.returnType == Void.TYPE && it.parameterTypes.size == 1
                     && it.parameterTypes[0] == AIOMsgItem::class.java
-        }?.hookMethod(replaceHook {
-            return@replaceHook null
-        })
+        }?.replaceMethod { null }
     }
 
     override val key: String get() = GeneratedSettingList.REPLY_NO_AT

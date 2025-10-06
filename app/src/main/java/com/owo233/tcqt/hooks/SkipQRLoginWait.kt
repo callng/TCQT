@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import android.os.CountDownTimer
+import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -11,8 +12,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookAllConstructors
+import com.owo233.tcqt.utils.hookBeforeAllConstructors
 import com.owo233.tcqt.utils.hookBeforeMethod
 
 @RegisterAction
@@ -32,17 +32,29 @@ class SkipQRLoginWait : IAction {
                 isSubClass = true
             ) { clz, _ -> clz.superclass == CountDownTimer::class.java }
                 ?.let {
-                    it.hookAllConstructors(beforeHook { param ->
+                    it.hookBeforeAllConstructors { param ->
                         param.args[1] = 0
                         param.args[2] = 0
-                    })
+                    }
                 }
         }
 
         // 跳过对话框形式的倒计时等待
         if (PlatformTools.isOpenSdkProcess()) {
             XpClassLoader.load("com.tencent.mobileqq.utils.DialogUtil")
-                ?.hookBeforeMethod("createCountdownDialog") { param ->
+                ?.hookBeforeMethod(
+                    "createCountdownDialog",
+                    Context::class.java,
+                    String::class.java,
+                    CharSequence::class.java,
+                    String::class.java,
+                    String::class.java,
+                    Boolean::class.java,
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    View.OnClickListener::class.java,
+                    View.OnClickListener::class.java
+                ) { param ->
                     if (param.args.size == 10 && param.args[6] is Int) {
                         param.args[6] = 0
                     }

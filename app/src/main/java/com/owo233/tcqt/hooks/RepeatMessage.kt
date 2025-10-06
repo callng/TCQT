@@ -13,16 +13,15 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.afterHook
+import com.owo233.tcqt.utils.callMethod
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getMethods
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.paramCount
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.msg.api.IMsgService
-import de.robv.android.xposed.XposedHelpers
 import kotlin.random.Random
 
 @RegisterAction
@@ -56,16 +55,17 @@ class RepeatMessage : IAction {
                     it.parameterTypes[2] == List::class.java
         } ?: error("plusOne not found")
 
-        plusOneMethod.hookMethod(afterHook {
-            val imageView = XposedHelpers.callMethod(
-                imageViewLazyField.get(it.thisObject), "getValue"
+        plusOneMethod.hookAfterMethod {
+            val imageView = imageViewLazyField.get(it.thisObject)!!.callMethod(
+                "getValue"
             ) as ImageView
-            if (imageView.context.javaClass.name.contains("MultiForwardActivity")) return@afterHook
+
+            if (imageView.context.javaClass.name.contains("MultiForwardActivity")) return@hookAfterMethod
 
             val msgObject = it.args[1]
             val msgRecord = getMsgRecord(msgObject)
 
-            if (disableRepeat(msgRecord)) return@afterHook
+            if (disableRepeat(msgRecord)) return@hookAfterMethod
 
             if (imageView.visibility != View.VISIBLE) {
                 setRepeatMsgIconMethod.invoke(it.thisObject, View.VISIBLE)
@@ -93,7 +93,7 @@ class RepeatMessage : IAction {
                     lastClickTime = now
                 }
             }
-        })
+        }
     }
 
     private fun disableRepeat(msg: MsgRecord): Boolean {

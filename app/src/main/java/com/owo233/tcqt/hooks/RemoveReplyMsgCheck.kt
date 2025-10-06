@@ -7,9 +7,9 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
+import com.tencent.qqnt.kernel.nativeinterface.ReplyMsgMainInfo
 
 @RegisterAction
 @RegisterSetting(
@@ -21,15 +21,16 @@ import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
 )
 class RemoveReplyMsgCheck : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
-        QQNTWrapperUtil.CppProxy::class.java.hookMethod(
+        QQNTWrapperUtil.CppProxy::class.java.hookAfterMethod(
             "findSourceOfReplyMsgFrom",
-            afterHook { param ->
-                val result = param.result as Long
-                if (result == 0L) {
-                    param.result = 1L
-                }
+            ArrayList::class.java,
+            ReplyMsgMainInfo::class.java
+        ) { param ->
+            val result = param.result as Long
+            if (result == 0L) {
+                param.result = 1L
             }
-        )
+        }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_REPLY_MSG_CHECK

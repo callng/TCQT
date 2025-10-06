@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTJsInterface
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.smtt.sdk.WebView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,26 +31,31 @@ class WebJsBridge : AlwaysRunAction() {
 
         addWhiteList() // 添加host白名单
 
-        val onLoad = afterHook {
-            val web = it.thisObject as WebView
-            val url = URL(web.url)
-            if (url.host == "tcqt.qq.com" || url.host == "tcqt.dev") {
-                web.loadUrl("http://${TCQTSetting.settingUrl}")
-            } else if (url.host == TCQTSetting.settingUrl.substringBefore(":")) {
-                web.addJavascriptInterface(TCQTJsInterface(ctx), "TCQT")
-            }
-        }
         WebView::class.java.declaredMethods
             .filter { it.name == "loadUrl" || it.name == "loadData" || it.name == "loadDataWithBaseURL"}
-            .forEach { it.hookMethod(onLoad) }
+            .forEach {
+                it.hookAfterMethod { param ->
+                    val web = param.thisObject as WebView
+                    val url = URL(web.url)
+                    if (url.host == "tcqt.qq.com" || url.host == "tcqt.dev") {
+                        web.loadUrl("http://${TCQTSetting.settingUrl}")
+                    } else if (url.host == TCQTSetting.settingUrl.substringBefore(":")) {
+                        web.addJavascriptInterface(TCQTJsInterface(ctx), "TCQT")
+                    }
+                }
+            }
     }
 
     private fun addWhiteList() {
         XpClassLoader.load("com.tencent.mobileqq.qmmkv.MMKVOptionEntity")
-            ?.hookMethod("decodeString", afterHook {
-                val key = it.args[0] as? String ?: return@afterHook
+            ?.hookAfterMethod(
+                "decodeString",
+                String::class.java,
+                String::class.java
+            ) {
+                val key = it.args[0] as? String ?: return@hookAfterMethod
                 if (key == "207_2849" || key.startsWith("207_")) {
-                    val result = it.result as? String ?: return@afterHook
+                    val result = it.result as? String ?: return@hookAfterMethod
                     val json = JSONObject(result)
                     val hosts = listOf("127.0.0.1", "localhost")
 
@@ -61,7 +65,7 @@ class WebJsBridge : AlwaysRunAction() {
 
                     it.result = json.toString()
                 }
-            })
+            }
     }
 
     private fun addHosts(json: JSONObject, key: String, hosts: List<String>) {

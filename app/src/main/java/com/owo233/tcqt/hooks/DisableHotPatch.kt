@@ -9,10 +9,8 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.earlydownload.xmldata.XmlData
 import com.tencent.mobileqq.pb.PBInt32Field
 import com.tencent.mobileqq.pb.PBRepeatMessageField
@@ -57,13 +55,13 @@ class DisableHotPatch : IAction {
             }
 
         XpClassLoader.load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
-            ?.hookMethod("isEnable", beforeHook {
+            ?.hookBeforeMethod("isEnable") {
                 val thisObj = it.thisObject
                 val field = thisObj.javaClass.getDeclaredField("disable").apply { isAccessible = true }
-                if (!(field.get(thisObj) as? Boolean ?: return@beforeHook)) {
+                if (!(field.get(thisObj) as? Boolean ?: return@hookBeforeMethod)) {
                     field.set(thisObj, true)
                 }
-            })
+            }
 
         XpClassLoader.load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
             val kRespGetConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")
@@ -78,13 +76,13 @@ class DisableHotPatch : IAction {
                         && argt[0] == AppRuntime::class.java && argt[1] == kRespGetConfig
                         && argt[2] == Intent::class.java && argt[3] == List::class.java
                         && argt[4] == IntArray::class.java && argt[5] == Boolean::class.javaPrimitiveType
-            }.hookMethod(beforeHook {
-                val respGetConfig = it.args[1] ?: return@beforeHook
+            }.hookBeforeMethod {
+                val respGetConfig = it.args[1] ?: return@hookBeforeMethod
                 val configList = kRespGetConfigConfigList?.get(respGetConfig)
-                as? PBRepeatMessageField<*> ?: return@beforeHook
+                        as? PBRepeatMessageField<*> ?: return@hookBeforeMethod
                 val arrayList = configList.get() as ArrayList<*>
                 if (arrayList.isEmpty()) {
-                    return@beforeHook
+                    return@hookBeforeMethod
                 }
                 // debug dump type
                 /*arrayList.forEach { config ->
@@ -100,7 +98,7 @@ class DisableHotPatch : IAction {
                 if (arrayList.isEmpty()) {
                     it.result = null
                 }
-            })
+            }
         }
 
         XpClassLoader.load("com.tencent.mobileqq.msf.core.net.patch.PatchReporter")?.let { kPatchReporter ->
@@ -113,7 +111,10 @@ class DisableHotPatch : IAction {
             }
         }
 
-        XmlData::class.java.hookAfterMethod("updateServerInfo") {
+        XmlData::class.java.hookAfterMethod(
+            "updateServerInfo",
+            XmlData::class.java
+        ) {
             val xmlData = it.thisObject as XmlData
             xmlData.StoreBackup = false
             xmlData.load2G = false

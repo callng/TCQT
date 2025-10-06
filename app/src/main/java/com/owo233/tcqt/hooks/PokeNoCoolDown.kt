@@ -10,8 +10,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.MockSharedPreferences
-import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedHelpers
+import com.owo233.tcqt.utils.hookAfterMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -23,23 +22,19 @@ import de.robv.android.xposed.XposedHelpers
 )
 class PokeNoCoolDown : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XposedHelpers.findAndHookMethod(
-            "android.content.ContextWrapper",
-            XpClassLoader,
-            "getSharedPreferences",
-            String::class.java,
-            Int::class.javaPrimitiveType,
-            object : XC_MethodHook() {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val name = param.args[0] as String
-                    if (name.startsWith("pai_yi_pai_user_double_tap_timestamp_")) {
-                        if (param.result !is MockSharedPreferences) {
-                            param.result = MockSharedPreferences(param.result as SharedPreferences)
-                        }
+        XpClassLoader.load("android.content.ContextWrapper")!!
+            .hookAfterMethod(
+                "getSharedPreferences",
+                String::class.java,
+                Int::class.javaPrimitiveType
+            ) { param ->
+                val name = param.args[0] as String
+                if (name.startsWith("pai_yi_pai_user_double_tap_timestamp_")) {
+                    if (param.result !is MockSharedPreferences) {
+                        param.result = MockSharedPreferences(param.result as SharedPreferences)
                     }
                 }
             }
-        )
     }
 
     override val key: String get() = GeneratedSettingList.POKE_NO_COOL_DOWN

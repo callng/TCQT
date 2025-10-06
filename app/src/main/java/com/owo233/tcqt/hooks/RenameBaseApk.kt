@@ -10,9 +10,8 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.getObjectField
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.setObjectField
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
@@ -34,7 +33,7 @@ class RenameBaseApk : IAction {
     }
 
     private fun removeSuffix() {
-        FileElement::class.java.hookMethod("getFileName", beforeHook {
+        FileElement::class.java.hookBeforeMethod("getFileName") {
             val fileName = it.thisObject.getObjectField("fileName") as String
             if (fileName.endsWith(".1")) {
                 it.thisObject.setObjectField(
@@ -42,7 +41,7 @@ class RenameBaseApk : IAction {
                     fileName.substring(0, fileName.length - 2)
                 )
             }
-        })
+        }
     }
 
     private fun renameGroupUploadApk(ctx: Context) {
@@ -54,22 +53,22 @@ class RenameBaseApk : IAction {
                     it.parameterTypes[1].name.contains("TroopFileTransferManager\$Item")
         } ?: error("renameGroupUploadApk: 没有找到合适的方法!!!")
 
-        method.hookMethod(beforeHook { param ->
+        method.hookBeforeMethod { param ->
             val item = param.args[1]
             val fileName = item.getObjectField("FileName") as String
             val localFile = item.getObjectField("LocalFile") as String
 
-            if (!fileName.endsWith(".apk")) return@beforeHook
+            if (!fileName.endsWith(".apk")) return@hookBeforeMethod
             File(localFile).also {
                 if (!it.exists()) {
                     Log.e("renameGroupUploadApk: File not exists: $localFile")
-                    return@beforeHook
+                    return@hookBeforeMethod
                 }
             }
 
             val newFileName = getFormattedFileNameByPath(ctx, localFile)
             item.setObjectField("FileName", newFileName)
-        })
+        }
     }
 
     private fun renameFriendUploadApk(ctx: Context) {
@@ -83,22 +82,22 @@ class RenameBaseApk : IAction {
                     it.parameterTypes[3] == String::class.java
         } ?: error("renameFriendUploadApk: 没有找到合适方法!!!")
 
-        method.hookMethod(beforeHook { param ->
+        method.hookBeforeMethod { param ->
             val fileManagerEntity = param.args[0]
             val fileName = fileManagerEntity.getObjectField("fileName") as String
             val localFile = fileManagerEntity.getObjectField("strFilePath") as String
 
-            if (!fileName.endsWith(".apk")) return@beforeHook
+            if (!fileName.endsWith(".apk")) return@hookBeforeMethod
             File(localFile).also {
                 if (!it.exists()) {
                     Log.e("renameFriendUploadApk: File not exists: $localFile")
-                    return@beforeHook
+                    return@hookBeforeMethod
                 }
             }
 
             val newFileName = getFormattedFileNameByPath(ctx, localFile)
             param.args[2] = newFileName
-        })
+        }
     }
 
     private fun getFormattedFileNameByPath(

@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -38,8 +37,8 @@ class ForcedToB : IAction {
             "getExpEntity",
             String::class.java,
             String::class.java
-        ).hookMethod(afterHook { param ->
-            val result = param.result ?: return@afterHook
+        ).hookAfterMethod { param ->
+            val result = param.result ?: return@hookAfterMethod
 
             val isOnline = onlineField.getBoolean(result)
             val assignment = assignmentField.get(result) as String
@@ -53,7 +52,7 @@ class ForcedToB : IAction {
 
                 param.result = result
             }
-        })
+        }
     }
 
     override val key: String get() = GeneratedSettingList.FORCED_TO_B

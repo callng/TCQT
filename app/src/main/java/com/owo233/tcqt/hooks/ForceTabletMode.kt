@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.common.config.pad.DeviceType
 
 @RegisterAction
@@ -26,9 +25,9 @@ class ForceTabletMode : IAction {
             ?.declaredMethods?.first {
                 it.returnType == DeviceType::class.java && it.parameterCount == 1
                         && it.parameterTypes[0] == Context::class.java
-            }?.hookMethod(afterHook {
+            }?.hookAfterMethod{
                 it.result = DeviceType.TABLET
-            })
+            }
     }
 
     override val key: String get() = GeneratedSettingList.FORCE_TABLET_MODE

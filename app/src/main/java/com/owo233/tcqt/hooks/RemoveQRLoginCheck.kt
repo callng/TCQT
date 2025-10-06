@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -26,9 +25,9 @@ class RemoveQRLoginCheck : IAction {
             ?.declaredMethods
             ?.firstOrNull {
                 it.returnType == Void.TYPE && it.parameterTypes.size == 3 && it.parameterTypes[0] == Boolean::class.java
-            }?.hookMethod(beforeHook {
+            }?.hookBeforeMethod {
                 it.args[0] = false
-            })
+            }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_QR_LOGIN_CHECK

@@ -1,11 +1,11 @@
 package com.owo233.tcqt.hooks.helper
 
+import android.content.Context
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 
 object GuidHelper {
 
@@ -27,44 +27,73 @@ object GuidHelper {
     }
 
     private fun hookNeedChangeGuid() {
-        clazz.hookMethod("needChangeGuid", afterHook {
+        clazz.hookAfterMethod(
+            "needChangeGuid",
+            Context::class.java
+        ) {
             it.result = false
-        })
+        }
     }
 
     private fun hookGetGuidFromFile(guid: String) {
-        clazz.hookMethod("getGuidFromFile", afterHook {
+        clazz.hookAfterMethod(
+            "getGuidFromFile",
+            Context::class.java
+        ) {
             it.result = guid.hex2ByteArray()
-        })
+        }
     }
 
     private fun hookSaveGuidToFile(guid: String) {
-        clazz.hookMethod("saveGuidToFile", beforeHook {
+        clazz.hookBeforeMethod(
+            "saveGuidToFile",
+            Context::class.java,
+            ByteArray::class.java
+        ) {
             it.args[1] = guid.hex2ByteArray()
-        })
+        }
     }
 
     private fun hookGetLastGuid(guid: String) {
-        clazz.hookMethod("get_last_guid", afterHook {
+        clazz.hookAfterMethod(
+            "get_last_guid",
+            Context::class.java
+        ) {
             it.result = guid.hex2ByteArray()
-        })
+        }
     }
 
     private fun hookGenerateGuid(guid: String) {
-        clazz.hookMethod("generateGuid", afterHook {
+        clazz.hookAfterMethod(
+            "generateGuid",
+            Context::class.java
+        ) {
             it.result = guid.hex2ByteArray()
-        })
+        }
     }
 
     private fun hookSaveCurGuid(guid: String) {
-        clazz.hookMethod("save_cur_guid", beforeHook {
+        clazz.hookBeforeMethod(
+            "save_cur_guid",
+            Context::class.java,
+            ByteArray::class.java
+        ) {
             it.args[1] = guid.hex2ByteArray()
-        })
+        }
     }
 
     private fun hookSetupBusinessInfo(guid: String) {
-        clazz2.hookMethod("setupBusinessInfo", beforeHook {
+        clazz2.hookBeforeMethod(
+            "setupBusinessInfo",
+            Context::class.java,
+            String::class.java,
+            String::class.java,
+            String::class.java,
+            String::class.java,
+            String::class.java,
+            String::class.java
+        ) {
             it.args[2] = guid.hex2ByteArray()
-        })
+        }
     }
 }

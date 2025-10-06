@@ -15,11 +15,11 @@ import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PacketUtils
 import com.owo233.tcqt.utils.PlatformTools.QQ_9_1_90_26520
-import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hookBeforeAllMethods
 import com.owo233.tcqt.utils.hookMethod
 import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedHelpers
 import oicq.wlogin_sdk.tools.cryptor
 import java.lang.reflect.Method
 
@@ -51,13 +51,13 @@ class ExcludeSendCmd : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         msfRollBack() // 还让不让愉快的玩耍了？
 
-        codecWarpper.hookMethod("nativeEncodeRequest", beforeHook { param ->
-            val cmd = param.args[5] as? String ?: return@beforeHook
+        codecWarpper.hookBeforeAllMethods("nativeEncodeRequest") { param ->
+            val cmd = param.args[5] as? String ?: return@hookBeforeAllMethods
             if (isCmdBlocked(cmd)) {
                 param.result = EMPTY_BYTE_ARRAY
                 Log.d("已处决CMD: $cmd")
             }
-        })
+        }
     }
 
     private fun concatPackets(packets: List<ByteArray>): ByteArray {
@@ -72,12 +72,17 @@ class ExcludeSendCmd : IAction {
     }
 
     private fun msfRollBack() {
-        configClass.hookMethod("isSwitchOn", afterHook { param ->
+        configClass.hookAfterMethod(
+            "isSwitchOn",
+            String::class.java,
+            String::class.java,
+            Boolean::class.java
+        ) { param ->
             val key = param.args[1] as String
             if (key == "msf_init_optimize" || key == "msf_network_service_switch_new") {
                 param.result = false
             }
-        })
+        }
 
         if (hostInfo.hostSpecies == HostSpecies.QQ && hostInfo.versionCode >= QQ_9_1_90_26520) {
             val hooker = beforeHook { param ->
@@ -90,10 +95,10 @@ class ExcludeSendCmd : IAction {
                 param.result = Unit
             }
 
-            hook = XposedHelpers.findAndHookMethod(
-                codecWarpper,
+            hook = codecWarpper.hookMethod(
                 "nativeOnReceData",
-                ByteArray::class.java, Int::class.java,
+                ByteArray::class.java,
+                Int::class.javaPrimitiveType,
                 hooker
             )
         }

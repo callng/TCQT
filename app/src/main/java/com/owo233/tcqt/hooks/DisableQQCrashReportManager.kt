@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.isStatic
 
@@ -26,23 +27,61 @@ class DisableQQCrashReportManager : IAction {
         XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
             it.declaredMethods.first { method ->
                 !method.isStatic && method.returnType == Void.TYPE && method.parameterTypes.size == 2
-            }.hookMethod(beforeHook { param ->
+            }.hookBeforeMethod { param ->
                 param.result = Unit
-            })
+            }
         }
 
         XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashHandleListener")?.let {
             val hooker = beforeHook { param -> param.result = Unit }
-            it.hookMethod("onCrashHandleStart", hooker)
-            it.hookMethod("onCrashHandleEnd", hooker)
-            it.hookMethod("onCrashSaving", hooker)
+            it.hookMethod(
+                "onCrashHandleStart",
+                Boolean::class.java,
+                String::class.java,
+                hooker
+            )
+            it.hookMethod("onCrashHandleEnd", Boolean::class.java, hooker)
+            it.hookMethod(
+                "onCrashSaving",
+                Boolean::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                Long::class.javaPrimitiveType,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                hooker
+            )
         }
 
         XpClassLoader.load("com.tencent.mobileqq.msf.MSFCrashHandleListener")?.let {
             val hooker = beforeHook { param -> param.result = Unit }
-            it.hookMethod("onCrashHandleStart", hooker)
-            it.hookMethod("onCrashHandleEnd", hooker)
-            it.hookMethod("onCrashSaving", hooker)
+            it.hookMethod(
+                "onCrashHandleStart",
+                Boolean::class.java,
+                String::class.java,
+                hooker
+            )
+            it.hookMethod("onCrashHandleEnd", Boolean::class.java, hooker)
+            it.hookMethod(
+                "onCrashSaving",
+                Boolean::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                Long::class.javaPrimitiveType,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                hooker
+            )
         }
     }
 

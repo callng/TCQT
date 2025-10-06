@@ -9,8 +9,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 
 
 @RegisterAction
@@ -24,20 +23,27 @@ import com.owo233.tcqt.utils.hookMethod
 )
 class FlagSecureBypass : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
-        Window::class.java.hookMethod("setFlags", beforeHook {
+        Window::class.java.hookBeforeMethod(
+            "setFlags",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType
+        ) {
             val flag = it.args[0] as Int
             val mask = it.args[1] as Int
             if ((mask and WindowManager.LayoutParams.FLAG_SECURE) != 0) {
                 it.args[0] = flag and WindowManager.LayoutParams.FLAG_SECURE.inv()
             }
-        })
+        }
 
-        Window::class.java.hookMethod("addFlags", beforeHook {
+        Window::class.java.hookBeforeMethod(
+            "addFlags",
+            Int::class.javaPrimitiveType
+        ) {
             val flag = it.args[0] as Int
             if ((flag and WindowManager.LayoutParams.FLAG_SECURE) != 0) {
                 it.args[0] = flag and WindowManager.LayoutParams.FLAG_SECURE.inv()
             }
-        })
+        }
     }
 
     override val key: String get() = GeneratedSettingList.FLAG_SECURE_BYPASS

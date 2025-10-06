@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
+import android.os.Message
 import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -12,6 +13,8 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.ClassCacheUtils
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.emptyParam
+import com.owo233.tcqt.utils.hookBeforeAllMethods
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.invokeOriginalMethod
 import com.owo233.tcqt.utils.isFinal
@@ -44,11 +47,11 @@ class RemoveAD : IAction {
             syntheticIndex(1, 2)
         }?.declaredMethods
             ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
-            ?.onEach { it.hookMethod(beforeHook { p -> p.result = Unit }) }
+            ?.onEach { it.hookBeforeMethod { p -> p.result = Unit } }
 
         XpClassLoader.load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
-        )?.replaceMethod("handleMessage") {
+        )?.replaceMethod("handleMessage", Message::class.java) {
             it.invokeOriginalMethod()
         }
     }
@@ -59,13 +62,15 @@ class RemoveAD : IAction {
         )?.declaredMethods?.firstOrNull {
             it.paramCount > 0 && it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
                     && it.isPublic && it.isFinal
-        }?.hookMethod(beforeHook { param -> param.result = Unit})
+        }?.hookBeforeMethod { param -> param.result = Unit }
     }
 
     private fun removePopupAD() {
         XpClassLoader.load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
-        )?.hookMethod("updateBanner",beforeHook { it.result = Unit })
+        )?.hookBeforeAllMethods("updateBanner") {
+            it.result = Unit
+        }
 
         XpClassLoader.load("cooperation.vip.ad.GrowHalfLayerHelper")
             ?.declaredMethods
@@ -73,7 +78,7 @@ class RemoveAD : IAction {
                 method.returnType == Void.TYPE &&
                 method.isPublic && method.isFinal && method.isNotStatic &&
                 method.paramCount == 3 && method.parameterTypes[0].name == "android.app.Activity"
-            }?.hookMethod(beforeHook { param -> param.result = Unit })
+            }?.hookBeforeMethod { param -> param.result = Unit }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_AD

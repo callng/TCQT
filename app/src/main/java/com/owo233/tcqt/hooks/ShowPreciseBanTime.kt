@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -22,14 +21,17 @@ import com.owo233.tcqt.utils.hookMethod
 class ShowPreciseBanTime : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
-            .hookMethod("remainingTimeToStringCountDown", beforeHook {
+            .hookBeforeMethod(
+                "remainingTimeToStringCountDown",
+                Long::class.javaPrimitiveType
+            ) {
                 val time = it.args[0] as Long
                 if (time <= 0) {
                     it.result = "0秒"
                 } else {
                     it.result = formatDuration(time)
                 }
-            })
+            }
     }
 
     private fun formatDuration(seconds: Long): String {

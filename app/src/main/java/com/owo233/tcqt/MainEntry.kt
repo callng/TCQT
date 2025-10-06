@@ -113,6 +113,8 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
             })
 
             moduleLoadInit = true
+        } else {
+            Log.e("XpClassLoader inject failed.")
         }
     }
 }

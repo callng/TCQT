@@ -10,8 +10,7 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toUtf8ByteArray
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import java.util.concurrent.ConcurrentHashMap
 
 @RegisterAction
@@ -39,21 +38,31 @@ class UnitedConfigHook : IAction {
     }
 
     private fun setupUnitedConfigHook() {
-        configClass.hookMethod("isSwitchOn", afterHook { param ->
-            val key = param.args[1] as? String ?: return@afterHook
+        configClass.hookAfterMethod(
+            "isSwitchOn",
+            String::class.java,
+            String::class.java,
+            Boolean::class.java
+        ) { param ->
+            val key = param.args[1] as? String ?: return@hookAfterMethod
             configMap["b" to key]?.let { value ->
                 safeParseBoolean(key, value)?.let { parsed ->
                     param.result = parsed
                 }
             }
-        })
+        }
 
-        configClass.hookMethod("loadRawConfig", afterHook { param ->
-            val key = param.args[1] as? String ?: return@afterHook
+        configClass.hookAfterMethod(
+            "loadRawConfig",
+            String::class.java,
+            String::class.java,
+            ByteArray::class.java
+        ) { param ->
+            val key = param.args[1] as? String ?: return@hookAfterMethod
             configMap["s" to key]?.let { value ->
                 param.result = value.toUtf8ByteArray()
             }
-        })
+        }
     }
 
     private fun safeParseBoolean(key: String, value: String): Boolean? {

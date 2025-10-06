@@ -9,8 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -34,10 +33,10 @@ class MsgAntiRecall : IAction {
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 
     override fun canRun(): Boolean {
-        KernelServiceImpl::class.java.hookMethod("initService", afterHook {
+        KernelServiceImpl::class.java.hookAfterMethod("initService") {
             val service = it.thisObject as IKernelService
             NTServiceFetcher.onFetch(service)
-        })
+        }
 
         return GeneratedSettingList.getBoolean(key)
     }

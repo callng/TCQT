@@ -1,9 +1,9 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.tencent.qqnt.kernel.api.IKernelService
+import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
 
 internal object NTServiceFetcher {
     private lateinit var iKernelService: IKernelService
@@ -20,9 +20,14 @@ internal object NTServiceFetcher {
     }
 
     fun msgHook() {
-        kernelService.wrapperSession.javaClass.hookMethod("onMsfPush", beforeHook {
-            val cmd = it.args[0] as? String ?: return@beforeHook
-            val buffer = it.args[1] as? ByteArray ?: return@beforeHook
+        kernelService.wrapperSession.javaClass.hookBeforeMethod(
+            "onMsfPush",
+            String::class.java,
+            ByteArray::class.java,
+            PushExtraInfo::class.java
+        ) {
+            val cmd = it.args[0] as? String ?: return@hookBeforeMethod
+            val buffer = it.args[1] as? ByteArray ?: return@hookBeforeMethod
             when(cmd) {
                 "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
                     AioListener.handleInfoSyncPush(buffer, it)
@@ -31,7 +36,7 @@ internal object NTServiceFetcher {
                     AioListener.handleMsgPush(buffer, it)
                 }
             }
-        })
+        }
     }
 
     val kernelService: IKernelService

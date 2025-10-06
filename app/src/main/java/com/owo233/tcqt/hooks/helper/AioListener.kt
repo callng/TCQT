@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
+import com.owo233.tcqt.utils.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import de.robv.android.xposed.XC_MethodHook
@@ -44,7 +45,7 @@ object AioListener {
     private fun onC2CFlashPicByMsgPush(
         buffer: ByteArray,
         msgPush: MsgPushOuterClass.MsgPush,
-        param: XC_MethodHook.MethodHookParam
+        param: MethodHookParam
     ) {
         param.args[1] = buffer
 
@@ -79,7 +80,7 @@ object AioListener {
     private fun onGroupRecallByMsgPush(
         operationInfoByteArray: ByteArray,
         msgPush: MsgPushOuterClass.MsgPush,
-        param: XC_MethodHook.MethodHookParam
+        param: MethodHookParam
     ) {
         val firstPart = operationInfoByteArray.copyOfRange(0, 7)
         val secondPart = operationInfoByteArray.copyOfRange(7, operationInfoByteArray.size)
@@ -150,7 +151,7 @@ object AioListener {
     private fun onC2CRecallByMsgPush(
         operationInfoByteArray: ByteArray,
         msgPush: MsgPushOuterClass.MsgPush,
-        param: XC_MethodHook.MethodHookParam
+        param: MethodHookParam
     ) {
         val operationInfo = QQMessageOuterClass
             .QQMessage

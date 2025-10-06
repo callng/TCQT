@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
 import android.view.Gravity
@@ -23,7 +24,7 @@ import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hookAfterAllMethods
+import com.owo233.tcqt.utils.hookAfterMethod
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
@@ -76,9 +77,9 @@ class ChangeGuid : IAction {
 
     private fun setupLoginUiHook() {
         val clazz = XposedHelpers.findClass("mqq.app.AppActivity", XpClassLoader)
-        clazz.hookAfterAllMethods("onCreate") { param ->
+        clazz.hookAfterMethod("onCreate", Bundle::class.java) { param ->
             val activity = param.thisObject as Activity
-            if (!activity.javaClass.name.contains("Login")) return@hookAfterAllMethods
+            if (!activity.javaClass.name.contains("Login")) return@hookAfterMethod
 
             activity.window.decorView.rootView.post {
                 findLoginButton(activity.window.decorView.rootView)?.apply {

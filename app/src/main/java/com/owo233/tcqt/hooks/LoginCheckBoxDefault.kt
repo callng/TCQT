@@ -8,8 +8,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.afterHook
-import de.robv.android.xposed.XposedBridge
+import com.owo233.tcqt.utils.hookAfterAllConstructors
 
 @RegisterAction
 @RegisterSetting(
@@ -29,18 +28,18 @@ class LoginCheckBoxDefault : IAction {
     }
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XposedBridge.hookAllConstructors(CheckBox::class.java, afterHook {
-            val context = it.args.getOrNull(0) as? Context ?: return@afterHook
+        CheckBox::class.java.hookAfterAllConstructors{
+            val context = it.args.getOrNull(0) as? Context ?: return@hookAfterAllConstructors
             val className = context.javaClass.name
 
-            if (!loginContextNames.contains(className)) return@afterHook
+            if (!loginContextNames.contains(className)) return@hookAfterAllConstructors
 
             val checkBox = it.thisObject as CheckBox
 
             if (!checkBox.isChecked) {
                 checkBox.post { checkBox.isChecked = true }
             }
-        })
+        }
     }
 
     override val key: String get() = GeneratedSettingList.LOGIN_CHECK_BOX_DEFAULT

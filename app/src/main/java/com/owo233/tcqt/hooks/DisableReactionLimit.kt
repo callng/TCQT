@@ -8,8 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.replaceHook
+import com.owo233.tcqt.utils.replaceMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -22,14 +21,14 @@ import com.owo233.tcqt.utils.replaceHook
 class DisableReactionLimit : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.hookMethod("getFilterEmojiData", replaceHook { null })
+            ?.replaceMethod("getFilterEmojiData") { null }
 
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.hookMethod("getFilterSysData", replaceHook { null })
+            ?.replaceMethod("getFilterSysData") { null }
 
         // 有意义吗？
         XpClassLoader.load("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.utils.a")
-            ?.hookMethod("c", replaceHook { 0L })
+            ?.replaceMethod("c") { 0L }
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_REACTION_LIMIT
