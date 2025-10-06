@@ -8,10 +8,11 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.afterHook
-import com.owo233.tcqt.ext.beforeHook
-import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.earlydownload.xmldata.XmlData
 import com.tencent.mobileqq.pb.PBInt32Field
 import com.tencent.mobileqq.pb.PBRepeatMessageField
@@ -30,9 +31,9 @@ class DisableHotPatch : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
-            ?.hookMethod(beforeHook {
+            ?.hookBeforeMethod {
                 it.result = null
-            })
+            }
 
         XpClassLoader.load("com.tencent.rfix.lib.engine.PatchEngineBase")?.let { methods ->
             val clzPatchConfig = XpClassLoader.load("com.tencent.rfix.lib.config.PatchConfig")
@@ -41,19 +42,19 @@ class DisableHotPatch : IAction {
                         && it.parameterTypes.size == 2
                         && it.parameterTypes[0] == String::class.java
                         && it.parameterTypes[1] == clzPatchConfig
-            }.hookMethod(beforeHook {
+            }.hookBeforeMethod {
                 it.result = null
-            })
+            }
         }
 
         XpClassLoader.load("com.tencent.mobileqq.msf.core.net.utils.MsfHandlePatchUtils")
             ?.getDeclaredMethod(
                 "handlePatchConfig",
                 Int::class.javaPrimitiveType,
-                java.util.List::class.java
-            )?.hookMethod(beforeHook {
+                List::class.java
+            )?.hookBeforeMethod {
                 it.result = null
-            })
+            }
 
         XpClassLoader.load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
             ?.hookMethod("isEnable", beforeHook {
@@ -75,13 +76,13 @@ class DisableHotPatch : IAction {
                 val argt = it.parameterTypes
                 it.returnType == Void.TYPE && argt.size == 6
                         && argt[0] == AppRuntime::class.java && argt[1] == kRespGetConfig
-                        && argt[2] == Intent::class.java && argt[3] == java.util.List::class.java
+                        && argt[2] == Intent::class.java && argt[3] == List::class.java
                         && argt[4] == IntArray::class.java && argt[5] == Boolean::class.javaPrimitiveType
             }.hookMethod(beforeHook {
                 val respGetConfig = it.args[1] ?: return@beforeHook
                 val configList = kRespGetConfigConfigList?.get(respGetConfig)
                 as? PBRepeatMessageField<*> ?: return@beforeHook
-                val arrayList = configList.get() as java.util.ArrayList<*>
+                val arrayList = configList.get() as ArrayList<*>
                 if (arrayList.isEmpty()) {
                     return@beforeHook
                 }
@@ -106,13 +107,13 @@ class DisableHotPatch : IAction {
             kPatchReporter.declaredMethods.filter {
                 it.name.startsWith("report") && it.returnType == Void.TYPE
             }.forEach { m ->
-                m.hookMethod(beforeHook {
+                m.hookBeforeMethod {
                     it.result = null
-                })
+                }
             }
         }
 
-        XmlData::class.java.hookMethod("updateServerInfo", afterHook {
+        XmlData::class.java.hookAfterMethod("updateServerInfo") {
             val xmlData = it.thisObject as XmlData
             xmlData.StoreBackup = false
             xmlData.load2G = false
@@ -121,7 +122,7 @@ class DisableHotPatch : IAction {
             xmlData.net_2_2G = false
             xmlData.net_2_3G = false
             xmlData.net_2_wifi = false
-        })
+        }
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_HOT_PATCH

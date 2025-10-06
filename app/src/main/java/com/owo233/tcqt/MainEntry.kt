@@ -7,8 +7,6 @@ import android.os.Build
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.afterHook
-import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.initHostInfo
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
@@ -18,6 +16,8 @@ import com.owo233.tcqt.hooks.base.moduleRes
 import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.afterHook
+import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.isStatic
 import com.owo233.tcqt.utils.paramCount
 import de.robv.android.xposed.IXposedHookLoadPackage

@@ -3,7 +3,7 @@ package com.owo233.tcqt.utils
 import com.owo233.tcqt.data.TCQTBuild
 import de.robv.android.xposed.XposedBridge
 
-internal object Log {
+object Log {
 
     private const val TAG = TCQTBuild.HOOK_TAG
 

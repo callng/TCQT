@@ -1,6 +1,9 @@
+@file:Suppress("unused")
+
 package com.owo233.tcqt.utils
 
 import android.content.res.XResources
+import com.owo233.tcqt.ext.XpClassLoader
 import dalvik.system.BaseDexClassLoader
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam
@@ -8,12 +11,13 @@ import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge.*
 import de.robv.android.xposed.XposedHelpers.*
 import de.robv.android.xposed.callbacks.XC_LayoutInflated
+import de.robv.android.xposed.callbacks.XCallback
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Member
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.util.*
+import java.util.Enumeration
 
 typealias MethodHookParam = MethodHookParam
 typealias Replacer = (MethodHookParam) -> Any?
@@ -22,52 +26,84 @@ typealias Hooker = (MethodHookParam) -> Unit
 fun Class<*>.hookMethod(method: String?, vararg args: Any?) = try {
     findAndHookMethod(this, method, *args)
 } catch (e: NoSuchMethodError) {
-    Log.e("Hook Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook Method failed $method", e)
+    Log.e("", e)
     null
 }
 
 fun Member.hookMethod(callback: XC_MethodHook) = try {
     hookMethod(this, callback)
 } catch (e: Throwable) {
-    Log.e("Hook Method failed", e)
+    Log.e("", e)
     null
 }
 
-internal inline fun MethodHookParam.callHooker(crossinline hooker: Hooker) = try {
+inline fun MethodHookParam.callHooker(crossinline hooker: Hooker) = try {
     hooker(this)
 } catch (e: Throwable) {
     Log.e("Error occurred calling hooker on ${this.method}", e)
 }
 
-internal inline fun MethodHookParam.callReplacer(crossinline replacer: Replacer) = try {
+inline fun MethodHookParam.callReplacer(crossinline replacer: Replacer) = try {
     replacer(this)
 } catch (e: Throwable) {
     Log.e("Error occurred calling replacer on ${this.method}", e)
-    null
 }
 
-internal inline fun Member.replaceMethod(crossinline replacer: Replacer) =
+inline fun Member.replaceMethod(crossinline replacer: Replacer) =
     hookMethod(object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
     })
 
-internal inline fun Member.hookAfterMethod(crossinline hooker: Hooker) =
+inline fun beforeHook(
+    priority: Int = XCallback.PRIORITY_DEFAULT,
+    crossinline block: (param: MethodHookParam) -> Unit
+) : XC_MethodHook {
+    return object : XC_MethodHook(priority) {
+        override fun beforeHookedMethod(param: MethodHookParam) {
+            block(param)
+        }
+    }
+}
+
+inline fun afterHook(
+    priority: Int = XCallback.PRIORITY_DEFAULT,
+    crossinline block: (param: MethodHookParam) -> Unit
+) : XC_MethodHook {
+    return object : XC_MethodHook(priority) {
+        override fun afterHookedMethod(param: MethodHookParam) {
+            block(param)
+        }
+    }
+}
+
+inline fun replaceHook(
+    priority: Int = XCallback.PRIORITY_DEFAULT,
+    crossinline block: (param: Replacer) -> Any?
+) : XC_MethodHook {
+    return object : XC_MethodReplacement(priority) {
+        override fun replaceHookedMethod(param: MethodHookParam): Any? {
+            return block { param }
+        }
+    }
+}
+
+inline fun Member.hookAfterMethod(crossinline hooker: Hooker) =
     hookMethod(object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Member.hookBeforeMethod(crossinline hooker: (MethodHookParam) -> Unit) =
+inline fun Member.hookBeforeMethod(crossinline hooker: (MethodHookParam) -> Unit) =
     hookMethod(object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.hookBeforeMethod(
+inline fun Class<*>.hookBeforeMethod(
     method: String?,
     vararg args: Any?,
     crossinline hooker: Hooker
@@ -75,7 +111,7 @@ internal inline fun Class<*>.hookBeforeMethod(
     override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
 })
 
-internal inline fun Class<*>.hookAfterMethod(
+inline fun Class<*>.hookAfterMethod(
     method: String?,
     vararg args: Any?,
     crossinline hooker: Hooker
@@ -83,7 +119,16 @@ internal inline fun Class<*>.hookAfterMethod(
     override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
 })
 
-internal inline fun Class<*>.replaceMethod(
+inline fun Class<*>.hookAfterMethod(
+    priority: Int,
+    method: String?,
+    vararg args: Any?,
+    crossinline hooker: Hooker
+) = hookMethod(method, *args, object : XC_MethodHook(priority) {
+    override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
+})
+
+inline fun Class<*>.replaceMethod(
     method: String?,
     vararg args: Any?,
     crossinline replacer: Replacer
@@ -95,28 +140,27 @@ fun Class<*>.hookAllMethods(methodName: String?, hooker: XC_MethodHook): Set<XC_
     try {
         hookAllMethods(this, methodName, hooker)
     } catch (e: NoSuchMethodError) {
-        Log.e("Hook Method failed $methodName", e)
+        Log.e("", e)
         emptySet()
     } catch (e: ClassNotFoundError) {
-        Log.e("Hook Method failed $methodName", e)
+        Log.e("", e)
         emptySet()
     } catch (e: ClassNotFoundException) {
-        Log.e("Hook Method failed $methodName", e)
+        Log.e("", e)
         emptySet()
     }
 
-internal inline fun Class<*>.hookBeforeAllMethods(methodName: String?, crossinline hooker: Hooker) =
+inline fun Class<*>.hookBeforeAllMethods(methodName: String?, crossinline hooker: Hooker) =
     hookAllMethods(methodName, object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.hookAfterAllMethods(methodName: String?, crossinline hooker: Hooker) =
+inline fun Class<*>.hookAfterAllMethods(methodName: String?, crossinline hooker: Hooker) =
     hookAllMethods(methodName, object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
-
     })
 
-internal inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer: Replacer) =
+inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer: Replacer) =
     hookAllMethods(methodName, object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
     })
@@ -124,27 +168,27 @@ internal inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline 
 fun Class<*>.hookConstructor(vararg args: Any?) = try {
     findAndHookConstructor(this, *args)
 } catch (e: NoSuchMethodError) {
-    Log.e("Hook Constructor failed", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook Constructor failed", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook Constructor failed", e)
+    Log.e("", e)
     null
 }
 
-internal inline fun Class<*>.hookBeforeConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+inline fun Class<*>.hookBeforeConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.hookAfterConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+inline fun Class<*>.hookAfterConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Hooker) =
+inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Hooker) =
     hookConstructor(*args, object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
@@ -152,27 +196,27 @@ internal inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline h
 fun Class<*>.hookAllConstructors(hooker: XC_MethodHook): Set<XC_MethodHook.Unhook> = try {
     hookAllConstructors(this, hooker)
 } catch (e: NoSuchMethodError) {
-    Log.e("Hook Constructors failed", e)
+    Log.e("", e)
     emptySet()
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook Constructors failed", e)
+    Log.e("", e)
     emptySet()
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook Constructors failed", e)
+    Log.e("", e)
     emptySet()
 }
 
-internal inline fun Class<*>.hookAfterAllConstructors(crossinline hooker: Hooker) =
+inline fun Class<*>.hookAfterAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodHook() {
         override fun afterHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.hookBeforeAllConstructors(crossinline hooker: Hooker) =
+inline fun Class<*>.hookBeforeAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodHook() {
         override fun beforeHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-internal inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) =
+inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) =
     hookAllConstructors(object : XC_MethodReplacement() {
         override fun replaceHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
@@ -180,14 +224,14 @@ internal inline fun Class<*>.replaceAllConstructors(crossinline hooker: Hooker) 
 fun String.hookMethod(classLoader: ClassLoader, method: String?, vararg args: Any?) = try {
     findClass(classLoader).hookMethod(method, *args)
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook Method failed $method", e)
+    Log.e("", e)
     null
 }
 
-internal inline fun String.hookBeforeMethod(
+inline fun String.hookBeforeMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -195,14 +239,14 @@ internal inline fun String.hookBeforeMethod(
 ) = try {
     findClass(classLoader).hookBeforeMethod(method, *args, hooker = hooker)
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook Before Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook Before Method failed $method", e)
+    Log.e("", e)
     null
 }
 
-internal inline fun String.hookAfterMethod(
+inline fun String.hookAfterMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -210,14 +254,14 @@ internal inline fun String.hookAfterMethod(
 ) = try {
     findClass(classLoader).hookAfterMethod(method, *args, hooker = hooker)
 } catch (e: ClassNotFoundError) {
-    Log.e("Hook After Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e("Hook After Method failed $method", e)
+    Log.e("", e)
     null
 }
 
-internal inline fun String.replaceMethod(
+inline fun String.replaceMethod(
     classLoader: ClassLoader,
     method: String?,
     vararg args: Any?,
@@ -225,18 +269,20 @@ internal inline fun String.replaceMethod(
 ) = try {
     findClass(classLoader).replaceMethod(method, *args, replacer = replacer)
 } catch (e: ClassNotFoundError) {
-    Log.e("Replace Method failed $method", e)
+    Log.e("", e)
     null
 } catch (e: ClassNotFoundException) {
-    Log.e(msg = "Replace Method failed $method", e)
+    Log.e("", e)
     null
 }
 
 fun MethodHookParam.invokeOriginalMethod(): Any? = invokeOriginalMethod(method, thisObject, args)
 
+fun  MethodHookParam.invokeOriginalMethod(vararg args: Any?): Any? = invokeOriginalMethod(method, thisObject, args)
+
 inline fun <T, R> T.runCatchingOrNull(func: T.() -> R?) = try {
     func()
-} catch (e: Throwable) {
+} catch (_: Throwable) {
     null
 }
 
@@ -399,7 +445,7 @@ fun <T> T.setFloatField(field: String?, value: Float) = apply {
     setFloatField(this, field, value)
 }
 
-internal inline fun XResources.hookLayout(
+inline fun XResources.hookLayout(
     id: Int,
     crossinline hooker: (XC_LayoutInflated.LayoutInflatedParam) -> Unit
 ) {
@@ -409,16 +455,16 @@ internal inline fun XResources.hookLayout(
                 try {
                     hooker(liparam)
                 } catch (e: Throwable) {
-                    Log.e("XResources handleLayoutInflated error", e)
+                    Log.e("", e)
                 }
             }
         })
     } catch (e: Throwable) {
-        Log.e("XResources handleLayoutInflated error", e)
+        Log.e("", e)
     }
 }
 
-internal inline fun XResources.hookLayout(
+inline fun XResources.hookLayout(
     pkg: String,
     type: String,
     name: String,
@@ -428,7 +474,7 @@ internal inline fun XResources.hookLayout(
         val id = getIdentifier(name, type, pkg)
         hookLayout(id, hooker)
     } catch (e: Throwable) {
-        Log.e("XResources hookLayout error", e)
+        Log.e("", e)
     }
 }
 
@@ -478,157 +524,138 @@ inline fun ClassLoader.allClassesList(crossinline delegator: (BaseDexClassLoader
         }.orEmpty()
 }
 
-/**
- * 获取是否为静态方法
- */
+object FuzzyClassKit {
+    private val dic = arrayOf(
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+        "u", "v", "w", "x", "y", "z"
+    )
+
+    fun findMethodByClassPrefix(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Method? {
+        dic.forEach { className ->
+            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$className")
+            clz?.declaredMethods?.forEach {
+                if (check(clz, it)) return it
+            }
+        }
+
+        return null
+    }
+
+    fun findMethodByClassName(prefix: String, check: (Method) -> Boolean): Method? {
+        dic.forEach { name->
+            val clz = XpClassLoader.load("$prefix.$name")
+            clz?.declaredMethods?.forEach {
+                if (check(it)) return it
+            }
+        }
+
+        return null
+    }
+
+    fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
+        dic.forEach { name ->
+            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$name")
+            clz?.declaredMethods?.forEach {
+                if (check(clz, it)) return clz
+            }
+        }
+
+        return  null
+    }
+}
+
 val Member.isStatic: Boolean
     inline get() = Modifier.isStatic(modifiers)
 val Member.isNotStatic: Boolean
     inline get() = !isStatic
 
-/**
- * 获取是否为静态类
- */
 val Class<*>.isStatic: Boolean
     inline get() = Modifier.isStatic(modifiers)
 val Class<*>.isNotStatic: Boolean
     inline get() = !this.isStatic
 
-/**
- * 获取是否为公开方法
- */
 val Member.isPublic: Boolean
     inline get() = Modifier.isPublic(modifiers)
 val Member.isNotPublic: Boolean
     inline get() = !this.isPublic
 
-/**
- * 获取是否为公开类
- */
 val Class<*>.isPublic: Boolean
     inline get() = Modifier.isPublic(modifiers)
 val Class<*>.isNotPublic: Boolean
     inline get() = !this.isPublic
 
-/**
- * 获取是否为保护方法
- */
 val Member.isProtected: Boolean
     inline get() = Modifier.isProtected(modifiers)
 val Member.isNotProtected: Boolean
     inline get() = !this.isProtected
 
-/**
- * 获取是否为保护类
- */
 val Class<*>.isProtected: Boolean
     inline get() = Modifier.isProtected(modifiers)
 val Class<*>.isNotProtected: Boolean
     inline get() = !this.isProtected
 
-/**
- * 获取是否为私有方法
- */
 val Member.isPrivate: Boolean
     inline get() = Modifier.isPrivate(modifiers)
 val Member.isNotPrivate: Boolean
     inline get() = !this.isPrivate
 
-/**
- * 获取是否为私有类
- */
 val Class<*>.isPrivate: Boolean
     inline get() = Modifier.isPrivate(modifiers)
 val Class<*>.isNotPrivate: Boolean
     inline get() = !this.isPrivate
 
-/**
- * 获取是否为最终方法
- */
 val Member.isFinal: Boolean
     inline get() = Modifier.isFinal(modifiers)
 val Member.isNotFinal: Boolean
     inline get() = !this.isFinal
 
-/**
- * 获取是否为最终类
- */
 val Class<*>.isFinal: Boolean
     inline get() = Modifier.isFinal(modifiers)
 val Class<*>.isNotFinal: Boolean
     inline get() = !this.isFinal
 
-/**
- * 获取是否为原生方法
- */
 val Member.isNative: Boolean
     inline get() = Modifier.isNative(modifiers)
 val Member.isNotNative: Boolean
     inline get() = !this.isNative
 
-/**
- * 获取是否为同步方法
- */
 val Member.isSynchronized: Boolean
     inline get() = Modifier.isSynchronized(modifiers)
 val Member.isNotSynchronized: Boolean
     inline get() = !this.isSynchronized
 
-/**
- * 获取是否为抽象方法
- */
 val Member.isAbstract: Boolean
     inline get() = Modifier.isAbstract(modifiers)
 val Member.isNotAbstract: Boolean
     inline get() = !this.isAbstract
 
-/**
- * 获取是否为抽象类
- */
 val Class<*>.isAbstract: Boolean
     inline get() = Modifier.isAbstract(modifiers)
 val Class<*>.isNotAbstract: Boolean
     inline get() = !this.isAbstract
 
-/**
- * 获取是否为临时方法
- */
 val Member.isTransient: Boolean
     inline get() = Modifier.isTransient(modifiers)
 val Member.isNotTransient: Boolean
     inline get() = !this.isTransient
 
-/**
- * 获取是否为可变方法
- */
 val Member.isVolatile: Boolean
     inline get() = Modifier.isVolatile(modifiers)
 val Member.isNotVolatile: Boolean
     inline get() = !this.isVolatile
 
-/**
- * 获取方法参数个数
- */
 val Method.paramCount: Int
     inline get() = this.parameterTypes.size
 
-/**
- * 获取构造方法参数个数
- */
 val Constructor<*>.paramCount: Int
     inline get() = this.parameterTypes.size
 
-/**
- * 获取方法参数是否为空
- */
 val Method.emptyParam: Boolean
     inline get() = this.paramCount == 0
 val Method.notEmptyParam: Boolean
     inline get() = this.paramCount != 0
 
-/**
- * 获取构造方法参数是否为空
- */
 val Constructor<*>.emptyParam: Boolean
     inline get() = this.paramCount == 0
 val Constructor<*>.notEmptyParam: Boolean

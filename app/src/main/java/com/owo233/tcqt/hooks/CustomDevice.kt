@@ -9,11 +9,10 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.beforeHook
-import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.ext.invokeOriginal
-import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.utils.getMethods
+import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.invokeOriginalMethod
+import com.owo233.tcqt.utils.replaceMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -49,8 +48,8 @@ class CustomDevice : IAction {
             .getMethods(false)
             .filter { it.name == "get" }
             .forEach { method ->
-                method.hookMethod(beforeHook { param ->
-                    val key = param.args.getOrNull(0) as? String ?: return@beforeHook
+                method.hookBeforeMethod {param ->
+                    val key = param.args.getOrNull(0) as? String ?: return@hookBeforeMethod
 
                     val replacement = when (key) {
                         DEVICE_KEY -> device
@@ -60,16 +59,16 @@ class CustomDevice : IAction {
                     }?.takeIf { it.isNotBlank() }
 
                     replacement?.let { param.result = it }
-                })
+                }
             }
 
         // 干缓存
         val deviceInfoClz = XpClassLoader.load(
             "com.tencent.qmethod.pandoraex.monitor.DeviceInfoMonitor"
         ) ?: error("DeviceInfoMonitor is null")
-        deviceInfoClz.hookMethod("getModel", replaceHook { param ->
-            model.takeIf { it.isNotBlank() } ?: param.invokeOriginal()
-        })
+        deviceInfoClz.replaceMethod("getModel") { param ->
+            model.takeIf { it.isNotBlank() } ?: param.invokeOriginalMethod()
+        }
     }
 
     override val key: String get() = GeneratedSettingList.CUSTOM_DEVICE

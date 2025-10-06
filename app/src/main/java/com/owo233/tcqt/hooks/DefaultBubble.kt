@@ -6,10 +6,9 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.hookAfterAllConstructors
 import com.tencent.qqnt.kernel.nativeinterface.VASMsgBubble
-import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
 @RegisterSetting(
@@ -21,11 +20,11 @@ import de.robv.android.xposed.XposedBridge
 )
 class DefaultBubble : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XposedBridge.hookAllConstructors(VASMsgBubble::class.java, afterHook {
+        VASMsgBubble::class.java.hookAfterAllConstructors {
             val v = it.thisObject as VASMsgBubble
             v.bubbleId = 0
             v.subBubbleId = 0
-        })
+        }
     }
 
     override val key: String get() = GeneratedSettingList.DEFAULT_BUBBLE

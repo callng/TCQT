@@ -8,17 +8,17 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.beforeHook
-import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.ClassCacheUtils
+import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.emptyParam
+import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.invokeOriginalMethod
 import com.owo233.tcqt.utils.isFinal
 import com.owo233.tcqt.utils.isNotStatic
 import com.owo233.tcqt.utils.isPublic
 import com.owo233.tcqt.utils.paramCount
-import de.robv.android.xposed.XposedBridge
+import com.owo233.tcqt.utils.replaceMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -48,13 +48,9 @@ class RemoveAD : IAction {
 
         XpClassLoader.load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
-        )?.hookMethod("handleMessage", replaceHook { param ->
-            return@replaceHook XposedBridge.invokeOriginalMethod(
-                param.method,
-                param.thisObject,
-                param.args
-            )
-        })
+        )?.replaceMethod("handleMessage") {
+            it.invokeOriginalMethod()
+        }
     }
 
     private fun removeKeywordAD() {

@@ -7,9 +7,9 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.ext.replaceHook
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.replaceHook
 
 @RegisterAction
 @RegisterSetting(
@@ -22,20 +22,14 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 class DisableReactionLimit : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.hookMethod("getFilterEmojiData", replaceHook {
-                return@replaceHook null
-            })
+            ?.hookMethod("getFilterEmojiData", replaceHook { null })
 
         XpClassLoader.load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.hookMethod("getFilterSysData", replaceHook {
-                return@replaceHook null
-            })
+            ?.hookMethod("getFilterSysData", replaceHook { null })
 
         // 有意义吗？
         XpClassLoader.load("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.utils.a")
-            ?.hookMethod("c", replaceHook {
-                return@replaceHook 0L
-            })
+            ?.hookMethod("c", replaceHook { 0L })
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_REACTION_LIMIT

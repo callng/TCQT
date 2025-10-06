@@ -7,7 +7,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.beforeHook
+import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookMethod
 

@@ -5,10 +5,10 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.ext.FuzzyClassKit
+import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.hookMethod
-import com.owo233.tcqt.ext.replaceHook
+import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.replaceHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 

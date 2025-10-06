@@ -7,7 +7,7 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.afterHook
+import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import de.robv.android.xposed.XposedBridge
 

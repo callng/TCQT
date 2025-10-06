@@ -5,13 +5,12 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.afterHook
-import com.owo233.tcqt.ext.hookMethod
+import com.owo233.tcqt.utils.afterHook
+import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTJsInterface
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.tencent.smtt.sdk.WebView
-import de.robv.android.xposed.XposedBridge
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.Socket
@@ -44,7 +43,7 @@ class WebJsBridge : AlwaysRunAction() {
         }
         WebView::class.java.declaredMethods
             .filter { it.name == "loadUrl" || it.name == "loadData" || it.name == "loadDataWithBaseURL"}
-            .forEach { XposedBridge.hookMethod(it, onLoad) }
+            .forEach { it.hookMethod(onLoad) }
     }
 
     private fun addWhiteList() {

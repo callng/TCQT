@@ -6,14 +6,14 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.ext.FuzzyClassKit
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.beforeHook
-import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.PlatformTools
-import de.robv.android.xposed.XposedBridge
+import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookAllConstructors
+import com.owo233.tcqt.utils.hookBeforeMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -32,7 +32,7 @@ class SkipQRLoginWait : IAction {
                 isSubClass = true
             ) { clz, _ -> clz.superclass == CountDownTimer::class.java }
                 ?.let {
-                    XposedBridge.hookAllConstructors(it, beforeHook { param ->
+                    it.hookAllConstructors(beforeHook { param ->
                         param.args[1] = 0
                         param.args[2] = 0
                     })
@@ -42,8 +42,7 @@ class SkipQRLoginWait : IAction {
         // 跳过对话框形式的倒计时等待
         if (PlatformTools.isOpenSdkProcess()) {
             XpClassLoader.load("com.tencent.mobileqq.utils.DialogUtil")
-                ?.hookMethod("createCountdownDialog")
-                ?.before { param ->
+                ?.hookBeforeMethod("createCountdownDialog") { param ->
                     if (param.args.size == 10 && param.args[6] is Int) {
                         param.args[6] = 0
                     }

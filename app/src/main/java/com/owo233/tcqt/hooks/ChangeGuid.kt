@@ -18,13 +18,12 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.helper.GuildHelper
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
-import de.robv.android.xposed.XposedBridge
+import com.owo233.tcqt.utils.hookAfterAllMethods
 import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
@@ -77,9 +76,9 @@ class ChangeGuid : IAction {
 
     private fun setupLoginUiHook() {
         val clazz = XposedHelpers.findClass("mqq.app.AppActivity", XpClassLoader)
-        XposedBridge.hookAllMethods(clazz, "onCreate", afterHook { param ->
+        clazz.hookAfterAllMethods("onCreate") { param ->
             val activity = param.thisObject as Activity
-            if (!activity.javaClass.name.contains("Login")) return@afterHook
+            if (!activity.javaClass.name.contains("Login")) return@hookAfterAllMethods
 
             activity.window.decorView.rootView.post {
                 findLoginButton(activity.window.decorView.rootView)?.apply {
@@ -89,7 +88,7 @@ class ChangeGuid : IAction {
                     }
                 }
             }
-        })
+        }
     }
 
     private fun showGuidDialog(activity: Activity) {

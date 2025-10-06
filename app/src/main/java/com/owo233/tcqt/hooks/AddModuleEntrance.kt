@@ -9,9 +9,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.afterHook
 import com.owo233.tcqt.ext.copyToClipboard
-import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.impl.TicketManager
@@ -19,9 +17,11 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
+import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.new
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -217,7 +217,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             id = R.id.account_get_ticket,
             title = "复制账号票据 (高风险行为)",
             iconName = "qui_check_account",
-            debugOnly = false,
+            debugOnly = true,
             onClick = ::copyTicket
         )
     )

@@ -8,11 +8,12 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.hookMethod
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.activity.VisitorsActivity
 import com.tencent.mobileqq.data.CardProfile
 import com.tencent.mobileqq.profile.vote.VoteHelper
@@ -46,11 +47,11 @@ class OneClickLikes : IAction {
             }
 
             voteHelperField.isAccessible = true
-            VisitorsActivity::class.java.hookMethod("onClick").before {
+            VisitorsActivity::class.java.hookMethod("onClick", beforeHook {
                 val view = it.args[0] as View
                 val tag = view.tag
 
-                if (tag == null || tag !is CardProfile) return@before
+                if (tag == null || tag !is CardProfile) return@beforeHook
 
                 val voteHelper = voteHelperField.get(it.thisObject) as VoteHelper
                 for (i in 0..<getMaxCount()) {
@@ -58,15 +59,15 @@ class OneClickLikes : IAction {
                 }
 
                 it.result = Unit
-            }
+            })
 
-            AbsProfileHeaderComponent::class.java.hookMethod("handleVoteBtnClickForGuestProfile").before {
+            AbsProfileHeaderComponent::class.java.hookMethod("handleVoteBtnClickForGuestProfile", beforeHook {
                 for (i in 0..<getMaxCount()) {
                     XposedBridge.invokeOriginalMethod(it.method, it.thisObject, it.args)
                 }
 
                 it.result = Unit
-            }
+            })
         }
     }
 
