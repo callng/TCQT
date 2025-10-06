@@ -1,8 +1,9 @@
 syntax = "proto3";
 package com.owo233.tcqt.entries;
-option java_package = "com.owo233.tcqt.entries";
 
 import "com/owo233/tcqt/entries/QQMessage.proto";
+
+option java_package = "com.owo233.tcqt.entries";
 
 message MsgPush {
   QQMessage qq_message = 1;

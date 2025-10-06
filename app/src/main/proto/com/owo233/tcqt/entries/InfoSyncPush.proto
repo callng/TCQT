@@ -1,8 +1,9 @@
 syntax = "proto3";
 package com.owo233.tcqt.entries;
-option java_package = "com.owo233.tcqt.entries";
 
 import "com/owo233/tcqt/entries/QQMessage.proto";
+
+option java_package = "com.owo233.tcqt.entries";
 
 // proto有3个字段修饰符required(必选),optional(可选),repeated(重复)
 // 咱们的proto文件不使用required,只用optional,因为咱们也不知道哪个字段什么时候才有值,如果是数组一律用repeated修饰.

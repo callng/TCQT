@@ -9,11 +9,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.initHostInfo
-import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.hooks.base.moduleLoadInit
 import com.owo233.tcqt.hooks.base.modulePath
 import com.owo233.tcqt.hooks.base.moduleRes
 import com.owo233.tcqt.hooks.base.resInjection
+import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.afterHook

@@ -1,8 +1,8 @@
 package com.owo233.tcqt.hooks.maple
 
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
-import com.tencent.qqnt.kernelpublic.nativeinterface.Contact as PC
 import com.tencent.qqnt.kernel.nativeinterface.Contact as C
+import com.tencent.qqnt.kernelpublic.nativeinterface.Contact as PC
 
 sealed class MapleContact(
     override val maple: Maple

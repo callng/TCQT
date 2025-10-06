@@ -5,10 +5,10 @@ import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.invokeOriginalMethod

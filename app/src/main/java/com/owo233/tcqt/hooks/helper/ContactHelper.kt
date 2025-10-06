@@ -4,7 +4,6 @@ import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.lang.IllegalArgumentException
 import kotlin.coroutines.resume
 
 internal object ContactHelper {

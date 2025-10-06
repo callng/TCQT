@@ -1,6 +1,7 @@
 package com.tencent.mobileqq.vip;
 
 import com.tencent.mobileqq.vas.api.IVasManager;
+
 import org.jetbrains.annotations.Nullable;
 
 public interface IVipStatusManager extends IVasManager {

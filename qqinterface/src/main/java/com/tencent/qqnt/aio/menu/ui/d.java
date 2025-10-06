@@ -1,6 +1,7 @@
 package com.tencent.qqnt.aio.menu.ui;
 
 import androidx.annotation.Nullable;
+
 import com.tencent.mobileqq.aio.msg.AIOMsgItem;
 
 /**

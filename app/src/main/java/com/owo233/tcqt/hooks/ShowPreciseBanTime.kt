@@ -7,9 +7,9 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.generated.GeneratedSettingList
 
 @RegisterAction
 @RegisterSetting(

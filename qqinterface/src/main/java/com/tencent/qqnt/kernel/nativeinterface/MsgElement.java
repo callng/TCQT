@@ -3,6 +3,7 @@ package com.tencent.qqnt.kernel.nativeinterface;
 import com.tencent.qqnt.kernelpublic.nativeinterface.CalendarElement;
 import com.tencent.qqnt.kernelpublic.nativeinterface.GrayTipElement;
 import com.tencent.qqnt.kernelpublic.nativeinterface.TextGiftElement;
+
 import java.io.Serializable;
 
 public final class MsgElement implements IKernelModel, Serializable {

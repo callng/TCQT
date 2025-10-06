@@ -1,11 +1,11 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.ext.hex2ByteArray
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.Log
 
 object GuidHelper {
 

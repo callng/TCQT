@@ -3,12 +3,16 @@ package com.tencent.guild.api.util;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+
 import com.tencent.mobileqq.qroute.QRouteApi;
 import com.tencent.qqnt.kernel.nativeinterface.NetStatusType;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import sn0.b;
 import sn0.c;
 

@@ -1,13 +1,17 @@
 package com.tencent.qqnt.troopmemberlist;
 
 import androidx.lifecycle.LifecycleOwner;
+
 import com.tencent.mobileqq.data.troop.TroopMemberInfo;
 import com.tencent.mobileqq.data.troop.TroopMemberNickInfo;
 import com.tencent.mobileqq.qroute.QRouteApi;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
+
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function2;

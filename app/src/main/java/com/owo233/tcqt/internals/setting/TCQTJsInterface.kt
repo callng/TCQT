@@ -7,10 +7,10 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.hooks.ModuleCommand
-import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.Toasts
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface

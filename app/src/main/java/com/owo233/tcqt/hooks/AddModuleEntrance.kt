@@ -19,9 +19,9 @@ import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.fieldValue
-import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.new
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy

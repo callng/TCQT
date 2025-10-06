@@ -2,6 +2,7 @@ package oicq.wlogin_sdk.request;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+
 import java.util.HashMap;
 import java.util.Map;
 

@@ -2,9 +2,13 @@ package mqq.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+
 import androidx.annotation.NonNull;
+
 import com.tencent.qphone.base.remote.SimpleAccount;
+
 import org.jetbrains.annotations.Nullable;
+
 import mqq.app.api.IRuntimeService;
 import mqq.manager.Manager;
 

@@ -1,9 +1,9 @@
 package com.owo233.tcqt.internals.setting
 
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.hooks.base.moduleClassLoader
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.MMKVUtils
 import com.tencent.mmkv.MMKV
 import mqq.app.MobileQQ
 import oicq.wlogin_sdk.tools.MD5

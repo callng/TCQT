@@ -1,10 +1,13 @@
 package com.tencent.mobileqq.unitedconfig_android.api;
 
-import java.util.ArrayList;
-import kotlin.Deprecated;
 import com.tencent.mobileqq.qroute.QRouteApi;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+
+import kotlin.Deprecated;
 
 public interface IUnitedConfigManager extends QRouteApi {
     boolean fetch(@NotNull ArrayList<String> arrayList, boolean z);

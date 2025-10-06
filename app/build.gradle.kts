@@ -1,7 +1,4 @@
 import com.google.protobuf.gradle.proto
-import org.gradle.api.provider.ValueSource
-import org.gradle.api.provider.ValueSourceParameters
-import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.ByteArrayOutputStream
 

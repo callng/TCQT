@@ -5,16 +5,13 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.utils.CustomMenu
 import com.owo233.tcqt.R
+import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
+import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.hostInfo
@@ -22,6 +19,9 @@ import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.ContextUtils
+import com.owo233.tcqt.utils.CustomMenu
+import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.selectmember.ResultRecord
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -33,7 +33,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.io.File
 import java.lang.reflect.Method
-import java.util.ArrayList
 import kotlin.random.Random
 
 @RegisterAction

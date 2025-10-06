@@ -3,6 +3,7 @@ package com.tencent.common.app;
 import com.tencent.mobileqq.app.BusinessHandler;
 import com.tencent.qphone.base.remote.ToServiceMsg;
 import com.tencent.qphone.base.util.BaseApplication;
+
 import mqq.app.AppRuntime;
 import mqq.app.MobileQQ;
 

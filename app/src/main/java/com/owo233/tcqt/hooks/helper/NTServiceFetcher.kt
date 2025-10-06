@@ -1,8 +1,8 @@
 package com.owo233.tcqt.hooks.helper
 
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.tencent.qqnt.kernel.api.IKernelService
 
 internal object NTServiceFetcher {

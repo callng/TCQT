@@ -15,7 +15,6 @@ import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import kotlin.text.toLong
 
 object AioListener {
 
