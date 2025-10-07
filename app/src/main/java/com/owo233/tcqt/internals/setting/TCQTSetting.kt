@@ -26,46 +26,34 @@ internal object TCQTSetting {
         GeneratedSettingList.SETTING_MAP
     }
 
-    val settingUrl: String
-        get() {
-            val file = dataDir.resolve("domain")
-            if (!file.exists()) {
-                file.writeText("localhost:5315")
-                return "localhost:5315"
-            }
+    fun getSettingHtml(): String {
+        val localFile = dataDir.resolve("index.html")
+        val assetPath = "rez/index.html"
 
-            val content = file.readText().trim()
-            val host = content.substringBefore(":").trim()
+        val assetContent = openAsset(assetPath).readText()
+        val assetMd5 = MD5.toMD5Byte(assetContent)
 
-            return if (host != "localhost") {
-                file.writeText("localhost:5315")
-                "localhost:5315"
-            } else {
-                content
-            }
+        val localContent = if (localFile.exists()) localFile.readText() else null
+        val localMd5 = localContent?.let { MD5.toMD5Byte(it) }
+
+        if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
+            localFile.writeText(assetContent)
+            return assetContent
         }
 
-    val settingHtml: String
-        get() {
-            val localFile = dataDir.resolve("index.html")
-            val assetPath = "rez/index.html"
+        return localContent
+    }
 
-            val assetContent = openAsset(assetPath).readText()
-            val assetMd5 = MD5.toMD5Byte(assetContent)
+    fun getSettingUrl(): String {
+        val defaultUrl = "0.0.0.0:5315"
+        val file = dataDir.resolve("domain")
 
-            val localMd5 = if (localFile.exists()) {
-                MD5.toMD5Byte(localFile.readText())
-            } else {
-                null
-            }
-
-            return if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
-                localFile.writeText(assetContent)
-                assetContent
-            } else {
-                localFile.readText()
-            }
+        if (!file.exists() || file.readText().substringBefore(":").trim() != "0.0.0.0") {
+            file.writeText(defaultUrl)
         }
+
+        return file.readText().trim()
+    }
 
     inline fun <reified T : Any> getValue(key: String): T? {
         return runCatching {

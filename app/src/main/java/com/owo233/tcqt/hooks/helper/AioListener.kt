@@ -12,14 +12,13 @@ import com.owo233.tcqt.internals.helper.GroupHelper
 import com.owo233.tcqt.utils.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
-import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 
 object AioListener {
 
-    fun handleMsgPush(buffer: ByteArray, param: XC_MethodHook.MethodHookParam) {
+    fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
         val msgPush = MsgPushOuterClass.MsgPush.parseFrom(buffer)
         val msg = msgPush.qqMessage
         val msgType = msg.messageContentInfo.msgType
@@ -194,7 +193,7 @@ object AioListener {
         }
     }
 
-    fun handleInfoSyncPush(buffer: ByteArray, param: XC_MethodHook.MethodHookParam) {
+    fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
         val infoSyncPush = InfoSyncPushOuterClass.InfoSyncPush.parseFrom(buffer)
         infoSyncPush.syncMsgRecall.syncInfoBodyList.forEach { syncInfoBody ->
             syncInfoBody.msgList.forEach { qqMessage ->

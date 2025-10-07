@@ -12,6 +12,7 @@ import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.smtt.sdk.WebView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.net.Socket
 import java.net.URL
 
@@ -22,9 +23,9 @@ class WebJsBridge : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (!::server.isInitialized) {
-            val (host, port) = parseHostAndPort(TCQTSetting.settingUrl)
+            val (host, port) = parseHostAndPort(TCQTSetting.getSettingUrl())
             if (!isPortInUse(host, port)) {
-                server = LocalWebServer(host, port, TCQTSetting.settingHtml)
+                server = LocalWebServer(host, port, TCQTSetting.getSettingHtml())
                 server.start()
             }
         }
@@ -38,8 +39,8 @@ class WebJsBridge : AlwaysRunAction() {
                     val web = param.thisObject as WebView
                     val url = URL(web.url)
                     if (url.host == "tcqt.qq.com" || url.host == "tcqt.dev") {
-                        web.loadUrl("http://${TCQTSetting.settingUrl}")
-                    } else if (url.host == TCQTSetting.settingUrl.substringBefore(":")) {
+                        web.loadUrl("http://${TCQTSetting.getSettingUrl()}")
+                    } else if (url.host == TCQTSetting.getSettingUrl().substringBefore(":")) {
                         web.addJavascriptInterface(TCQTJsInterface(ctx), "TCQT")
                     }
                 }
@@ -99,7 +100,7 @@ class WebJsBridge : AlwaysRunAction() {
     private fun isPortInUse(host: String, port: Int): Boolean {
         return try {
             Socket(host, port).use { true }
-        } catch (_: Exception) {
+        } catch (_: IOException) {
             false
         }
     }
