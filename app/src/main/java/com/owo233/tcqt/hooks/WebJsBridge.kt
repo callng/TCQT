@@ -58,7 +58,7 @@ class WebJsBridge : AlwaysRunAction() {
                 if (key == "207_2849" || key.startsWith("207_")) {
                     val result = it.result as? String ?: return@hookAfterMethod
                     val json = JSONObject(result)
-                    val hosts = listOf("127.0.0.1", "localhost")
+                    val hosts = listOf(parseHostAndPort(TCQTSetting.getSettingUrl()).first)
 
                     addHosts(json, "whiteList", hosts)
                     addHosts(json, "whiteListv2", hosts)
