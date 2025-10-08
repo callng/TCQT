@@ -20,17 +20,17 @@ on:
         type: number
         default: 0
       delete_failed:
-        description: '删除指定工作流失败的运行记录？'
+        description: '删除失败的运行记录？'
         required: false
         type: boolean
         default: true
       delete_success:
-        description: '删除指定工作流成功的运行记录？'
+        description: '删除成功的运行记录？'
         required: false
         type: boolean
         default: false
       delete_cancelled:
-        description: '删除指定工作流取消的运行记录？'
+        description: '删除取消的运行记录？'
         required: false
         type: boolean
         default: true
@@ -40,12 +40,12 @@ on:
         type: boolean
         default: false
       clear_cache:
-        description: '是否删除所有缓存？'
+        description: '是否清理构建缓存？'
         required: false
         type: boolean
         default: true
       cancel_all:
-        description: '是否一键取消指定工作流的所有运行？'
+        description: '是否取消运行中的所有构建？'
         required: false
         type: boolean
         default: false
@@ -88,7 +88,7 @@ jobs:
             exit 1
           fi
 
-          echo "📥 开始分页获取所有运行记录..."
+          echo "📥 分页获取所有运行记录..."
           PER_PAGE=100
           PAGE=1
           ALL_RUNS="[]"
@@ -102,47 +102,36 @@ jobs:
           done
 
           TOTAL_RUNS=$(echo "$ALL_RUNS" | jq 'length')
-          echo "✅ 共获取到 $TOTAL_RUNS 条运行记录。"
+          echo "✅ 获取到 $TOTAL_RUNS 条运行记录。"
 
           if [[ "$CANCEL_ALL" == "true" ]]; then
-            echo "✋ 开始取消进行中或排队中的运行（当前运行除外）..."
+            echo "✋ 取消进行中或排队中的运行（不包括当前）..."
             CANCEL_COUNT=0
             echo "$ALL_RUNS" | jq -c '.[] | select(.status == "in_progress" or .status == "queued")' | while read -r run; do
               ID=$(echo "$run" | jq -r '.id')
               if [[ "$ID" == "$CURRENT_RUN_ID" ]]; then continue; fi
               echo "  → 取消运行 ID: $ID"
-              if gh api -X POST "repos/$REPO/actions/runs/$ID/cancel" >/dev/null 2>&1; then
-                CANCEL_COUNT=$((CANCEL_COUNT + 1))
-              else
-                echo "    ⚠️  取消失败"
-              fi
+              gh api -X POST "repos/$REPO/actions/runs/$ID/cancel" >/dev/null 2>&1 && CANCEL_COUNT=$((CANCEL_COUNT + 1))
             done
             echo "✅ 已取消 $CANCEL_COUNT 条运行。"
           fi
 
-          echo "🧹 开始处理删除逻辑..."
-          # 排序：默认从新到旧，reverse_order=true 则从旧到新
+          echo "🧹 开始删除符合条件的运行记录..."
           if [[ "$REVERSE_ORDER" == "true" ]]; then
             SORTED_RUNS=$(echo "$ALL_RUNS" | jq 'sort_by(.run_started_at)')
-            echo "  → 排序方向：从旧到新"
           else
             SORTED_RUNS=$(echo "$ALL_RUNS" | jq 'sort_by(.run_started_at) | reverse')
-            echo "  → 排序方向：从新到旧"
           fi
 
-          # 应用 keep_latest：跳过最前面 N 条（最新 N 条）
-          if [[ -n "$KEEP_LATEST" ]] && [[ "$KEEP_LATEST" -gt 0 ]]; then
+          if [[ "$KEEP_LATEST" -gt 0 ]]; then
             SORTED_RUNS=$(echo "$SORTED_RUNS" | jq ".[$KEEP_LATEST:]")
-            echo "  → 已跳过最近 $KEEP_LATEST 条运行（保留不删）"
+            echo "  → 保留最近 $KEEP_LATEST 条运行记录"
           fi
 
-          # 应用 count：最多处理前 COUNT 条
-          if [[ -n "$COUNT" ]] && [[ "$COUNT" -gt 0 ]]; then
+          if [[ "$COUNT" -gt 0 ]]; then
             TO_DELETE_RUNS=$(echo "$SORTED_RUNS" | jq ".[0:$COUNT]")
-            echo "  → 最多处理前 $COUNT 条符合条件的运行"
           else
             TO_DELETE_RUNS="$SORTED_RUNS"
-            echo "  → 无数量限制，处理所有符合条件的运行"
           fi
 
           DELETED_COUNT=0
@@ -151,46 +140,16 @@ jobs:
             STATUS=$(echo "$run" | jq -r '.conclusion')
             STATE=$(echo "$run" | jq -r '.status')
 
-            # 跳过进行中或排队中的运行（不应删除）
-            if [[ "$STATE" == "in_progress" || "$STATE" == "queued" ]]; then
-              echo "  → 跳过运行 ID: $ID（状态：$STATE）"
-              continue
-            fi
-
-            # 根据状态判断是否删除
+            if [[ "$STATE" == "in_progress" || "$STATE" == "queued" ]]; then continue; fi
             if [[ "$STATUS" == "failure" && "$DELETE_FAILED" != "true" ]]; then continue; fi
             if [[ "$STATUS" == "success" && "$DELETE_SUCCESS" != "true" ]]; then continue; fi
             if [[ "$STATUS" == "cancelled" && "$DELETE_CANCELLED" != "true" ]]; then continue; fi
 
-            echo "  → 删除运行记录 ID: $ID（状态：$STATUS）"
-            if gh api -X DELETE "repos/$REPO/actions/runs/$ID" >/dev/null 2>&1; then
-              DELETED_COUNT=$((DELETED_COUNT + 1))
-            else
-              echo "    ⚠️  删除失败"
-            fi
+            echo "  → 删除运行 ID: $ID（状态: $STATUS）"
+            gh api -X DELETE "repos/$REPO/actions/runs/$ID" >/dev/null 2>&1 && DELETED_COUNT=$((DELETED_COUNT + 1))
           done
 
-          echo "✅ 本次共删除 $DELETED_COUNT 条运行记录。"
-
-          echo "🧹 清理本工作流历史运行记录（排除当前运行）..."
-          SELF_WORKFLOW_ID=$(gh api repos/$REPO/actions/workflows | jq -r '.workflows[] | select(.name == "清理工作流运行记录和缓存") | .id')
-          if [ -n "$SELF_WORKFLOW_ID" ]; then
-            SELF_RUNS=$(gh api "repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?per_page=50" | jq -c '.workflow_runs[]')
-            SELF_DELETED=0
-            echo "$SELF_RUNS" | while read -r run; do
-              ID=$(echo "$run" | jq -r '.id')
-              if [[ "$ID" == "$CURRENT_RUN_ID" ]]; then continue; fi
-              echo "  → 删除本工作流运行记录 ID: $ID"
-              if gh api -X DELETE "repos/$REPO/actions/runs/$ID" >/dev/null 2>&1; then
-                SELF_DELETED=$((SELF_DELETED + 1))
-              else
-                echo "    ⚠️  删除失败"
-              fi
-            done
-            echo "✅ 已删除本工作流 $SELF_DELETED 条历史记录。"
-          else
-            echo "⚠️  未找到本工作流定义，跳过自我清理。"
-          fi
+          echo "✅ 共删除运行记录: $DELETED_COUNT"
 
   clean-caches:
     runs-on: ubuntu-latest
@@ -199,16 +158,16 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: 删除并重置 gradle、android-build、ksp、protobuf 缓存
+      - name: 清理 gradle 缓存
         uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
             let totalDeleted = 0;
             let page = 1;
-            const cacheTypes = ['gradle-deps-', 'android-build-', 'ksp-', 'protobuf-'];
+            const prefix = 'gradle-';
 
-            core.info('🔍 开始扫描缓存...');
+            core.info('🔍 开始扫描 gradle 缓存...');
 
             while (true) {
               const res = await github.rest.actions.getActionsCacheList({
@@ -222,8 +181,7 @@ jobs:
               if (!caches || caches.length === 0) break;
 
               for (const cache of caches) {
-                const shouldDelete = cacheTypes.some(prefix => cache.key.startsWith(prefix));
-                if (shouldDelete) {
+                if (cache.key.startsWith(prefix)) {
                   core.info(`🧹 删除缓存: ${cache.key} (ID: ${cache.id})`);
                   await github.rest.actions.deleteActionsCacheById({
                     owner,
@@ -239,7 +197,7 @@ jobs:
             }
 
             if (totalDeleted === 0) {
-              core.info('✅ 未找到以 "gradle-deps-"、"android-build-"、"ksp-"、"protobuf-" 开头的缓存，无需清理。');
+              core.info('✅ 无需删除 gradle 缓存。');
             } else {
-              core.info(`✅ 共删除缓存数量: ${totalDeleted}`);
+              core.info(`✅ 共删除 gradle 缓存: ${totalDeleted} 条`);
             }
