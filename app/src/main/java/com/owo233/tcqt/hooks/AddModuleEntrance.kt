@@ -108,13 +108,21 @@ class AddModuleEntrance : AlwaysRunAction() {
                     !config.debugOnly || TCQTBuild.DEBUG
                 }
 
-                // 为每个配置创建设置项
-                val settingItems = filteredConfigs.map { config ->
-                    createSettingItem(context, config, processorClass, processorArgCount, onClickMethod)
-                }
+                // 按标签分组创建设置项
+                val grouped = filteredConfigs
+                    .groupBy { it.groupTag ?: "" }
+                    .map { (tag, groupConfigs) ->
+                        val items = groupConfigs.map { config ->
+                            createSettingItem(context, config, processorClass, processorArgCount, onClickMethod)
+                        }
+                        val title = groupConfigs.firstOrNull { it.groupTitle != null }?.groupTitle
+                        Triple(tag, title, items)
+                    }
 
-                // 把所有入口插入到 Group 中
-                insertGroups(result, settingItems, isNewSetting)
+                // 插入分组
+                for ((_, title, items) in grouped.asReversed()) {
+                    insertGroups(result, items, isNewSetting, title)
+                }
             }
 
             buildMethod.hookMethod(hooker)
@@ -184,7 +192,12 @@ class AddModuleEntrance : AlwaysRunAction() {
      * 将多个设置项插入到设置页的分组容器中（Group 由宿主的设置框架定义）
      * 通过反射构造 Group 实例并插入到列表指定位置
      */
-    private fun insertGroups(result: MutableList<*>, items: List<Any>, isNewSetting: Boolean) {
+    private fun insertGroups(
+        result: MutableList<*>,
+        items: List<Any>,
+        isNewSetting: Boolean,
+        title: CharSequence?
+    ) {
         val groupClass = result.firstOrNull()?.javaClass ?: return
         val groupConstructor = groupClass.getConstructor(
             List::class.java,
@@ -194,7 +207,13 @@ class AddModuleEntrance : AlwaysRunAction() {
             XpClassLoader.hostClassLoader.loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
         )
 
-        val group = groupConstructor.newInstance(items, null, null, 6, null)
+        val group = groupConstructor.newInstance(
+            items,
+            title,
+            null,
+            if (title != null) 4 else 6,
+            null
+        )
         val insertIndex = if (isNewSetting) 1 else 0
         result.invoke("add", insertIndex, group)
     }
@@ -205,12 +224,16 @@ class AddModuleEntrance : AlwaysRunAction() {
             id = R.id.setting2Activity_settingEntryItem,
             title = TCQTBuild.APP_NAME,
             iconName = "qui_setting",
+            groupTag = "TCQT_SettingEntry",
+            groupTitle = null, // 不需要
             onClick = ::openTCQTSettings
         ),
         SettingEntryConfig(
             id = R.id.check_ban_url,
             title = "历史冻结记录 (显示空白则重新进入)",
             iconName = "qui_tuning",
+            groupTag = "TCQT_OtherSettingEntry",
+            groupTitle = "TCQT小工具",
             onClick = ::openBanRecordQuery
         ),
         SettingEntryConfig(
@@ -218,6 +241,8 @@ class AddModuleEntrance : AlwaysRunAction() {
             title = "复制账号票据 (高风险行为)",
             iconName = "qui_check_account",
             debugOnly = true,
+            groupTag = "TCQT_OtherSettingEntry",
+            groupTitle = "TCQT工具",
             onClick = ::copyTicket
         )
     )
@@ -317,5 +342,7 @@ data class SettingEntryConfig(
     val title: String,
     val iconName: String = "qui_setting",
     val debugOnly: Boolean = false,
+    val groupTag: String? = null,
+    val groupTitle: CharSequence? = null,
     val onClick: (Context) -> Unit
 )
