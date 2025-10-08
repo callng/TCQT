@@ -13,24 +13,29 @@ import com.tencent.common.config.pad.DeviceType
 
 @RegisterAction
 @RegisterSetting(
-    key = "force_tablet_mode",
-    name = "强制平板模式",
+    key = "force_phone_mode",
+    name = "强制手机模式",
     type = SettingType.BOOLEAN,
-    desc = "以Pad模式登录账号，一个账号可以两处登录互不干扰，与「强制手机模式」功能互斥，两者同时启用优先生效本模式。",
-    uiOrder = 14
+    desc = "和「强制平板模式」功能一样的作用，不同的是，「强制手机模式」优先级比「强制平板模式」低，两者都启用的情况下优先生效后者。",
+    uiOrder = 15
 )
-class ForceTabletMode : IAction {
+class ForcePhoneMode : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.common.config.pad.PadUtil")
             ?.declaredMethods?.first {
                 it.returnType == DeviceType::class.java && it.parameterCount == 1
                         && it.parameterTypes[0] == Context::class.java
             }?.hookAfterMethod{
-                it.result = DeviceType.TABLET
+                it.result = DeviceType.PHONE
             }
     }
 
-    override val key: String get() = GeneratedSettingList.FORCE_TABLET_MODE
+    override fun canRun(): Boolean {
+        return GeneratedSettingList.getBoolean(key) &&
+                !GeneratedSettingList.getBoolean(GeneratedSettingList.FORCE_TABLET_MODE)
+    }
+
+    override val key: String get() = GeneratedSettingList.FORCE_PHONE_MODE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MSF)
 }
