@@ -11,11 +11,9 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.ClassCacheUtils
-import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.emptyParam
 import com.owo233.tcqt.utils.hookBeforeAllMethods
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.invokeOriginalMethod
 import com.owo233.tcqt.utils.isFinal
 import com.owo233.tcqt.utils.isNotStatic

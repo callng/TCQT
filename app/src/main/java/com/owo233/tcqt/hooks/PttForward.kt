@@ -10,7 +10,6 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -20,6 +19,7 @@ import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.ContextUtils
 import com.owo233.tcqt.utils.CustomMenu
+import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.qroute.QRoute
@@ -28,7 +28,6 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernel.nativeinterface.PttElement
 import com.tencent.qqnt.msg.api.IMsgService
-import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.io.File
@@ -40,10 +39,10 @@ import kotlin.random.Random
     key = "ptt_forward",
     name = "允许转发语音消息",
     type = SettingType.BOOLEAN,
-    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
+    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群，一次支持最多选择9个会话目标转发。",
     uiOrder = 20
 )
-class PttForward : IAction, OnMenuBuilder {
+class PttForward : OnMenuBuilder {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
         val forwardBaseOption = XpClassLoader.load(
@@ -199,7 +198,7 @@ class PttForward : IAction, OnMenuBuilder {
 
     @SuppressLint("DiscouragedApi")
     @Suppress("UNCHECKED_CAST")
-    override fun onGetMenuNt(msg: Any, componentType: String, param: XC_MethodHook.MethodHookParam) {
+    override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
         ptt = getPttElement(msg)
 
         resInjection()

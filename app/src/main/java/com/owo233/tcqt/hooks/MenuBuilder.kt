@@ -7,12 +7,12 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.isAbstract
 import com.owo233.tcqt.utils.paramCount
-import de.robv.android.xposed.XC_MethodHook
 
 @RegisterAction
 class MenuBuilder : AlwaysRunAction() {
@@ -69,6 +69,6 @@ interface OnMenuBuilder : IAction {
     fun onGetMenuNt(
         msg: Any,
         componentType: String,
-        param: XC_MethodHook.MethodHookParam
+        param: MethodHookParam
     )
 }
