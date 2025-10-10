@@ -19,10 +19,12 @@ import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.fieldValue
-import com.owo233.tcqt.utils.getMethods
+import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.invoke
+import com.owo233.tcqt.utils.isNotStatic
 import com.owo233.tcqt.utils.new
+import com.owo233.tcqt.utils.paramCount
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
@@ -30,20 +32,31 @@ import java.lang.reflect.Proxy
 class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingFragment")
-            ?: error("找不到MainSettingFragment类,无法创建模块入口!!!")
+        val mainClass = XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingFragment")
+            ?: error("找不到 MainSettingFragment类,无法创建模块设置入口!")
 
-        val oldEntry =
+        val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
+        createEntries(entryClass, isNewProvider)
+    }
+
+    private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {
+        val oldProvider =
             XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingConfigProvider")
-        val newEntry =
+        val newProvider =
             XpClassLoader.load("com.tencent.mobileqq.setting.main.NewSettingConfigProvider")
 
-        if (oldEntry == null && newEntry == null) {
-            error("找不到SettingConfigProvider,无法创建模块入口!!!")
+        val entryClass = when {
+            oldProvider != null -> oldProvider
+            newProvider != null -> newProvider
+            else -> {
+                val field = mainFragmentClass.getFields(false)
+                    .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
+                    ?: error("未找到 MainSettingFragment类中被混淆的入口字段,无法创建模块设置入口!")
+                XpClassLoader.load(field.type.name)!!
+            }
         }
 
-        // 创建入口
-        createEntries(oldEntry ?: newEntry, oldEntry == null)
+        return entryClass to (oldProvider == null)
     }
 
     /**
@@ -53,119 +66,121 @@ class AddModuleEntrance : AlwaysRunAction() {
      * @param isNewSetting 是否为新版设置页
      */
     @SuppressLint("DiscouragedApi")
-    private fun createEntries(settingConfigProviderClass: Class<*>?, isNewSetting: Boolean) {
-        settingConfigProviderClass ?: return
-
+    private fun createEntries(settingConfigProviderClass: Class<*>, isNewSetting: Boolean) {
         runCatching {
-            val methods = settingConfigProviderClass.getMethods(false)
+            val buildMethod = findBuildMethod(settingConfigProviderClass)
+                ?: return@runCatching Log.e("没有找到 build 方法,无法创建模块设置入口!!!")
 
-            // 1. 查找返回类型为 processor.* 的第一个方法，获取其返回值类型
-            val processorClass = methods.firstOrNull {
-                it.parameterTypes.size == 1 &&
-                        it.parameterTypes[0] == Context::class.java &&
-                        it.returnType.name.startsWith("com.tencent.mobileqq.setting.processor")
-            }?.returnType ?: return@runCatching Log.e("无法找到返回 processor.* 类")
-
-            // 2. 找到合适的构造函数, 用于创建item
-            val processorArgCount = processorClass.constructors.firstOrNull {
-                it.parameterTypes.size < 6 &&
-                        it.parameterTypes[0] == Context::class.java &&
-                        it.parameterTypes[1] == Int::class.javaPrimitiveType &&
-                        it.parameterTypes[2] == CharSequence::class.java &&
-                        it.parameterTypes[3] == Int::class.javaPrimitiveType &&
-                        (it.parameterTypes.size < 5 || it.parameterTypes[4] == String::class.java)
-            }?.parameterTypes?.size ?: return@runCatching Log.e("无法找到processor的构造函数")
-
-            // 3. 找到 build 方法,用于生成setting item 列表
-            val buildMethod = methods.singleOrNull {
-                it.parameterTypes.size == 1 &&
-                        it.parameterTypes[0] == Context::class.java &&
-                        it.returnType == List::class.java
-            }?: return@runCatching Log.e("无法找到build方法")
-
-            // 4. 找到点击事件方法
-            val listeners = processorClass.getMethods(false).filter {
-                it.returnType == Void.TYPE &&
-                        it.parameterTypes.size == 1 &&
-                        it.parameterTypes[0].name == "kotlin.jvm.functions.Function0"
-            }.sortedBy { it.name }
-
-            if (listeners.size > 2) {
-                throw IllegalStateException("listeners.size > 2, count=${listeners.size}")
-            }
-
-            val onClickMethod = listeners.first()
-
-            // 5. hook build 方法,插入自定义 items
-            val hooker = afterHook { param ->
-                val context = param.args.firstOrNull() as? Context? ?: return@afterHook
+            buildMethod.hookMethod(afterHook { param ->
+                val context = param.args.firstOrNull() as? Context ?: return@afterHook
                 val result = param.result as? MutableList<*> ?: return@afterHook
+
+                val processorInfo = resolveProcessorInfo(result)
+                    ?: return@afterHook
 
                 resInjection(context)
 
-                // 非调试版本时排除仅调试版本显示的入口
-                val filteredConfigs = entryConfigs.filter { config ->
-                    !config.debugOnly || TCQTBuild.DEBUG
-                }
-
-                // 按标签分组创建设置项
+                val filteredConfigs = entryConfigs.filter { !it.debugOnly || TCQTBuild.DEBUG }
                 val grouped = filteredConfigs
                     .groupBy { it.groupTag ?: "" }
                     .map { (tag, groupConfigs) ->
-                        val items = groupConfigs.map { config ->
-                            createSettingItem(context, config, processorClass, processorArgCount, onClickMethod)
-                        }
                         val title = groupConfigs.firstOrNull { it.groupTitle != null }?.groupTitle
+                        val items = groupConfigs.map { config ->
+                            createSettingItem(context, config, processorInfo)
+                        }
                         Triple(tag, title, items)
                     }
 
-                // 插入分组
                 for ((_, title, items) in grouped.asReversed()) {
                     insertGroups(result, items, isNewSetting, title)
                 }
-            }
-
-            buildMethod.hookMethod(hooker)
-
-        }.onFailure { Log.e("模块入口创建失败", it) }
+            })
+        }.onFailure { Log.e("模块设置入口创建失败", it) }
     }
 
-    /**
-     * 创建单个设置项
-     */
+    private fun findBuildMethod(cls: Class<*>): Method? {
+        return cls.declaredMethods.find {
+            it.paramCount == 1 &&
+                    it.parameterTypes[0] == Context::class.java &&
+                    List::class.java.isAssignableFrom(it.returnType)
+        }
+    }
+
+    private data class ProcessorInfo(
+        val clazz: Class<*>,
+        val argCount: Int,
+        val onClickMethod: Method
+    )
+
+    private var cachedProcessorInfo: ProcessorInfo? = null
+
+    private fun resolveProcessorInfo(result: List<*>): ProcessorInfo? {
+        if (cachedProcessorInfo != null) return cachedProcessorInfo
+
+        val candidates = mutableSetOf<Class<*>>()
+        result.forEach { item ->
+            if (item == null) return@forEach
+            val cls = item.javaClass
+            cls.declaredFields.forEach { field ->
+                field.isAccessible = true
+                val value = runCatching { field.get(item) }.getOrNull()
+                when (value) {
+                    is Array<*> -> value.forEach { v -> v?.javaClass?.let(candidates::add) }
+                    is Collection<*> -> value.forEach { v -> v?.javaClass?.let(candidates::add) }
+                }
+            }
+        }
+
+        val target = candidates.find { cls ->
+            cls.constructors.any { ctor ->
+                val types = ctor.parameterTypes
+                types.size in 4..5 &&
+                        types[0] == Context::class.java &&
+                        types[1] == Int::class.javaPrimitiveType &&
+                        types[2] == CharSequence::class.java &&
+                        types[3] == Int::class.javaPrimitiveType &&
+                        (types.size == 4 || types[4] == String::class.java)
+            }
+        } ?: return null.also {
+            Log.e("无法从 build() 结果中自动识别 processor 类,无法创建模块设置入口!")
+        }
+
+        val constructor = target.constructors.first { it.parameterTypes.size in 4..5 }
+        val argCount = constructor.parameterTypes.size
+
+        val onClickMethod = target.declaredMethods.find {
+            it.returnType == Void.TYPE &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0].name == "kotlin.jvm.functions.Function0"
+        } ?: return null.also {
+            Log.e("无法找到点击事件方法 (Function0),无法创建模块设置入口!")
+        }
+
+        return ProcessorInfo(target, argCount, onClickMethod).also {
+            cachedProcessorInfo = it
+        }
+    }
+
     @SuppressLint("DiscouragedApi")
     private fun createSettingItem(
         context: Context,
         config: SettingEntryConfig,
-        processorClass: Class<*>,
-        processorArgCount: Int,
-        onClickMethod: Method
+        info: ProcessorInfo
     ): Any {
-        // 获取图标资源
-        val resId = context.resources.getIdentifier(
-            config.iconName, "drawable", context.packageName
-        )
+        val resId = context.resources.getIdentifier(config.iconName, "drawable", context.packageName)
+        val args = arrayOf(
+            context,
+            config.id,
+            config.title,
+            resId,
+            null
+        ).take(info.argCount).toTypedArray()
 
-        // 创建设置项实例
-        val settingItem = processorClass.new(
-            *listOf(
-                context,
-                config.id,
-                config.title,
-                resId,
-                null
-            ).take(processorArgCount).toTypedArray()
-        )
-
-        // 绑定点击事件
-        bindClickAction(settingItem, onClickMethod, config.onClick, context)
-
+        val settingItem = info.clazz.new(*args)
+        bindClickAction(settingItem, info.onClickMethod, config.onClick, context)
         return settingItem
     }
 
-    /**
-     * 设置点击回调（通过反射调用 onClickMethod）
-     */
     private fun bindClickAction(
         item: Any,
         onClickMethod: Method,
@@ -173,9 +188,14 @@ class AddModuleEntrance : AlwaysRunAction() {
         context: Context
     ) {
         val function0Class = onClickMethod.parameterTypes.first()
-        val unit = XpClassLoader.hostClassLoader.loadClass("kotlin.Unit")?.fieldValue("INSTANCE") ?: Unit
+        val unit = XpClassLoader.hostClassLoader
+            .loadClass("kotlin.Unit")
+            ?.fieldValue("INSTANCE") ?: Unit
 
-        val proxy = Proxy.newProxyInstance(XpClassLoader.hostClassLoader, arrayOf(function0Class)) { _, method, _ ->
+        val proxy = Proxy.newProxyInstance(
+            XpClassLoader.hostClassLoader,
+            arrayOf(function0Class)
+        ) { _, method, _ ->
             if (method.name == "invoke") {
                 runCatching {
                     clickListener(context)
@@ -184,14 +204,9 @@ class AddModuleEntrance : AlwaysRunAction() {
             unit
         }
 
-        // 绑定点击事件
         onClickMethod.invoke(item, proxy)
     }
 
-    /**
-     * 将多个设置项插入到设置页的分组容器中（Group 由宿主的设置框架定义）
-     * 通过反射构造 Group 实例并插入到列表指定位置
-     */
     private fun insertGroups(
         result: MutableList<*>,
         items: List<Any>,
@@ -199,12 +214,15 @@ class AddModuleEntrance : AlwaysRunAction() {
         title: CharSequence?
     ) {
         val groupClass = result.firstOrNull()?.javaClass ?: return
+        val markerClass = XpClassLoader.hostClassLoader
+            .loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
+
         val groupConstructor = groupClass.getConstructor(
             List::class.java,
             CharSequence::class.java,
             CharSequence::class.java,
             Int::class.javaPrimitiveType,
-            XpClassLoader.hostClassLoader.loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
+            markerClass
         )
 
         val group = groupConstructor.newInstance(
@@ -214,18 +232,18 @@ class AddModuleEntrance : AlwaysRunAction() {
             if (title != null) 4 else 6,
             null
         )
+
         val insertIndex = if (isNewSetting) 1 else 0
         result.invoke("add", insertIndex, group)
     }
 
-    // 统一入口配置
     private val entryConfigs = listOf(
         SettingEntryConfig(
             id = R.id.setting2Activity_settingEntryItem,
             title = TCQTBuild.APP_NAME,
             iconName = "qui_setting",
             groupTag = "TCQT_SettingEntry",
-            groupTitle = null, // 不需要
+            groupTitle = null,
             onClick = ::openTCQTSettings
         ),
         SettingEntryConfig(
@@ -247,7 +265,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         )
     )
 
-    // 复制账号票据
     private fun copyTicket(context: Context) {
         val uin = "${QQInterfaces.currentUin}"
         val uid = QQInterfaces.currentUid
@@ -258,7 +275,6 @@ class AddModuleEntrance : AlwaysRunAction() {
             st to CalculationUtils.getAuthToken(st)
         }
 
-        //A2 -> 010A _TGT, D2 -> 0143, D2Key -> 0305 sessionKey
         val info = """
             这是账号票据信息
             泄露会导致账号被盗!!!
@@ -279,7 +295,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             StWeb: $stWeb
 
             SuperKey: $superKey
- 
+
             SuperToken: $superToken
 
             AuthToken: $authToken
@@ -288,7 +304,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         context.copyToClipboard(info, true)
     }
 
-    // 冻结记录查询
     private fun openBanRecordQuery(context: Context) {
         browserClass?.let {
             context.startActivity(
@@ -303,7 +318,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         }
     }
 
-    // 模块设置页
     private fun openTCQTSettings(context: Context) {
         browserClass?.let {
             context.startActivity(
@@ -328,7 +342,6 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     companion object {
-
         val browserClass by lazy {
             XpClassLoader.load("com.tencent.mobileqq.activity.QQBrowserActivity")
         }
@@ -337,7 +350,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }
 
-data class SettingEntryConfig(
+private data class SettingEntryConfig(
     val id: Int,
     val title: String,
     val iconName: String = "qui_setting",

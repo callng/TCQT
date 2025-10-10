@@ -57,30 +57,27 @@ class MainEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun hookStartup(classLoader: ClassLoader, startup: XC_MethodHook) {
-        val kTaskClz = classLoader.loadClass("com.tencent.mobileqq.startup.task.config.b")
-            ?: throw ClassNotFoundException("com.tencent.mobileqq.startup.task.config.b does not exist.")
-        val kITaskClz = classLoader.loadClass("com.tencent.qqnt.startup.task.d")
-            ?: throw ClassNotFoundException("com.tencent.qqnt.startup.task.d does not exist.")
-        if (!kITaskClz.isAssignableFrom(kTaskClz)) {
-            throw AssertionError("$kITaskClz is not assignable from $kTaskClz")
-        }
+    private fun hookStartup(classLoader: ClassLoader, startup: XC_MethodHook) = runCatching {
+        val taskClass = classLoader.loadClass("com.tencent.mobileqq.startup.task.config.b")
 
-        val taskMapField = kTaskClz.declaredFields.firstOrNull { field ->
-            field.type == HashMap::class.java && field.isStatic
-        }?.apply { isAccessible = true } ?: throw NoSuchFieldException("No static field taskMap in $kTaskClz")
+        val taskMapField = taskClass.declaredFields.firstOrNull {
+            Map::class.java.isAssignableFrom(it.type) && it.isStatic
+        }?.apply { isAccessible = true } ?: error("No static Map field found in $taskClass")
+
         val taskMap = taskMapField.get(null) as? Map<String, Class<*>>
-            ?: throw AssertionError("$taskMapField is not a Map")
+            ?: error("Static field ${taskMapField.name} is not a valid Map or is empty")
 
-        taskMap.also { map ->
-            map.forEach { (key, clazz) ->
-                if (key.contains("LoadDexTask", ignoreCase = true)) {
-                    clazz.declaredMethods.firstOrNull { method ->
-                        method.paramCount == 1 && method.parameterTypes[0] == Context::class.java
-                    }?.hookMethod(startup) ?: throw NoSuchMethodException("$clazz No matching methods found")
-                }
-            }
-        }
+        val targetEntry = taskMap.entries.firstOrNull {
+            it.key.contains("LoadDexTask", ignoreCase = true)
+        } ?: error("No LoadDexTask found in taskMap of $taskClass")
+
+        val targetMethod = targetEntry.value.declaredMethods.firstOrNull { m ->
+            m.paramCount == 1 && m.parameterTypes[0] == Context::class.java
+        } ?: error("No matching method in ${targetEntry.value} for LoadDexTask")
+
+        targetMethod.hookMethod(startup)
+    }.onFailure {
+        Log.e("hookStartup failed: ${it.message}", it)
     }
 
     private fun execStartupInit(ctx: Context) {

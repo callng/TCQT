@@ -29,6 +29,7 @@ object PlatformTools {
     const val QQ_9_0_70_VER = 6700L
     const val QQ_9_1_52_VER = 9054L
     const val QQ_9_1_90_26520 = 10248L
+    const val QQ_9_2_23_30095 = 11684L
     const val TIM_4_0_95_VER = 4002L
 
     fun isNt(): Boolean {

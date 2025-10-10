@@ -33,7 +33,7 @@ internal fun resInjection(context: Context = hostInfo.application): Boolean {
         val result = method.invoke(res.assets, modulePath) as Int
 
         if (result > 0) {
-            Log.d("resInjection: ${R.string.module_res_injection}")
+            Log.d("resInjection: ${context.getString(R.string.module_res_injection)}")
             true
         } else {
             Log.e("resInjection failed: modulePath=$modulePath, id=$result")
