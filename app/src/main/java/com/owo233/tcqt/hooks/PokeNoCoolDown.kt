@@ -18,9 +18,10 @@ import com.owo233.tcqt.utils.hookAfterMethod
     name = "戳一戳无冷却",
     type = SettingType.BOOLEAN,
     desc = "移除戳一戳冷却时间(每天上限200次)。",
-    uiOrder = 19
+    uiOrder = 14
 )
 class PokeNoCoolDown : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.content.ContextWrapper")!!
             .hookAfterMethod(

@@ -17,9 +17,10 @@ import com.owo233.tcqt.utils.hookAfterMethod
     type = SettingType.BOOLEAN,
     desc = "启用后，在AB测试对照组中，将全部测试强制转为B组（实验组），注意，此功能有一定的风险，请自行斟酌是否启用。",
     isRedMark = true,
-    uiOrder = 13
+    uiOrder = 106
 )
 class ForcedToB : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
         val expEntityClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!

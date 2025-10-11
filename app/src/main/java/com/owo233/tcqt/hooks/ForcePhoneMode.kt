@@ -17,9 +17,10 @@ import com.tencent.common.config.pad.DeviceType
     name = "强制手机模式",
     type = SettingType.BOOLEAN,
     desc = "和「强制平板模式」功能一样的作用，不同的是，「强制手机模式」优先级比「强制平板模式」低，两者都启用的情况下优先生效后者。",
-    uiOrder = 15
+    uiOrder = 9
 )
 class ForcePhoneMode : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.common.config.pad.PadUtil")
             ?.declaredMethods?.first {

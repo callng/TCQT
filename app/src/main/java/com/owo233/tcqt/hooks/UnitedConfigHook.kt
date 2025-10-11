@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
     desc = "仅高级用户使用，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。",
     isRedMark = true,
     hasTextAreas = true,
-    uiOrder = 9
+    uiOrder = 107
 )
 @RegisterSetting(
     key = "united_config_hook.string.saveConfig",

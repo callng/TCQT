@@ -22,9 +22,10 @@ import com.tencent.qphone.base.remote.FromServiceMsg
     type = SettingType.BOOLEAN,
     defaultValue = "true",
     desc = "将一些烦人的弹窗给屏蔽掉，现支持「灰度版本体验」及「社交封禁提醒」弹窗。",
-    uiOrder = 5
+    uiOrder = 4
 )
 class DisableDialog : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         disableGrayCheckDialog()
         disableFekitDialog()

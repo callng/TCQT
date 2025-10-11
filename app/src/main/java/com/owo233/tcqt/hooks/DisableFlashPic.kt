@@ -21,6 +21,7 @@ import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
     uiOrder = 5
 )
 class DisableFlashPic : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         AIOMsgItemFactoryProvider::class.java.declaredMethods.first {
             it.isPublic && it.returnType != Void.TYPE

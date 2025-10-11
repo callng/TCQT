@@ -31,7 +31,7 @@ import java.lang.reflect.Method
     desc = "启用后，宿主发送的指定包体(cmd)将会被拦截。",
     isRedMark = true,
     hasTextAreas = true,
-    uiOrder = 9
+    uiOrder = 104
 )
 @RegisterSetting(
     key = "exclude_send_cmd.string.cmd",
@@ -40,6 +40,7 @@ import java.lang.reflect.Method
     textAreaPlaceholder = "不了解请勿启用!\n填写欲禁止发送包体的cmd\n一行一个, 正则表达式以!开头"
 )
 class ExcludeSendCmd : IAction {
+
     private val cachePackets by lazy { List(5) { getPatchBuffer(50001 + it) } }
     private val cachedBytes by lazy { concatPackets(cachePackets) }
     private val configClass = XpClassLoader.load("com.tencent.freesia.UnitedConfig")!!

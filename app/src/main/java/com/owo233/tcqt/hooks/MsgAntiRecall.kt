@@ -20,9 +20,10 @@ import kotlinx.coroutines.DelicateCoroutinesApi
     name = "消息防撤回",
     type = SettingType.BOOLEAN,
     desc = "防止消息被撤回，添加灰条提示。",
-    uiOrder = 11
+    uiOrder = 1
 )
 class MsgAntiRecall : IAction {
+
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
         Log.d("Oh baby baby tell me why")

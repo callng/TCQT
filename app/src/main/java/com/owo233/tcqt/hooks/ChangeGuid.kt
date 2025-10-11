@@ -35,7 +35,7 @@ import de.robv.android.xposed.XposedHelpers
     defaultValue = "true",
     desc = "启用后在登录页面长按登录按钮即可调出设置窗口。",
     isRedMark = true,
-    uiOrder = 1
+    uiOrder = 100
 )
 @RegisterSetting(key = "change_guid.string.defaultGuid", name = "默认GUID", type = SettingType.STRING, hidden = true)
 @RegisterSetting(key = "change_guid.string.newGuid", name = "新GUID", type = SettingType.STRING, hidden = true)
@@ -46,6 +46,7 @@ import de.robv.android.xposed.XposedHelpers
     defaultValue = "false"
 )
 class ChangeGuid : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         initDefaultGuid()
 

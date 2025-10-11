@@ -16,9 +16,10 @@ import com.tencent.qqnt.kernel.nativeinterface.VASMsgBubble
     name = "强制使用默认气泡",
     type = SettingType.BOOLEAN,
     desc = "使用默认气泡，让花里胡哨的气泡不那么花里胡哨。",
-    uiOrder = 3
+    uiOrder = 2
 )
 class DefaultBubble : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         VASMsgBubble::class.java.hookAfterAllConstructors {
             val v = it.thisObject as VASMsgBubble

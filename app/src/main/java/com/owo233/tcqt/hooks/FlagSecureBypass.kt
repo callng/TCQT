@@ -19,9 +19,10 @@ import com.owo233.tcqt.utils.hookBeforeMethod
     type = SettingType.BOOLEAN,
     desc = "绕过FlagSecure，允许截图和录屏。",
     isRedMark = true,
-    uiOrder = 12
+    uiOrder = 105
 )
 class FlagSecureBypass : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         Window::class.java.hookBeforeMethod(
             "setFlags",

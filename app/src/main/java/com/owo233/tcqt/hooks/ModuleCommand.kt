@@ -19,18 +19,6 @@ class ModuleCommand : AlwaysRunAction() {
 
     private var registeredReceiver: BroadcastReceiver? = null
 
-    companion object {
-        private const val ACTION_MODULE_COMMAND = "com.owo233.tcqt.MODULE_COMMAND"
-
-        fun sendCommand(ctx: Context, command: String) {
-            val intent = Intent(ACTION_MODULE_COMMAND).apply {
-                putExtra("cmd", command)
-                setPackage(ctx.packageName)
-            }
-            ctx.sendBroadcast(intent)
-        }
-    }
-
     override fun onRun(ctx: Context, process: ActionProcess) {
         val filter = IntentFilter(ACTION_MODULE_COMMAND)
 
@@ -63,6 +51,18 @@ class ModuleCommand : AlwaysRunAction() {
             registeredReceiver = receiver
         }.onFailure {
             Log.e(msg = "registerReceiver error", it)
+        }
+    }
+
+    companion object {
+        private const val ACTION_MODULE_COMMAND = "com.owo233.tcqt.MODULE_COMMAND"
+
+        fun sendCommand(ctx: Context, command: String) {
+            val intent = Intent(ACTION_MODULE_COMMAND).apply {
+                putExtra("cmd", command)
+                setPackage(ctx.packageName)
+            }
+            ctx.sendBroadcast(intent)
         }
     }
 

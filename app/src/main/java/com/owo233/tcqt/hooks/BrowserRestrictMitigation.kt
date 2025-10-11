@@ -8,7 +8,6 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.hookBeforeMethod
 
-
 @RegisterAction
 class BrowserRestrictMitigation : AlwaysRunAction() {
 

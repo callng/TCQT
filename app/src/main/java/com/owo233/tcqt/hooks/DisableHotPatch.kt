@@ -23,9 +23,10 @@ import mqq.app.AppRuntime
     type = SettingType.BOOLEAN,
     desc = "顾名思义，但不会删除已有的热补丁。",
     isRedMark = true,
-    uiOrder = 6
+    uiOrder = 102
 )
 class DisableHotPatch : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")

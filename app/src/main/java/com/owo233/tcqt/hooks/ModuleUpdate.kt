@@ -18,7 +18,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
     name = "模块更新干掉宿主",
     type = SettingType.BOOLEAN,
     desc = "每次本模块更新后将自动重启（杀死）宿主进程。",
-    uiOrder = 16
+    uiOrder = 11
 )
 class ModuleUpdate : IAction {
 

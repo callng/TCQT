@@ -22,7 +22,7 @@ import com.owo233.tcqt.utils.replaceMethod
     desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
     isRedMark = true,
     hasTextAreas = true,
-    uiOrder = 2
+    uiOrder = 101
 )
 @RegisterSetting(
     key = "custom_device.string.device",
@@ -43,6 +43,7 @@ import com.owo233.tcqt.utils.replaceMethod
     textAreaPlaceholder = "填写manufacturer内容, e.g: Xiaomi"
 )
 class CustomDevice : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("android.os.SystemProperties")!!
             .getMethods(false)

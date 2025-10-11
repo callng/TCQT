@@ -16,9 +16,10 @@ import com.owo233.tcqt.utils.hookBeforeMethod
     name = "显示精准禁言时间",
     type = SettingType.BOOLEAN,
     desc = "禁言状态下在聊天页文字输入框中将替换显示精确的禁言时间，而非只显示单独的<天，分，秒>",
-    uiOrder = 28
+    uiOrder = 23
 )
 class ShowPreciseBanTime : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
             .hookBeforeMethod(

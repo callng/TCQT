@@ -16,16 +16,9 @@ import com.owo233.tcqt.utils.hookAfterAllConstructors
     name = "默认勾选登录协议",
     type = SettingType.BOOLEAN,
     desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
-    uiOrder = 15
+    uiOrder = 10
 )
 class LoginCheckBoxDefault : IAction {
-
-    companion object {
-        private val loginContextNames = setOf(
-            "com.tencent.mobileqq.activity.LoginActivity",
-            "com.tencent.mobileqq.activity.LoginPublicFragmentActivity"
-        )
-    }
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         CheckBox::class.java.hookAfterAllConstructors{
@@ -40,6 +33,13 @@ class LoginCheckBoxDefault : IAction {
                 checkBox.post { checkBox.isChecked = true }
             }
         }
+    }
+
+    companion object {
+        private val loginContextNames = setOf(
+            "com.tencent.mobileqq.activity.LoginActivity",
+            "com.tencent.mobileqq.activity.LoginPublicFragmentActivity"
+        )
     }
 
     override val key: String get() = GeneratedSettingList.LOGIN_CHECK_BOX_DEFAULT

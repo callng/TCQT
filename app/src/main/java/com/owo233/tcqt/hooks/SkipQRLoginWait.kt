@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.hookBeforeMethod
     name = "跳过扫码登录等待",
     type = SettingType.BOOLEAN,
     desc = "扫码登录时跳过倒计时。",
-    uiOrder = 29
+    uiOrder = 24
 )
 class SkipQRLoginWait : IAction {
 

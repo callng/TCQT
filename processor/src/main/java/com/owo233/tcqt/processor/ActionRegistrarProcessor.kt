@@ -329,11 +329,24 @@ $kotlinFeatures
                     append("\n            ),")
                 }
 
-                append("\n            uiOrder = ${mainSetting.uiOrder}")
+                val effectiveOrder = if (mainSetting.isRedMark) mainSetting.uiOrder + 100000 else mainSetting.uiOrder
+                append("\n            uiOrder = $effectiveOrder")
                 append("\n        )")
             }
-        }.sortedBy { settingGroups[it.substringAfter("key = \"").substringBefore("\"")]?.first()?.uiOrder ?: 1000 }
-            .joinToString(",\n")
+        }.sortedWith(
+            compareBy(
+                { keyStr ->
+                    val k = keyStr.substringAfter("key = \"").substringBefore("\"")
+                    val main = settingGroups[k]?.first()
+                    if (main?.isRedMark == true) 1 else 0
+                },
+                { keyStr ->
+                    val k = keyStr.substringAfter("key = \"").substringBefore("\"")
+                    val main = settingGroups[k]?.first()
+                    (if (main?.isRedMark == true) (main.uiOrder + 100000) else (main?.uiOrder ?: 1000))
+                }
+            )
+        ).joinToString(",\n")
     }
 
     private fun escapeKotlinString(str: String): String {

@@ -30,7 +30,7 @@ import kotlin.random.Random
     name = "复读机 +1",
     type = SettingType.BOOLEAN,
     desc = "人类的本质是什么？不支持修改+1图标，为了防止误触，需要在200ms内重复点击才能触发。",
-    uiOrder = 25
+    uiOrder = 20
 )
 class RepeatMessage : IAction {
 

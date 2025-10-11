@@ -17,9 +17,10 @@ import com.tencent.common.config.pad.DeviceType
     name = "强制平板模式",
     type = SettingType.BOOLEAN,
     desc = "以Pad模式登录账号，一个账号可以两处登录互不干扰，与「强制手机模式」功能互斥，两者同时启用优先生效本模式。",
-    uiOrder = 14
+    uiOrder = 8
 )
 class ForceTabletMode : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         XpClassLoader.load("com.tencent.common.config.pad.PadUtil")
             ?.declaredMethods?.first {
