@@ -10,6 +10,8 @@ on:
         default: 'Build TCQT'
         options:
           - Build TCQT
+          - CodeQL
+          - Dependabot Updates
       count:
         description: '最多处理的运行次数（0=无限制）'
         required: false

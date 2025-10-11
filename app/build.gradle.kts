@@ -56,14 +56,15 @@ android {
 
     signingConfigs {
         if (!keystorePath.isNullOrBlank()) {
-            create("release") {
+            named("debug").configure {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
                 enableV2Signing = true
             }
-            create("debug") {
+
+            maybeCreate("release").apply {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
