@@ -30,6 +30,13 @@ jobs:
           submodules: true
           fetch-depth: 1
 
+      - name: Fetch full history for versionCode
+        run: |
+          if git rev-parse --is-shallow-repository; then
+            git fetch --prune --unshallow
+          fi
+          git fetch --tags --force
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -51,10 +58,10 @@ jobs:
       - name: Build Release
         run: |
           echo 'org.gradle.vfs.watch=true' >> gradle.properties
-          sed -i 's/org.gradle.configuration-cache=true//g' gradle.properties
+          echo 'org.gradle.configuration-cache=true' >> gradle.properties
           echo ${{ secrets.SIGN_KEYSTORE_BASE64 }} | base64 -d > keystore.jks
           chmod +x ./gradlew
-          ./gradlew :app:assembleRelease --build-cache --parallel --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --build-cache --parallel --no-daemon --stacktrace --configuration-cache
         env:
           KEYSTORE_PATH: "../keystore.jks"
           KEYSTORE_PASSWORD: ${{ secrets.SIGN_KEYSTORE_PASSWORD }}
@@ -93,6 +100,13 @@ jobs:
           submodules: true
           fetch-depth: 1
 
+      - name: Fetch full history for versionCode
+        run: |
+          if git rev-parse --is-shallow-repository; then
+            git fetch --prune --unshallow
+          fi
+          git fetch --tags --force
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -114,10 +128,10 @@ jobs:
       - name: Build Debug
         run: |
           echo 'org.gradle.vfs.watch=true' >> gradle.properties
-          sed -i 's/org.gradle.configuration-cache=true//g' gradle.properties
+          echo 'org.gradle.configuration-cache=true' >> gradle.properties
           echo ${{ secrets.SIGN_KEYSTORE_BASE64 }} | base64 -d > keystore.jks
           chmod +x ./gradlew
-          ./gradlew :app:assembleDebug --build-cache --parallel --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug --build-cache --parallel --no-daemon --stacktrace --configuration-cache
         env:
           KEYSTORE_PATH: "../keystore.jks"
           KEYSTORE_PASSWORD: ${{ secrets.SIGN_KEYSTORE_PASSWORD }}
