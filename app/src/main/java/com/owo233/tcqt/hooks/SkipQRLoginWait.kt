@@ -11,7 +11,6 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.FuzzyClassKit
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hookBeforeAllConstructors
 import com.owo233.tcqt.utils.hookBeforeMethod
 
@@ -26,23 +25,29 @@ import com.owo233.tcqt.utils.hookBeforeMethod
 class SkipQRLoginWait : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        if (PlatformTools.isMainProcess()) {
-            FuzzyClassKit.findClassByMethod(
+        if (process == ActionProcess.MAIN) {
+            val targetClass = FuzzyClassKit.findClassByMethod(
                 prefix = "com.tencent.biz.qrcode.activity.QRLoginAuthActivity",
                 isSubClass = true
-            ) { clz, _ -> clz.superclass == CountDownTimer::class.java }
-                ?.let {
-                    it.hookBeforeAllConstructors { param ->
-                        param.args[1] = 0
-                        param.args[2] = 0
-                    }
-                }
+            ) { clz, _ ->
+                clz.superclass == CountDownTimer::class.java
+            } ?: FuzzyClassKit.findClassByMethod(
+                prefix = "com.tencent.biz.qrcode.activity",
+                isSubClass = false
+            ) { clz, _ ->
+                clz.superclass == CountDownTimer::class.java
+            } ?: error("跳过登录等待失败,找不到符合要求的类 -> superclass == CountDownTimer::class.java")
+
+            targetClass.hookBeforeAllConstructors { param ->
+                param.args[1] = 0L
+                param.args[2] = 0L
+            }
         }
 
         // 跳过对话框形式的倒计时等待
-        if (PlatformTools.isOpenSdkProcess()) {
-            XpClassLoader.load("com.tencent.mobileqq.utils.DialogUtil")
-                ?.hookBeforeMethod(
+        if (process == ActionProcess.OPENSDK) {
+            XpClassLoader.load("com.tencent.mobileqq.utils.DialogUtil")!!
+                .hookBeforeMethod(
                     "createCountdownDialog",
                     Context::class.java,
                     String::class.java,
