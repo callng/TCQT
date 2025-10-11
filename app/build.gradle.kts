@@ -63,6 +63,13 @@ android {
                 keyPassword = System.getenv("KEY_PASSWORD")
                 enableV2Signing = true
             }
+            create("debug") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                enableV2Signing = true
+            }
         }
     }
 
@@ -74,6 +81,7 @@ android {
             versionNameSuffix = providers.provider {
                 getGitHeadRefsSuffix(rootProject, "debug")
             }.get()
+            signingConfigs.findByName("debug")?.let { signingConfig = it }
         }
         release {
             isMinifyEnabled = true
