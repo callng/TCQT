@@ -106,12 +106,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         }
     }
 
-    private data class ProcessorInfo(
-        val clazz: Class<*>,
-        val argCount: Int,
-        val onClickMethod: Method
-    )
-
     private var cachedProcessorInfo: ProcessorInfo? = null
 
     private fun resolveProcessorInfo(result: List<*>): ProcessorInfo? {
@@ -237,34 +231,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         result.invoke("add", insertIndex, group)
     }
 
-    private val entryConfigs = listOf(
-        SettingEntryConfig(
-            id = R.id.setting2Activity_settingEntryItem,
-            title = TCQTBuild.APP_NAME,
-            iconName = "qui_setting",
-            groupTag = "TCQT_SettingEntry",
-            groupTitle = null,
-            onClick = ::openTCQTSettings
-        ),
-        SettingEntryConfig(
-            id = R.id.check_ban_url,
-            title = "历史冻结记录 (显示空白则重新进入)",
-            iconName = "qui_tuning",
-            groupTag = "TCQT_OtherSettingEntry",
-            groupTitle = "TCQT小工具",
-            onClick = ::openBanRecordQuery
-        ),
-        SettingEntryConfig(
-            id = R.id.account_get_ticket,
-            title = "复制账号票据 (高风险行为)",
-            iconName = "qui_check_account",
-            debugOnly = true,
-            groupTag = "TCQT_OtherSettingEntry",
-            groupTitle = "TCQT工具",
-            onClick = ::copyTicket
-        )
-    )
-
     private fun copyTicket(context: Context) {
         val uin = "${QQInterfaces.currentUin}"
         val uid = QQInterfaces.currentUid
@@ -348,14 +314,48 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
-}
 
-private data class SettingEntryConfig(
-    val id: Int,
-    val title: String,
-    val iconName: String = "qui_setting",
-    val debugOnly: Boolean = false,
-    val groupTag: String? = null,
-    val groupTitle: CharSequence? = null,
-    val onClick: (Context) -> Unit
-)
+    private val entryConfigs = listOf(
+        SettingEntryConfig(
+            id = R.id.setting2Activity_settingEntryItem,
+            title = TCQTBuild.APP_NAME,
+            iconName = "qui_setting",
+            groupTag = "TCQT_SettingEntry",
+            groupTitle = null,
+            onClick = ::openTCQTSettings
+        ),
+        SettingEntryConfig(
+            id = R.id.check_ban_url,
+            title = "历史冻结记录 (显示空白则重新进入)",
+            iconName = "qui_tuning",
+            groupTag = "TCQT_OtherSettingEntry",
+            groupTitle = "TCQT小工具",
+            onClick = ::openBanRecordQuery
+        ),
+        SettingEntryConfig(
+            id = R.id.account_get_ticket,
+            title = "复制账号票据 (高风险行为)",
+            iconName = "qui_check_account",
+            debugOnly = true,
+            groupTag = "TCQT_OtherSettingEntry",
+            groupTitle = "TCQT工具",
+            onClick = ::copyTicket
+        )
+    )
+
+    private data class SettingEntryConfig(
+        val id: Int,
+        val title: String,
+        val iconName: String = "qui_setting",
+        val debugOnly: Boolean = false,
+        val groupTag: String? = null,
+        val groupTitle: CharSequence? = null,
+        val onClick: (Context) -> Unit
+    )
+
+    private data class ProcessorInfo(
+        val clazz: Class<*>,
+        val argCount: Int,
+        val onClickMethod: Method
+    )
+}
