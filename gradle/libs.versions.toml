@@ -16,7 +16,7 @@ kotlinx-io = "0.1.16"
 kotlinx-serialization = "1.9.0"
 
 # Tools
-ksp = "2.2.20-2.0.3"
+ksp = "2.2.20-2.0.4"
 
 # Third-Party
 nanohttpd = "2.3.1"
