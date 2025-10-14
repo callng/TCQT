@@ -17,17 +17,17 @@ internal object MMKVUtils {
         val methods = MMKV::class.java.declaredMethods
             .filter { it.isStatic && it.paramCount == 2 && it.returnType == MMKV::class.java }
 
-        val target = when {
-            hostInfo.versionCode < PlatformTools.QQ_9_2_23_30095 -> {
+        val target = when (hostInfo.versionCode) {
+            PlatformTools.QQ_9_2_23_30095 -> {
                 methods.firstOrNull {
-                    it.parameterTypes[0] == String::class.java &&
-                            it.parameterTypes[1] == Int::class.java
+                    it.parameterTypes[0] == Int::class.java &&
+                            it.parameterTypes[1] == String::class.java
                 }
             }
             else -> {
                 methods.firstOrNull {
-                    it.parameterTypes[0] == Int::class.java &&
-                            it.parameterTypes[1] == String::class.java
+                    it.parameterTypes[0] == String::class.java &&
+                            it.parameterTypes[1] == Int::class.java
                 }
             }
         }
@@ -54,11 +54,11 @@ internal object MMKVUtils {
     }
 
     fun mmkvWithId(id: String): MMKV {
-        return when {
-            hostInfo.versionCode < PlatformTools.QQ_9_2_23_30095 ->
-                mmkvWithIdMethod.invoke(null, id, MULTI_PROCESS_MODE)
-            else ->
+        return when (hostInfo.versionCode) {
+            PlatformTools.QQ_9_2_23_30095 ->
                 mmkvWithIdMethod.invoke(null, MULTI_PROCESS_MODE, id)
+            else ->
+                mmkvWithIdMethod.invoke(null, id, MULTI_PROCESS_MODE)
         } as MMKV
     }
 }

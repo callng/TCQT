@@ -8,6 +8,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.isFinal
+import com.owo233.tcqt.utils.isPublic
+import com.owo233.tcqt.utils.isStatic
+import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.replaceMethod
 
 @RegisterAction
@@ -29,7 +34,12 @@ class DisableReactionLimit : IAction {
 
         // 有意义吗？
         XpClassLoader.load("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.utils.a")
-            ?.replaceMethod("c") { 0L }
+            ?.declaredMethods
+            ?.single {
+                it.returnType == Long::class.javaPrimitiveType &&
+                        it.paramCount == 0 && it.isPublic &&
+                        it.isStatic && it.isFinal
+            }!!.hookAfterMethod { it.result = 0L }
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_REACTION_LIMIT

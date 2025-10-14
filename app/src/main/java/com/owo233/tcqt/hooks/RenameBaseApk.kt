@@ -75,20 +75,41 @@ class RenameBaseApk : IAction {
     private fun renameFriendUploadApk(ctx: Context) {
         val clz = XpClassLoader.load("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
             ?: error("renameFriendUploadApk: 找不到NTFileManageBridger类!!!")
-        val method = clz.declaredMethods.firstOrNull {
-            it.returnType == Void.TYPE && it.paramCount == 4 &&
-                    it.parameterTypes[0].name.contains("FileManagerEntity") &&
-                    it.parameterTypes[1] == Runnable::class.java &&
-                    it.parameterTypes[2] == String::class.java &&
-                    it.parameterTypes[3] == String::class.java
+
+        val method = clz.declaredMethods.firstOrNull { m ->
+            fun Class<*>.isLike(namePart: String) = name.contains(namePart, ignoreCase = false)
+            val args = m.parameterTypes
+            val isFive = args.size == 5 &&
+                    args[0].isLike("NTFileManageBridger") &&
+                    args[1].isLike("FileManagerEntity") &&
+                    args[2] == Runnable::class.java &&
+                    args[3] == String::class.java &&
+                    args[4] == String::class.java
+
+            val isFour = args.size == 4 &&
+                    args[0].isLike("FileManagerEntity") &&
+                    args[1] == Runnable::class.java &&
+                    args[2] == String::class.java &&
+                    args[3] == String::class.java
+
+            m.returnType == Void.TYPE && (isFive || isFour)
         } ?: error("renameFriendUploadApk: 没有找到合适方法!!!")
 
+        val stringArgIndex = method.parameterTypes.indexOfFirst { it == String::class.java }
+        if (stringArgIndex == -1)
+            error("renameFriendUploadApk: 没有找到FileName参数位置!!!")
+
+        val fileArgIndex = method.parameterTypes.indexOfFirst {it.name.contains("FileManagerEntity")}
+        if (fileArgIndex == -1)
+            error("renameFriendUploadApk: 没有找到FileManagerEntity参数位置!!!")
+
         method.hookBeforeMethod { param ->
-            val fileManagerEntity = param.args[0]
+            val fileManagerEntity = param.args[fileArgIndex]
             val fileName = fileManagerEntity.getObjectField("fileName") as String
             val localFile = fileManagerEntity.getObjectField("strFilePath") as String
 
             if (!fileName.endsWith(".apk")) return@hookBeforeMethod
+
             File(localFile).also {
                 if (!it.exists()) {
                     Log.e("renameFriendUploadApk: File not exists: $localFile")
@@ -97,7 +118,7 @@ class RenameBaseApk : IAction {
             }
 
             val newFileName = getFormattedFileNameByPath(ctx, localFile)
-            param.args[2] = newFileName
+            param.args[stringArgIndex] = newFileName
         }
     }
 

@@ -35,7 +35,7 @@ class DisableHotPatch : IAction {
             }
 
         XpClassLoader.load("com.tencent.rfix.lib.engine.PatchEngineBase")?.let { methods ->
-            val clzPatchConfig = XpClassLoader.load("com.tencent.rfix.lib.config.PatchConfig")
+            val clzPatchConfig = XpClassLoader.load("com.tencent.rfix.lib.config.PatchConfig")!!
             methods.declaredMethods.single {
                 it.returnType == Void.TYPE
                         && it.parameterTypes.size == 2
@@ -65,21 +65,24 @@ class DisableHotPatch : IAction {
             }
 
         XpClassLoader.load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
-            val kRespGetConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")
-            val kRespGetConfigConfigList = kRespGetConfig?.getDeclaredField("config_list")
+            val kRespGetConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")!!
+            val kRespGetConfigConfigList = kRespGetConfig.getDeclaredField("config_list")
 
-            val kConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$Config")
-            val kConfigType = kConfig?.getDeclaredField("type")
+            val kConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$Config")!!
+            val kConfigType = kConfig.getDeclaredField("type")
 
-            kConfigServlet.declaredMethods.single {
-                val argt = it.parameterTypes
-                it.returnType == Void.TYPE && argt.size == 6
-                        && argt[0] == AppRuntime::class.java && argt[1] == kRespGetConfig
-                        && argt[2] == Intent::class.java && argt[3] == List::class.java
-                        && argt[4] == IntArray::class.java && argt[5] == Boolean::class.javaPrimitiveType
+            kConfigServlet.declaredMethods.single { m ->
+                val args = m.parameterTypes
+                m.returnType == Void.TYPE &&
+                        args.size in 5..6 &&
+                        args[0] == AppRuntime::class.java &&
+                        args[1] == kRespGetConfig &&
+                        args[2] == Intent::class.java &&
+                        args.last() == Boolean::class.javaPrimitiveType &&
+                        args.any { it.isArray && it.componentType == Int::class.javaPrimitiveType }
             }.hookBeforeMethod {
                 val respGetConfig = it.args[1] ?: return@hookBeforeMethod
-                val configList = kRespGetConfigConfigList?.get(respGetConfig)
+                val configList = kRespGetConfigConfigList.get(respGetConfig)
                         as? PBRepeatMessageField<*> ?: return@hookBeforeMethod
                 val arrayList = configList.get() as ArrayList<*>
                 if (arrayList.isEmpty()) {
@@ -92,7 +95,7 @@ class DisableHotPatch : IAction {
                 }*/
                 // remove all hotpatch config, type == 46
                 arrayList.removeIf { config ->
-                    val type = (kConfigType?.get(config) as PBInt32Field).get()
+                    val type = (kConfigType.get(config) as PBInt32Field).get()
                     type == 46
                 }
                 // if the array is empty, do not call the original method
