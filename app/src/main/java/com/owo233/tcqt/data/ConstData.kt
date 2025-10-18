@@ -7,6 +7,7 @@ object BuildWrapper {
     const val VERSION_CODE = BuildConfig.VERSION_CODE
     const val VERSION_NAME = BuildConfig.VERSION_NAME
     const val APP_NAME = BuildConfig.APP_NAME
+    const val OPEN_SOURCE = BuildConfig.OPEN_SOURCE
 }
 
 object TCQTBuild {
@@ -16,4 +17,5 @@ object TCQTBuild {
     const val VER_CODE = BuildWrapper.VERSION_CODE
     const val VER_NAME = BuildWrapper.VERSION_NAME
     const val HOOK_TAG = APP_NAME
+    const val OPEN_SOURCE = BuildWrapper.OPEN_SOURCE
 }

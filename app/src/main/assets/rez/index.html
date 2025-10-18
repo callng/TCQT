@@ -459,7 +459,7 @@
     </main>
 
     <footer class="footer-link">
-        <a href="https://github.com/callng/TCQT/issues" target="_blank" title="有问题？去反馈">
+        <a id="issueLink" href="https://github.com/callng/TCQT/issues" target="_blank" title="有问题？去反馈">
             <i class="bi bi-github"></i> 有问题？去反馈
         </a>
     </footer>
@@ -638,6 +638,19 @@
                 return false;
             }
         }
+
+        // 使用系统默认浏览器打开URL
+        openUrlInDefaultBrowser(url) {
+            if (!this.isAvailable) return false;
+
+            try {
+                TCQT.openUrlInDefaultBrowser(url);
+                return true;
+            } catch (error) {
+                console.error('打开外部浏览器失败:', error);
+                return false;
+            }
+        }
     }
 
     // ===== Application State Management =====
@@ -812,6 +825,7 @@
         // 初始化所有事件监听器
         initializeEvents() {
             this.initializeSaveButtonEvents();
+            this.initializeFooterLinkEvents();
         }
 
         // 初始化保存按钮事件
@@ -854,6 +868,20 @@
             saveButton.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 return false;
+            });
+        }
+
+        // 初始化页脚链接事件
+        initializeFooterLinkEvents() {
+            const issueLink = document.getElementById('issueLink');
+            if (!issueLink) return;
+            issueLink.addEventListener('click', (e) => {
+                const url = 'https://github.com/callng/TCQT/issues';
+                const ok = this.app.tcqtService.openUrlInDefaultBrowser(url);
+                if (ok) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             });
         }
 

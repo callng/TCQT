@@ -1,6 +1,7 @@
 package com.owo233.tcqt.internals.setting
 
 import android.content.Context
+import android.content.Intent
 import android.webkit.JavascriptInterface
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.data.TCQTBuild
@@ -11,6 +12,8 @@ import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
+import androidx.core.net.toUri
+import com.owo233.tcqt.ext.copyToClipboard
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
@@ -83,5 +86,21 @@ class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
     fun getFeaturesConfig(): String {
         return GeneratedFeaturesData.toJsonString()
+    }
+
+    @JavascriptInterface
+    fun openUrlInDefaultBrowser(url: String) {
+        runCatching {
+            val uri = url.toUri()
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.startActivity(intent)
+        }.onFailure { e ->
+            Toasts.error(ctx, "Failed to open url: $url")
+            ctx.copyToClipboard(url, false)
+            Toasts.info(ctx, "已将Url地址复制到剪贴板，请手动访问。")
+        }
     }
 }
