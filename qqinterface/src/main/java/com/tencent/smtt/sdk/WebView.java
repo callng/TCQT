@@ -4,7 +4,6 @@ import java.util.Map;
 
 public class WebView {
     public void loadData(String str, String str2, String str3) {
-
     }
 
     public String getUrl() {
@@ -16,18 +15,17 @@ public class WebView {
     }
 
     public void loadDataWithBaseURL(String str, String str2, String str3, String str4, String str5) {
-
     }
 
     public void loadUrl(String str, Map<String, String> map) {
-
     }
 
     public void loadUrl(String str) {
-
     }
 
     public void addJavascriptInterface(Object obj, String str) {
+    }
 
+    public void evaluateJavascript(String str, ValueCallback<String> valueCallback) {
     }
 }
