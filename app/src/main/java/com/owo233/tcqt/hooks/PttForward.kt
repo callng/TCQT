@@ -10,6 +10,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -42,7 +43,7 @@ import kotlin.random.Random
     desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群，一次支持最多选择9个会话目标转发。",
     uiOrder = 15
 )
-class PttForward : OnMenuBuilder {
+class PttForward : IAction, OnMenuBuilder {
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
