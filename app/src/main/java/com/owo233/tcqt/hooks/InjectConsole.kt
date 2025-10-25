@@ -5,6 +5,7 @@ import androidx.core.net.toUri
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -15,13 +16,13 @@ import com.tencent.smtt.sdk.WebViewClient
 
 @RegisterAction
 @RegisterSetting(
-    key = "inject_vconsole",
-    name = "注入VConsole",
+    key = "inject_console",
+    name = "注入Console",
     type = SettingType.BOOLEAN,
-    desc = "对宿主内置浏览器注入VConsole，方便调试。",
+    desc = "对宿主内置浏览器注入Console，方便调试。",
     uiOrder = 25
 )
-class InjectVConsole : IAction {
+class InjectConsole : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         WebViewClient::class.java.hookBeforeMethod(
@@ -31,8 +32,8 @@ class InjectVConsole : IAction {
         ) { param ->
             val url = param.args[1] as String
             val webView = param.args[0] as WebView
-            if (isBlacklisted(url)) return@hookBeforeMethod
-            loadJavaScript(webView)
+            if (isBlacklisted(url) && !TCQTBuild.DEBUG) return@hookBeforeMethod
+            loadJavaScriptByEruda(webView)
         }
     }
 
@@ -61,6 +62,38 @@ class InjectVConsole : IAction {
               };
 
               (document.head || document.body).appendChild(script);
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    private fun loadJavaScriptByEruda(webView: WebView) {
+        val jsCode = """
+            (() => {
+                if (window.eruda) {
+                    console.log('[Eruda] 已存在，跳过加载');
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                script.async = true;
+
+                script.onload = () => {
+                    try {
+                        eruda.init();
+                        console.log('[Eruda] 初始化成功');
+                    } catch (error) {
+                        console.error('[Eruda] 初始化失败', error);
+                    }
+                };
+
+                script.onerror = () => {
+                    console.error('[Eruda] 加载失败: 资源加载错误');
+                };
+
+                (document.head || document.body).appendChild(script);
             })();
         """.trimIndent()
 
@@ -98,7 +131,7 @@ class InjectVConsole : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.INJECT_VCONSOLE
+    override val key: String get() = GeneratedSettingList.INJECT_CONSOLE
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }
