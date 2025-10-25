@@ -1,6 +1,5 @@
 package com.owo233.tcqt.internals.setting
 
-import android.app.UiModeManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -16,6 +15,7 @@ import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
+import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
@@ -110,5 +110,10 @@ class TCQTJsInterface(private val ctx: Context) {
     fun isDarkModeBySystem(): Boolean {
         val mode = ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return mode == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    @JavascriptInterface
+    fun isDarkModeByHost(): Boolean {
+        return ThemeUtil.isInNightMode(null)
     }
 }
