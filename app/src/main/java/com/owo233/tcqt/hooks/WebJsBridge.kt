@@ -8,12 +8,11 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.hooks.helper.LocalWebServer
 import com.owo233.tcqt.internals.setting.TCQTJsInterface
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.smtt.sdk.WebView
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
-import java.net.Socket
 import java.net.URL
 
 @RegisterAction
@@ -24,9 +23,20 @@ class WebJsBridge : AlwaysRunAction() {
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (!::server.isInitialized) {
             val (host, port) = parseHostAndPort(TCQTSetting.getSettingUrl())
-            if (!isPortInUse(host, port)) {
+
+            // 使用 try-catch 更好
+            try {
                 server = LocalWebServer(host, port, TCQTSetting.getSettingHtml())
                 server.start()
+                Log.d("HTTP server started on $host:$port")
+            } catch (e: java.io.IOException) {
+                if (e is java.net.BindException || e.message?.contains("Address already in use") == true) {
+                    // 已经有一个HTTP服务在运行
+                    Log.d("Port $port already in use, skipping server start.")
+                } else {
+                    Log.e("Failed to start HTTP server", e)
+                    return // 没必要继续往下执行了，因为服务器启动失败，下面做的一切都是无意义的
+                }
             }
         }
 
@@ -95,14 +105,6 @@ class WebJsBridge : AlwaysRunAction() {
         val host = parts[0]
         val port = parts[1].toIntOrNull() ?: error("Port is not a valid number")
         return host to port
-    }
-
-    private fun isPortInUse(host: String, port: Int): Boolean {
-        return try {
-            Socket(host, port).use { true }
-        } catch (_: IOException) {
-            false
-        }
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
