@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -27,7 +28,9 @@
             --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
         }
 
@@ -73,7 +76,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* --- App Container & Header --- */
@@ -393,42 +398,164 @@
         }
 
         @keyframes slideUpFadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes slideDownFadeOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(20px); }
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(20px);
+            }
         }
 
         /* --- Responsive Design --- */
         @media (max-width: 600px) {
-            body { padding: 10px; }
-            .app-header h1 { font-size: 1.7rem; }
+            body {
+                padding: 10px;
+            }
+
+            .app-header h1 {
+                font-size: 1.7rem;
+            }
+
             .version-info-wrapper {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 8px;
             }
-            .feature-item { padding: 16px; }
+
+            .feature-item {
+                padding: 16px;
+            }
+
             .feature-desc,
             .textarea-container {
                 padding: 0 12px;
             }
+
             .feature-item.is-expanded .textarea-container:not(:empty) {
                 padding: 12px;
                 margin-top: 8px;
             }
+
             textarea {
                 padding: 12px;
                 min-height: 100px;
                 font-size: 0.85rem;
             }
-            .fab-save { bottom: 20px; right: 20px; width: 56px; height: 56px; font-size: 1.6rem; }
+
+            .fab-save {
+                bottom: 20px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                font-size: 1.6rem;
+            }
+        }
+
+        /* --- Dark Mode Theme --- */
+        body.dark-mode {
+            --text-dark: #f0f2f5;
+            /* 亮色模式的 #212529 */
+            --text-muted: #9499a3;
+            /* 亮色模式的 #6c757d */
+            --text-light: #2a2d37;
+            /* 亮色模式的 #f8f9fa (用于FAB按钮文字) */
+            --bg-body: #1c1f26;
+            /* 亮色模式的 #f7f9fc */
+            --bg-card: #2a2d37;
+            /* 亮色模式的 #ffffff */
+            --border-color: #3e424d;
+            /* 亮色模式的 #e9ecef */
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            /* 阴影加深 */
+        }
+
+        body.dark-mode .version-success {
+            background-color: rgba(25, 135, 84, 0.2);
+            /* 调整透明背景 */
+        }
+
+        body.dark-mode .version-fail {
+            background-color: rgba(220, 53, 69, 0.2);
+            /* 调整透明背景 */
+        }
+
+        body.dark-mode .header-notice {
+            background-color: #242730;
+            /* 调整卡片背景 */
+        }
+
+        body.dark-mode .feature-item.is-expanded {
+            background-color: #343843;
+            /* 亮色模式的 #fafbfc */
+        }
+
+        body.dark-mode .feature-item.is-expanded .textarea-container:not(:empty) {
+            background-color: #343843;
+            /* 亮色模式的 #fafbfc */
+        }
+
+        body.dark-mode .form-switch .form-check-input {
+            background-color: #4f535f;
+            /* 亮色模式的 #ced4da */
+            border-color: #4f535f;
+        }
+
+        body.dark-mode .form-switch .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        body.dark-mode textarea {
+            background-color: #1c1f26;
+            color: var(--text-dark);
+            border-color: var(--border-color);
+        }
+
+        body.dark-mode textarea:focus {
+            background-color: #1c1f26;
+            /* 确保焦点时背景不变 */
+        }
+
+        body.dark-mode textarea::placeholder {
+            color: #777b84;
+            /* 亮色模式的 #9ca3af */
+        }
+
+        body.dark-mode .fab-save.disabled {
+            background: #5a5e6b;
+            /* 亮色模式的 #adb5bd */
+            box-shadow: none;
+        }
+
+        body.dark-mode .footer-link a:hover {
+            background-color: rgba(67, 97, 238, 0.15);
+            /* 增加一点不透明度 */
+        }
+
+        body.dark-mode .toast-item {
+            /* 反转Toast颜色：亮底深字 */
+            background-color: rgba(239, 241, 245, 0.95);
+            color: #1c1f26;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
+
 <body>
 
 <div id="loading-overlay" class="loading-overlay">
@@ -442,6 +569,7 @@
         <div class="version-info">
             <div class="version-info-wrapper">
                 <div class="version-item">宿主: <span id="hostVersion">加载中...</span></div>
+
                 <div class="version-item">模块: <span id="moduleVersion">加载中...</span></div>
             </div>
         </div>
@@ -451,6 +579,7 @@
         <div class="header-notice">
             被 <strong>红色</strong> 标记的功能有一定风险，请自行承担使用风险。<br>
             更改设置后需保存并重启宿主才能生效。
+
         </div>
     </header>
 
@@ -473,7 +602,6 @@
 
 <script>
     'use strict';
-
     // ===== TCQT Service Layer =====
     class TCQTService {
         constructor() {
@@ -490,13 +618,15 @@
         // 获取宿主信息
         getHostInfo() {
             if (!this.isAvailable) return null;
-
             if (!this.hostInfo) {
                 try {
                     this.hostInfo = {
-                        name: TCQT.getHostName() || 'QQ',
-                        version: TCQT.getHostVersion() || '未知',
-                        channel: TCQT.getHostChannel() || '未知'
+                        name: TCQT.getHostName() ||
+                            'QQ',
+                        version: TCQT.getHostVersion() ||
+                            '未知',
+                        channel: TCQT.getHostChannel() ||
+                            '未知'
                     };
                 } catch (error) {
                     console.error('获取宿主信息失败:', error);
@@ -509,12 +639,13 @@
         // 获取模块信息
         getModuleInfo() {
             if (!this.isAvailable) return null;
-
             if (!this.moduleInfo) {
                 try {
                     this.moduleInfo = {
-                        name: TCQT.getModuleName() || 'TCQT',
-                        version: TCQT.getModuleVersion() || '未知'
+                        name: TCQT.getModuleName() ||
+                            'TCQT',
+                        version: TCQT.getModuleVersion() ||
+                            '未知'
                     };
                 } catch (error) {
                     console.error('获取模块信息失败:', error);
@@ -527,7 +658,6 @@
         // 获取功能配置
         getFeaturesConfig() {
             if (!this.isAvailable) return [];
-
             try {
                 const configJson = TCQT.getFeaturesConfig();
                 const features = JSON.parse(configJson);
@@ -540,20 +670,22 @@
 
         // 获取设置值
         getSetting(key) {
-            if (!this.isAvailable) return { value: false };
-
+            if (!this.isAvailable) return {
+                value: false
+            };
             try {
                 return JSON.parse(TCQT.getSetting(key));
             } catch (error) {
                 console.error(`获取设置 ${key} 失败:`, error);
-                return { value: false };
+                return {
+                    value: false
+                };
             }
         }
 
         // 保存布尔值设置
         saveBooleanSetting(key, value) {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.saveValueB(key, value);
                 return true;
@@ -566,7 +698,6 @@
         // 保存字符串设置
         saveStringSetting(key, value) {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.saveValueS(key, value);
                 return true;
@@ -579,7 +710,6 @@
         // 获取启用的功能数量
         getEnabledActionCount() {
             if (!this.isAvailable) return 0;
-
             try {
                 return TCQT.getEnabledActionCount();
             } catch (error) {
@@ -591,7 +721,6 @@
         // 获取禁用的功能数量
         getDisabledActionCount() {
             if (!this.isAvailable) return 0;
-
             try {
                 return TCQT.getDisabledActionCount();
             } catch (error) {
@@ -603,7 +732,6 @@
         // 显示Toast消息
         showToast(message) {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.toast(message);
                 return true;
@@ -616,7 +744,6 @@
         // 清空配置
         clearConfig() {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.clear();
                 return true;
@@ -629,7 +756,6 @@
         // 退出应用
         exitApp() {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.exitApp();
                 return true;
@@ -642,12 +768,22 @@
         // 使用系统默认浏览器打开URL
         openUrlInDefaultBrowser(url) {
             if (!this.isAvailable) return false;
-
             try {
                 TCQT.openUrlInDefaultBrowser(url);
                 return true;
             } catch (error) {
                 console.error('打开外部浏览器失败:', error);
+                return false;
+            }
+        }
+
+        // 检查是否为暗色模式
+        isDarkModeBySystem() {
+            if (!this.isAvailable) return false;
+            try {
+                return TCQT.isDarkModeBySystem();
+            } catch (error) {
+                console.error('检查暗色模式失败:', error);
                 return false;
             }
         }
@@ -679,7 +815,8 @@
         }
 
         getHostName() {
-            return this.hostInfo?.name || '宿主';
+            return this.hostInfo?.name ||
+                '宿主';
         }
     }
 
@@ -695,6 +832,7 @@
                 appContainer: document.getElementById('app-container'),
                 hostVersion: document.getElementById('hostVersion'),
                 moduleVersion: document.getElementById('moduleVersion'),
+
                 featureList: document.getElementById('feature-list'),
                 btnSave: document.getElementById('btnSave'),
                 toastContainer: document.getElementById('toast-container'),
@@ -747,7 +885,6 @@
             desc.textContent = feature.desc;
 
             item.append(header, desc);
-
             // 添加文本域
             if (feature.textareas && Array.isArray(feature.textareas)) {
                 const textareaContainer = document.createElement('div');
@@ -758,9 +895,9 @@
                     textarea.id = `textarea-${ta.key}`;
                     textarea.placeholder = ta.placeholder || '';
                     textarea.rows = 3;
+
                     textareaContainer.appendChild(textarea);
                 });
-
                 item.appendChild(textareaContainer);
             }
 
@@ -768,7 +905,6 @@
             header.addEventListener('click', () => {
                 item.classList.toggle('is-expanded');
             });
-
             return item;
         }
 
@@ -831,18 +967,15 @@
         // 初始化保存按钮事件
         initializeSaveButtonEvents() {
             const saveButton = this.app.ui.elements.btnSave;
-
             // 鼠标事件
             saveButton.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 this.handlePressStart(e);
             });
-
             saveButton.addEventListener('mouseup', (e) => {
                 e.preventDefault();
                 this.handlePressEnd();
             });
-
             saveButton.addEventListener('mouseleave', () => this.handlePressCancel());
 
             // 触摸事件
@@ -850,12 +983,10 @@
                 e.preventDefault();
                 this.handlePressStart(e);
             });
-
             saveButton.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 this.handlePressEnd();
             });
-
             saveButton.addEventListener('touchcancel', () => this.handlePressCancel());
 
             // 点击事件
@@ -863,7 +994,6 @@
                 e.preventDefault();
                 e.stopPropagation();
             });
-
             // 右键菜单禁用
             saveButton.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -880,6 +1010,7 @@
                 const ok = this.app.tcqtService.openUrlInDefaultBrowser(url);
                 if (ok) {
                     e.preventDefault();
+
                     e.stopPropagation();
                 }
             });
@@ -889,7 +1020,6 @@
         handlePressStart(e) {
             // 只处理鼠标左键或触摸事件
             if (e.type === 'mousedown' && e.button !== 0) return;
-
             // 清除之前的定时器
             if (this.longPressTimer) {
                 clearTimeout(this.longPressTimer);
@@ -913,6 +1043,7 @@
                 setTimeout(() => {
                     if (!this.isLongPress) {
                         this.app.saveSettings();
+
                     }
                 }, 10);
             }
@@ -937,26 +1068,32 @@
             this.eventManager = new EventManager(this);
         }
 
+        // 应用主题
+        applyTheme() {
+            try {
+                if (this.tcqtService.isDarkModeBySystem()) {
+                    document.body.classList.add('dark-mode');
+                }
+            } catch (e) {
+                console.error('应用主题失败:', e);
+            }
+        }
+
         // 应用初始化
         async initialize() {
+            this.applyTheme(); // 立即应用主题，确保加载界面也是暗色
             try {
                 this.ui.showLoading();
-
                 // 加载功能配置
                 await this.loadFeaturesConfig();
-
                 // 加载版本信息
                 await this.loadVersionInfo();
-
                 // 渲染界面
                 this.renderUI();
-
                 // 初始化设置
                 this.initializeSettings();
-
                 // 初始化事件
                 this.eventManager.initializeEvents();
-
             } catch (error) {
                 console.error('应用初始化失败:', error);
                 this.handleInitializationError();
@@ -980,22 +1117,27 @@
             return new Promise(resolve => {
                 setTimeout(() => {
                     if (this.tcqtService.checkAvailability()) {
+
                         const hostInfo = this.tcqtService.getHostInfo();
                         const moduleInfo = this.tcqtService.getModuleInfo();
 
                         if (hostInfo && moduleInfo) {
                             this.state.setHostInfo(hostInfo);
+
                             this.state.setModuleInfo(moduleInfo);
                             this.state.setInjected(true);
 
                             this.ui.setVersionDisplay(
+
                                 this.ui.elements.hostVersion,
                                 `${hostInfo.name} ${hostInfo.version} ${hostInfo.channel}`,
                                 true
+
                             );
                             this.ui.setVersionDisplay(
                                 this.ui.elements.moduleVersion,
                                 `${moduleInfo.name} ${moduleInfo.version}`,
+
                                 true
                             );
                         } else {
@@ -1029,18 +1171,22 @@
                 if (!checkbox) return;
 
                 if (this.state.isInjected) {
+
                     // 设置开关状态
                     const setting = this.tcqtService.getSetting(feature.key);
                     checkbox.checked = setting.value;
 
                     // 设置文本域内容
                     if (feature.textareas && Array.isArray(feature.textareas)) {
+
                         feature.textareas.forEach(ta => {
                             const textarea = document.getElementById(`textarea-${ta.key}`);
                             if (textarea) {
+
                                 const textSetting = this.tcqtService.getSetting(ta.key);
                                 textarea.value = textSetting.value || '';
                             }
+
                         });
                     }
                 } else {
@@ -1050,11 +1196,11 @@
                         feature.textareas.forEach(ta => {
                             const textarea = document.getElementById(`textarea-${ta.key}`);
                             if (textarea) textarea.disabled = true;
+
                         });
                     }
                 }
             });
-
             this.ui.setSaveButtonState(this.state.isInjected);
         }
 
@@ -1077,29 +1223,31 @@
             }
 
             let hasError = false;
-
             // 保存所有功能设置
             this.state.features.forEach(feature => {
                 const checkbox = document.getElementById(`switch-${feature.key}`);
                 if (checkbox) {
                     if (!this.tcqtService.saveBooleanSetting(feature.key, checkbox.checked)) {
-                        hasError = true;
+                        hasError
+                            = true;
                     }
                 }
 
                 // 保存文本域设置
                 if (feature.textareas && Array.isArray(feature.textareas)) {
                     feature.textareas.forEach(ta => {
+
                         const textarea = document.getElementById(`textarea-${ta.key}`);
                         if (textarea) {
                             if (!this.tcqtService.saveStringSetting(ta.key, textarea.value.trim())) {
+
                                 hasError = true;
                             }
                         }
                     });
+
                 }
             });
-
             if (hasError) {
                 this.showToast('部分设置保存失败，请重试');
                 return;
@@ -1107,7 +1255,6 @@
 
             // 更新状态统计
             this.updateActionStatus();
-
             // 询问是否重启
             const hostName = this.state.getHostName();
             if (confirm(`已保存，是否重启 ${hostName} 以应用更改？`)) {
@@ -1128,7 +1275,8 @@
 
             if (confirm('清空所有配置？此操作不可撤销！')) {
                 if (this.tcqtService.clearConfig()) {
-                    this.initializeSettings(); // 重新初始化设置显示
+                    this.initializeSettings();
+                    // 重新初始化设置显示
 
                     if (confirm('配置已清空，重启以应用更改？')) {
                         if (!this.tcqtService.exitApp()) {
@@ -1165,4 +1313,5 @@
 </script>
 
 </body>
+
 </html>

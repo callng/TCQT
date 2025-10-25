@@ -1,7 +1,9 @@
 package com.owo233.tcqt.internals.setting
 
+import android.app.UiModeManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.webkit.JavascriptInterface
 import androidx.core.net.toUri
 import com.owo233.tcqt.ActionManager
@@ -102,5 +104,11 @@ class TCQTJsInterface(private val ctx: Context) {
             ctx.copyToClipboard(url, false)
             Toasts.info(ctx, "Url地址已复制到剪贴板,请手动访问.")
         }
+    }
+
+    @JavascriptInterface
+    fun isDarkModeBySystem(): Boolean {
+        val mode = ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return mode == Configuration.UI_MODE_NIGHT_YES
     }
 }
