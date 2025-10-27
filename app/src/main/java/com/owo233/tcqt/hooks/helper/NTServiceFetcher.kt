@@ -1,21 +1,34 @@
 package com.owo233.tcqt.hooks.helper
 
+import com.owo233.tcqt.ext.runOnce
+import com.owo233.tcqt.ext.runOnceSafe
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.internals.setting.LocalWebServer
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal object NTServiceFetcher {
     private lateinit var iKernelService: IKernelService
-    private var isMsgHookInitialized = false
+    private val isMsgHookInitialized = AtomicBoolean(false)
+    private val isHttpInitialized = AtomicBoolean(false)
 
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
-        val key = GeneratedSettingList.MSG_ANTI_RECALL
-        if (GeneratedSettingList.getBoolean(key) && !isMsgHookInitialized) {
-            msgHook()
-            isMsgHookInitialized = true // msgHook方法只需要调用一次
+        isHttpInitialized.runOnceSafe {
+            LocalWebServer.start()
+        }.onFailure { e ->
+            Log.e("启动本地HTTP服务失败,无法打开模块设置页!", e)
+        }
+
+        isMsgHookInitialized.runOnce {
+            val key = GeneratedSettingList.MSG_ANTI_RECALL
+            if (GeneratedSettingList.getBoolean(key)) {
+                msgHook()
+            }
         }
     }
 

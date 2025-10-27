@@ -1,8 +1,8 @@
-package com.owo233.tcqt.hooks.helper
+package com.owo233.tcqt.internals.setting
 
 import fi.iki.elonen.NanoHTTPD
 
-class LocalWebServer(
+class HttpServer(
     host: String,
     port: Int,
     private val htmlContent: String

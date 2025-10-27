@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -205,5 +206,23 @@ fun Context.clearClipboard() {
         clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
     } catch (e: Exception) {
         Log.e("清空剪贴板失败", e)
+    }
+}
+
+inline fun AtomicBoolean.runOnce(block: () -> Unit) {
+    if (compareAndSet(false, true)) block()
+}
+
+inline fun AtomicBoolean.runOnceSafe(block: () -> Unit): Result<Unit> {
+    return if (compareAndSet(false, true)) {
+        try {
+            block()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            set(false)
+            Result.failure(e)
+        }
+    } else {
+        Result.success(Unit)
     }
 }

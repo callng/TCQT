@@ -35,6 +35,7 @@ class MsgAntiRecall : IAction {
 
     override fun canRun(): Boolean {
         KernelServiceImpl::class.java.hookAfterMethod("initService") {
+            // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook
             val service = it.thisObject as IKernelService
             NTServiceFetcher.onFetch(service)
         }
