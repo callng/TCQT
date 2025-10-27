@@ -81,7 +81,7 @@ jobs:
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Upload Release Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: ${{ env.RELEASE_APK }}
           name: TCQT-Release-${{ env.SHORT_SHA }}
@@ -151,7 +151,7 @@ jobs:
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Upload Debug Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: ${{ env.DEBUG_APK }}
           name: TCQT-Debug-${{ env.SHORT_SHA }}
