@@ -14,7 +14,7 @@ public class WebView {
         return false;
     }
 
-    public void loadDataWithBaseURL(String str, String str2, String str3, String str4, String str5) {
+    public void loadDataWithBaseURL(String str, String html, String type, String encoding, String str5) {
     }
 
     public void loadUrl(String str, Map<String, String> map) {

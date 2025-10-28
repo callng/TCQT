@@ -18,9 +18,6 @@ kotlinx-serialization = "1.9.0"
 # Tools
 ksp = "2.3.0"
 
-# Third-Party
-nanohttpd = "2.3.1"
-
 # Xposed
 xposed = "82"
 
@@ -38,9 +35,6 @@ kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotl
 # Google / Tools
 ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
-
-# Third-Party
-nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 
 # Xposed
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }

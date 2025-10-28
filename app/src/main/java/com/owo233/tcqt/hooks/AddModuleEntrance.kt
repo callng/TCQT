@@ -290,7 +290,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 Intent(context, it).apply {
                     putExtra("fling_action_key", 2)
                     putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                    putExtra("url", "http://${TCQTSetting.getSettingUrl()}")
+                    putExtra("url", TCQTSetting.settingUrl)
                     putExtra("hide_more_button", true)
                     putExtra("hide_operation_bar", true)
                     putExtra("hide_title_bar", true)

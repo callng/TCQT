@@ -1,15 +1,12 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
-import androidx.core.net.toUri
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
-import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.tencent.smtt.sdk.WebView
 import com.tencent.smtt.sdk.WebViewClient
@@ -30,9 +27,7 @@ class InjectConsole : IAction {
             WebView::class.java,
             String::class.java
         ) { param ->
-            val url = param.args[1] as String
             val webView = param.args[0] as WebView
-            if (isBlacklisted(url) && !TCQTBuild.DEBUG) return@hookBeforeMethod
             loadJavaScriptByEruda(webView)
         }
     }
@@ -98,37 +93,6 @@ class InjectConsole : IAction {
         """.trimIndent()
 
         webView.evaluateJavascript(jsCode, null)
-    }
-
-    private fun isBlacklisted(url: String): Boolean {
-        return runCatching {
-            val uri = url.toUri()
-            val host = uri.host?.lowercase() ?: return@runCatching false
-            val port = uri.port.takeIf { it != -1 }
-            val hostWithPort = if (port != null) "$host:$port" else host
-
-            blackListUrl.any { item ->
-                val normalized = item.lowercase()
-                normalized == host ||
-                        normalized == hostWithPort ||
-                        host.endsWith(".$normalized")
-            }
-        }.getOrDefault(false)
-    }
-
-    companion object {
-        private val blackListUrl by lazy {
-            listOf(
-                TCQTSetting.getSettingUrl(),
-                "tcqt.dev",
-                "tcqt.qq.com"
-            ).map {
-                it.lowercase()
-                    .removePrefix("http://")
-                    .removePrefix("https://")
-                    .trimEnd('/')
-            }.toSet()
-        }
     }
 
     override val key: String get() = GeneratedSettingList.INJECT_CONSOLE

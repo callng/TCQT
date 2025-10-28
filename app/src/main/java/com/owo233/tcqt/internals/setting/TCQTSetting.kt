@@ -26,6 +26,8 @@ internal object TCQTSetting {
         GeneratedSettingList.SETTING_MAP
     }
 
+    val settingUrl: String get() = "http://tcqt.qq.com/"
+
     fun getSettingHtml(): String {
         val localFile = dataDir.resolve("index.html")
         val assetPath = "rez/index.html"
@@ -42,17 +44,6 @@ internal object TCQTSetting {
         }
 
         return localContent
-    }
-
-    fun getSettingUrl(): String {
-        val defaultUrl = "0.0.0.0:5315"
-        val file = dataDir.resolve("domain")
-
-        if (!file.exists() || file.readText().substringBefore(":").trim() != "0.0.0.0") {
-            file.writeText(defaultUrl)
-        }
-
-        return file.readText().trim()
     }
 
     inline fun <reified T : Any> getValue(key: String): T? {
