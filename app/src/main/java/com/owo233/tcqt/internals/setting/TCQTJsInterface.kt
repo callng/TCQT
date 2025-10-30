@@ -114,6 +114,6 @@ class TCQTJsInterface(private val ctx: Context) {
 
     @JavascriptInterface
     fun isDarkModeByHost(): Boolean {
-        return ThemeUtil.isInNightMode(null)
+        return ThemeUtil.isInNightMode(null) // isInNightMode方法可能会被移除
     }
 }

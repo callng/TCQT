@@ -1,6 +1,7 @@
 package com.owo233.tcqt.internals
 
 import com.owo233.tcqt.hooks.maple.Maple
+import com.owo233.tcqt.internals.helper.GuildHelper
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.PlatformTools.getHostVersionCode
 import mqq.app.AppRuntime
@@ -13,6 +14,8 @@ open class QQInterfaces {
         val currentUin: Long inline get() = appRuntime.longAccountUin
 
         val currentUid: String inline get() = appRuntime.currentUid
+
+        val guid: String inline get() = GuildHelper.getGuid()
 
         val maple by lazy {
             val ver = getHostVersionCode()

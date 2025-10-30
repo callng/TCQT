@@ -70,18 +70,16 @@ fun ByteArray.sliceSafe(off: Int, length: Int = size - off): ByteArray {
 
 @JvmOverloads
 fun ByteArray?.toHexString(uppercase: Boolean = false): String {
-    if (this == null) return "null"
+    if (this == null || this.isEmpty()) return ""
 
     val hexChars = if (uppercase) "0123456789ABCDEF" else "0123456789abcdef"
-    val result = StringBuilder(this.size * 2)
-
-    for (b in this) {
-        val i = b.toInt() and 0xFF
-        result.append(hexChars[i ushr 4])
-        result.append(hexChars[i and 0x0F])
-    }
-
-    return result.toString()
+    return StringBuilder(this.size * 2).apply {
+        for (b in this@toHexString) {
+            val i = b.toInt() and 0xFF
+            append(hexChars[i ushr 4])
+            append(hexChars[i and 0x0F])
+        }
+    }.toString()
 }
 
 fun String?.ifNullOrEmpty(defaultValue: () -> String?): String? {

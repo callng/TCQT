@@ -3,14 +3,25 @@ package com.owo233.tcqt.ext
 import com.owo233.tcqt.hooks.base.moduleClassLoader
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.field
+import java.util.concurrent.ConcurrentHashMap
 
 object XpClassLoader: ClassLoader() {
     lateinit var hostClassLoader: ClassLoader
     lateinit var ctxClassLoader: ClassLoader
 
+    private val classCache = ConcurrentHashMap<String, Class<*>>(128)
+
     fun load(name: String): Class<*>? {
+        classCache[name]?.let { return it }
+
         return runCatching {
-            loadClass(name)
+            loadClass(name)?.also { loadedClass ->
+                classCache[name] = loadedClass
+            }
+        }.onFailure { e ->
+            if (e !is ClassNotFoundException) {
+                Log.e("加载类失败: $name", e)
+            }
         }.getOrNull()
     }
 

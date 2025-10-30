@@ -89,17 +89,8 @@ object PlatformTools {
     }
 
     @SuppressLint("HardwareIds")
-    fun getAndroidID(): String {
-        var androidId =
-            Settings.Secure.getString(MobileQQ.getContext().contentResolver, "android_id")
-        if (androidId == null) {
-            val sb = StringBuilder()
-            for (i in 0..15) {
-                sb.append(Random.nextInt(10))
-            }
-            androidId = sb.toString()
-        }
-        return androidId
+    fun getAndroidID(): String? {
+        return Settings.Secure.getString(MobileQQ.getContext().contentResolver, "android_id")
     }
 
     fun copyToClipboard(context: Context = MobileQQ.getContext(), text: String) {

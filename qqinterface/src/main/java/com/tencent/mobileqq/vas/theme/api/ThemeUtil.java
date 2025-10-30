@@ -11,7 +11,6 @@ public class ThemeUtil {
         throw new RuntimeException("Stub!");
     }
 
-    @Deprecated
     public static boolean isInNightMode(AppRuntime appRuntime) {
         throw new RuntimeException("Stub!");
     }
