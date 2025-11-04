@@ -39,7 +39,7 @@ class RenameBaseApk : IAction {
             if (fileName.endsWith(".1")) {
                 it.thisObject.setObjectField(
                     "fileName",
-                    fileName.substring(0, fileName.length - 2)
+                    fileName.dropLast(2)
                 )
             }
         }
@@ -51,13 +51,13 @@ class RenameBaseApk : IAction {
         val method = clz.declaredMethods.firstOrNull {
             it.returnType == Void.TYPE && it.paramCount == 2 &&
                     it.parameterTypes[0] == Long::class.javaPrimitiveType &&
-                    it.parameterTypes[1].name.contains("TroopFileTransferManager\$Item")
+                    it.parameterTypes[1].name.contains($$"TroopFileTransferManager$Item")
         } ?: error("renameGroupUploadApk: 没有找到合适的方法!!!")
 
         method.hookBeforeMethod { param ->
             val item = param.args[1]
-            val fileName = item.getObjectField("FileName") as String
-            val localFile = item.getObjectField("LocalFile") as String
+            val fileName = item.getObjectField("FileName") as? String ?: return@hookBeforeMethod
+            val localFile = item.getObjectField("LocalFile") as? String ?: return@hookBeforeMethod
 
             if (!fileName.endsWith(".apk")) return@hookBeforeMethod
             File(localFile).also {
@@ -105,8 +105,8 @@ class RenameBaseApk : IAction {
 
         method.hookBeforeMethod { param ->
             val fileManagerEntity = param.args[fileArgIndex]
-            val fileName = fileManagerEntity.getObjectField("fileName") as String
-            val localFile = fileManagerEntity.getObjectField("strFilePath") as String
+            val fileName = fileManagerEntity.getObjectField("fileName") as? String ?: return@hookBeforeMethod
+            val localFile = fileManagerEntity.getObjectField("strFilePath") as? String ?: return@hookBeforeMethod
 
             if (!fileName.endsWith(".apk")) return@hookBeforeMethod
 
