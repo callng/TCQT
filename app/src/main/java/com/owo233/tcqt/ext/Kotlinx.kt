@@ -82,7 +82,7 @@ fun ByteArray?.toHexString(uppercase: Boolean = false): String {
     }.toString()
 }
 
-fun String?.ifNullOrEmpty(defaultValue: () -> String?): String? {
+fun String?.ifNullOrEmpty(defaultValue: () -> String): String {
     return if (this.isNullOrEmpty()) defaultValue() else this
 }
 

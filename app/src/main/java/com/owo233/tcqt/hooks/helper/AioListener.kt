@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -119,12 +120,13 @@ object AioListener {
             val targetUin = ContactHelper.getUinByUidAsync(targetUid) // 操作目标UIN
             val operatorUin = ContactHelper.getUinByUidAsync(operatorUid) // 操作者UIN
 
-            val targetNick = (if (targetUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupPeerId, targetUin.toLong()).getOrNull())?.let {
-                it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
-            } ?: targetUid // 被撤回账号的昵称,优先为群昵称
-            val operatorNick = (if (operatorUid.isEmpty()) null else GroupHelper.getTroopMemberInfoByUin(groupPeerId, operatorUin.toLong()).getOrNull())?.let {
-                it.nickInfo.troopNick.ifNullOrEmpty { it.nickInfo.friendNick }
-            } ?: operatorUid // 操作者的昵称,优先为群昵称
+            val targetNick = if (targetUin.isEmpty()) targetUid else
+                GroupHelper.getTroopMemberNickByUin(groupPeerId, targetUin.toLong())
+                    ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } } ?: targetUid
+
+            val operatorNick = if (operatorUin.isEmpty()) operatorUid else
+                GroupHelper.getTroopMemberNickByUin(groupPeerId, operatorUin.toLong())
+                    ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } } ?: operatorUid
 
             val contact = ContactHelper.generateContact(
                 chatType = MsgConstant.KCHATTYPEGROUP,

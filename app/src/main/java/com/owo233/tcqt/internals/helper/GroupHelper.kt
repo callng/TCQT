@@ -19,7 +19,7 @@ internal object GroupHelper {
         return withTimeoutOrNull(5.seconds) {
             suspendCancellableCoroutine { continuation ->
                 runCatching {
-                    api.fetchTroopMemberName(groupId.toString(), uin.toString(), null, groupId.toString()) {
+                    api.fetchTroopMemberName(groupId.toString(), uin.toString(), "FullBackgroundVM") {
                         continuation.resume(it)
                     }
                 }.onFailure {
@@ -29,31 +29,24 @@ internal object GroupHelper {
         }
     }
 
-    fun getTroopMemberInfoByUinFromNt(
+    private fun getTroopMemberInfoByUinFromNt(
         groupId: Long,
         uin: Long
-    ): Result<TroopMemberInfo> {
-        return runCatching {
-            val api = QRoute.api(ITroopMemberListRepoApi::class.java)
-            api.getTroopMemberFromCacheOrFetchAsync(
+    ): TroopMemberInfo? =
+        QRoute.api(ITroopMemberListRepoApi::class.java)
+            .getTroopMemberFromCacheOrFetchAsync(
                 groupId.toString(),
                 uin.toString(),
                 null,
-                "AIONickBlockApiImpl-level",
+                "TroopMemberLevelMsgProcessor",
                 null
-            ) ?: throw Exception("获取群成员信息失败")
-        }
-    }
+            )
 
     fun getTroopMemberInfoByUin(
         groupId: Long,
         uin: Long
-    ): Result<TroopMemberInfo> {
-        val info = getTroopMemberInfoByUinFromNt(groupId, uin).getOrNull()
-        return if (info != null) {
-            Result.success(info)
-        } else {
-            Result.failure(Exception("获取群成员信息失败"))
-        }
+    ): Result<TroopMemberInfo> = runCatching {
+        getTroopMemberInfoByUinFromNt(groupId, uin)
+            ?: error("获取群成员信息失败")
     }
 }
