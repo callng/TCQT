@@ -1,4 +1,4 @@
-package com.owo233.tcqt.hooks
+package com.owo233.tcqt.hooks.helper
 
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
@@ -6,6 +6,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.PttForward
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.PlatformTools
