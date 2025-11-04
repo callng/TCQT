@@ -82,7 +82,7 @@ class RepeatMessage : IAction {
                         is MapleContact.PublicContact -> {
                             msgService.sendMsgWithMsgId(contact.inner, newMsgId, msgRecord.elements) { result, _ ->
                                 if (result != 0) {
-                                    Log.e("repeat message failed: (msgType = ${msgRecord.msgType})")
+                                    Log.e("repeat message failed: (msgType = ${msgRecord.msgType}, result = $result)")
                                 }
                             }
                         }

@@ -2,13 +2,14 @@ package com.owo233.tcqt.utils
 
 import com.owo233.tcqt.ext.XpClassLoader
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
-import com.tencent.qqnt.aio.menu.ui.d
 
 internal object CustomMenu {
 
-    /**
-     * 只能在使用NT架构的宿主才能调用本方法！因为之前没有图标只有文本
-     */
+    @Volatile
+    private var cachedType: MenuType? = null
+
+    private enum class MenuType { F, D, NONE }
+
     @JvmStatic
     fun createItemIconNt(
         msg: Any,
@@ -17,20 +18,43 @@ internal object CustomMenu {
         id: Int,
         click: () -> Unit
     ): Any {
-        val msgClass = XpClassLoader.load("com.tencent.mobileqq.aio.msg.AIOMsgItem")!!
-        if (!msgClass.isInstance(msg)) {
-            throw IllegalArgumentException("msg must be AIOMsgItem")
-        }
+        require(AIOMsgItem::class.isInstance(msg)) { "msg must be AIOMsgItem" }
 
-        // 直接用宿主的抽象类写一个本地子类吧，但是这抽象类它是被混淆的，说不定什么时候改了
-        val menuItemClass = object : d(msg as AIOMsgItem) {
-            override fun b(): Int = icon
-            override fun c(): Int = id
-            override fun e(): String = text
-            override fun f(): String = text
-            override fun h() = click()
-        }
+        val type = cachedType ?: detectMenuClass().also { cachedType = it }
 
-        return menuItemClass
+        return when (type) {
+            MenuType.F -> object : com.tencent.qqnt.aio.menu.ui.f(msg as AIOMsgItem) {
+                override fun b(): Int = icon
+                override fun c(): Int = id
+                override fun e(): String = text
+                override fun f(): String = text
+                override fun h() = click()
+            }
+
+            MenuType.D -> object : com.tencent.qqnt.aio.menu.ui.d(msg as AIOMsgItem) {
+                override fun b(): Int = icon
+                override fun c(): Int = id
+                override fun e(): String = text
+                override fun f(): String = text
+                override fun h() = click()
+            }
+
+            else -> error("没有找到合适的抽象菜单类(f/d 都不符合预期),无法创建菜单项.")
+        }
+    }
+
+    private fun detectMenuClass(): MenuType {
+        val clazzF = runCatching { XpClassLoader.load("com.tencent.qqnt.aio.menu.ui.f") }.getOrNull()
+        if (clazzF?.let { !it.isInterface && hasAbstractMenuMethods(it) } == true) return MenuType.F
+
+        val clazzD = runCatching { XpClassLoader.load("com.tencent.qqnt.aio.menu.ui.d") }.getOrNull()
+        if (clazzD?.let { !it.isInterface && hasAbstractMenuMethods(it) } == true) return MenuType.D
+
+        return MenuType.NONE
+    }
+
+    private fun hasAbstractMenuMethods(clazz: Class<*>): Boolean {
+        val names = clazz.declaredMethods.map { it.name }
+        return listOf("b", "c", "e", "f", "h").all(names::contains)
     }
 }
