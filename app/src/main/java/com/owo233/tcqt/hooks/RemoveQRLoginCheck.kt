@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.paramCount
 
 @RegisterAction
 @RegisterSetting(
@@ -21,13 +22,22 @@ import com.owo233.tcqt.utils.hookBeforeMethod
 class RemoveQRLoginCheck : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.open.agent.QrAgentLoginManager")
-            ?.declaredMethods
-            ?.firstOrNull {
-                it.returnType == Void.TYPE && it.parameterTypes.size == 3 && it.parameterTypes[0] == Boolean::class.java
-            }?.hookBeforeMethod {
-                it.args[0] = false
+        val clazz = XpClassLoader.load("com.tencent.open.agent.QrAgentLoginManager")!!
+        val methods = clazz.declaredMethods
+
+        val target = methods.firstOrNull {
+            it.returnType == Void.TYPE && it.paramCount == 3 && it.parameterTypes[0] == Boolean::class.java
+        } ?: methods.firstOrNull {
+            it.returnType == Void.TYPE && it.paramCount == 4 && it.parameterTypes[1] == Boolean::class.java
+        } ?: error("RemoveQRLoginCheck: 未找到匹配的方法!!!")
+
+        target.hookBeforeMethod { param ->
+            param.args.forEachIndexed { index, arg ->
+                if (arg is Boolean) {
+                    param.args[index] = false
+                }
             }
+        }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_QR_LOGIN_CHECK
