@@ -6,10 +6,13 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.FuzzyClassKit
-import com.owo233.tcqt.utils.replaceMethod
-import com.tencent.mobileqq.aio.msg.AIOMsgItem
+import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.isPublic
+import com.owo233.tcqt.utils.paramCount
+import com.tencent.mobileqq.aio.input.at.InputAtMsgIntent
+import com.tencent.mvi.base.route.MsgIntent
 
 @RegisterAction
 @RegisterSetting(
@@ -22,11 +25,16 @@ import com.tencent.mobileqq.aio.msg.AIOMsgItem
 class ReplyNoAt : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        FuzzyClassKit.findMethodByClassName(
-            "com.tencent.mobileqq.aio.input.reply"
-        ) { it.returnType == Void.TYPE && it.parameterTypes.size == 1
-                    && it.parameterTypes[0] == AIOMsgItem::class.java
-        }?.replaceMethod { null }
+        XpClassLoader.load("com.tencent.mvi.base.route.VMMessenger")!!
+            .declaredMethods.firstOrNull { method ->
+                method.returnType == Void.TYPE &&
+                        method.isPublic && method.paramCount == 1 &&
+                        method.parameterTypes[0] == MsgIntent::class.java
+            }!!.hookBeforeMethod {param ->
+                if (param.args[0] is InputAtMsgIntent.InsertAtMemberSpan) {
+                    param.result = Unit
+                }
+            }
     }
 
     override val key: String get() = GeneratedSettingList.REPLY_NO_AT
