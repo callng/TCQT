@@ -9,7 +9,6 @@ import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
-import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -90,6 +89,10 @@ object AioListener {
             .MessageBody
             .GroupRecallOperationInfo.parseFrom(secondPart)
 
+        val operatorUid = operationInfo.info.operatorUid // 操作者UID
+
+        if (operatorUid == QQInterfaces.currentUid) return // 操作者是自己,不处理
+
         val newOperationInfoByteArray = firstPart + (operationInfo.toBuilder().apply {
             msgSeq = 1
             info = info.toBuilder().apply {
@@ -100,30 +103,26 @@ object AioListener {
         val newMsgPush = msgPush.toBuilder().apply {
             qqMessage = qqMessage.toBuilder().apply {
                 messageBody = messageBody.toBuilder().apply {
-                    setOperationInfo(
-                        ByteString.copyFrom(newOperationInfoByteArray)
-                    )
+                    setOperationInfo(ByteString.copyFrom(newOperationInfoByteArray))
                 }.build()
             }.build()
         }.build()
 
-        param.args[1] = newMsgPush.toByteArray()
-
-        val operatorUid = operationInfo.info.operatorUid
-        if (operatorUid == QQInterfaces.currentUid) return
+        param.args[1] = newMsgPush.toByteArray() // 替换已修改的数据
 
         GlobalScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId // 群号
-            val targetUid = operationInfo.info.msgInfo.senderUid //操作目标UID
-            val recallMsgSeq = operationInfo.info.msgInfo.msgSeq // 撤回消息序号
-
-            val targetUin = ContactHelper.getUinByUidAsync(targetUid) // 操作目标UIN
+            val recallMsgSeq = operationInfo.info.msgInfo.msgSeq // 消息Seq
+            val targetUid = operationInfo.info.msgInfo.senderUid // 被操作者UID
+            val targetUin = ContactHelper.getUinByUidAsync(targetUid) // 被操作者UIN
             val operatorUin = ContactHelper.getUinByUidAsync(operatorUid) // 操作者UIN
 
+            // 拿到被撤回消息的发送者昵称(群昵称->QQ昵称->UID)
             val targetNick = if (targetUin.isEmpty()) targetUid else
                 GroupHelper.getTroopMemberNickByUin(groupPeerId, targetUin.toLong())
                     ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } } ?: targetUid
 
+            // 拿到操作者的昵称(群昵称->QQ昵称->UID)
             val operatorNick = if (operatorUin.isEmpty()) operatorUid else
                 GroupHelper.getTroopMemberNickByUin(groupPeerId, operatorUin.toLong())
                     ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } } ?: operatorUid
@@ -133,9 +132,13 @@ object AioListener {
                 id = groupPeerId.toString()
             )
 
-            LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_GROUP_NOTICE, LocalGrayTips.Align.CENTER) {
+            LocalGrayTips.addLocalGrayTip(
+                contact,
+                JsonGrayBusiId.AIO_AV_GROUP_NOTICE,
+                LocalGrayTips.Align.CENTER
+            ) {
                 member(operatorUid, operatorUin, operatorNick, "3")
-                text("想撤回")
+                text("尝试撤回")
                 if (targetUid == operatorUid) {
                     text("TA自己")
                 } else {
@@ -143,7 +146,7 @@ object AioListener {
                 }
                 text("的")
                 msgRef("消息", recallMsgSeq.toLong())
-                text(",已拦截")
+                text(", 已拦截")
             }
         }
     }
