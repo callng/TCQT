@@ -82,6 +82,9 @@
    private static final kotlin.coroutines.jvm.internal.DebugMetadata getDebugMetadataAnnotation(kotlin.coroutines.jvm.internal.BaseContinuationImpl) return null;
 }
 
+# Kotlin function interfaces
+-keep class kotlin.jvm.functions.Function1 { *; }
+
 -dontwarn java.beans.**
 -obfuscationdictionary obf-dict.txt
 -classobfuscationdictionary obf-dict.txt

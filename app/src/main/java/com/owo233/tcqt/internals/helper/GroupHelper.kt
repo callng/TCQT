@@ -19,9 +19,16 @@ internal object GroupHelper {
         return withTimeoutOrNull(5.seconds) {
             suspendCancellableCoroutine { continuation ->
                 runCatching {
-                    api.fetchTroopMemberName(groupId.toString(), uin.toString(), "FullBackgroundVM") {
-                        continuation.resume(it)
-                    }
+                    api.fetchTroopMemberName(
+                        groupId.toString(),
+                        uin.toString(),
+                        "FullBackgroundVM",
+                        object : Function1<TroopMemberNickInfo, Unit> {
+                            override fun invoke(info: TroopMemberNickInfo) {
+                                continuation.resume(info)
+                            }
+                        }
+                    )
                 }.onFailure {
                     continuation.resume(null)
                 }
