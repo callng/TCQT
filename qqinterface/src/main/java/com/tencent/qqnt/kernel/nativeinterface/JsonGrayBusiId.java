@@ -7,12 +7,15 @@ public final class JsonGrayBusiId {
     public static final int AIO_CRM_FLAGS_TIPS = 2050;
     public static final int AIO_GROUP_ESSENCE_MSG_TIP = 2401;
     public static final int AIO_NUDGE_CUSTOM_GUIDE = 2041;
+    public static final int AIO_PUSH_GUIDE_GRAY_TIPS = 2701;
     public static final int AIO_RECALL_MSGCUSTOM_WORDINGGUIDE = 2000;
+    public static final int AIO_ROBOT_GROUP_AT_ROBOT_INTERCEPT = 2202;
     public static final int AIO_ROBOT_SAFETY_TIP = 2201;
     public static final int AIO_ZPLAN_EMOTICON_GUIDE = 2301;
     public static final int AIO_ZPLAN_SCENE_LINKAGE = 2302;
     public static final int AIO_ZPLAN_SEND_MEME = 2300;
     public static final int DISBAND_DISCUSSION_GRAY_TIP_ID = 2603;
+    public static final int FILE_SENDING_SIZE_4GB_LIMIT = 3003;
     public static final int GROUP_AIO_CONFIGURABLE_GRAY_TIPS = 2407;
     public static final int GROUP_AIO_HOME_SCHOOL_WELCOME_GRAY_TIP_ID = 2404;
     public static final int GROUP_AIO_MSG_FREQUENCY_GRAY_TIP_ID = 2406;
@@ -20,6 +23,7 @@ public final class JsonGrayBusiId {
     public static final int GROUP_AIO_TEMPORARY_GRAY_TIP_ID = 2405;
     public static final int GROUP_AIO_UNREAD_MSG_AI_SUMMARY = 2408;
     public static final int GROUP_AIO_UPLOAD_PERMISSIONS_GRAY_TIP_ID = 2403;
+    public static final long LITE_ACTION = 86;
     public static final int ONLINE_FILE_CANCEL_RECV_ON_RECVING = 4;
     public static final int ONLINE_FILE_GO_OFFLINE = 11;
     public static final int ONLINE_FILE_GO_OFFLINE_ALL = 12;
@@ -51,6 +55,7 @@ public final class JsonGrayBusiId {
     public static final int RELATION_EMOJIEGG_WILL_DEGRADE = 1002;
     public static final int RELATION_FRIEND_CLONE_INFO = 1006;
     public static final int RELATION_GROUP_BATCH_ADD_FRIEND = 1020;
+    public static final int RELATION_GROUP_CRON_MUTE = 1025;
     public static final int RELATION_GROUP_MEMBER_ADD = 1022;
     public static final int RELATION_GROUP_MEMBER_ADD_WITH_MODIFY_NAME = 1015;
     public static final int RELATION_GROUP_MEMBER_ADD_WITH_WELCOME = 1016;
@@ -61,5 +66,16 @@ public final class JsonGrayBusiId {
     public static final int RELATION_ONEWAY_FRIEND_GRAY_TIP_ID = 1012;
     public static final int RELATION_ONEWAY_FRIEND_NEW_GRAY_TIP_ID = 1013;
     public static final int RELATION_YQT = 1010;
+    public static final int TROOP_ADD_FRIEND_ACTIVE = 19264;
+    public static final int TROOP_ADD_FRIEND_HOT_CHAT = 19265;
+    public static final int TROOP_ADD_FRIEND_NEW_MEMBER = 19267;
+    public static final int TROOP_ADD_FRIEND_REPLY_OR_AT = 19266;
+    public static final int TROOP_BREAK_ICE = 10405;
+    public static final int TROOP_FLAME_IGNITED = 19273;
     public static final long UI_RESERVE_100000_110000 = 100000;
+    public static final long UI_ROBOT_AIO_STORY = 19336;
+    public static final int VAS_FILE_UPLOAD_OVER_1G = 3002;
+    public static final int VAS_FILE_UPLOAD_OVER_LIMIT = 3001;
+    public static final int WECHAT_ENABLE_QQ_MSG_ASSISTANT_TIP1 = 10464;
+    public static final int WECHAT_ENABLE_QQ_MSG_ASSISTANT_TIP2 = 10465;
 }

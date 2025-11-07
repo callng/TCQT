@@ -262,6 +262,11 @@ public final class MsgConstant {
     public static final int KMEMORYSTATEMSGTYPEADELIEWELCOME = 1;
     public static final int KMEMORYSTATEMSGTYPEUNKNOWN = 0;
     public static final int KMINIPROGRAMNOTICE = 114;
+    public static final int KMSGSOURCETYPEFROMDB = 0;
+    public static final int KMSGSOURCETYPEFROMOFFLINE = 2;
+    public static final int KMSGSOURCETYPEFROMONLINE = 1;
+    public static final int KMSGSOURCETYPEFROMROAMSERVER = 3;
+    public static final int KMSGSOURCETYPEFROMROAMSERVERFORAIOPOPUP = 4;
     public static final int KMSGSUBTYPEARKGROUPANNOUNCE = 3;
     public static final int KMSGSUBTYPEARKGROUPANNOUNCECONFIRMREQUIRED = 4;
     public static final int KMSGSUBTYPEARKGROUPGIFTATME = 5;
@@ -298,6 +303,7 @@ public final class MsgConstant {
     public static final int KMSGSUBTYPEMIXREPLY = 4;
     public static final int KMSGSUBTYPEMIXTEXT = 0;
     public static final int KMSGSUBTYPETENCENTDOC = 6;
+    public static final int KMSGSUMMARYCOMPLETEDINMSGBOX = 1011;
     public static final int KMSGTYPEARKSTRUCT = 11;
     public static final int KMSGTYPEFACEBUBBLE = 24;
     public static final int KMSGTYPEFILE = 3;
@@ -470,6 +476,9 @@ public final class MsgConstant {
     public static final int KVASGIFTCOINTYPECOIN = 0;
     public static final int KVASGIFTCOINTYPEMARKETCOIN = 1;
     public static final int KYOLOGAMERESULTMSG = 18;
+    public static final int OPERATETYPEFORMSGBOXEVENTTYPEADD = 1;
+    public static final int OPERATETYPEFORMSGBOXEVENTTYPECLEAR = 2;
+    public static final int OPERATETYPEFORMSGBOXEVENTTYPEUNKNOWN = 0;
     public static final int PIC_800_RECOMMENDED = 7;
     public static final int PIC_AIGC_EMOJI = 14;
     public static final int PIC_ALBUM_GIF = 11;
