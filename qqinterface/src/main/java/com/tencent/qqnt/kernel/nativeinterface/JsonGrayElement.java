@@ -33,10 +33,6 @@ public  final class JsonGrayElement {
         return this.xmlToJsonParam;
     }
 
-    public String toString() {
-        return "JsonGrayElement{busiId=" + this.busiId + ",jsonStr=" + this.jsonStr + ",recentAbstract=" + this.recentAbstract + ",isServer=" + this.isServer + ",xmlToJsonParam=" + this.xmlToJsonParam + ",}";
-    }
-
     public JsonGrayElement(long j2, String str, String str2, boolean z, XmlToJsonParam xmlToJsonParam) {
         this.jsonStr = "";
         this.recentAbstract = "";
