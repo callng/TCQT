@@ -53,6 +53,8 @@ android {
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
+        buildConfigField("String", "TG_CHANNEL", "\"citcqt\"")
+        buildConfigField("String", "TG_GROUP", "\"astcqt\"")
     }
 
     signingConfigs {

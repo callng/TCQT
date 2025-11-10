@@ -1,5 +1,6 @@
 package com.owo233.tcqt.internals.setting
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -92,17 +93,24 @@ class TCQTJsInterface(private val ctx: Context) {
 
     @JavascriptInterface
     fun openUrlInDefaultBrowser(url: String) {
-        runCatching {
-            val uri = url.toUri()
-            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        if (!openTelegramChannel()) {
+            runCatching {
+                if (!url.contains(TCQTBuild.OPEN_SOURCE)) {
+                    Toasts.error(ctx, "尝试打开不支持的链接!")
+                    Log.e("尝试打开不受支持的链接: $url !!!")
+                    return
+                }
+                val uri = url.toUri()
+                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                ctx.startActivity(intent)
+            }.onFailure { _ ->
+                Toasts.error(ctx, "Failed to open url: $url")
+                ctx.copyToClipboard(url, false)
+                Toasts.info(ctx, "Url地址已复制到剪贴板,请手动访问.")
             }
-            ctx.startActivity(intent)
-        }.onFailure { e ->
-            Toasts.error(ctx, "Failed to open url: $url")
-            ctx.copyToClipboard(url, false)
-            Toasts.info(ctx, "Url地址已复制到剪贴板,请手动访问.")
         }
     }
 
@@ -115,5 +123,22 @@ class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
     fun isDarkModeByHost(): Boolean {
         return ThemeUtil.isInNightMode(null) // isInNightMode方法可能会被移除
+    }
+
+    @JavascriptInterface
+    fun openTelegramChannel(): Boolean {
+        val tgIntent = Intent(Intent.ACTION_VIEW).apply {
+            data = "tg://resolve?domain=${TCQTBuild.TG_GROUP}".toUri()
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        try {
+            ctx.startActivity(tgIntent)
+            return true
+        } catch (_: ActivityNotFoundException) {
+            return false
+        } catch (_: Exception) {
+            return false
+        }
     }
 }
