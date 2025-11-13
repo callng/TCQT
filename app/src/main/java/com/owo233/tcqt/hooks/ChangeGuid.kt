@@ -22,7 +22,6 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.internals.helper.GuildHelper
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hookAfterMethod

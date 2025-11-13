@@ -21,6 +21,7 @@ import com.owo233.tcqt.utils.paramCount
     uiOrder = 27
 )
 class HideQzoneAD : IAction {
+
     override fun onRun(ctx: Context, process: ActionProcess) {
         val clazz = XpClassLoader.load(
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView"
