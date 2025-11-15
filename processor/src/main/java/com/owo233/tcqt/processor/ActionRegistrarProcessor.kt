@@ -126,7 +126,6 @@ class ActionRegistrarProcessor(
     private fun extractAllSettings(classDecl: KSClassDeclaration): Sequence<SettingInfo> {
         return classDecl.annotations
             .filter { it.shortName.asString() == "RegisterSetting" }
-            .asSequence()
             .map { annotation ->
                 val args = annotation.arguments.associateBy { it.name?.asString() }
 
@@ -138,6 +137,7 @@ class ActionRegistrarProcessor(
                 val uiOrder = args["uiOrder"]?.value as? Int ?: 1000
                 val textAreaPlaceholder = args["textAreaPlaceholder"]?.value as? String ?: ""
                 val hidden = args["hidden"]?.value as? Boolean ?: false
+                val options = args["options"]?.value as? String ?: ""
 
                 val type = (args["type"]?.value?.toString() ?: "BOOLEAN").let {
                     try {
@@ -161,7 +161,7 @@ class ActionRegistrarProcessor(
                         .replace("\"", "\\\"") + "\""
                 }
 
-                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder, hidden)
+                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder, hidden, options)
             }
     }
 
@@ -223,7 +223,8 @@ class ActionRegistrarProcessor(
         kotlinFile.bufferedWriter().use { writer ->
             val kotlinFeatures = generateKotlinFeatures(settingGroups)
 
-            writer.write("""
+            writer.write(
+                $$"""
 package com.owo233.tcqt.generated
 
 object GeneratedFeaturesData {
@@ -233,17 +234,24 @@ object GeneratedFeaturesData {
         val placeholder: String
     )
 
+    data class OptionConfig(
+        val key: String,
+        val label: String,
+        val value: Int
+    )
+
     data class FeatureConfig(
         val key: String,
         val label: String,
         val desc: String,
         val color: String? = null,
         val textareas: List<TextAreaConfig>? = null,
+        val options: List<OptionConfig>? = null,
         val uiOrder: Int = 1000
     )
 
     val FEATURES: List<FeatureConfig> = listOf(
-$kotlinFeatures
+$$kotlinFeatures
     )
 
     fun toJsonString(): String {
@@ -252,24 +260,36 @@ $kotlinFeatures
             FEATURES.forEachIndexed { index, feature ->
                 if (index > 0) append(",")
                 append("\n        {")
-                append("\n            \"key\": \"${'$'}{feature.key}\",")
-                append("\n            \"label\": \"${'$'}{escapeJsonString(feature.label)}\",")
-                append("\n            \"desc\": \"${'$'}{escapeJsonString(feature.desc)}\",")
+                append("\n            \"key\": \"${feature.key}\",")
+                append("\n            \"label\": \"${escapeJsonString(feature.label)}\",")
+                append("\n            \"desc\": \"${escapeJsonString(feature.desc)}\",")
                 feature.color?.let { 
-                    append("\n            \"color\": \"${'$'}it\",")
+                    append("\n            \"color\": \"$it\",")
                 }
                 feature.textareas?.let { textareas ->
                     append("\n            \"textareas\": [")
                     textareas.forEachIndexed { taIndex, ta ->
                         if (taIndex > 0) append(",")
                         append("\n                {")
-                        append("\n                    \"key\": \"${'$'}{ta.key}\",")
-                        append("\n                    \"placeholder\": \"${'$'}{escapeJsonString(ta.placeholder)}\"")
+                        append("\n                    \"key\": \"${ta.key}\",")
+                        append("\n                    \"placeholder\": \"${escapeJsonString(ta.placeholder)}\"")
                         append("\n                }")
                     }
                     append("\n            ],")
                 }
-                append("\n            \"uiOrder\": ${'$'}{feature.uiOrder}")
+                feature.options?.let { options ->
+                    append("\n            \"options\": [")
+                    options.forEachIndexed { opIndex, op ->
+                        if (opIndex > 0) append(",")
+                        append("\n                {")
+                        append("\n                    \"key\": \"${escapeJsonString(op.key)}\",")
+                        append("\n                    \"label\": \"${escapeJsonString(op.label)}\",")
+                        append("\n                    \"value\": ${op.value}")
+                        append("\n                }")
+                    }
+                    append("\n            ],")
+                }
+                append("\n            \"uiOrder\": ${feature.uiOrder}")
                 append("\n        }")
             }
             append("\n    ]")
@@ -329,6 +349,25 @@ $kotlinFeatures
                     append("\n            ),")
                 }
 
+                // 处理选项（子配置中的INT类型且有options）
+                val optionSetting = subSettings.find { it.type == SettingType.INT && it.options.isNotBlank() && !it.hidden }
+                if (optionSetting != null) {
+                    val optionList = optionSetting.options.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+                    if (optionList.isNotEmpty()) {
+                        append("\n            options = listOf(")
+                        optionList.forEachIndexed { index, label ->
+                            if (index > 0) append(",")
+                            append("\n                OptionConfig(")
+                            append("\n                    key = \"${optionSetting.key}\",")
+                            append("\n                    label = \"${escapeKotlinString(label)}\",")
+                            // 选项值从1开始，因为0保留给主开关的关闭状态
+                            append("\n                    value = ${index + 1}")
+                            append("\n                )")
+                        }
+                        append("\n            ),")
+                    }
+                }
+
                 val effectiveOrder = if (mainSetting.isRedMark) mainSetting.uiOrder + 100000 else mainSetting.uiOrder
                 append("\n            uiOrder = $effectiveOrder")
                 append("\n        )")
@@ -368,6 +407,7 @@ $kotlinFeatures
         val hasTextAreas: Boolean = false,
         val uiOrder: Int = 1000,
         val textAreaPlaceholder: String = "",
-        val hidden: Boolean = false
+        val hidden: Boolean = false,
+        val options: String = ""
     )
 }

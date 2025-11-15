@@ -77,6 +77,11 @@ class TCQTJsInterface(private val ctx: Context) {
     }
 
     @JavascriptInterface
+    fun saveValueI(key: String, value: Int) {
+        TCQTSetting.setValue(key, value)
+    }
+
+    @JavascriptInterface
     fun getEnabledActionCount(): Int {
         return ActionManager.getEnabledActionCount()
     }

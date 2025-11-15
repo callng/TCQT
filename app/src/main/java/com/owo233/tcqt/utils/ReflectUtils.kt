@@ -1,10 +1,14 @@
 @file:JvmName("ReflectUtil")
 package com.owo233.tcqt.utils
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 
 private val fieldCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Field>>()
@@ -189,5 +193,95 @@ private fun isWideningPrimitive(param: Class<*>, argClass: Class<*>): Boolean {
         java.lang.Long.TYPE -> param in arrayOf(java.lang.Float.TYPE, java.lang.Double.TYPE)
         java.lang.Float.TYPE -> param == java.lang.Double.TYPE
         else -> false
+    }
+}
+
+/**
+ * 将任意对象转换为JSON格式字符串，通过反射获取所有字段
+ * @param maxDepth 最大递归深度，防止循环引用导致栈溢出，默认3层
+ * @param withSuper 是否包含父类字段，默认true
+ * @return JSON格式字符串
+ */
+fun Any?.toJsonString(maxDepth: Int = 3, withSuper: Boolean = true): String {
+    return this.toJsonObject(maxDepth, withSuper, mutableSetOf()).toString()
+}
+
+/**
+ * 将任意对象转换为JsonObject，通过反射获取所有字段
+ * @param maxDepth 最大递归深度
+ * @param withSuper 是否包含父类字段
+ * @param visited 已访问对象集合，用于防止循环引用
+ */
+private fun Any?.toJsonObject(
+    maxDepth: Int,
+    withSuper: Boolean,
+    visited: MutableSet<Int>
+): JsonObject = buildJsonObject {
+    if (this@toJsonObject == null) return@buildJsonObject
+
+    // 防止循环引用
+    val objectId = System.identityHashCode(this@toJsonObject)
+    if (objectId in visited || maxDepth <= 0) {
+        put("_ref", JsonPrimitive("@${this@toJsonObject.javaClass.simpleName}#${Integer.toHexString(objectId)}"))
+        return@buildJsonObject
+    }
+    visited.add(objectId)
+
+    try {
+        // 添加类型信息
+        put("_class", JsonPrimitive(this@toJsonObject.javaClass.name))
+
+        // 获取所有字段
+        val fields = this@toJsonObject.getFields(withSuper)
+
+        fields.forEach { field ->
+            try {
+                // 跳过静态字段
+                if (Modifier.isStatic(field.modifiers)) return@forEach
+
+                // 跳过ART虚拟机的影子字段（shadow fields）
+                val fieldName = field.name
+                if (fieldName.startsWith("shadow$")) return@forEach
+
+                field.isAccessible = true
+                when (val value = field.get(this@toJsonObject)) {
+                    null -> put(fieldName, JsonPrimitive(null as String?))
+                    is String -> put(fieldName, JsonPrimitive(value))
+                    is Number -> put(fieldName, JsonPrimitive(value))
+                    is Boolean -> put(fieldName, JsonPrimitive(value))
+                    is Char -> put(fieldName, JsonPrimitive(value.toString()))
+                    is Enum<*> -> put(fieldName, JsonPrimitive(value.name))
+                    is CharSequence -> put(fieldName, JsonPrimitive(value.toString()))
+                    is Array<*> -> {
+                        // 数组转为字符串表示
+                        put(fieldName, JsonPrimitive(value.contentToString()))
+                    }
+                    is Collection<*> -> {
+                        // 集合转为字符串表示
+                        put(fieldName, JsonPrimitive(value.toString()))
+                    }
+                    is Map<*, *> -> {
+                        // Map转为字符串表示
+                        put(fieldName, JsonPrimitive(value.toString()))
+                    }
+                    else -> {
+                        // 递归处理对象类型
+                        if (maxDepth > 1 && !value.javaClass.name.startsWith("java.")
+                            && !value.javaClass.name.startsWith("android.")) {
+                            put(fieldName, value.toJsonObject(maxDepth - 1, withSuper, visited))
+                        } else {
+                            // 其他类型转为字符串
+                            put(fieldName, JsonPrimitive(value.toString()))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                put(field.name, JsonPrimitive("<error: ${e.message}>"))
+            }
+        }
+    } catch (e: Exception) {
+        put("_error", JsonPrimitive(e.message ?: "Unknown error"))
+    } finally {
+        visited.remove(objectId)
     }
 }

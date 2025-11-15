@@ -65,7 +65,14 @@ annotation class RegisterSetting(
     /**
      * 是否在前端UI中隐藏此配置项
      */
-    val hidden: Boolean = false
+    val hidden: Boolean = false,
+
+    /**
+     * 选项列表（仅当type为INT且需要单选/下拉时使用）
+     * 格式: "选项1|选项2|选项3"
+     * 选项的索引值(0,1,2...)将作为INT值保存
+     */
+    val options: String = ""
 )
 
 enum class SettingType {

@@ -537,6 +537,55 @@
             gap: 8px;
         }
 
+        /* --- Radio Options --- */
+        .radio-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0;
+            margin: 0;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+            user-select: none;
+        }
+
+        .radio-option:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+
+        .radio-option label {
+            cursor: pointer;
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .radio-option input[type="radio"]:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .radio-option input[type="radio"]:disabled + label {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
         .switch {
             position: relative;
             display: inline-block;
@@ -1099,6 +1148,17 @@
             }
         }
 
+        saveIntSetting(key, value) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.saveValueI(key, value);
+                return true;
+            } catch (error) {
+                console.error(`保存整数设置 ${key} 失败:`, error);
+                return false;
+            }
+        }
+
         getEnabledActionCount() {
             if (!this.isAvailable) return 0;
             try {
@@ -1273,6 +1333,38 @@
 
             item.append(header, desc);
 
+            // 添加options（单选按钮）
+            if (feature.options && Array.isArray(feature.options) && feature.options.length > 0) {
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'textarea-container radio-options';
+
+                feature.options.forEach(opt => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'radio-option';
+
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `option-${feature.key}`;
+                    radio.id = `option-${feature.key}-${opt.value}`;
+                    radio.value = opt.value;
+                    radio.setAttribute('aria-label', opt.label);
+                    radio.addEventListener('click', e => e.stopPropagation());
+
+                    const label = document.createElement('label');
+                    label.htmlFor = radio.id;
+                    label.textContent = opt.label;
+                    label.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        radio.checked = true;
+                    });
+
+                    optionDiv.appendChild(radio);
+                    optionDiv.appendChild(label);
+                    optionsContainer.appendChild(optionDiv);
+                });
+                item.appendChild(optionsContainer);
+            }
+
             // 添加文本域
             if (feature.textareas && Array.isArray(feature.textareas)) {
                 const textareaContainer = document.createElement('div');
@@ -1292,7 +1384,7 @@
             // 添加展开/收起事件
             header.addEventListener('click', (e) => {
                 // 确保点击开关时不会触发展开/收起
-                if (e.target === switchInput || e.target === slider || switchLabel.contains(e.target)) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('.switch')) {
                     return;
                 }
                 item.classList.toggle('is-expanded');
@@ -1544,9 +1636,25 @@
                 if (!checkbox) return;
 
                 if (this.state.isInjected) {
+                    // 处理主开关
                     const setting = this.tcqtService.getSetting(feature.key);
                     checkbox.checked = !!setting.value;
 
+                    // 处理options（从mainKey对应的子key读取）
+                    if (feature.options && Array.isArray(feature.options) && feature.options.length > 0) {
+                        const optionKey = feature.options[0].key; // 从option中获取真实的key
+                        const modeSetting = this.tcqtService.getSetting(optionKey);
+                        const currentValue = modeSetting.value !== undefined ? parseInt(modeSetting.value) : feature.options[0].value;
+
+                        feature.options.forEach(opt => {
+                            const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
+                            if (radio) {
+                                radio.checked = (opt.value === currentValue);
+                            }
+                        });
+                    }
+
+                    // 处理文本域
                     if (feature.textareas && Array.isArray(feature.textareas)) {
                         feature.textareas.forEach(ta => {
                             const textarea = document.getElementById(`textarea-${ta.key}`);
@@ -1558,6 +1666,12 @@
                     }
                 } else {
                     checkbox.disabled = true;
+                    if (feature.options && Array.isArray(feature.options)) {
+                        feature.options.forEach(opt => {
+                            const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
+                            if (radio) radio.disabled = true;
+                        });
+                    }
                     if (feature.textareas && Array.isArray(feature.textareas)) {
                         feature.textareas.forEach(ta => {
                             const textarea = document.getElementById(`textarea-${ta.key}`);
@@ -1587,6 +1701,7 @@
 
             let hasError = false;
             this.state.features.forEach(feature => {
+                // 处理普通开关（BOOLEAN类型）
                 const checkbox = document.getElementById(`switch-${feature.key}`);
                 if (checkbox) {
                     if (!this.tcqtService.saveBooleanSetting(feature.key, checkbox.checked)) {
@@ -1594,6 +1709,28 @@
                     }
                 }
 
+                // 处理options（保存到子配置key）
+                if (feature.options && Array.isArray(feature.options) && feature.options.length > 0) {
+                    const selectedRadio = document.querySelector(`input[name="option-${feature.key}"]:checked`);
+                    if (selectedRadio) {
+                        const value = parseInt(selectedRadio.value);
+                        // 从option中获取真实的key
+                        const optionKey = feature.options[0].key; // 所有option共享同一个key
+                        if (!this.tcqtService.saveIntSetting(optionKey, value)) {
+                            hasError = true;
+                        }
+                    } else {
+                        // 如果没有选中，默认保存第一个选项的值
+                        if (feature.options.length > 0 && checkbox && checkbox.checked) {
+                            const optionKey = feature.options[0].key;
+                            if (!this.tcqtService.saveIntSetting(optionKey, feature.options[0].value)) {
+                                hasError = true;
+                            }
+                        }
+                    }
+                }
+
+                // 处理文本域（STRING类型）
                 if (feature.textareas && Array.isArray(feature.textareas)) {
                     feature.textareas.forEach(ta => {
                         const textarea = document.getElementById(`textarea-${ta.key}`);

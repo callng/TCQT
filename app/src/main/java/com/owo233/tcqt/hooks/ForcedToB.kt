@@ -8,16 +8,26 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.toJsonString
 
 @RegisterAction
 @RegisterSetting(
-    key = "forced_to_b",
-    name = "AB测试强制转B组",
+    key = "forced_to_ab",
+    name = "AB测试强制转组",
     type = SettingType.BOOLEAN,
-    desc = "启用后，在AB测试对照组中，将全部测试强制转为B组（实验组），注意，此功能有一定的风险，请自行斟酌是否启用。",
+    defaultValue = "false",
+    desc = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。",
     isRedMark = true,
     uiOrder = 106
+)
+@RegisterSetting(
+    key = "forced_to_ab.mode",
+    name = "强制模式",
+    type = SettingType.INT,
+    defaultValue = "1",
+    options = "强制A组（对照组）|强制B组（实验组）",
 )
 class ForcedToB : IAction {
 
@@ -35,28 +45,48 @@ class ForcedToB : IAction {
             .apply { isAccessible = true }
 
         controllerClz.getDeclaredMethod(
-            "getExpEntity",
+            "getExpEntityInner",
             String::class.java,
-            String::class.java
+            String::class.java,
+            Boolean::class.java
         ).hookAfterMethod { param ->
-            val result = param.result ?: return@hookAfterMethod
+            val result = param.result
 
             val isOnline = onlineField.getBoolean(result)
             val assignment = assignmentField.get(result) as String
+            val keyName = param.args[1] as String
 
-            if (isOnline && !assignment.endsWith("_B")) {
-                val keyName = param.args[1] as String
+            /*if (assignment.endsWith("_A") || assignment.endsWith("_B")) {
+                Log.d("result: ${result.toJsonString()}")
+            }*/
 
-                assignmentField.set(result, "${keyName}_B")
-                expGrayIdField.set(result, "114514")
-                layerNameField.set(result, keyName)
+            if (!isOnline) return@hookAfterMethod
 
-                param.result = result
+            val mode = GeneratedSettingList.getInt(GeneratedSettingList.FORCED_TO_AB_MODE)
+            when (mode) {
+                1 -> {
+                    // 强制A组（对照组） - 选项索引0
+                    if (!assignment.endsWith("_A")) {
+                        assignmentField.set(result, "${keyName}_A")
+                        expGrayIdField.set(result, "114514")
+                        layerNameField.set(result, keyName)
+                        param.result = result
+                    }
+                }
+                2 -> {
+                    // 强制B组（实验组） - 选项索引1
+                    if (!assignment.endsWith("_B")) {
+                        assignmentField.set(result, "${keyName}_B")
+                        expGrayIdField.set(result, "114514")
+                        layerNameField.set(result, keyName)
+                        param.result = result
+                    }
+                }
             }
         }
     }
 
-    override val key: String get() = GeneratedSettingList.FORCED_TO_B
+    override val key: String get() = GeneratedSettingList.FORCED_TO_AB
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }
