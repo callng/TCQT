@@ -20,8 +20,8 @@ import com.owo233.tcqt.utils.replaceMethod
     name = "自定义设备信息",
     type = SettingType.BOOLEAN,
     desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
-    isRedMark = true,
     hasTextAreas = true,
+    uiTab = "高级",
     uiOrder = 101
 )
 @RegisterSetting(

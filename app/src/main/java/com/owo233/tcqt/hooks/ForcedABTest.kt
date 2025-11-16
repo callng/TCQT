@@ -8,9 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.toJsonString
 
 @RegisterAction
 @RegisterSetting(
@@ -19,7 +17,7 @@ import com.owo233.tcqt.utils.toJsonString
     type = SettingType.BOOLEAN,
     defaultValue = "false",
     desc = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。",
-    isRedMark = true,
+    uiTab = "高级",
     uiOrder = 106
 )
 @RegisterSetting(
@@ -29,7 +27,7 @@ import com.owo233.tcqt.utils.toJsonString
     defaultValue = "1",
     options = "强制A组（对照组）|强制B组（实验组）",
 )
-class ForcedToB : IAction {
+class ForcedABTest : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!

@@ -20,8 +20,8 @@ import java.util.concurrent.ConcurrentHashMap
     name = "MMKV配置Hook",
     type = SettingType.BOOLEAN,
     desc = $$"仅高级用户使用，可以使用$uin表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
-    isRedMark = true,
     hasTextAreas = true,
+    uiTab = "高级",
     uiOrder = 109
 )
 @RegisterSetting(

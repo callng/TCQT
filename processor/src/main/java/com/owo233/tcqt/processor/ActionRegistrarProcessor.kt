@@ -132,12 +132,12 @@ class ActionRegistrarProcessor(
                 val key = (args["key"]?.value as? String)?.ifBlank { null }
                 val name = args["name"]?.value as? String ?: ""
                 val desc = args["desc"]?.value as? String ?: ""
-                val isRedMark = args["isRedMark"]?.value as? Boolean ?: false
                 val hasTextAreas = args["hasTextAreas"]?.value as? Boolean ?: false
                 val uiOrder = args["uiOrder"]?.value as? Int ?: 1000
                 val textAreaPlaceholder = args["textAreaPlaceholder"]?.value as? String ?: ""
                 val hidden = args["hidden"]?.value as? Boolean ?: false
                 val options = args["options"]?.value as? String ?: ""
+                val uiTab = args["uiTab"]?.value as? String ?: ""
 
                 val type = (args["type"]?.value?.toString() ?: "BOOLEAN").let {
                     try {
@@ -161,7 +161,7 @@ class ActionRegistrarProcessor(
                         .replace("\"", "\\\"") + "\""
                 }
 
-                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, isRedMark, hasTextAreas, uiOrder, textAreaPlaceholder, hidden, options)
+                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, hasTextAreas, uiOrder, textAreaPlaceholder, hidden, options, uiTab)
             }
     }
 
@@ -244,10 +244,10 @@ object GeneratedFeaturesData {
         val key: String,
         val label: String,
         val desc: String,
-        val color: String? = null,
         val textareas: List<TextAreaConfig>? = null,
         val options: List<OptionConfig>? = null,
-        val uiOrder: Int = 1000
+        val uiOrder: Int = 1000,
+        val uiTab: String = "基础"
     )
 
     val FEATURES: List<FeatureConfig> = listOf(
@@ -263,9 +263,6 @@ $$kotlinFeatures
                 append("\n            \"key\": \"${feature.key}\",")
                 append("\n            \"label\": \"${escapeJsonString(feature.label)}\",")
                 append("\n            \"desc\": \"${escapeJsonString(feature.desc)}\",")
-                feature.color?.let { 
-                    append("\n            \"color\": \"$it\",")
-                }
                 feature.textareas?.let { textareas ->
                     append("\n            \"textareas\": [")
                     textareas.forEachIndexed { taIndex, ta ->
@@ -289,7 +286,8 @@ $$kotlinFeatures
                     }
                     append("\n            ],")
                 }
-                append("\n            \"uiOrder\": ${feature.uiOrder}")
+                append("\n            \"uiOrder\": ${feature.uiOrder},")
+                append("\n            \"uiTab\": \"${escapeJsonString(feature.uiTab)}\"")
                 append("\n        }")
             }
             append("\n    ]")
@@ -323,10 +321,6 @@ $$kotlinFeatures
                 append("\n            key = \"${mainSetting.key}\",")
                 append("\n            label = \"${escapeKotlinString(mainSetting.name)}\",")
                 append("\n            desc = \"${escapeKotlinString(mainSetting.desc)}\",")
-
-                if (mainSetting.isRedMark) {
-                    append("\n            color = \"var(--danger-color)\",")
-                }
 
                 // 处理文本框
                 if (mainSetting.hasTextAreas || subSettings.any { it.type == SettingType.STRING }) {
@@ -368,24 +362,27 @@ $$kotlinFeatures
                     }
                 }
 
-                val effectiveOrder = if (mainSetting.isRedMark) mainSetting.uiOrder + 100000 else mainSetting.uiOrder
-                append("\n            uiOrder = $effectiveOrder")
+                val effectiveOrder = mainSetting.uiOrder
+                append("\n            uiOrder = $effectiveOrder,")
+
+                // 确定Tab名称
+                val tabName = mainSetting.uiTab.ifBlank { "基础" }
+                append("\n            uiTab = \"${escapeKotlinString(tabName)}\"")
                 append("\n        )")
             }
-        }.sortedWith(
-            compareBy(
-                { keyStr ->
-                    val k = keyStr.substringAfter("key = \"").substringBefore("\"")
-                    val main = settingGroups[k]?.first()
-                    if (main?.isRedMark == true) 1 else 0
-                },
-                { keyStr ->
-                    val k = keyStr.substringAfter("key = \"").substringBefore("\"")
-                    val main = settingGroups[k]?.first()
-                    (if (main?.isRedMark == true) (main.uiOrder + 100000) else (main?.uiOrder ?: 1000))
-                }
-            )
-        ).joinToString(",\n")
+        }.groupBy { keyStr ->
+            // 按Tab分组
+            val k = keyStr.substringAfter("key = \"").substringBefore("\"")
+            val main = settingGroups[k]?.first()
+            main?.uiTab?.ifBlank { "基础" } ?: "基础"
+        }.flatMap { (_, features) ->
+            // 每个Tab内部按uiOrder排序
+            features.sortedBy { keyStr ->
+                val k = keyStr.substringAfter("key = \"").substringBefore("\"")
+                val main = settingGroups[k]?.first()
+                main?.uiOrder ?: 1000
+            }
+        }.joinToString(",\n")
     }
 
     private fun escapeKotlinString(str: String): String {
@@ -403,11 +400,11 @@ $$kotlinFeatures
         val type: SettingType,
         val defaultValue: String = "",
         val desc: String = "",
-        val isRedMark: Boolean = false,
         val hasTextAreas: Boolean = false,
         val uiOrder: Int = 1000,
         val textAreaPlaceholder: String = "",
         val hidden: Boolean = false,
-        val options: String = ""
+        val options: String = "",
+        val uiTab: String = ""
     )
 }

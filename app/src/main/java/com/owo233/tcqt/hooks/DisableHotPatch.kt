@@ -24,7 +24,7 @@ import mqq.app.AppRuntime
     name = "禁用热补丁",
     type = SettingType.BOOLEAN,
     desc = "顾名思义，但不会删除已有的热补丁。",
-    isRedMark = true,
+    uiTab = "高级",
     uiOrder = 102
 )
 class DisableHotPatch : IAction {

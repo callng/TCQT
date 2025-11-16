@@ -34,7 +34,7 @@ import de.robv.android.xposed.XposedHelpers
     type = SettingType.BOOLEAN,
     defaultValue = "true",
     desc = "启用后在登录页面长按登录按钮即可调出设置窗口。",
-    isRedMark = true,
+    uiTab = "高级",
     uiOrder = 100
 )
 @RegisterSetting(key = "change_guid.string.defaultGuid", name = "默认GUID", type = SettingType.STRING, hidden = true)

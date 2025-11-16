@@ -56,12 +56,6 @@
             background-color: rgba(239, 68, 68, 0.2);
         }
 
-        .dark-mode .header-notice {
-            background-color: #1f2937;
-            border-color: #374151;
-            color: var(--text-muted);
-        }
-
         .dark-mode .feature-item.is-expanded {
             background-color: rgba(59, 130, 246, 0.1);
         }
@@ -394,6 +388,81 @@
         .status-disabled {
             color: var(--warning-color);
             font-weight: 600;
+        }
+
+        /* --- Tab Navigation --- */
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px auto;
+            max-width: 720px;
+            overflow-x: auto;
+            padding: 4px;
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            scrollbar-width: thin;
+        }
+
+        .tab-navigation::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-navigation::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-button::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary-color);
+            transform: translateX(-50%);
+            transition: width var(--transition-smooth);
+        }
+
+        .tab-button:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+            color: var(--primary-color);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            background-color: rgba(59, 130, 246, 0.1);
+            font-weight: 600;
+        }
+
+        .tab-button.active::before {
+            width: 80%;
+        }
+
+        .dark-mode .tab-button:hover {
+            background-color: rgba(59, 130, 246, 0.15);
+        }
+
+        .dark-mode .tab-button.active {
+            background-color: rgba(59, 130, 246, 0.2);
         }
 
         /* --- Feature List --- */
@@ -991,11 +1060,9 @@
         <div class="action-status">
             已启用<span class="status-enabled" id="enabledCount">0</span>个功能，<span class="status-disabled" id="disabledCount">0</span>个功能未启用
         </div>
-        <div class="header-notice">
-            被 <strong>红色</strong> 标记的功能有一定风险，请自行承担使用风险。<br>
-            更改设置后需保存并重启宿主才能生效。
-        </div>
     </header>
+
+    <nav id="tab-navigation" class="tab-navigation"></nav>
 
     <main>
         <div id="feature-list" class="feature-list"></div>
@@ -1240,10 +1307,30 @@
             this.isInjected = false;
             this.hostInfo = null;
             this.moduleInfo = null;
+            this.currentTab = '';
+            this.tabs = [];
         }
 
         setFeatures(features) {
             this.features = features;
+            // 提取所有唯一的Tab名称
+            const tabSet = new Set();
+            features.forEach(f => {
+                const tab = f.uiTab || '基础';
+                tabSet.add(tab);
+            });
+            this.tabs = Array.from(tabSet).sort((a, b) => {
+                // 基础排第一，高级排最后
+                if (a === '基础') return -1;
+                if (b === '基础') return 1;
+                if (a === '高级') return 1;
+                if (b === '高级') return -1;
+                return a.localeCompare(b, 'zh-CN');
+            });
+            // 默认选中第一个Tab
+            if (this.tabs.length > 0) {
+                this.currentTab = this.tabs[0];
+            }
         }
 
         setInjected(injected) {
@@ -1261,6 +1348,17 @@
         getHostName() {
             return this.hostInfo?.name || '宿主';
         }
+
+        setCurrentTab(tab) {
+            this.currentTab = tab;
+        }
+
+        getCurrentTabFeatures() {
+            // 获取当前Tab的功能并按uiOrder排序
+            return this.features
+                .filter(f => (f.uiTab || '基础') === this.currentTab)
+                .sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
+        }
     }
 
     class UIManager {
@@ -1275,6 +1373,7 @@
                 hostVersion: document.getElementById('hostVersion'),
                 moduleVersion: document.getElementById('moduleVersion'),
                 featureList: document.getElementById('feature-list'),
+                tabNavigation: document.getElementById('tab-navigation'),
                 btnSave: document.getElementById('btnSave'),
                 toastContainer: document.getElementById('toast-container'),
                 enabledCount: document.getElementById('enabledCount'),
@@ -1304,7 +1403,6 @@
 
             const title = document.createElement('div');
             title.className = 'feature-title';
-            title.style.color = feature.color || 'inherit';
             title.innerHTML = `<i class="bi bi-chevron-down icon-toggle"></i><span>${feature.label}</span>`;
 
             const switchWrapper = document.createElement('div');
@@ -1401,6 +1499,27 @@
             });
             this.elements.featureList.innerHTML = '';
             this.elements.featureList.appendChild(fragment);
+        }
+
+        renderTabs(tabs, currentTab, onTabClick) {
+            this.elements.tabNavigation.innerHTML = '';
+            if (tabs.length <= 1) {
+                // 只有一个Tab时不显示导航
+                this.elements.tabNavigation.style.display = 'none';
+                return;
+            }
+            this.elements.tabNavigation.style.display = 'flex';
+            tabs.forEach(tab => {
+                const button = document.createElement('button');
+                button.className = 'tab-button';
+                button.textContent = tab;
+                button.setAttribute('aria-label', `切换到${tab}`);
+                if (tab === currentTab) {
+                    button.classList.add('active');
+                }
+                button.addEventListener('click', () => onTabClick(tab));
+                this.elements.tabNavigation.appendChild(button);
+            });
         }
 
         setSaveButtonState(enabled) {
@@ -1626,12 +1745,22 @@
         }
 
         renderUI() {
-            this.ui.renderFeatures(this.state.features);
+            this.ui.renderTabs(this.state.tabs, this.state.currentTab, (tab) => this.switchTab(tab));
+            this.ui.renderFeatures(this.state.getCurrentTabFeatures());
             this.updateActionStatus();
         }
 
+        switchTab(tab) {
+            this.state.setCurrentTab(tab);
+            this.ui.renderTabs(this.state.tabs, this.state.currentTab, (tab) => this.switchTab(tab));
+            this.ui.renderFeatures(this.state.getCurrentTabFeatures());
+            // 重新初始化当前Tab下的设置
+            this.initializeSettings();
+        }
+
         initializeSettings() {
-            this.state.features.forEach(feature => {
+            const currentFeatures = this.state.getCurrentTabFeatures();
+            currentFeatures.forEach(feature => {
                 const checkbox = document.getElementById(`switch-${feature.key}`);
                 if (!checkbox) return;
 

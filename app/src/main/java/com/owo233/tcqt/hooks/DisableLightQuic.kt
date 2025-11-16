@@ -18,7 +18,7 @@ import com.tencent.mobileqq.msfcore.MSFNetworkConfig
     name = "禁用QUIC",
     type = SettingType.BOOLEAN,
     desc = "不允许MSF使用QUIC，强制它使用TCP。",
-    isRedMark = true,
+    uiTab = "高级",
     uiOrder = 108
 )
 class DisableLightQuic : IAction {

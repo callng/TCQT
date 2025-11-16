@@ -43,11 +43,6 @@ annotation class RegisterSetting(
     val desc: String = "",
 
     /**
-     * 是否需要红色标记（表示有风险）
-     */
-    val isRedMark: Boolean = false,
-
-    /**
      * 是否包含多行文本框
      */
     val hasTextAreas: Boolean = false,
@@ -72,7 +67,13 @@ annotation class RegisterSetting(
      * 格式: "选项1|选项2|选项3"
      * 选项的索引值(0,1,2...)将作为INT值保存
      */
-    val options: String = ""
+    val options: String = "",
+
+    /**
+     * UI分组Tab名称
+     * 默认为"基础"，可自定义Tab名称实现功能分组
+     */
+    val uiTab: String = ""
 )
 
 enum class SettingType {
