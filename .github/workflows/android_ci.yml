@@ -85,13 +85,13 @@ jobs:
           echo "|debug|$debug" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Artifacts(release)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: ${{ env.APK_FILE_RELEASE }}
           name: TCQT-release-${{ github.event.head_commit.id }}
 
       - name: Upload Artifacts(debug)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           path: ${{ env.APK_FILE_DEBUG }}
           name: TCQT-debug-${{ github.event.head_commit.id }}
