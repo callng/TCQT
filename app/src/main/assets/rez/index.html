@@ -99,9 +99,10 @@
         }
 
         .dark-mode .toast-item {
-            background-color: rgba(249, 250, 251, 0.95);
-            color: #111827;
-            box-shadow: var(--shadow-md);
+            background-color: rgba(31, 41, 55, 0.98);
+            color: var(--text-dark);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
         }
 
         .dark-mode .slider {
@@ -116,10 +117,39 @@
             background-color: #6b7280;
         }
 
+        .dark-mode .search-icon-btn:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .dark-mode .search-input {
+            background-color: #1f2937;
+            color: var(--text-dark);
+            border-color: var(--border-color);
+        }
+
+        .dark-mode .search-input:focus {
+            background-color: #1f2937;
+            border-color: var(--primary-color);
+        }
+
+        .dark-mode .search-highlight {
+            background-color: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .dark-mode .empty-search-state {
+            color: var(--text-muted);
+        }
+
         *,
         *::before,
         *::after {
             box-sizing: border-box;
+        }
+
+        html {
+            overflow-x: hidden;
+            width: 100%;
         }
 
         body {
@@ -129,6 +159,8 @@
             margin: 0;
             padding: 16px;
             min-height: 100vh;
+            width: 100%;
+            max-width: 100vw;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -261,6 +293,7 @@
         /* --- App Container & Header --- */
         .app-container {
             max-width: 720px;
+            width: 100%;
             margin: 0 auto;
             display: none;
             opacity: 0;
@@ -349,7 +382,8 @@
             margin-right: auto;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
-            transition: var(--transition-smooth);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
@@ -391,12 +425,17 @@
         }
 
         /* --- Tab Navigation --- */
+        .tab-navigation-wrapper {
+            position: relative;
+            margin: 20px auto;
+            max-width: 720px;
+            width: 100%;
+        }
+
         .tab-navigation {
             display: flex;
             justify-content: center;
             gap: 8px;
-            margin: 20px auto;
-            max-width: 720px;
             overflow-x: auto;
             padding: 4px;
             background-color: var(--bg-card);
@@ -404,6 +443,16 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             scrollbar-width: thin;
+            transition: var(--transition-smooth);
+            width: 100%;
+        }
+
+        .tab-navigation.search-mode-active {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tab-navigation::-webkit-scrollbar {
@@ -439,7 +488,7 @@
             height: 2px;
             background: var(--primary-color);
             transform: translateX(-50%);
-            transition: width var(--transition-smooth);
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tab-button:hover {
@@ -465,6 +514,175 @@
             background-color: rgba(59, 130, 246, 0.2);
         }
 
+        /* --- Search Bar --- */
+        .search-icon-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background-color: transparent;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+            z-index: 10;
+        }
+
+        .search-icon-btn:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--primary-color);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .search-icon-btn:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .search-bar-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .search-bar-container.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .search-back-btn,
+        .search-clear-btn {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border: none;
+            border-radius: 50%;
+            background-color: transparent;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-fast);
+        }
+
+        .search-back-btn:hover,
+        .search-clear-btn:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--primary-color);
+        }
+
+        .search-back-btn:active,
+        .search-clear-btn:active {
+            transform: scale(0.9);
+        }
+
+        .search-clear-btn {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast);
+        }
+
+        .search-clear-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .search-input {
+            flex: 1;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        text-align 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+        }
+
+        .search-input:focus,
+        .search-input:not(:placeholder-shown) {
+            text-align: left;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* --- Search Results --- */
+        .search-highlight {
+            background-color: rgba(59, 130, 246, 0.2);
+            color: var(--primary-color);
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 3px;
+            animation: highlightPulse 1.5s ease-in-out;
+        }
+
+        @keyframes highlightPulse {
+            0%, 100% {
+                background-color: rgba(59, 130, 246, 0.2);
+            }
+            50% {
+                background-color: rgba(59, 130, 246, 0.4);
+            }
+        }
+
+        .empty-search-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-search-state i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-search-state p {
+            margin: 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .empty-search-state .empty-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
         /* --- Feature List --- */
         .feature-list {
             background-color: var(--bg-card);
@@ -474,6 +692,8 @@
             border: 1px solid var(--border-color);
             transition: var(--transition-smooth);
             position: relative;
+            width: 100%;
+            max-width: 100%;
         }
 
         .feature-list::before {
@@ -497,7 +717,8 @@
         .feature-item {
             padding: 16px 20px;
             border-bottom: 1px solid var(--border-color);
-            transition: var(--transition-smooth);
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
@@ -519,7 +740,7 @@
 
         .feature-item:hover {
             background-color: rgba(59, 130, 246, 0.02);
-            transform: translateX(5px);
+            transform: translateX(3px);
         }
 
         .feature-item:last-child {
@@ -548,7 +769,8 @@
         }
 
         .feature-title .icon-toggle {
-            transition: var(--transition-smooth);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        color var(--transition-smooth);
             color: var(--text-muted);
             font-size: 0.8rem;
         }
@@ -567,7 +789,10 @@
             max-height: 0;
             opacity: 0;
             overflow: hidden;
-            transition: var(--transition-expand);
+            transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+                        margin-top 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .textarea-container {
@@ -585,18 +810,17 @@
 
         .feature-item.is-expanded .textarea-container:not(:empty) {
             margin-top: 8px;
-            padding: 12px 0;
+            padding: 8px;
             background-color: rgba(59, 130, 246, 0.05);
             border-radius: var(--radius-sm);
             border: 1px solid var(--border-color);
-            padding-left: 16px;
-            padding-right: 16px;
         }
 
         .feature-item.is-expanded .feature-desc,
         .feature-item.is-expanded .textarea-container {
-            max-height: 1000px;
+            max-height: none;
             opacity: 1;
+            overflow: visible;
         }
 
         /* --- Custom Switch --- */
@@ -613,6 +837,7 @@
             gap: 8px;
             padding: 0;
             margin: 0;
+            align-items: center;
         }
 
         .radio-option {
@@ -622,12 +847,14 @@
             cursor: pointer;
             padding: 8px 12px;
             border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
+            transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
         }
 
         .radio-option:hover {
             background-color: rgba(59, 130, 246, 0.05);
+            transform: translateX(2px);
         }
 
         .radio-option input[type="radio"] {
@@ -667,6 +894,7 @@
             opacity: 0;
             width: 0;
             height: 0;
+            position: absolute;
         }
 
         .slider {
@@ -677,7 +905,8 @@
             right: 0;
             bottom: 0;
             background-color: #d1d5db;
-            transition: var(--transition-smooth);
+            transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 24px;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
@@ -690,7 +919,8 @@
             left: 3px;
             bottom: 3px;
             background-color: white;
-            transition: var(--transition-smooth);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 50%;
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
         }
@@ -702,7 +932,6 @@
 
         input:checked + .slider:before {
             transform: translateX(20px);
-            animation: switchBounce 0.3s ease;
         }
 
         @keyframes switchBounce {
@@ -718,6 +947,7 @@
         input:disabled + .slider {
             background-color: #9ca3af;
             cursor: not-allowed;
+            opacity: 0.6;
         }
 
         /* --- Textarea --- */
@@ -726,21 +956,23 @@
             font-family: inherit;
             font-size: 0.9rem;
             line-height: 1.5;
-            padding: 14px 16px;
-            border-radius: 10px;
+            padding: 12px 14px;
+            border-radius: 8px;
             border: 1.5px solid var(--border-color);
             background-color: #ffffff;
             color: var(--text-dark);
             resize: vertical;
-            min-height: 120px;
-            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            min-height: 100px;
+            transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            margin: 0;
         }
 
         textarea:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-            animation: textareaPulse 2s infinite;
         }
 
         @keyframes textareaPulse {
@@ -777,8 +1009,16 @@
             box-shadow: var(--shadow-md);
             cursor: pointer;
             z-index: 1000;
-            transition: var(--transition-smooth);
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
+        }
+
+        .fab-save.hide-on-keyboard {
+            opacity: 0;
+            transform: translateY(80px) scale(0.3);
+            pointer-events: none;
         }
 
         .fab-save:hover:not(:disabled) {
@@ -834,7 +1074,10 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: var(--transition-fast);
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid transparent;
             position: relative;
             overflow: hidden;
@@ -931,7 +1174,7 @@
 
         /* --- Feature Item Animation --- */
         .feature-item {
-            animation: fadeInUp 0.4s ease forwards;
+            animation: fadeInUp 0.3s ease forwards;
             opacity: 0;
             transform: translateY(10px);
         }
@@ -939,7 +1182,7 @@
         @keyframes fadeInUp {
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY( 0);
             }
         }
 
@@ -1004,13 +1247,12 @@
             }
 
             .feature-item.is-expanded .textarea-container:not(:empty) {
-                padding-left: 12px;
-                padding-right: 12px;
+                padding: 8px;
             }
 
             textarea {
-                padding: 12px;
-                min-height: 100px;
+                padding: 10px 12px;
+                min-height: 90px;
                 font-size: 0.85rem;
             }
 
@@ -1025,6 +1267,25 @@
             .toast-item {
                 min-width: 85vw;
                 margin: 0 7.5vw;
+            }
+
+            .search-icon-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+
+            .search-back-btn,
+            .search-clear-btn {
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                font-size: 1rem;
+            }
+
+            .search-input {
+                font-size: 0.9rem;
+                height: 32px;
             }
         }
     </style>
@@ -1062,7 +1323,27 @@
         </div>
     </header>
 
-    <nav id="tab-navigation" class="tab-navigation"></nav>
+    <nav id="tab-navigation-wrapper" class="tab-navigation-wrapper">
+        <div id="tab-navigation" class="tab-navigation"></div>
+        <button id="btn-search" class="search-icon-btn" title="搜索功能" aria-label="打开搜索">
+            <i class="bi bi-search"></i>
+        </button>
+        <div id="search-bar" class="search-bar-container">
+            <button id="search-back-btn" class="search-back-btn" title="返回" aria-label="退出搜索">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <input
+                    type="text"
+                    id="search-input"
+                    class="search-input"
+                    placeholder="搜索功能关键词或描述"
+                    aria-label="搜索功能"
+            />
+            <button id="search-clear-btn" class="search-clear-btn" title="清空" aria-label="清空搜索">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </nav>
 
     <main>
         <div id="feature-list" class="feature-list"></div>
@@ -1309,6 +1590,9 @@
             this.moduleInfo = null;
             this.currentTab = '';
             this.tabs = [];
+            this.isSearchMode = false;
+            this.searchKeyword = '';
+            this.searchResults = [];
         }
 
         setFeatures(features) {
@@ -1359,6 +1643,62 @@
                 .filter(f => (f.uiTab || '基础') === this.currentTab)
                 .sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
         }
+
+        setSearchMode(isActive) {
+            this.isSearchMode = isActive;
+            if (!isActive) {
+                this.searchKeyword = '';
+                this.searchResults = [];
+            }
+        }
+
+        setSearchKeyword(keyword) {
+            this.searchKeyword = keyword;
+        }
+
+        performSearch() {
+            const keyword = this.searchKeyword.toLowerCase().trim();
+            if (!keyword) {
+                this.searchResults = [];
+                return [];
+            }
+
+            // 搜索所有features，不限制Tab
+            const results = [];
+            this.features.forEach(feature => {
+                const label = (feature.label || '').toLowerCase();
+                const desc = (feature.desc || '').toLowerCase();
+
+                // 计算匹配度
+                let priority = 0;
+                if (label === keyword || desc === keyword) {
+                    priority = 3; // 完全匹配
+                } else if (label.includes(keyword)) {
+                    priority = 2; // label包含
+                } else if (desc.includes(keyword)) {
+                    priority = 1; // desc包含
+                }
+
+                if (priority > 0) {
+                    results.push({ ...feature, searchPriority: priority });
+                }
+            });
+
+            // 按优先级排序
+            results.sort((a, b) => {
+                if (b.searchPriority !== a.searchPriority) {
+                    return b.searchPriority - a.searchPriority;
+                }
+                return (a.uiOrder || 1000) - (b.uiOrder || 1000);
+            });
+
+            this.searchResults = results;
+            return results;
+        }
+
+        getSearchResults() {
+            return this.searchResults;
+        }
     }
 
     class UIManager {
@@ -1377,7 +1717,12 @@
                 btnSave: document.getElementById('btnSave'),
                 toastContainer: document.getElementById('toast-container'),
                 enabledCount: document.getElementById('enabledCount'),
-                disabledCount: document.getElementById('disabledCount')
+                disabledCount: document.getElementById('disabledCount'),
+                btnSearch: document.getElementById('btn-search'),
+                searchBar: document.getElementById('search-bar'),
+                searchInput: document.getElementById('search-input'),
+                searchBackBtn: document.getElementById('search-back-btn'),
+                searchClearBtn: document.getElementById('search-clear-btn')
             };
         }
 
@@ -1396,7 +1741,8 @@
             const item = document.createElement('div');
             item.className = 'feature-item';
             item.dataset.key = feature.key;
-            item.style.animationDelay = `${index * 50}ms`;
+            // 优化动画延迟，让连续动画更流畅
+            item.style.animationDelay = `${index * 30}ms`;
 
             const header = document.createElement('div');
             header.className = 'feature-header';
@@ -1522,6 +1868,10 @@
             });
         }
 
+        setSearchButtonVisibility(visible) {
+            this.elements.btnSearch.style.display = visible ? 'flex' : 'none';
+        }
+
         setSaveButtonState(enabled) {
             this.elements.btnSave.disabled = !enabled;
             if (enabled) {
@@ -1551,6 +1901,179 @@
                 this.elements.appContainer.classList.add('visible');
             });
         }
+
+        toggleSearchMode(isActive) {
+            if (isActive) {
+                // 激活搜索模式
+                this.elements.tabNavigation.classList.add('search-mode-active');
+                this.elements.searchBar.classList.add('active');
+                this.elements.btnSearch.style.display = 'none';
+                // 延迟聚焦以确保动画流畅
+                setTimeout(() => {
+                    this.elements.searchInput.focus();
+                }, 100);
+            } else {
+                // 退出搜索模式
+                this.elements.searchBar.classList.remove('active');
+                this.elements.tabNavigation.classList.remove('search-mode-active');
+                this.elements.btnSearch.style.display = 'flex';
+                this.elements.searchInput.value = '';
+                this.updateClearButtonVisibility();
+            }
+        }
+
+        updateClearButtonVisibility() {
+            const hasValue = this.elements.searchInput.value.trim().length > 0;
+            if (hasValue) {
+                this.elements.searchClearBtn.classList.add('visible');
+            } else {
+                this.elements.searchClearBtn.classList.remove('visible');
+            }
+        }
+
+        highlightKeyword(text, keyword) {
+            if (!keyword || !text) return text;
+            // 去除关键词两端的空格
+            const trimmedKeyword = keyword.trim();
+            if (!trimmedKeyword) return text;
+            const regex = new RegExp(`(${trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+        }
+
+        renderSearchResults(results, keyword) {
+            const fragment = document.createDocumentFragment();
+
+            if (results.length === 0) {
+                // 显示空状态
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-search-state';
+                emptyState.innerHTML = `
+                    <i class="bi bi-inbox"></i>
+                    <p class="empty-title">未找到相关功能</p>
+                    <p>请尝试其他关键词</p>
+                `;
+                fragment.appendChild(emptyState);
+            } else {
+                results.forEach((feature, index) => {
+                    const element = this.createSearchResultElement(feature, keyword, index);
+                    fragment.appendChild(element);
+                });
+            }
+
+            this.elements.featureList.innerHTML = '';
+            this.elements.featureList.appendChild(fragment);
+        }
+
+        createSearchResultElement(feature, keyword, index) {
+            const item = document.createElement('div');
+            item.className = 'feature-item';
+            item.dataset.key = feature.key;
+            // 优化动画延迟
+            item.style.animationDelay = `${index * 30}ms`;
+
+            // 判断关键词是否在描述中，如果是则默认展开
+            const trimmedKeyword = keyword.trim().toLowerCase();
+            const labelLower = (feature.label || '').toLowerCase();
+            const descLower = (feature.desc || '').toLowerCase();
+            const isMatchInDesc = trimmedKeyword && !labelLower.includes(trimmedKeyword) && descLower.includes(trimmedKeyword);
+
+            if (isMatchInDesc) {
+                item.classList.add('is-expanded');
+            }
+
+            const header = document.createElement('div');
+            header.className = 'feature-header';
+
+            const title = document.createElement('div');
+            title.className = 'feature-title';
+            // 高亮关键词
+            const highlightedLabel = this.highlightKeyword(feature.label, keyword);
+            title.innerHTML = `<i class="bi bi-chevron-down icon-toggle"></i><span>${highlightedLabel}</span>`;
+
+            const switchWrapper = document.createElement('div');
+            switchWrapper.className = 'switch-container';
+
+            const switchLabel = document.createElement('label');
+            switchLabel.className = 'switch';
+            const switchInput = document.createElement('input');
+            switchInput.type = 'checkbox';
+            switchInput.id = `switch-${feature.key}`;
+            switchInput.setAttribute('aria-label', `切换 ${feature.label}`);
+            switchInput.addEventListener('click', e => e.stopPropagation());
+
+            const slider = document.createElement('span');
+            slider.className = 'slider';
+
+            switchLabel.appendChild(switchInput);
+            switchLabel.appendChild(slider);
+            switchWrapper.appendChild(switchLabel);
+
+            header.append(title, switchWrapper);
+
+            const descElement = document.createElement('div');
+            descElement.className = 'feature-desc';
+            // 高亮关键词
+            descElement.innerHTML = this.highlightKeyword(feature.desc, keyword);
+
+            item.append(header, descElement);
+
+            // 添加options（单选按钮）
+            if (feature.options && Array.isArray(feature.options) && feature.options.length > 0) {
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'textarea-container radio-options';
+
+                feature.options.forEach(opt => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'radio-option';
+
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `option-${feature.key}`;
+                    radio.id = `option-${feature.key}-${opt.value}`;
+                    radio.value = opt.value;
+                    radio.setAttribute('aria-label', opt.label);
+                    radio.addEventListener('click', e => e.stopPropagation());
+
+                    const label = document.createElement('label');
+                    label.htmlFor = radio.id;
+                    label.textContent = opt.label;
+                    label.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        radio.checked = true;
+                    });
+
+                    optionDiv.appendChild(radio);
+                    optionDiv.appendChild(label);
+                    optionsContainer.appendChild(optionDiv);
+                });
+                item.appendChild(optionsContainer);
+            }
+
+            // 添加文本域
+            if (feature.textareas && Array.isArray(feature.textareas)) {
+                const textareaContainer = document.createElement('div');
+                textareaContainer.className = 'textarea-container';
+
+                feature.textareas.forEach(ta => {
+                    const textarea = document.createElement('textarea');
+                    textarea.id = `textarea-${ta.key}`;
+                    textarea.placeholder = ta.placeholder || '';
+                    textarea.rows = 3;
+                    textarea.setAttribute('aria-label', ta.placeholder || `输入 ${ta.key}`);
+                    textareaContainer.appendChild(textarea);
+                });
+                item.appendChild(textareaContainer);
+            }
+
+            // 添加展开/收起事件
+            header.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('.switch')) {
+                    return;
+                }
+                item.classList.toggle('is-expanded');
+            });
+            return item;
+        }
     }
 
     class EventManager {
@@ -1559,12 +2082,19 @@
             this.longPressTimer = null;
             this.isLongPress = false;
             this.LONG_PRESS_DURATION = 500;
+            this.checkTimer = null;
+            this.scrollTimer = null;
+            this.keyboardVisible = false;
+            this.initialHeight = window.innerHeight;
+            this.handleScroll = this.handleScroll.bind(this);
         }
 
         // 初始化所有事件监听器
         initializeEvents() {
             this.initializeSaveButtonEvents();
             this.initializeFooterLinkEvents();
+            this.initializeSearchEvents();
+            this.initializeKeyboardDetection();
         }
 
         // 初始化保存按钮事件
@@ -1655,6 +2185,143 @@
                 this.longPressTimer = null;
             }
             this.isLongPress = false;
+        }
+
+        // 初始化搜索相关事件
+        initializeSearchEvents() {
+            const ui = this.app.ui;
+            let searchDebounceTimer = null;
+
+            // 搜索按钮点击事件
+            ui.elements.btnSearch.addEventListener('click', () => {
+                this.app.enterSearchMode();
+            });
+
+            // 返回按钮点击事件
+            ui.elements.searchBackBtn.addEventListener('click', () => {
+                this.app.exitSearchMode();
+            });
+
+            // 清空按钮点击事件
+            ui.elements.searchClearBtn.addEventListener('click', () => {
+                ui.elements.searchInput.value = '';
+                ui.updateClearButtonVisibility();
+                this.app.handleSearchInput('');
+                ui.elements.searchInput.focus();
+            });
+
+            // 搜索输入事件（防抖）
+            ui.elements.searchInput.addEventListener('input', (e) => {
+                const keyword = e.target.value;
+                ui.updateClearButtonVisibility();
+
+                // 防抖处理
+                if (searchDebounceTimer) {
+                    clearTimeout(searchDebounceTimer);
+                }
+                searchDebounceTimer = setTimeout(() => {
+                    this.app.handleSearchInput(keyword);
+                }, 120);
+            });
+
+            // ESC键退出搜索
+            ui.elements.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.app.exitSearchMode();
+                }
+            });
+        }
+
+        forceRepaint() {
+            // 完全移除强制重绘逻辑，让浏览器自然处理
+        }
+
+        checkKeyboard() {
+            const currentHeight = window.innerHeight;
+            const heightDiff = this.initialHeight - currentHeight;
+
+            // 使用更智能的阈值检测
+            const threshold = Math.max(150, this.initialHeight * 0.3);
+            const isLandscape = window.innerWidth > window.innerHeight;
+
+            if (heightDiff > threshold && !this.keyboardVisible && !isLandscape) {
+                // 键盘弹出
+                this.keyboardVisible = true;
+                this.app.ui.elements.btnSave.classList.add('hide-on-keyboard');
+            } else if (heightDiff < 50 && this.keyboardVisible) {
+                // 键盘收起
+                this.keyboardVisible = false;
+                this.app.ui.elements.btnSave.classList.remove('hide-on-keyboard');
+            }
+        }
+
+        handleScroll() {
+            // 移除所有滚动时的重绘逻辑
+        }
+
+        handleTextareaFocus(e) {
+            // 完全依赖浏览器默认行为，不做任何滚动调整
+            this.handleFocus();
+        }
+
+        handleFocus() {
+            if (this.checkTimer) clearInterval(this.checkTimer);
+            // 使用轮询方式检测键盘状态
+            this.checkTimer = setInterval(() => this.checkKeyboard(), 100);
+        }
+
+        handleBlur() {
+            if (this.checkTimer) {
+                clearInterval(this.checkTimer);
+                this.checkTimer = null;
+            }
+            // 延迟重置，确保键盘完全收起
+            setTimeout(() => {
+                if (!document.activeElement ||
+                    (document.activeElement.tagName !== 'TEXTAREA' &&
+                     document.activeElement.id !== 'search-input')) {
+                    this.keyboardVisible = false;
+                    this.app.ui.elements.btnSave.classList.remove('hide-on-keyboard');
+                }
+            }, 300);
+        }
+
+        initializeKeyboardDetection() {
+            const ui = this.app.ui;
+
+            // 给搜索输入框添加事件
+            ui.elements.searchInput.addEventListener('focus', () => this.handleFocus());
+            ui.elements.searchInput.addEventListener('blur', () => this.handleBlur());
+
+            document.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'TEXTAREA') {
+                    this.handleTextareaFocus(e);
+                }
+            });
+
+            document.addEventListener('focusout', (e) => {
+                if (e.target.tagName === 'TEXTAREA') {
+                    this.handleBlur();
+                }
+            });
+        }
+
+        destroy() {
+            this.cleanupKeyboardDetection();
+            if (this.handleScroll) {
+                window.removeEventListener('scroll', this.handleScroll);
+            }
+        }
+
+        cleanupKeyboardDetection() {
+            if (this.checkTimer) {
+                clearInterval(this.checkTimer);
+                this.checkTimer = null;
+            }
+            if (this.scrollTimer) {
+                clearTimeout(this.scrollTimer);
+                this.scrollTimer = null;
+            }
         }
     }
 
@@ -1748,9 +2415,16 @@
             this.ui.renderTabs(this.state.tabs, this.state.currentTab, (tab) => this.switchTab(tab));
             this.ui.renderFeatures(this.state.getCurrentTabFeatures());
             this.updateActionStatus();
+            // 根据注入状态设置搜索按钮可见性
+            this.ui.setSearchButtonVisibility(this.state.isInjected);
         }
 
         switchTab(tab) {
+            // 添加: 如果处于搜索模式，先退出
+            if (this.state.isSearchMode) {
+                this.exitSearchMode();
+            }
+            
             this.state.setCurrentTab(tab);
             this.ui.renderTabs(this.state.tabs, this.state.currentTab, (tab) => this.switchTab(tab));
             this.ui.renderFeatures(this.state.getCurrentTabFeatures());
@@ -1897,6 +2571,8 @@
             if (confirm('清空所有配置？此操作不可撤销！')) {
                 if (this.tcqtService.clearConfig()) {
                     this.initializeSettings();
+                    // 添加: 更新功能统计数字
+                    this.updateActionStatus();
                     if (confirm('配置已清空，重启以应用更改？')) {
                         if (!this.tcqtService.exitApp()) {
                             const hostName = this.state.getHostName();
@@ -1920,6 +2596,79 @@
             this.ui.setVersionDisplay(this.ui.elements.moduleVersion, '初始化异常', false);
             this.ui.setSaveButtonState(false);
         }
+
+        enterSearchMode() {
+            this.state.setSearchMode(true);
+            this.ui.toggleSearchMode(true);
+        }
+
+        exitSearchMode() {
+            this.state.setSearchMode(false);
+            this.ui.toggleSearchMode(false);
+            // 恢复当前Tab的内容
+            this.ui.renderFeatures(this.state.getCurrentTabFeatures());
+            this.initializeSettings();
+        }
+
+        handleSearchInput(keyword) {
+            this.state.setSearchKeyword(keyword);
+
+            // 如果关键词为空（去除空格后），恢复当前Tab视图
+            if (!keyword.trim()) {
+                this.ui.renderFeatures(this.state.getCurrentTabFeatures());
+                this.initializeSettings();
+                return;
+            }
+
+            const results = this.state.performSearch();
+            requestAnimationFrame(() => {
+                this.ui.renderSearchResults(results, keyword);
+                // 重新初始化搜索结果中的设置
+                this.initializeSearchSettings(results);
+            });
+        }
+
+        initializeSearchSettings(features) {
+            if (!this.state.isInjected) return;
+
+            features.forEach(feature => {
+                const checkbox = document.getElementById(`switch-${feature.key}`);
+                if (!checkbox) return;
+
+                // 处理主开关
+                const setting = this.tcqtService.getSetting(feature.key);
+                checkbox.checked = !!setting.value;
+
+                // 处理options（从 mainKey对应的子key读取）
+                if (feature.options && Array.isArray(feature.options) && feature.options.length > 0) {
+                    const optionKey = feature.options[0].key;
+                    const modeSetting = this.tcqtService.getSetting(optionKey);
+                    const currentValue = modeSetting.value !== undefined ? parseInt(modeSetting.value) : feature.options[0].value;
+
+                    feature.options.forEach(opt => {
+                        const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
+                        if (radio) {
+                            radio.checked = (opt.value === currentValue);
+                        }
+                    });
+                }
+
+                // 处理文本域
+                if (feature.textareas && Array.isArray(feature.textareas)) {
+                    feature.textareas.forEach(ta => {
+                        const textarea = document.getElementById(`textarea-${ta.key}`);
+                        if (textarea) {
+                            const textSetting = this.tcqtService.getSetting(ta.key);
+                            textarea.value = textSetting.value || '';
+                        }
+                    });
+                }
+            });
+        }
+
+        destroy() {
+            this.eventManager.destroy();
+        }
     }
 
     // 启动应用
@@ -1927,10 +2676,18 @@
         document.addEventListener('DOMContentLoaded', () => {
             const app = new TCQTApp();
             app.initialize();
+
+            window.addEventListener('beforeunload', () => {
+                app.destroy();
+            });
         });
     } else {
         const app = new TCQTApp();
         app.initialize();
+
+        window.addEventListener('beforeunload', () => {
+            app.destroy();
+        });
     }
 </script>
 
