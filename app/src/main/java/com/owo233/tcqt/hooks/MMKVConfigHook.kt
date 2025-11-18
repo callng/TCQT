@@ -10,7 +10,6 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.hookAfterAllConstructors
 import com.owo233.tcqt.utils.hookAfterMethod
 import java.util.concurrent.ConcurrentHashMap
 
@@ -19,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
     key = "mmkv_config_hook",
     name = "MMKV配置Hook",
     type = SettingType.BOOLEAN,
-    desc = $$"仅高级用户使用，可以使用$uin表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
+    desc = $$"仅高级用户使用，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
     hasTextAreas = true,
     uiTab = "高级",
     uiOrder = 109
@@ -32,32 +31,25 @@ import java.util.concurrent.ConcurrentHashMap
 )
 class MMKVConfigHook : IAction {
 
-    private val mmkvOptionEntityV2Class by lazy {
-        XpClassLoader.load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")!!
-    }
-
-    private val trackedInstances = ConcurrentHashMap.newKeySet<Any>()
-
     override fun onRun(ctx: Context, process: ActionProcess) {
-        mmkvOptionEntityV2Class.hookAfterAllConstructors { param ->
-            val mmapId = param.args[0] as? String
-            if (mmapId == "common_mmkv_configurations") {
-                trackedInstances.add(param.thisObject)
-            }
+        val clazz = XpClassLoader.load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")
+            ?: error("MMKVOptionEntityV2 class not found...")
+
+        val mmapIdField = clazz.getDeclaredField("mmapId").apply {
+            isAccessible = true
         }
 
-        mmkvOptionEntityV2Class.hookAfterMethod(
+        clazz.hookAfterMethod(
             "getBoolean",
             String::class.java,
             Boolean::class.java,
             Boolean::class.java
         ) { param ->
-            if (!trackedInstances.contains(param.thisObject)) {
-                return@hookAfterMethod
-            }
+            val thisObj = param.thisObject
+            val mmapId= mmapIdField.get(thisObj) as? String ?: return@hookAfterMethod
+            if (mmapId != "common_mmkv_configurations") return@hookAfterMethod
 
-            val key = param.args[0] as? String ?: return@hookAfterMethod
-
+            val key = param.args[0] as String
             configMap[key]?.let { value ->
                 safeParseBoolean(key, value)?.let { parsed ->
                     param.result = parsed
@@ -75,6 +67,7 @@ class MMKVConfigHook : IAction {
     }
 
     companion object {
+
         private val configString by lazy {
             GeneratedSettingList.getString(GeneratedSettingList.MMKV_CONFIG_HOOK_STRING_SAVECONFIG)
         }
@@ -96,16 +89,19 @@ class MMKVConfigHook : IAction {
         }
 
         private fun String.replaceUinPlaceholder(): String {
-            return if (contains($$"$uin")) {
-                try {
-                    val currentUin = QQInterfaces.currentUin
-                    replace($$"$uin", currentUin.toString())
-                } catch (e: Exception) {
-                    Log.e("MMKVConfigHook: Failed to replace uin placeholder: $this")
-                    this
-                }
-            } else {
-                this
+            val replacements = try {
+                mapOf(
+                    $$"$uin" to QQInterfaces.currentUin.toString(),
+                    $$"$uid" to QQInterfaces.currentUid,
+                    $$"$guid" to QQInterfaces.guid
+                )
+            } catch (_: Exception) {
+                Log.e("MMKVConfigHook: Failed get: $this")
+                return this
+            }
+
+            return replacements.entries.fold(this) { acc, (k, v) ->
+                acc.replace(k, v)
             }
         }
     }
