@@ -49,6 +49,7 @@
 |------------|-------------------------------------------------------|
 | QAuxiliary | [QAuxiliary](https://github.com/cinit/QAuxiliary)     |
 | XAutoDaily | [XAutoDaily](https://github.com/LuckyPray/XAutoDaily) |
+| TimTool    | [TimTool](https://github.com/suzhelan/TimTool)        |
 
 > **本项目的开发动力和灵感来源于 QwQ 项目，感谢 fuqiuluo ！**
 

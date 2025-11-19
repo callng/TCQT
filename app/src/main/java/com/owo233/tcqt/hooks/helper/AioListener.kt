@@ -1,9 +1,6 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.google.protobuf.ByteString
-import com.owo233.tcqt.entries.InfoSyncPushOuterClass
-import com.owo233.tcqt.entries.MsgPushOuterClass
-import com.owo233.tcqt.entries.QQMessageOuterClass
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -15,6 +12,9 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import top.artmoe.inao.entries.InfoSyncPushOuterClass
+import top.artmoe.inao.entries.MsgPushOuterClass
+import top.artmoe.inao.entries.QQMessageOuterClass
 
 @OptIn(DelicateCoroutinesApi::class)
 object AioListener {

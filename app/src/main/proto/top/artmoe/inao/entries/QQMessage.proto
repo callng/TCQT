@@ -1,6 +1,6 @@
 syntax = "proto3";
-package com.owo233.tcqt.entries;
-option java_package = "com.owo233.tcqt.entries";
+package top.artmoe.inao.entries;
+option java_package = "top.artmoe.inao.entries";
 
 message QQMessage {
   MessageHead message_head = 1;

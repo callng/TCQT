@@ -61,7 +61,7 @@
 }
 
 # protobuf
--keepclassmembers class com.owo233.tcqt.entries.**OuterClass$** {
+-keepclassmembers class top.artmoe.inao.entries.**OuterClass$** {
     <fields>;
     <methods>;
 }
