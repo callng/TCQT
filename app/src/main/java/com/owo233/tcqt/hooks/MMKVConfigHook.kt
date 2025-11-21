@@ -95,8 +95,7 @@ class MMKVConfigHook : IAction {
                     $$"$uid" to QQInterfaces.currentUid,
                     $$"$guid" to QQInterfaces.guid
                 )
-            } catch (_: Exception) {
-                Log.e("MMKVConfigHook: Failed get: $this")
+            } catch (_: NullPointerException) {
                 return this
             }
 

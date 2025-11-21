@@ -4,42 +4,53 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 
+@SuppressLint("PrivateApi", "DiscouragedPrivateApi")
 internal object ContextUtils {
 
-    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
     fun getCurrentActivity(): Activity? {
-        return try {
-            val activityThreadClass = Class.forName(
+        return runCatching {
+            val activityThread = Class.forName(
                 "android.app.ActivityThread",
                 false,
                 Application::class.java.classLoader
-            )
-            val activityThread = activityThreadClass
-                .getMethod("currentActivityThread")
-                .invoke(null)
+            ).getMethod("currentActivityThread").invoke(null)
 
-            val activitiesField = activityThreadClass.getDeclaredField("mActivities").apply {
-                isAccessible = true
-            }
-            val activities = activitiesField.get(activityThread) as Map<*, *>
+            val activities = activityThread::class.java
+                .getDeclaredField("mActivities")
+                .apply { isAccessible = true }
+                .get(activityThread) as? Map<*, *>
 
-            for (activityRecord in activities.values) {
-                val activityRecordClass = activityRecord!!::class.java
-
-                val pausedField = activityRecordClass.getDeclaredField("paused").apply {
-                    isAccessible = true
+            activities?.values
+                ?.firstOrNull { record ->
+                    record!!::class.java
+                        .getDeclaredField("paused")
+                        .apply { isAccessible = true }
+                        .getBoolean(record).not()
                 }
-                if (!pausedField.getBoolean(activityRecord)) {
-                    val activityField = activityRecordClass.getDeclaredField("activity").apply {
-                        isAccessible = true
-                    }
-                    return activityField.get(activityRecord) as? Activity
+                ?.let { record ->
+                    record::class.java
+                        .getDeclaredField("activity")
+                        .apply { isAccessible = true }
+                        .get(record) as? Activity
                 }
-            }
-            null
-        } catch (e: Exception) {
-            Log.e("getCurrentActivity error", e)
-            null
-        }
+        }.onFailure {
+            Log.e("getCurrentActivity: Failed to get current activity", it)
+        }.getOrNull()
+    }
+
+    fun getCurApplication(): Application? {
+        return tryGetApplication("android.app.ActivityThread", "currentApplication")
+            ?: tryGetApplication("android.app.AppGlobals", "getInitialApplication")
+    }
+
+    private fun tryGetApplication(className: String, methodName: String): Application? {
+        return runCatching {
+            Class.forName(className)
+                .getDeclaredMethod(methodName)
+                .apply { isAccessible = true }
+                .invoke(null) as? Application
+        }.onFailure {
+            Log.e("getCurApplication: $className.$methodName failed", it)
+        }.getOrNull()
     }
 }
