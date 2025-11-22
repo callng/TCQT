@@ -5,12 +5,15 @@ import android.content.Context
 import android.content.Intent
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
@@ -29,6 +32,15 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 @RegisterAction
+@RegisterSetting(
+    key = "add_module_entrance.boolean.ShowAttachedEntries",
+    name = "显示附加工具入口",
+    type = SettingType.BOOLEAN,
+    defaultValue = "false",
+    desc = "在宿主设置页面额外显示模块附加工具入口",
+    uiTab = "高级",
+    uiOrder = 110
+)
 class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
@@ -80,7 +92,12 @@ class AddModuleEntrance : AlwaysRunAction() {
 
                 resInjection(context)
 
-                val filteredConfigs = entryConfigs.filter { !it.debugOnly || TCQTBuild.DEBUG }
+                val showAttached = GeneratedSettingList.getBoolean(
+                    GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
+                )
+                val filteredConfigs = entryConfigs.filter { config ->
+                    !config.extraEntry || showAttached
+                }
                 val grouped = filteredConfigs
                     .groupBy { it.groupTag ?: "" }
                     .map { (tag, groupConfigs) ->
@@ -328,6 +345,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             id = R.id.check_ban_url,
             title = "历史冻结记录 (显示空白则重新进入)",
             iconName = "qui_tuning",
+            extraEntry = true,
             groupTag = "TCQT_OtherSettingEntry",
             groupTitle = "TCQT小工具",
             onClick = ::openBanRecordQuery
@@ -336,7 +354,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             id = R.id.account_get_ticket,
             title = "复制账号票据 (高风险行为)",
             iconName = "qui_check_account",
-            debugOnly = true,
+            extraEntry = true,
             groupTag = "TCQT_OtherSettingEntry",
             groupTitle = "TCQT工具",
             onClick = ::copyTicket
@@ -347,7 +365,7 @@ class AddModuleEntrance : AlwaysRunAction() {
         val id: Int,
         val title: String,
         val iconName: String = "qui_setting",
-        val debugOnly: Boolean = false,
+        val extraEntry: Boolean = false,
         val groupTag: String? = null,
         val groupTitle: CharSequence? = null,
         val onClick: (Context) -> Unit
