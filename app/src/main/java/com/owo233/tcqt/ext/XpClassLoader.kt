@@ -11,18 +11,24 @@ object XpClassLoader: ClassLoader() {
 
     private val classCache = ConcurrentHashMap<String, Class<*>>(128)
 
+    /**
+     * 有时候需使用 loadOrThrow
+     */
     fun load(name: String): Class<*>? {
         classCache[name]?.let { return it }
+        val ret = loadClass(name)?.also { loadedClass ->
+            classCache[name] = loadedClass
+        }
+        return ret
+    }
 
-        return runCatching {
-            loadClass(name)?.also { loadedClass ->
-                classCache[name] = loadedClass
-            }
-        }.onFailure { e ->
-            if (e !is ClassNotFoundException) {
-                Log.e("加载类失败: $name", e)
-            }
-        }.getOrNull()
+    fun loadOrThrow(name: String): Class<*> {
+        classCache[name]?.let { return it }
+        val ret = loadClass(name)?.also { loadedClass ->
+            classCache[name] = loadedClass
+        }
+        if (ret == null) throw ClassNotFoundException(name)
+        return  ret
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -54,7 +60,9 @@ object XpClassLoader: ClassLoader() {
             runCatching {
                 ctxClassLoader.loadClass(name)
             }.getOrElse {
-                super.loadClass(name)
+                runCatching {
+                    super.loadClass(name)
+                }.getOrNull()
             }
         }
     }
