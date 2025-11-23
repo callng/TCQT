@@ -48,6 +48,7 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
+        buildToolsVersion = findBuildToolsVersion()
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
         versionName = "3.5.5"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
@@ -161,7 +162,7 @@ android {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.33.0"
+        artifact = "com.google.protobuf:protoc:4.33.1"
     }
     generateProtoTasks {
         all().forEach { task ->
@@ -209,6 +210,15 @@ fun getBuildVersionCode(project: Project): Int {
         println("Git HEAD file not found")
         1
     }
+}
+
+fun findBuildToolsVersion(): String {
+    val defaultBuildToolsVersion = "36.1.0"
+    return File(System.getenv("ANDROID_HOME"), "build-tools").listFiles()
+        ?.filter { it.isDirectory }
+        ?.maxOfOrNull { it.name }
+        ?.also { println("Using build tools version $it") }
+        ?: defaultBuildToolsVersion
 }
 
 tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }
