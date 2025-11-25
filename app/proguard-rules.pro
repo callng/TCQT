@@ -20,6 +20,9 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+# 保留 XposedHelper 中创建的所有 Hook 对象
+-keep,allowobfuscation class com.owo233.tcqt.utils.XposedHelper** { *; }
+
 # 保留所有 IAction 实现类的无参构造函数（用于 newInstance）
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
     public <init>();
@@ -87,6 +90,8 @@
 -overloadaggressively
 
 -renamesourcefileattribute *
--keepattributes !SourceFile,!SourceDebugExtension,!LineNumberTable,!LocalVariableTable,!LocalVariableTypeTable
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-keepattributes SourceFile,LineNumberTable
+-dontpreverify
 -dontnote kotlin.jvm.internal.SourceDebugExtension
 -dontwarn kotlin.jvm.internal.SourceDebugExtension
