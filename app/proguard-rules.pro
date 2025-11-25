@@ -95,3 +95,9 @@
 -dontpreverify
 -dontnote kotlin.jvm.internal.SourceDebugExtension
 -dontwarn kotlin.jvm.internal.SourceDebugExtension
+
+# 禁用代码优化
+-dontoptimize
+
+# 禁用删除未使用的代码
+#-dontshrink

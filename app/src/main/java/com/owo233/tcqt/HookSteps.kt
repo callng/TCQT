@@ -40,11 +40,14 @@ internal object HookSteps {
                 "onCreate",
                 object : XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
-                        if (hostInit) return
-                        hostApp = param.thisObject as Application
-                        initContext(hostApp)
-                        injectClassLoader()
-                        initHooks(hostApp)
+                        if (hostInit.not()) {
+                            hostApp = param.thisObject as Application
+                            initContext(hostApp)
+                            Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
+
+                            injectClassLoader()
+                            initHooks(hostApp)
+                        }
                     }
                 })
         }.onFailure {
