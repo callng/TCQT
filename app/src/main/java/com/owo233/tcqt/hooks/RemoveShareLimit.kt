@@ -9,8 +9,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
@@ -27,7 +27,7 @@ import com.owo233.tcqt.utils.setObjectField
 class RemoveShareLimit : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.loadOrThrow("com.tencent.mobileqq.activity.ForwardRecentActivity")
+        loadOrThrow("com.tencent.mobileqq.activity.ForwardRecentActivity")
             .declaredConstructors
             .first()
             .hookAfterMethod { param ->

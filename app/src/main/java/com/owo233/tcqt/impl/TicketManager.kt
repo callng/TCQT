@@ -1,7 +1,7 @@
 package com.owo233.tcqt.impl
 
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
@@ -32,7 +32,7 @@ internal object TicketManager {
     private fun initThirdSigService() {
         if (PlatformTools.getHostVersionCode() > PlatformTools.QQ_9_1_52_VER && thirdSigService == null) {
             thirdSigService = QQInterfaces.appRuntime.getRuntimeService(
-                XpClassLoader.loadAs("com.tencent.mobileqq.thirdsig.api.IThirdSigService"),
+                loadAs("com.tencent.mobileqq.thirdsig.api.IThirdSigService"),
                 "all"
             )
         }

@@ -7,8 +7,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.isPublic
@@ -30,14 +30,14 @@ import mqq.app.AppRuntime
 class DisableHotPatch : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.rfix.lib.download.PatchDownloadTask")
+        load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
             ?.hookBeforeMethod {
                 it.result = Unit
             }
 
-        XpClassLoader.load("com.tencent.rfix.lib.engine.PatchEngineBase")?.let { methods ->
-            val patchConfig = XpClassLoader.load("com.tencent.rfix.lib.config.PatchConfig")!!
+        load("com.tencent.rfix.lib.engine.PatchEngineBase")?.let { methods ->
+            val patchConfig = load("com.tencent.rfix.lib.config.PatchConfig")!!
             methods.declaredMethods.single {
                 it.isPublic && it.returnType == Void.TYPE
                         && it.paramCount == 2
@@ -48,7 +48,7 @@ class DisableHotPatch : IAction {
             }
         }
 
-        XpClassLoader.load("com.tencent.mobileqq.msf.core.net.utils.MsfHandlePatchUtils")
+        load("com.tencent.mobileqq.msf.core.net.utils.MsfHandlePatchUtils")
             ?.getDeclaredMethod(
                 "handlePatchConfig",
                 Int::class.javaPrimitiveType,
@@ -57,7 +57,7 @@ class DisableHotPatch : IAction {
                 it.result = Unit
             }
 
-        XpClassLoader.load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
+        load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
             ?.hookBeforeMethod("isEnable") {
                 val thisObj = it.thisObject
                 val field = thisObj.javaClass.getDeclaredField("disable").apply { isAccessible = true }
@@ -66,11 +66,11 @@ class DisableHotPatch : IAction {
                 }
             }
 
-        XpClassLoader.load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
-            val kRespGetConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")!!
+        load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
+            val kRespGetConfig = load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")!!
             val kRespGetConfigConfigList = kRespGetConfig.getDeclaredField("config_list")
 
-            val kConfig = XpClassLoader.load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$Config")!!
+            val kConfig = load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$Config")!!
             val kConfigType = kConfig.getDeclaredField("type")
 
             kConfigServlet.declaredMethods.filter { m ->
@@ -109,7 +109,7 @@ class DisableHotPatch : IAction {
             }
         }
 
-        XpClassLoader.load("com.tencent.mobileqq.msf.core.net.patch.PatchReporter")?.let { kPatchReporter ->
+        load("com.tencent.mobileqq.msf.core.net.patch.PatchReporter")?.let { kPatchReporter ->
             kPatchReporter.declaredMethods.filter {
                 it.name.startsWith("report") && it.returnType == Void.TYPE
             }.forEach { m ->

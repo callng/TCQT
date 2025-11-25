@@ -11,10 +11,10 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -45,7 +45,7 @@ import java.lang.reflect.Proxy
 class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val mainClass = XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingFragment")
+        val mainClass = load("com.tencent.mobileqq.setting.main.MainSettingFragment")
             ?: error("找不到 MainSettingFragment类,无法创建模块设置入口!")
 
         val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
@@ -53,10 +53,8 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {
-        val oldProvider =
-            XpClassLoader.load("com.tencent.mobileqq.setting.main.MainSettingConfigProvider")
-        val newProvider =
-            XpClassLoader.load("com.tencent.mobileqq.setting.main.NewSettingConfigProvider")
+        val oldProvider = load("com.tencent.mobileqq.setting.main.MainSettingConfigProvider")
+        val newProvider = load("com.tencent.mobileqq.setting.main.NewSettingConfigProvider")
 
         val entryClass = when {
             oldProvider != null -> oldProvider
@@ -65,7 +63,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 val field = mainFragmentClass.getFields(false)
                     .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
                     ?: error("未找到 MainSettingFragment类中被混淆的入口字段,无法创建模块设置入口!")
-                XpClassLoader.load(field.type.name)!!
+                load(field.type.name)!!
             }
         }
 
@@ -327,7 +325,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     companion object {
         val browserClass by lazy {
-            XpClassLoader.load("com.tencent.mobileqq.activity.QQBrowserActivity")
+            load("com.tencent.mobileqq.activity.QQBrowserActivity")
         }
     }
 

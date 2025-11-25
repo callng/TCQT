@@ -12,9 +12,9 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
@@ -48,7 +48,7 @@ class PttForward : IAction, OnMenuBuilder {
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val forwardBaseOption = XpClassLoader.load(
+        val forwardBaseOption = load(
             "com.tencent.mobileqq.forward.ForwardBaseOption"
         ) ?: error("ForwardBaseOption class not found")
 
@@ -147,7 +147,7 @@ class PttForward : IAction, OnMenuBuilder {
     private fun startForwardActivity(context: Context, path: String) {
         val intent = Intent(
             context,
-            XpClassLoader.load("com.tencent.mobileqq.activity.ForwardRecentActivity")
+            load("com.tencent.mobileqq.activity.ForwardRecentActivity")
         )
         intent.putExtra("selection_mode", 2)
         intent.putExtra("direct_send_if_dataline_forward", false)

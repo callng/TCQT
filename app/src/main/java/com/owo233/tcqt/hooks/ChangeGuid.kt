@@ -13,12 +13,12 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
@@ -77,7 +77,7 @@ class ChangeGuid : IAction {
     }
 
     private fun setupLoginUiHook() {
-        val clazz = XposedHelpers.findClass("mqq.app.AppActivity", XpClassLoader.INSTANCE)
+        val clazz = XposedHelpers.findClass("mqq.app.AppActivity", HookEnv.hostClassLoader)
         clazz.hookAfterMethod("onCreate", Bundle::class.java) { param ->
             val activity = param.thisObject as Activity
             if (!activity.javaClass.name.contains("Login")) return@hookAfterMethod

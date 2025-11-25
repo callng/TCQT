@@ -4,7 +4,7 @@ import android.content.Context
 import android.view.View
 import android.widget.Toast
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
@@ -23,7 +23,7 @@ internal object Toasts {
 
     private fun initQQToast() {
         if (clazzQQToast != null) return
-        clazzQQToast = XpClassLoader.load("com.tencent.mobileqq.widget.QQToast")
+        clazzQQToast = load("com.tencent.mobileqq.widget.QQToast")
             ?: findQQToastFallback()
         clazzQQToast?.let {
             methodToastShow = it.methods.firstOrNull { m ->
@@ -34,12 +34,12 @@ internal object Toasts {
     }
 
     private fun findQQToastFallback(): Class<*>? {
-        XpClassLoader.load("com.tencent.mobileqq.activity.aio.doodle.DoodleLayout")?.let { clz ->
+        load("com.tencent.mobileqq.activity.aio.doodle.DoodleLayout")?.let { clz ->
             return clz.declaredFields
                 .map(Field::getType)
                 .firstOrNull { !it.isPrimitive && !it.isInterface && !View::class.java.isAssignableFrom(it) }
         }
-        return XpClassLoader.load("com.tencent.qqmini.sdk.core.widget.QQToast")
+        return load("com.tencent.qqmini.sdk.core.widget.QQToast")
     }
 
     private fun findMethod(clazz: Class<*>, vararg names: String): Method? {

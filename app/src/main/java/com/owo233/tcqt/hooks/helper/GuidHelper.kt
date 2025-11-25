@@ -1,16 +1,16 @@
 package com.owo233.tcqt.hooks.helper
 
 import android.content.Context
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.hex2ByteArray
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
 
 object GuidHelper {
 
-    private val clazz by lazy { XpClassLoader.load("oicq.wlogin_sdk.tools.util")!! }
-    private val clazz2 by lazy { XpClassLoader.load("com.tencent.mobileqq.qsec.qsecurity.QSecConfig")!! }
+    private val clazz by lazy { load("oicq.wlogin_sdk.tools.util")!! }
+    private val clazz2 by lazy { load("com.tencent.mobileqq.qsec.qsecurity.QSecConfig")!! }
 
     fun hookGuid(guid: String) {
         runCatching {

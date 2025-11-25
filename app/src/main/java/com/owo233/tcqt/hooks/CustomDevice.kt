@@ -7,8 +7,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.invokeOriginalMethod
@@ -45,7 +45,7 @@ import com.owo233.tcqt.utils.replaceMethod
 class CustomDevice : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("android.os.SystemProperties")!!
+        load("android.os.SystemProperties")!!
             .getMethods(false)
             .filter { it.name == "get" }
             .forEach { method ->
@@ -64,7 +64,7 @@ class CustomDevice : IAction {
             }
 
         // 干缓存
-        val deviceInfoClz = XpClassLoader.load(
+        val deviceInfoClz = load(
             "com.tencent.qmethod.pandoraex.monitor.DeviceInfoMonitor"
         ) ?: error("DeviceInfoMonitor is null")
         deviceInfoClz.replaceMethod("getModel") { param ->

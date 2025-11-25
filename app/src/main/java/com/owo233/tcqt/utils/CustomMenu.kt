@@ -1,6 +1,6 @@
 package com.owo233.tcqt.utils
 
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 
 internal object CustomMenu {
@@ -44,10 +44,10 @@ internal object CustomMenu {
     }
 
     private fun detectMenuClass(): MenuType {
-        val clazzF = runCatching { XpClassLoader.load("com.tencent.qqnt.aio.menu.ui.f") }.getOrNull()
+        val clazzF = runCatching { load("com.tencent.qqnt.aio.menu.ui.f") }.getOrNull()
         if (clazzF?.let { !it.isInterface && hasAbstractMenuMethods(it) } == true) return MenuType.F
 
-        val clazzD = runCatching { XpClassLoader.load("com.tencent.qqnt.aio.menu.ui.d") }.getOrNull()
+        val clazzD = runCatching { load("com.tencent.qqnt.aio.menu.ui.d") }.getOrNull()
         if (clazzD?.let { !it.isInterface && hasAbstractMenuMethods(it) } == true) return MenuType.D
 
         return MenuType.NONE

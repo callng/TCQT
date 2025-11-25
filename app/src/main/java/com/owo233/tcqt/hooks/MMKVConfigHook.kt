@@ -6,7 +6,7 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap
 class MMKVConfigHook : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val clazz = XpClassLoader.load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")
+        val clazz = load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")
             ?: error("MMKVOptionEntityV2 class not found...")
 
         val mmapIdField = clazz.getDeclaredField("mmapId").apply {

@@ -8,8 +8,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.hookBeforeAllConstructors
 import com.owo233.tcqt.utils.hookBeforeMethod
@@ -46,7 +46,7 @@ class SkipQRLoginWait : IAction {
 
         // 跳过对话框形式的倒计时等待
         if (process == ActionProcess.OPENSDK) {
-            XpClassLoader.load("com.tencent.mobileqq.utils.DialogUtil")!!
+            load("com.tencent.mobileqq.utils.DialogUtil")!!
                 .hookBeforeMethod(
                     "createCountdownDialog",
                     Context::class.java,

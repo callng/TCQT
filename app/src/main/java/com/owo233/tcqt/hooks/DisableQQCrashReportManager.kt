@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
@@ -25,7 +25,7 @@ import com.owo233.tcqt.utils.isStatic
 class DisableQQCrashReportManager : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
+        load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
             it.declaredMethods.first { method ->
                 !method.isStatic && method.returnType == Void.TYPE && method.parameterTypes.size == 2
             }.hookBeforeMethod { param ->
@@ -33,7 +33,7 @@ class DisableQQCrashReportManager : IAction {
             }
         }
 
-        XpClassLoader.load("com.tencent.qqperf.monitor.crash.QQCrashHandleListener")?.let {
+        load("com.tencent.qqperf.monitor.crash.QQCrashHandleListener")?.let {
             val hooker = beforeHook { param -> param.result = Unit }
             it.hookMethod(
                 "onCrashHandleStart",
@@ -59,7 +59,7 @@ class DisableQQCrashReportManager : IAction {
             )
         }
 
-        XpClassLoader.load("com.tencent.mobileqq.msf.MSFCrashHandleListener")?.let {
+        load("com.tencent.mobileqq.msf.MSFCrashHandleListener")?.let {
             val hooker = beforeHook { param -> param.result = Unit }
             it.hookMethod(
                 "onCrashHandleStart",

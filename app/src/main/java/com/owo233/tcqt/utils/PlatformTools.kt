@@ -13,15 +13,13 @@ import android.provider.Settings
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
-import com.owo233.tcqt.HookEnv.TIM_PACKAGE
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toast
+import com.owo233.tcqt.hooks.base.load
 import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import mqq.app.MobileQQ
 
 object PlatformTools {
 
@@ -31,79 +29,79 @@ object PlatformTools {
 
     fun isNt(): Boolean {
         return try {
-            XpClassLoader.load("com.tencent.qqnt.base.BaseActivity") != null
+            load("com.tencent.qqnt.base.BaseActivity") != null
         } catch (_: Exception) {
             false
         }
     }
 
-    fun getHostVersion(ctx: Context = MobileQQ.getContext()): String {
+    fun getHostVersion(ctx: Context = HookEnv.hostAppContext): String {
         val packageInfo: PackageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         return packageInfo.versionName ?: "unknown"
     }
 
-    fun getHostChannel(ctx: Context = MobileQQ.getContext()): String {
+    fun getHostChannel(ctx: Context = HookEnv.hostAppContext): String {
         // "537309838#3F9351D357E4AFF5#2017#GuanWang#fffffffffffffffffffffffffffff"
         val application = ctx.packageManager.getApplicationInfo(ctx.packageName, 128)
         return application.metaData!!.getString("AppSetting_params")!!.split("#")[3]
     }
 
-    fun getHostVersionCode(ctx: Context = MobileQQ.getContext()): Long {
+    fun getHostVersionCode(ctx: Context = HookEnv.hostAppContext): Long {
         val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         return PackageInfoCompat.getLongVersionCode(packageInfo)
     }
 
     fun getHostName(): String = HookEnv.appName
 
-    fun getClientVersion(ctx: Context = MobileQQ.getContext()): String = "android ${getHostVersion(ctx)}"
+    fun getClientVersion(ctx: Context = HookEnv.hostAppContext): String = "android ${getHostVersion(ctx)}"
 
     fun isMsfProcess(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.contains("msf", ignoreCase = true)
+        return HookEnv.processName.contains("msf", ignoreCase = true)
     }
 
     fun isToolProcess(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.contains("tool", ignoreCase = true)
+        return HookEnv.processName.contains("tool", ignoreCase = true)
     }
 
     fun isOpenSdkProcess(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.contains("openSdk", ignoreCase = true)
+        return HookEnv.processName.contains("openSdk", ignoreCase = true)
     }
 
     fun isMqq(): Boolean {
-        return MobileQQ.PACKAGE_NAME == QQ_PACKAGE
+        return HookEnv.isQQ()
     }
 
     fun isMqqPackage(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.startsWith(QQ_PACKAGE)
+        return HookEnv.processName.startsWith(QQ_PACKAGE)
     }
 
     fun isTim(): Boolean {
-        return MobileQQ.PACKAGE_NAME == TIM_PACKAGE
+        return HookEnv.isTim()
     }
 
     fun isMainProcess(): Boolean {
-        return !MobileQQ.getMobileQQ().qqProcessName.contains(":")
+        return !HookEnv.processName.contains(":")
     }
 
     @SuppressLint("HardwareIds")
     fun getAndroidID(): String? {
-        return Settings.Secure.getString(MobileQQ.getContext().contentResolver, "android_id")
+        return Settings.Secure.getString(HookEnv.hostAppContext.contentResolver, "android_id")
     }
 
-    fun copyToClipboard(context: Context = MobileQQ.getContext(), text: String) {
+    fun copyToClipboard(context: Context = HookEnv.hostAppContext, text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("label", text)
         clipboard.setPrimaryClip(clip)
         context.toast("已复制到剪切板")
     }
 
-    fun isMsfProcessRunning(context: Context = MobileQQ.getContext()): Boolean {
+    fun isMsfProcessRunning(context: Context = HookEnv.hostAppContext): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val runningProcesses = activityManager.runningAppProcesses
         return runningProcesses.any { it.processName.contains("msf", ignoreCase = true) }
     }
 
-    fun killMsfProcess(context: Context = MobileQQ.getContext()) {
+    fun killMsfProcess(context: Context = HookEnv.hostAppContext) {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val runningProcesses = activityManager.runningAppProcesses
         runningProcesses.forEach {
@@ -114,13 +112,13 @@ object PlatformTools {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun restartMsfProcess(context: Context = MobileQQ.getContext()) {
+    fun restartMsfProcess(context: Context = HookEnv.hostAppContext) {
         killMsfProcess(context)
         GlobalScope.launch(Dispatchers.Main) {
             val componentName = ComponentName(BaseApplication.getContext().packageName, "com.tencent.mobileqq.msf.service.MsfService")
             val intent = Intent()
             intent.component = componentName
-            intent.putExtra("to_SenderProcessName", MobileQQ.PACKAGE_NAME)
+            intent.putExtra("to_SenderProcessName", HookEnv.currentHostAppPackageName)
             BaseApplication.getContext().startService(intent)
         }
     }

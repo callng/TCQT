@@ -7,8 +7,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.hookBeforeMethod
@@ -46,7 +46,7 @@ class RenameBaseApk : IAction {
     }
 
     private fun renameGroupUploadApk(ctx: Context) {
-        val clz = XpClassLoader.load("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
+        val clz = load("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
             ?: error("renameGroupUploadApk: 找不到TroopFileTransferMgr类!!!")
         val method = clz.declaredMethods.firstOrNull {
             it.returnType == Void.TYPE && it.paramCount == 2 &&
@@ -73,7 +73,7 @@ class RenameBaseApk : IAction {
     }
 
     private fun renameFriendUploadApk(ctx: Context) {
-        val clz = XpClassLoader.load("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
+        val clz = load("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
             ?: error("renameFriendUploadApk: 找不到NTFileManageBridger类!!!")
 
         val method = clz.declaredMethods.firstOrNull { m ->

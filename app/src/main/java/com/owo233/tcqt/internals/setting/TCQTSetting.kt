@@ -15,10 +15,12 @@ import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
 
-    val dataDir = MobileQQ.getContext().getExternalFilesDir(null)!!
-        .parentFile!!.resolve("Tencent/TCQT").also {
-            it.mkdirs()
-        }
+    val dataDir by lazy {
+        MobileQQ.getContext().getExternalFilesDir(null)!!
+            .parentFile!!.resolve("Tencent/TCQT").also {
+                it.mkdirs()
+            }
+    }
 
     private val config: MMKV get() = MMKVUtils.mmkvWithId("TCQT")
 

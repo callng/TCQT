@@ -3,7 +3,7 @@
 package com.owo233.tcqt.utils
 
 import android.content.res.XResources
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import dalvik.system.BaseDexClassLoader
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam
@@ -559,7 +559,7 @@ object FuzzyClassKit {
 
     fun findMethodByClassPrefix(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Method? {
         dic.forEach { className ->
-            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$className")
+            val clz = load("$prefix${if (isSubClass) "$" else "."}$className")
             clz?.declaredMethods?.forEach {
                 if (check(clz, it)) return it
             }
@@ -570,7 +570,7 @@ object FuzzyClassKit {
 
     fun findMethodByClassName(prefix: String, check: (Method) -> Boolean): Method? {
         dic.forEach { name->
-            val clz = XpClassLoader.load("$prefix.$name")
+            val clz = load("$prefix.$name")
             clz?.declaredMethods?.forEach {
                 if (check(it)) return it
             }
@@ -581,7 +581,7 @@ object FuzzyClassKit {
 
     fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
         dic.forEach { name ->
-            val clz = XpClassLoader.load("$prefix${if (isSubClass) "$" else "."}$name")
+            val clz = load("$prefix${if (isSubClass) "$" else "."}$name")
             clz?.declaredMethods?.forEach {
                 if (check(clz, it)) return clz
             }
@@ -688,7 +688,7 @@ val Constructor<*>.notEmptyParam: Boolean
     inline get() = this.paramCount != 0
 
 val String.clazz: Class<*>?
-    get() = XpClassLoader.load(this).also {
+    get() = load(this).also {
         if (it == null) {
             Log.e("class: $this not found")
         }

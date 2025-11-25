@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.isPublic
 import com.owo233.tcqt.utils.paramCount
@@ -25,7 +25,7 @@ import com.tencent.mvi.base.route.MsgIntent
 class ReplyNoAt : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val clazz = XpClassLoader.load("com.tencent.mvi.base.route.VMMessenger")
+        val clazz = load("com.tencent.mvi.base.route.VMMessenger")
             ?: error("ReplyNoAt: 找不到 VMMessenger 类.")
 
         val target = clazz.declaredMethods.firstOrNull {

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.utils
 
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import java.util.concurrent.ConcurrentHashMap
 
 object ClassCacheUtils {
@@ -40,11 +40,11 @@ object ClassCacheUtils {
         className: String,
         vararg indices: Int
     ): Class<*>? {
-        XpClassLoader.load(className)?.let { return it }
+        load(className)?.let { return it }
 
         for (i in indices) {
             val syntheticName = "$className$$i"
-            val syntheticClass = XpClassLoader.load(syntheticName) ?: continue
+            val syntheticClass = load(syntheticName) ?: continue
 
             val outerClass = runCatching {
                 syntheticClass.getDeclaredField("this$0").type

@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.common.config.pad.DeviceType
 
@@ -22,7 +22,7 @@ import com.tencent.common.config.pad.DeviceType
 class ForcePhoneMode : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.common.config.pad.PadUtil")
+        load("com.tencent.common.config.pad.PadUtil")
             ?.declaredMethods?.first {
                 it.returnType == DeviceType::class.java && it.parameterCount == 1
                         && it.parameterTypes[0] == Context::class.java

@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookAfterMethod
 
 @RegisterAction
@@ -30,8 +30,8 @@ import com.owo233.tcqt.utils.hookAfterMethod
 class ForcedABTest : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val controllerClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
-        val expEntityClz = XpClassLoader.load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!
+        val controllerClz = load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
+        val expEntityClz = load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!
 
         val onlineField = expEntityClz.getDeclaredField("isExpOnline")
             .apply { isAccessible = true }

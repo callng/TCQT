@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookBeforeMethod
 
 @RegisterAction
@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.hookBeforeMethod
 class ShowPreciseBanTime : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
+        load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
             .hookBeforeMethod(
                 "remainingTimeToStringCountDown",
                 Long::class.javaPrimitiveType

@@ -5,7 +5,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.PttForward
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MethodHookParam
@@ -34,10 +34,10 @@ class MenuBuilder : AlwaysRunAction() {
             .filterIsInstance<OnMenuBuilder>()
             .takeIf { it.isNotEmpty() } ?: return
 
-        val msgClass = XpClassLoader.load(
+        val msgClass = load(
             "com.tencent.mobileqq.aio.msg.AIOMsgItem"
         ) ?: error("MenuBuilder Load AIOMsgItem Error")
-        val baseCompClass = XpClassLoader.load(
+        val baseCompClass = load(
                 "com.tencent.mobileqq.aio.msglist.holder.component.BaseContentComponent"
             ) ?: error("MenuBuilder Load BaseContentComponent Error")
 
@@ -53,7 +53,7 @@ class MenuBuilder : AlwaysRunAction() {
             .groupBy({ it.first }, { it.second })
 
         decoratorMap.keys.forEach { target ->
-            XpClassLoader.load(target)?.declaredMethods
+            load(target)?.declaredMethods
                 ?.firstOrNull { it.name == listMethodName && it.paramCount == 0 }
                 ?.hookMethod(afterHook(48) { param ->
                     val msg = getMsgMethod.invoke(param.thisObject) ?: return@afterHook

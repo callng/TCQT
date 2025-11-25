@@ -8,8 +8,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
@@ -66,7 +66,7 @@ class OneClickLikes : IAction {
 
             AbsProfileHeaderComponent::class.java.hookBeforeMethod(
                 "handleVoteBtnClickForGuestProfile",
-                XpClassLoader.load("com.tencent.mobileqq.data.Card")
+                load("com.tencent.mobileqq.data.Card")
             ) {
                 for (i in 0..<getMaxCount()) {
                     XposedBridge.invokeOriginalMethod(it.method, it.thisObject, it.args)

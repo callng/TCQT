@@ -8,8 +8,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.ClassCacheUtils
 import com.owo233.tcqt.utils.emptyParam
 import com.owo233.tcqt.utils.hookBeforeAllMethods
@@ -48,7 +48,7 @@ class RemoveAD : IAction {
             ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
             ?.onEach { it.hookBeforeMethod { p -> p.result = Unit } }
 
-        XpClassLoader.load(
+        load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
         )?.replaceMethod("handleMessage", Message::class.java) {
             it.invokeOriginalMethod()
@@ -56,7 +56,7 @@ class RemoveAD : IAction {
     }
 
     private fun removeKeywordAD() {
-        XpClassLoader.load(
+        load(
             "com.tencent.mobileqq.springhb.interactive.ui.InteractivePopManager"
         )?.declaredMethods?.firstOrNull {
             it.paramCount > 0 && it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
@@ -65,13 +65,13 @@ class RemoveAD : IAction {
     }
 
     private fun removePopupAD() {
-        XpClassLoader.load(
+        load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
         )?.hookBeforeAllMethods("updateBanner") {
             it.result = Unit
         }
 
-        XpClassLoader.load("cooperation.vip.ad.GrowHalfLayerHelper")
+        load("cooperation.vip.ad.GrowHalfLayerHelper")
             ?.declaredMethods
             ?.firstOrNull { method ->
                 method.returnType == Void.TYPE &&

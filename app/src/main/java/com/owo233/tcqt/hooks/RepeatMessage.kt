@@ -8,8 +8,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.Log
@@ -37,7 +37,7 @@ class RepeatMessage : IAction {
     private var lastClickTime = 0L
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val componentClz = XpClassLoader.load(
+        val componentClz = load(
             "com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent"
         ) ?: error("AIOMsgFollowComponent not found")
 
@@ -112,7 +112,7 @@ class RepeatMessage : IAction {
 
     companion object {
         private val getMsgRecordMethod by lazy {
-            XpClassLoader.load("com.tencent.mobileqq.aio.msg.AIOMsgItem")!!
+            load("com.tencent.mobileqq.aio.msg.AIOMsgItem")!!
                 .getDeclaredMethod("getMsgRecord").apply { isAccessible = true }
         }
     }

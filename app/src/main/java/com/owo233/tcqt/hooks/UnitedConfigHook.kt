@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toUtf8ByteArray
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.hookAfterMethod
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap
 )
 class UnitedConfigHook : IAction {
 
-    private val configClass by lazy { XpClassLoader.load("com.tencent.freesia.UnitedConfig")!! }
+    private val configClass by lazy { load("com.tencent.freesia.UnitedConfig")!! }
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         setupUnitedConfigHook()

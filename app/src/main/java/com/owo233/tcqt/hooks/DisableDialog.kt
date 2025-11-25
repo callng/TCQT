@@ -6,8 +6,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
@@ -33,7 +33,7 @@ class DisableDialog : IAction {
 
     private fun disableGrayCheckDialog() {
         val grayCheckClass =
-            XpClassLoader.load("com.tencent.mobileqq.graycheck.business.GrayCheckHandler")
+            load("com.tencent.mobileqq.graycheck.business.GrayCheckHandler")
                 ?: error("无法加载GrayCheckHandler类,屏蔽GrayCheckDialog不会生效!")
 
         val hookMethod = grayCheckClass.declaredMethods.firstOrNull {
@@ -45,7 +45,7 @@ class DisableDialog : IAction {
     }
 
     private fun disableFekitDialog() {
-        val dtapClass = XpClassLoader.load("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
+        val dtapClass = load("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
             ?: error("无法加载DTAPIImpl类,屏蔽FekitDialog不会生效!")
         dtapClass.hookMethod(
             "onSecDispatchToAppEvent",

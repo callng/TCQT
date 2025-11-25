@@ -7,8 +7,8 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.MockSharedPreferences
 import com.owo233.tcqt.utils.hookAfterMethod
 
@@ -23,7 +23,7 @@ import com.owo233.tcqt.utils.hookAfterMethod
 class PokeNoCoolDown : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        XpClassLoader.load("android.content.ContextWrapper")!!
+        load("android.content.ContextWrapper")!!
             .hookAfterMethod(
                 "getSharedPreferences",
                 String::class.java,

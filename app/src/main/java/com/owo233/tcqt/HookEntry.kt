@@ -11,7 +11,7 @@ class HookEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
 
     @Keep
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
-        if (HostTypeEnum.contain(lpparam.packageName) && lpparam.isFirstApplication) {
+        if (HostTypeEnum.contain(lpparam.packageName)) { //  && lpparam.isFirstApplication
             HookSteps.initHandleLoadPackage(lpparam)
             HookSteps.initLoad(lpparam)
         }
