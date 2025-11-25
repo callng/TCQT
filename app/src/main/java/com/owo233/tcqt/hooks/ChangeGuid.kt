@@ -77,7 +77,7 @@ class ChangeGuid : IAction {
     }
 
     private fun setupLoginUiHook() {
-        val clazz = XposedHelpers.findClass("mqq.app.AppActivity", XpClassLoader)
+        val clazz = XposedHelpers.findClass("mqq.app.AppActivity", XpClassLoader.INSTANCE)
         clazz.hookAfterMethod("onCreate", Bundle::class.java) { param ->
             val activity = param.thisObject as Activity
             if (!activity.javaClass.name.contains("Login")) return@hookAfterMethod

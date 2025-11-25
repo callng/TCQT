@@ -7,12 +7,12 @@ import android.content.res.Configuration
 import android.webkit.JavascriptInterface
 import androidx.core.net.toUri
 import com.owo233.tcqt.ActionManager
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.hooks.ModuleCommand
-import com.owo233.tcqt.hooks.base.hostInfo
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
@@ -26,7 +26,7 @@ class TCQTJsInterface(private val ctx: Context) {
     fun getHostVersion(): String = "${PlatformTools.getHostVersion(ctx)}(${PlatformTools.getHostVersionCode(ctx)})"
 
     @JavascriptInterface
-    fun getHostName(): String = hostInfo.hostName
+    fun getHostName(): String = HookEnv.appName
 
     @JavascriptInterface
     fun getModuleVersion(): String = TCQTBuild.VER_NAME

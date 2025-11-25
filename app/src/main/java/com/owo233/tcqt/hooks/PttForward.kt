@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -14,14 +15,13 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.hostInfo
-import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.ContextUtils
 import com.owo233.tcqt.utils.CustomMenu
 import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.beforeHook
 import com.owo233.tcqt.utils.hookMethod
 import com.tencent.mobileqq.qroute.QRoute
@@ -204,10 +204,11 @@ class PttForward : IAction, OnMenuBuilder {
     override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
         ptt = getPttElement(msg)
 
-        resInjection()
         val context: Activity = ContextUtils.getCurrentActivity() ?: error("getCurrentActivity null")
+        ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
+
         val resId = context.resources.getIdentifier(
-            "guild_title_share_btn_icon_white", "drawable", hostInfo.packageName
+            "guild_title_share_btn_icon_white", "drawable", HookEnv.appName
         )
         val item = CustomMenu.createItemIconNt(
             msg = msg,

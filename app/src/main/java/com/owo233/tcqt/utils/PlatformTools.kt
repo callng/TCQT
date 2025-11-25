@@ -11,11 +11,11 @@ import android.content.pm.PackageInfo
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.pm.PackageInfoCompat
+import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.QQ_PACKAGE
+import com.owo233.tcqt.HookEnv.TIM_PACKAGE
 import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.toast
-import com.owo233.tcqt.hooks.base.PACKAGE_NAME_QQ
-import com.owo233.tcqt.hooks.base.PACKAGE_NAME_TIM
-import com.owo233.tcqt.hooks.base.hostInfo
 import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +53,7 @@ object PlatformTools {
         return PackageInfoCompat.getLongVersionCode(packageInfo)
     }
 
-    fun getHostName(): String = hostInfo.hostName
+    fun getHostName(): String = HookEnv.appName
 
     fun getClientVersion(ctx: Context = MobileQQ.getContext()): String = "android ${getHostVersion(ctx)}"
 
@@ -70,15 +70,15 @@ object PlatformTools {
     }
 
     fun isMqq(): Boolean {
-        return MobileQQ.PACKAGE_NAME == PACKAGE_NAME_QQ
+        return MobileQQ.PACKAGE_NAME == QQ_PACKAGE
     }
 
     fun isMqqPackage(): Boolean {
-        return MobileQQ.getMobileQQ().qqProcessName.startsWith(PACKAGE_NAME_QQ)
+        return MobileQQ.getMobileQQ().qqProcessName.startsWith(QQ_PACKAGE)
     }
 
     fun isTim(): Boolean {
-        return MobileQQ.PACKAGE_NAME == PACKAGE_NAME_TIM
+        return MobileQQ.PACKAGE_NAME == TIM_PACKAGE
     }
 
     fun isMainProcess(): Boolean {

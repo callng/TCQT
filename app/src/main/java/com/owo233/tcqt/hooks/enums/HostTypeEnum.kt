@@ -1,14 +1,14 @@
 package com.owo233.tcqt.hooks.enums
 
-import com.owo233.tcqt.hooks.base.PACKAGE_NAME_QQ
-import com.owo233.tcqt.hooks.base.PACKAGE_NAME_TIM
+import com.owo233.tcqt.HookEnv.QQ_PACKAGE
+import com.owo233.tcqt.HookEnv.TIM_PACKAGE
 
 enum class HostTypeEnum(
     val packageName: String,
     val appName: String
 ) {
-    QQ(PACKAGE_NAME_QQ, "QQ"),
-    TIM(PACKAGE_NAME_TIM, "TIM");
+    QQ(QQ_PACKAGE, "QQ"),
+    TIM(TIM_PACKAGE, "TIM");
 
     companion object {
         fun valueOfPackage(packageName: String): HostTypeEnum {
@@ -31,11 +31,11 @@ enum class HostTypeEnum(
             return false
         }
     }
-}
 
-class UnSupportHostTypeException: RuntimeException {
-    constructor(): super()
-    constructor(message: String?) : super(message)
-    constructor(message: String?, cause: Throwable?) : super(message, cause)
-    constructor(cause: Throwable?) : super(cause)
+    class UnSupportHostTypeException: RuntimeException {
+        constructor(): super()
+        constructor(message: String?) : super(message)
+        constructor(message: String?, cause: Throwable?) : super(message, cause)
+        constructor(cause: Throwable?) : super(cause)
+    }
 }

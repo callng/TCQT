@@ -20,13 +20,6 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# 保留Hook入口
--keep class com.owo233.tcqt.MainEntry {
-    public <init>();
-    public void handleLoadPackage(de.robv.android.xposed.callbacks.XC_LoadPackage$LoadPackageParam);
-    public void initZygote(de.robv.android.xposed.IXposedHookZygoteInit$StartupParam);
-}
-
 # 保留所有 IAction 实现类的无参构造函数（用于 newInstance）
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
     public <init>();

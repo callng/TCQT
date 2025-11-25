@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks.base
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Process
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.runRetry
 
 object ProcUtil {
@@ -25,7 +26,7 @@ object ProcUtil {
 
     val mPid: Int by lazy { Process.myPid() }
     val procName: String by lazy {
-        val am = hostInfo.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val am = HookEnv.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         runRetry(3) {
             am.runningAppProcesses.firstOrNull { it.pid == mPid }?.processName
         } ?: "unknown"

@@ -3,8 +3,8 @@ package com.owo233.tcqt.utils
 import android.content.Context
 import android.view.View
 import android.widget.Toast
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.hooks.base.hostInfo
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
@@ -52,7 +52,7 @@ internal object Toasts {
     }
 
     private fun showToast(context: Context?, type: Int, text: CharSequence, duration: Int) {
-        val ctx = context ?: hostInfo.application
+        val ctx = context ?: HookEnv.application
         SyncUtils.runOnUiThread {
             if (type == TYPE_PLAIN) {
                 Toast.makeText(ctx, text, duration).show()

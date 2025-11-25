@@ -1,7 +1,7 @@
 package com.owo233.tcqt.impl
 
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.XpClassLoader
-import com.owo233.tcqt.ext.XpClassLoader.hostClassLoader
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
@@ -51,7 +51,7 @@ internal object TicketManager {
                 }
                 val callbackClass = getSuperKeyMethod.parameterTypes.last()
 
-                val callback = Proxy.newProxyInstance(hostClassLoader, arrayOf(callbackClass)) { _, method, args ->
+                val callback = Proxy.newProxyInstance(HookEnv.hostClassLoader, arrayOf(callbackClass)) { _, method, args ->
                     runCatching {
                         if (args.size == 2) {
                             Log.e("getSuperKey fail, code: ${args[0]}, msg: ${args[1]}")

@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -14,12 +15,12 @@ import com.owo233.tcqt.ext.XpClassLoader
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.resInjection
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.getFields
@@ -90,7 +91,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 val processorInfo = resolveProcessorInfo(result)
                     ?: return@afterHook
 
-                resInjection(context)
+                ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
 
                 val showAttached = GeneratedSettingList.getBoolean(
                     GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
@@ -199,12 +200,12 @@ class AddModuleEntrance : AlwaysRunAction() {
         context: Context
     ) {
         val function0Class = onClickMethod.parameterTypes.first()
-        val unit = XpClassLoader.hostClassLoader
+        val unit = HookEnv.hostClassLoader
             .loadClass("kotlin.Unit")
             ?.fieldValue("INSTANCE") ?: Unit
 
         val proxy = Proxy.newProxyInstance(
-            XpClassLoader.hostClassLoader,
+            HookEnv.hostClassLoader,
             arrayOf(function0Class)
         ) { _, method, _ ->
             if (method.name == "invoke") {
@@ -225,7 +226,7 @@ class AddModuleEntrance : AlwaysRunAction() {
         title: CharSequence?
     ) {
         val groupClass = result.firstOrNull()?.javaClass ?: return
-        val markerClass = XpClassLoader.hostClassLoader
+        val markerClass = HookEnv.hostClassLoader
             .loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
 
         val groupConstructor = groupClass.getConstructor(
