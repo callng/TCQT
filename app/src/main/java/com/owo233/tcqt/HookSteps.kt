@@ -69,7 +69,7 @@ internal object HookSteps {
             HookEnv.setHostAppContext(context)
             HookEnv.setApplication(app)
             HookEnv.setHostApkPath(context.applicationInfo.sourceDir)
-            HookEnv.setAppName(appName)
+            HookEnv.setAppName(context.packageName)
             HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
             HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
             HookEnv.setHostClassLoader(context.classLoader)

@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import com.owo233.tcqt.HookEnv
@@ -288,38 +289,42 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     private fun openBanRecordQuery(context: Context) {
         browserClass?.let {
-            context.startActivity(
-                Intent(context, it).apply {
-                    putExtra("fling_action_key", 2)
-                    putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                    putExtra("useDefBackText", true)
-                    putExtra("param_force_internal_browser", true)
-                    putExtra("url", "https://m.q.qq.com/a/s/07befc388911b30c2359bfa383f2d693")
-                }
-            )
+            val intent = Intent(context, it).apply {
+                putExtra("fling_action_key", 2)
+                putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
+                putExtra("useDefBackText", true)
+                putExtra("param_force_internal_browser", true)
+                putExtra("url", "https://m.q.qq.com/a/s/07befc388911b30c2359bfa383f2d693")
+            }
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
         }
     }
 
     private fun openTCQTSettings(context: Context) {
         browserClass?.let {
-            context.startActivity(
-                Intent(context, it).apply {
-                    putExtra("fling_action_key", 2)
-                    putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                    putExtra("url", TCQTSetting.settingUrl)
-                    putExtra("hide_more_button", true)
-                    putExtra("hide_operation_bar", true)
-                    putExtra("hide_title_bar", true)
-                    putExtra("hide_title_left_arrow", true)
-                    putExtra("hide_left_button", true)
-                    putExtra("hideRightButton", true)
-                    putExtra("finish_animation_up_down", true)
-                    putExtra("ishiderefresh", true)
-                    putExtra("ishidebackforward", true)
-                    putExtra("portraitOnly", true)
-                    putExtra("webStyle", "noBottomBar")
-                }
-            )
+            val intent = Intent(context, it).apply {
+                putExtra("fling_action_key", 2)
+                putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
+                putExtra("url", TCQTSetting.settingUrl)
+                putExtra("hide_more_button", true)
+                putExtra("hide_operation_bar", true)
+                putExtra("hide_title_bar", true)
+                putExtra("hide_title_left_arrow", true)
+                putExtra("hide_left_button", true)
+                putExtra("hideRightButton", true)
+                putExtra("finish_animation_up_down", true)
+                putExtra("ishiderefresh", true)
+                putExtra("ishidebackforward", true)
+                putExtra("portraitOnly", true)
+                putExtra("webStyle", "noBottomBar")
+            }
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
         }
     }
 

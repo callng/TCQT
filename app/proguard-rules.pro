@@ -85,7 +85,7 @@
 -obfuscationdictionary obf-dict.txt
 -classobfuscationdictionary obf-dict.txt
 -packageobfuscationdictionary obf-dict.txt
--repackageclasses '5cfa840f.owo233.job'
+-repackageclasses ''
 -allowaccessmodification
 -overloadaggressively
 

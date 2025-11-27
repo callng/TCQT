@@ -161,6 +161,9 @@ class PttForward : IAction, OnMenuBuilder {
         intent.putExtra("k_dataline", false)
         intent.putExtra("is_need_show_toast", true)
         intent.putExtra("k_forward_title", "语音转发")
+        if (context !is Activity) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         context.startActivity(intent)
     }
 
@@ -204,7 +207,7 @@ class PttForward : IAction, OnMenuBuilder {
     override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
         ptt = getPttElement(msg)
 
-        val context: Activity = ContextUtils.getCurrentActivity() ?: error("getCurrentActivity null")
+        val context: Context = HookEnv.hostAppContext
         ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
 
         val resId = context.resources.getIdentifier(
