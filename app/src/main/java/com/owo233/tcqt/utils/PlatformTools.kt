@@ -118,7 +118,7 @@ object PlatformTools {
             val componentName = ComponentName(BaseApplication.getContext().packageName, "com.tencent.mobileqq.msf.service.MsfService")
             val intent = Intent()
             intent.component = componentName
-            intent.putExtra("to_SenderProcessName", HookEnv.currentHostAppPackageName)
+            intent.putExtra("to_SenderProcessName", HookEnv.hostAppPackageName)
             BaseApplication.getContext().startService(intent)
         }
     }

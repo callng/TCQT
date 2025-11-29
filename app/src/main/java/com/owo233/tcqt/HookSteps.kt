@@ -25,7 +25,7 @@ internal object HookSteps {
 
     fun initHandleLoadPackage(loadPackageParam: XC_LoadPackage.LoadPackageParam) {
         HookEnv.setProcessName(loadPackageParam.processName)
-        HookEnv.setCurrentHostAppPackageName(loadPackageParam.packageName)
+        HookEnv.setHostAppPackageName(loadPackageParam.packageName)
     }
 
     fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {

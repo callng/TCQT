@@ -10,7 +10,7 @@ internal object HookEnv {
 
     val moduleClassLoader: ClassLoader = HookEntry::class.java.classLoader!!
 
-    lateinit var currentHostAppPackageName: String
+    lateinit var hostAppPackageName: String
         private set
 
     lateinit var processName: String
@@ -72,19 +72,19 @@ internal object HookEnv {
         processName = p
     }
 
-    fun setCurrentHostAppPackageName(pkg: String) {
-        currentHostAppPackageName = pkg
+    fun setHostAppPackageName(pkg: String) {
+        hostAppPackageName = pkg
     }
 
     fun setAppName(name: String) {
         appName = name
     }
 
-    fun isTim() = currentHostAppPackageName == TIM_PACKAGE
+    fun isTim() = hostAppPackageName == TIM_PACKAGE
 
-    fun isQQ() = currentHostAppPackageName == QQ_PACKAGE
+    fun isQQ() = hostAppPackageName == QQ_PACKAGE
 
     fun isMainProcess() = ::processName.isInitialized &&
-            ::currentHostAppPackageName.isInitialized &&
-            processName == currentHostAppPackageName
+            ::hostAppPackageName.isInitialized &&
+            processName == hostAppPackageName
 }

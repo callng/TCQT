@@ -18,7 +18,6 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
-import com.owo233.tcqt.utils.ContextUtils
 import com.owo233.tcqt.utils.CustomMenu
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.ResourcesUtils
@@ -209,14 +208,10 @@ class PttForward : IAction, OnMenuBuilder {
 
         val context: Context = HookEnv.hostAppContext
         ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
-
-        val resId = context.resources.getIdentifier(
-            "guild_title_share_btn_icon_white", "drawable", HookEnv.appName
-        )
         val item = CustomMenu.createItemIconNt(
             msg = msg,
             text = "转发",
-            icon = resId,
+            icon = R.drawable.ic_item_share_72dp,
             id = R.id.item_ptt_forward,
             click = {
                 startForwardActivity(context, getPttFileByMsgNt(msg).absolutePath)
