@@ -2,43 +2,54 @@ package com.owo233.tcqt.hooks
 
 import android.content.Context
 import android.view.View
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.paramCount
+import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 
 @RegisterAction
 @RegisterSetting(
     key = "hide_qzone_ad",
     name = "隐藏QQ空间广告",
     type = SettingType.BOOLEAN,
-    desc = "隐藏空间里那些烦人的广告，目前只针对改版的新空间，未改版的旧空间可能没有效果。可以打开「AB测试强制转B组」功能来强制使用新空间。",
+    desc = "隐藏空间里那无时无刻不在显示的广告。",
     uiOrder = 27
 )
 class HideQzoneAD : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val clazz = load(
-                "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView"
-            ) ?: error("隐藏QQ空间广告: 加载类QZoneCardAdFeedProItemView失败!")
-        val method = clazz.declaredMethods.firstOrNull { m ->
-            m.returnType == Void.TYPE && m.paramCount == 1 &&
-                    m.parameterTypes[0].name.contains("com.qzone.reborn.feedpro.data.ad")
-        } ?: error("隐藏QQ空间广告: 没有找到隐藏方法!")
+        if (HookEnv.isQQ()) {
+            loadOrThrow("com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView")
+                .declaredMethods
+                .first { it.returnType == Void.TYPE && it.paramCount == 1 &&
+                        it.parameterTypes[0].name.contains("com.qzone.reborn.feedpro.data.ad") }
+                .hookAfterMethod { param ->
+                    val view = param.thisObject as View
+                    view.visibility = View.GONE
+                    view.layoutParams = view.layoutParams.apply {
+                        height = 0
+                        width = 0
+                    }
+                    view.requestLayout()
+                }
+        }
 
-        method.hookAfterMethod { param ->
-            val view = param.thisObject as View
-            view.visibility = View.GONE
-            view.layoutParams = view.layoutParams.apply {
-                height = 0
-                width = 0
-            }
-            view.requestLayout()
+        if (HookEnv.isTim()) {
+            loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
+                .hookBeforeMethod(
+                    "isShowingRecommendAd",
+                    BusinessFeedData::class.java
+                ) { param ->
+                    param.result = true
+                }
         }
     }
 

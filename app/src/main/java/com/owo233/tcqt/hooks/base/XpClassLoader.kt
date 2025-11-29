@@ -51,10 +51,11 @@ class XpClassLoader(
         private val hostPackages = listOf(
             "androidx.lifecycle.",
             "com.qq.",
+            "com.qzone.",
             "com.tencent",
             "mqq.",
             "oicq.",
-            "tencent.im.",
+            "tencent.im."
         )
 
         fun switchHostClass(name: String): Boolean {
