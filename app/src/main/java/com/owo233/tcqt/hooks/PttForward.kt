@@ -121,7 +121,9 @@ class PttForward : IAction, OnMenuBuilder {
             pttElement = ptt!!.apply {
                 voiceType = 2 // 普通语音消息
                 voiceChangeType = 0 // 不是变声语音
-                otherBusinessInfo.aiVoiceType = 0 // 不是AI语音消息
+                if (HookEnv.isQQ()) {
+                    otherBusinessInfo.aiVoiceType = 0 // 不是AI语音消息
+                }
             }
         }
 
