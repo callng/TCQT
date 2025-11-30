@@ -1,10 +1,10 @@
 package com.tencent.mobileqq.app;
 
-import com.tencent.common.app.AppInterface;
 import com.tencent.common.app.BaseApplicationImpl;
+import com.tencent.common.app.business.BaseQQAppInterface;
 import com.tencent.qphone.base.util.BaseApplication;
 
-public class QQAppInterface extends AppInterface {
+public class QQAppInterface extends BaseQQAppInterface {
 
     public QQAppInterface(BaseApplicationImpl baseApplication, String str) {
         super(baseApplication, str);

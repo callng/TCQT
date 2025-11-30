@@ -1,5 +1,6 @@
 package com.owo233.tcqt.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.AssetManager
 import android.content.res.Resources
@@ -9,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import androidx.annotation.RequiresApi
 import java.io.File
 
 internal object ResourcesUtils {
@@ -24,6 +26,7 @@ internal object ResourcesUtils {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun injectResourcesAboveApi30(res: Resources, path: String) {
         if (::resourcesLoader.isInitialized.not()) {
             runCatching {
@@ -54,6 +57,7 @@ internal object ResourcesUtils {
         }
     }
 
+    @SuppressLint("DiscouragedPrivateApi")
     private fun injectResourcesBelowApi30(res: Resources, path: String) {
         runCatching {
             val assetManager = res.assets

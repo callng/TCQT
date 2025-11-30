@@ -58,7 +58,7 @@ class XpClassLoader(
             "tencent.im."
         )
 
-        fun switchHostClass(name: String): Boolean {
+        private fun switchHostClass(name: String): Boolean {
             for (pack in hostPackages) {
                 if (name.startsWith(pack)) {
                     return true

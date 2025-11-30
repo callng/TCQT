@@ -110,6 +110,7 @@ class PttForward : IAction, OnMenuBuilder {
     }
 
     private suspend fun sendPtt(uin: String, uinType: Int, msgService: IMsgService) {
+        // uinType: 0好友,1群组,3000讨论组
         val sendUid = if (uinType == 0) { // 私聊类型
             if (!uin.startsWith("u_")) {
                 ContactHelper.getUidByUinAsync(uin.toLong())

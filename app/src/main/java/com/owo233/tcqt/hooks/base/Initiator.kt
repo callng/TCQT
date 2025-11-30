@@ -2,7 +2,6 @@
 package com.owo233.tcqt.hooks.base
 
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.utils.Log
 
 private val mClassCache: MutableMap<String, Class<*>?> = HashMap()
 
@@ -28,17 +27,17 @@ fun getSimpleName(className: String): String {
 fun load(className: String, classLoader: ClassLoader = HookEnv.hostClassLoader): Class<*>? {
     val name = getSimpleName(className)
 
-    if (classLoader == HookEnv.hostClassLoader && mClassCache.containsKey(className)) {
-        return mClassCache[name]
+    return try {
+        if (classLoader == HookEnv.hostClassLoader && mClassCache.containsKey(name)) {
+            mClassCache[name]
+        } else {
+            val clazz = classLoader.loadClass(name)
+            mClassCache[name] = clazz
+            clazz
+        }
+    } catch (_: ClassNotFoundException) {
+        null
     }
-    runCatching {
-        val clazz = classLoader.loadClass(name)
-        mClassCache[name] = clazz
-        return clazz
-    }.onFailure {
-        // Log.e("load class $name failed", it)
-    }
-    return null
 }
 
 @JvmOverloads
