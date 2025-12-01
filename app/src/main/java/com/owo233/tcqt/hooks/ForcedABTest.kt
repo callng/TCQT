@@ -7,8 +7,11 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.invoke
+import com.owo233.tcqt.utils.setObjectField
 
 @RegisterAction
 @RegisterSetting(
@@ -30,57 +33,64 @@ import com.owo233.tcqt.utils.hookAfterMethod
 class ForcedABTest : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val controllerClz = load("com.tencent.mobileqq.utils.abtest.ABTestController")!!
-        val expEntityClz = load("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")!!
+        val mode = GeneratedSettingList.getInt(GeneratedSettingList.FORCED_TO_AB_MODE)
 
-        val onlineField = expEntityClz.getDeclaredField("isExpOnline")
-            .apply { isAccessible = true }
-        val assignmentField = expEntityClz.getDeclaredField("mAssignment")
-            .apply { isAccessible = true }
-        val expGrayIdField = expEntityClz.getDeclaredField("mExpGrayId")
-            .apply { isAccessible = true }
-        val layerNameField = expEntityClz.getDeclaredField("mLayerName")
-            .apply { isAccessible = true }
+        val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")
+        val expEntityClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")
 
-        controllerClz.getDeclaredMethod(
+        expEntityClz.hookAfterMethod(
+            "isExpHit",
+            String::class.java
+        ) { param ->
+            when (mode) {
+                1 -> param.result = false
+                2 -> param.result = true
+            }
+        }
+
+        expEntityClz.hookAfterMethod("getAssignment") { param ->
+            val expName = param.thisObject.invoke("getExpName") as String
+            if (!expName.isEmpty()) {
+                when (mode) {
+                    1 -> param.result = "${expName}_A"
+                    2 -> param.result = "${expName}_B"
+                }
+            }
+        }
+
+        expEntityClz.hookAfterMethod(
+            "isExperiment",
+            String::class.java
+        ) { param ->
+            when (mode) {
+                1 -> param.result = false
+                2 -> param.result = true
+            }
+        }
+
+        expEntityClz.hookAfterMethod(
+            "isContrast",
+            String::class.java
+        ) { param ->
+            when (mode) {
+                1 -> param.result = true
+                2 -> param.result = false
+            }
+        }
+
+        controllerClz.hookAfterMethod(
             "getExpEntityInner",
             String::class.java,
             String::class.java,
             Boolean::class.java
-        ).hookAfterMethod { param ->
-            val result = param.result
-
-            val isOnline = onlineField.getBoolean(result)
-            val assignment = assignmentField.get(result) as String
-            val keyName = param.args[1] as String
-
-            /*if (assignment.endsWith("_A") || assignment.endsWith("_B")) {
-                Log.d("result: ${result.toJsonString()}")
-            }*/
-
-            if (!isOnline) return@hookAfterMethod
-
-            val mode = GeneratedSettingList.getInt(GeneratedSettingList.FORCED_TO_AB_MODE)
+        ) { param ->
+            val entity = param.result
+            val mAssignment = entity.getObjectField("mAssignment") as String
             when (mode) {
-                1 -> {
-                    // 强制A组（对照组） - 选项索引0
-                    if (!assignment.endsWith("_A")) {
-                        assignmentField.set(result, "${keyName}_A")
-                        expGrayIdField.set(result, "114514")
-                        layerNameField.set(result, keyName)
-                        param.result = result
-                    }
-                }
-                2 -> {
-                    // 强制B组（实验组） - 选项索引1
-                    if (!assignment.endsWith("_B")) {
-                        assignmentField.set(result, "${keyName}_B")
-                        expGrayIdField.set(result, "114514")
-                        layerNameField.set(result, keyName)
-                        param.result = result
-                    }
-                }
+                1 -> entity.setObjectField("mAssignment", "${mAssignment}_A")
+                2 -> entity.setObjectField("mAssignment", "${mAssignment}_B")
             }
+            param.result = entity
         }
     }
 
