@@ -16,6 +16,7 @@ import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -46,29 +47,32 @@ import java.lang.reflect.Proxy
 class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val mainClass = load("com.tencent.mobileqq.setting.main.MainSettingFragment")
-            ?: error("找不到 MainSettingFragment类,无法创建模块设置入口!")
-
+        val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
         val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
         createEntries(entryClass, isNewProvider)
     }
 
     private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {
-        val oldProvider = load("com.tencent.mobileqq.setting.main.MainSettingConfigProvider")
-        val newProvider = load("com.tencent.mobileqq.setting.main.NewSettingConfigProvider")
+        val candidates = listOf(
+            "com.tencent.mobileqq.setting.main.NewSettingConfigProvider",
+            "com.tencent.mobileqq.setting.main.MainSettingConfigProvider"
+        )
 
-        val entryClass = when {
-            oldProvider != null -> oldProvider
-            newProvider != null -> newProvider
-            else -> {
-                val field = mainFragmentClass.getFields(false)
-                    .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
-                    ?: error("未找到 MainSettingFragment类中被混淆的入口字段,无法创建模块设置入口!")
-                load(field.type.name)!!
-            }
-        }
+        val entryClass = candidates
+            .firstNotNullOfOrNull { name -> load(name) }
+            ?: inferProviderFromField(mainFragmentClass)
+            ?: error("未找到MainSettingFragment类中被混淆的Provider,无法创建模块设置入口!")
 
-        return entryClass to (oldProvider == null)
+        val isNewProvider = entryClass.name != candidates.last()
+        return entryClass to isNewProvider
+    }
+
+    private fun inferProviderFromField(clz: Class<*>): Class<*>? {
+        return clz.getFields(false)
+            .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
+            ?.type
+            ?.name
+            ?.let { load(it) }
     }
 
     /**
@@ -288,7 +292,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun openBanRecordQuery(context: Context) {
-        browserClass?.let {
+        browserClass.let {
             val intent = Intent(context, it).apply {
                 putExtra("fling_action_key", 2)
                 putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
@@ -304,7 +308,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun openTCQTSettings(context: Context) {
-        browserClass?.let {
+        browserClass.let {
             val intent = Intent(context, it).apply {
                 putExtra("fling_action_key", 2)
                 putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
@@ -330,7 +334,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     companion object {
         val browserClass by lazy {
-            load("com.tencent.mobileqq.activity.QQBrowserActivity")
+            loadOrThrow("com.tencent.mobileqq.activity.QQBrowserActivity")
         }
     }
 
