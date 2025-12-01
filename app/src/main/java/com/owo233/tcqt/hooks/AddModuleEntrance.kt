@@ -21,11 +21,14 @@ import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.CalculationUtils
+import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.afterHook
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.getFields
+import com.owo233.tcqt.utils.getIntField
+import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.invoke
 import com.owo233.tcqt.utils.isNotStatic
@@ -50,6 +53,55 @@ class AddModuleEntrance : AlwaysRunAction() {
         val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
         val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
         createEntries(entryClass, isNewProvider)
+        plusMenu()
+    }
+
+    @SuppressLint("DiscouragedApi")
+    private fun plusMenu() {
+        val menuItemId = 686617
+        val resId = HookEnv.hostAppContext.resources.getIdentifier(
+            "qui_setting",
+            "drawable",
+            HookEnv.hostAppPackageName
+        )
+        val entryMenuItem = loadOrThrow($$"com.tencent.widget.PopupMenuDialog$MenuItem")
+            .getConstructor(
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                String::class.java,
+                Int::class.javaPrimitiveType
+            )
+            .newInstance(
+                menuItemId,
+                TCQTBuild.APP_NAME,
+                TCQTBuild.APP_NAME,
+                resId
+            )
+
+        loadOrThrow("com.tencent.widget.PopupMenuDialog")
+            .hookBeforeMethod(
+                "conversationPlusBuild",
+                Activity::class.java,
+                List::class.java,
+                loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnClickActionListener"),
+                loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnDismissListener")
+            ) { param ->
+                param.args[1] = listOf(entryMenuItem) + param.args[1] as List<*>
+            }
+
+        val onClick = FuzzyClassKit.findMethodByClassName(
+            "com.tencent.mobileqq.activity.recent"
+        ) { _, method ->
+            method.name == "onClickAction" && method.paramCount == 1 &&
+                    method.parameterTypes[0].name.contains("MenuItem")
+        } ?: error("plusMenu: 找不到符合的onClickAction方法,无法设置点击执行过程!")
+
+        onClick.hookBeforeMethod { param ->
+            if (param.args[0].getIntField("id") == menuItemId) {
+                openTCQTSettings(HookEnv.hostAppContext)
+                param.result = Unit
+            }
+        }
     }
 
     private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {

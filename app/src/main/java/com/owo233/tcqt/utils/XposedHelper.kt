@@ -568,15 +568,19 @@ object FuzzyClassKit {
         return null
     }
 
-    fun findMethodByClassName(prefix: String, check: (Method) -> Boolean): Method? {
-        dic.forEach { name->
-            val clz = load("$prefix.$name")
-            clz?.declaredMethods?.forEach {
-                if (check(it)) return it
-            }
-        }
+    fun findMethodByClassName(prefix: String, check: (Class<*>, Method) -> Boolean): Method? {
+        return dic.firstNotNullOfOrNull { outerClass ->
+            val mainName = "$prefix.$outerClass"
+            val mainClz = load(mainName) ?: return@firstNotNullOfOrNull null
 
-        return null
+            mainClz.declaredMethods.firstOrNull { check(mainClz, it) }
+                ?:
+                dic.firstNotNullOfOrNull { innerClass ->
+                    val innerName = "$mainName$$innerClass"
+                    val innerClz = load(innerName) ?: return@firstNotNullOfOrNull null
+                    innerClz.declaredMethods.firstOrNull { check(innerClz, it) }
+                }
+        }
     }
 
     fun findClassByMethod(prefix: String, isSubClass: Boolean = false, check: (Class<*>, Method) -> Boolean): Class<*>? {
