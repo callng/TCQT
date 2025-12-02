@@ -4,6 +4,7 @@ package com.owo233.tcqt.utils
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import java.lang.ref.WeakReference
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
@@ -263,6 +264,15 @@ private fun Any?.toJsonObject(
                     is Map<*, *> -> {
                         // Map转为字符串表示
                         put(fieldName, JsonPrimitive(value.toString()))
+                    }
+                    is WeakReference<*> -> {
+                        // 处理弱引用
+                        val target = value.get()
+                        if (target == null) {
+                            put(fieldName, JsonPrimitive("<cleared>"))
+                        } else {
+                            put(fieldName, target.toJsonObject(maxDepth - 1, withSuper, visited))
+                        }
                     }
                     else -> {
                         // 递归处理对象类型

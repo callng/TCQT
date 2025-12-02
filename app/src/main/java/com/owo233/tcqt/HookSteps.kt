@@ -97,6 +97,7 @@ internal object HookSteps {
                 ProcUtil.isMsf -> ActionProcess.MSF
                 ProcUtil.isTool -> ActionProcess.TOOL
                 ProcUtil.isOpenSdk -> ActionProcess.OPENSDK
+                ProcUtil.isQzone -> ActionProcess.QZONE
                 else -> ActionProcess.OTHER
             }
         )

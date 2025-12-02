@@ -9,10 +9,10 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.paramCount
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 
@@ -34,11 +34,9 @@ class HideQzoneAD : IAction {
                 "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView"
             ).forEach { name ->
-                loadOrThrow(name)
-                    .declaredMethods
-                    .first { it.returnType == Void.TYPE && it.paramCount == 1 &&
-                            it.parameterTypes[0].name.contains("com.qzone.reborn.feedpro.data.ad") }
-                    .hookAfterMethod { param ->
+                load(name)
+                    ?.getDeclaredConstructor(Context::class.java)
+                    ?.hookAfterMethod { param ->
                         val view = param.thisObject as View
                         view.visibility = View.GONE
                         view.layoutParams = view.layoutParams.apply {
@@ -54,13 +52,18 @@ class HideQzoneAD : IAction {
                 hideAdView();
                 return;
             }*/
-            loadOrThrow("com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController")
-                .hookBeforeMethod(
+            load("com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController")
+                ?.hookBeforeMethod(
                     "initAndRenderData",
                     AlumBasicData::class.java
                 ) { param ->
                     val alumBasicData = param.args[0] as AlumBasicData
                     alumBasicData.advimageUrl = ""
+                    alumBasicData.videoUrl = ""
+                    alumBasicData.videoReportUrl = ""
+                    alumBasicData.negativeFeedbackUrl = ""
+                    alumBasicData.clickUrl = ""
+                    alumBasicData.advLogoUrl = ""
                 }
         }
 
@@ -77,5 +80,5 @@ class HideQzoneAD : IAction {
 
     override val key: String get() = GeneratedSettingList.HIDE_QZONE_AD
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.QZONE)
 }

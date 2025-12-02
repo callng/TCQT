@@ -6,8 +6,8 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
 
 enum class ActionProcess {
-    MSF, MAIN, TOOL, OPENSDK,
-    OTHER, // 非上述四个
+    MSF, MAIN, TOOL, OPENSDK, QZONE,
+    OTHER, // 非上述五个
     ALL, // 全部进程
 }
 

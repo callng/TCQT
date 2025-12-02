@@ -46,7 +46,8 @@ object ActionManager {
             ActionProcess.MSF,
             ActionProcess.MAIN,
             ActionProcess.TOOL,
-            ActionProcess.OPENSDK
+            ActionProcess.OPENSDK,
+            ActionProcess.QZONE
         )
 
         FIRST_ACTION.forEach { actionClass ->
