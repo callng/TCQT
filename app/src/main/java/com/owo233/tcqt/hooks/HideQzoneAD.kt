@@ -14,6 +14,7 @@ import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.paramCount
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
+import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 
 @RegisterAction
 @RegisterSetting(
@@ -27,18 +28,39 @@ class HideQzoneAD : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
-            loadOrThrow("com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView")
-                .declaredMethods
-                .first { it.returnType == Void.TYPE && it.paramCount == 1 &&
-                        it.parameterTypes[0].name.contains("com.qzone.reborn.feedpro.data.ad") }
-                .hookAfterMethod { param ->
-                    val view = param.thisObject as View
-                    view.visibility = View.GONE
-                    view.layoutParams = view.layoutParams.apply {
-                        height = 0
-                        width = 0
+            listOf(
+                "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView",
+                "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardMultiPicAdFeedProItemView",
+                "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
+                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView"
+            ).forEach { name ->
+                loadOrThrow(name)
+                    .declaredMethods
+                    .first { it.returnType == Void.TYPE && it.paramCount == 1 &&
+                            it.parameterTypes[0].name.contains("com.qzone.reborn.feedpro.data.ad") }
+                    .hookAfterMethod { param ->
+                        val view = param.thisObject as View
+                        view.visibility = View.GONE
+                        view.layoutParams = view.layoutParams.apply {
+                            height = 0
+                            width = 0
+                        }
+                        view.requestLayout()
                     }
-                    view.requestLayout()
+            }
+
+            // 干掉"我的更多相册"页广告
+            /*if (TextUtils.isEmpty(alumBasicData.advimageUrl)) {
+                hideAdView();
+                return;
+            }*/
+            loadOrThrow("com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController")
+                .hookBeforeMethod(
+                    "initAndRenderData",
+                    AlumBasicData::class.java
+                ) { param ->
+                    val alumBasicData = param.args[0] as AlumBasicData
+                    alumBasicData.advimageUrl = ""
                 }
         }
 
