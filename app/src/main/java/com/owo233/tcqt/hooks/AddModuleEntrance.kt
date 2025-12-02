@@ -50,10 +50,21 @@ import java.lang.reflect.Proxy
 class AddModuleEntrance : AlwaysRunAction() {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
-        val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
-        createEntries(entryClass, isNewProvider)
-        plusMenu()
+        // 设置页入口
+        runCatching {
+            val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
+            val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
+            createEntries(entryClass, isNewProvider)
+        }.onFailure {
+            Log.e("创建模块设置入口失败", it)
+        }
+
+        // 首页 + 入口
+        runCatching {
+            plusMenu()
+        }.onFailure {
+            Log.e("添加Plus菜单入口失败", it)
+        }
     }
 
     @SuppressLint("DiscouragedApi")
