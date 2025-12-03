@@ -4,6 +4,7 @@ import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
+import com.owo233.tcqt.internals.setting.TCQTBrowserInterface
 import com.owo233.tcqt.internals.setting.TCQTJsInterface
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hookBeforeMethod
@@ -28,6 +29,9 @@ class WebJsBridge : AlwaysRunAction() {
                         null
                     )
                     param.result = Unit
+                } else {
+                    // 其他url
+                    web.addJavascriptInterface(TCQTBrowserInterface(ctx), "TCQTBrowser")
                 }
             }
     }

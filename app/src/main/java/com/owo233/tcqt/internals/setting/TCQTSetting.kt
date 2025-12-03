@@ -50,7 +50,31 @@ internal object TCQTSetting {
 
     inline fun <reified T : Any> getValue(key: String): T? {
         return runCatching {
-            getSetting<T>(key).getValue(null, null)
+            val setting = settingMap[key]
+            if (setting != null) {
+                val requestedType = inferSettingType<T>()
+                if (setting.type != requestedType) {
+                    Log.e("Type mismatch for key: $key, expected: ${setting.type}, requested: $requestedType")
+                    return null
+                }
+                @Suppress("UNCHECKED_CAST")
+                return (setting as Setting<T>).getValue(config)
+            }
+
+            // 如果不在 settingMap 中,检查 MMKV 中是否存在类型元数据
+            val storedType = getStoredType(key)
+            if (storedType != null) {
+                val requestedType = inferSettingType<T>()
+                if (storedType != requestedType) {
+                    Log.e("Type mismatch for key: $key, stored: $storedType, requested: $requestedType")
+                    return null
+                }
+                // 根据存储的类型读取
+                return readFromMMKVByType<T>(key, storedType)
+            }
+
+            // 如果都没有,说明该 key 不存在
+            null
         }.onFailure {
             Log.e("Failed to get value for key: $key", it)
         }.getOrNull()
@@ -58,17 +82,59 @@ internal object TCQTSetting {
 
     inline fun <reified T : Any> setValue(key: String, value: T) {
         runCatching {
-            getSetting<T>(key).setValue(this, null, value)
+            val setting = settingMap[key]
+            if (setting != null) {
+                val requestedType = inferSettingType<T>()
+                if (setting.type != requestedType) {
+                    Log.e("Type mismatch for key: $key, expected: ${setting.type}, requested: $requestedType")
+                    return
+                }
+                @Suppress("UNCHECKED_CAST")
+                (setting as Setting<T>).setValue(config, value)
+                return
+            }
+
+            // 如果不在 settingMap 中,保存类型元数据和值
+            val type = inferSettingType<T>()
+            saveStoredType(key, type)
+            writeToMMKV(key, value)
         }.onFailure {
             Log.e("Failed to set value for key: $key", it)
         }
     }
 
+    private fun getStoredType(key: String): SettingType? {
+        val typeKey = "__type__$key"
+        val typeString = config.getString(typeKey, null) ?: return null
+        return when (typeString) {
+            "BOOLEAN" -> SettingType.BOOLEAN
+            "INT" -> SettingType.INT
+            "STRING" -> SettingType.STRING
+            else -> null
+        }
+    }
+
+    private fun saveStoredType(key: String, type: SettingType) {
+        val typeKey = "__type__$key"
+        config.putString(typeKey, type.name)
+    }
+
     @Suppress("UNCHECKED_CAST")
-    private inline fun <reified T : Any> getSetting(key: String): Setting<T> {
-        return settingMap.getOrPut(key) {
-            Setting(key, inferSettingType<T>(), null)
-        } as Setting<T>
+    private inline fun <reified T : Any> readFromMMKVByType(key: String, type: SettingType): T? {
+        return when (type) {
+            SettingType.BOOLEAN -> config.getBoolean(key, false) as T
+            SettingType.INT     -> config.getInt(key, 0) as T
+            SettingType.STRING  -> (config.getString(key, null) ?: "") as T
+        }
+    }
+
+    private inline fun <reified T : Any> writeToMMKV(key: String, value: T) {
+        when (T::class) {
+            Boolean::class -> config.putBoolean(key, value as Boolean)
+            Int::class     -> config.putInt(key, value as Int)
+            String::class  -> config.putString(key, value.toString())
+            else -> Log.e("Unsupported type for key: $key, type: ${T::class}")
+        }
     }
 
     private inline fun <reified T : Any> inferSettingType(): SettingType =
@@ -89,29 +155,38 @@ internal object TCQTSetting {
         val default: T? = null
     ) {
         @Suppress("UNCHECKED_CAST")
-        operator fun getValue(thisRef: Any?, property: KProperty<*>?): T {
+        fun getValue(mmkv: MMKV): T {
             return when (type) {
-                SettingType.BOOLEAN -> config.getBoolean(key, default as? Boolean ?: false)
-                SettingType.INT     -> config.getInt(key, default as? Int ?: 0)
-                SettingType.STRING  -> config.getString(key, default as? String ?: "") ?: ""
+                SettingType.BOOLEAN -> mmkv.getBoolean(key, default as? Boolean ?: false)
+                SettingType.INT     -> mmkv.getInt(key, default as? Int ?: 0)
+                SettingType.STRING  -> mmkv.getString(key, default as? String ?: "") ?: ""
             } as T
         }
 
         @Suppress("UNCHECKED_CAST")
-        operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
+        fun setValue(mmkv: MMKV, value: T) {
             when (type) {
-                SettingType.BOOLEAN -> config.putBoolean(
+                SettingType.BOOLEAN -> mmkv.putBoolean(
                     key,
                     value as? Boolean ?: runCatching { value.toString().toBooleanStrict() }
                         .getOrDefault(false)
                 )
-                SettingType.INT     -> config.putInt(
+                SettingType.INT     -> mmkv.putInt(
                     key,
                     value as? Int ?: runCatching { value.toString().toInt() }
                         .getOrDefault(0)
                 )
-                SettingType.STRING  -> config.putString(key, value.toString())
+                SettingType.STRING  -> mmkv.putString(key, value.toString())
             }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        operator fun getValue(thisRef: Any?, property: KProperty<*>?): T {
+            return getValue(config)
+        }
+
+        operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
+            setValue(config, value)
         }
     }
 

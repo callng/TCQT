@@ -52,14 +52,28 @@ class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
     fun getSetting(key: String): String {
         return runCatching {
-            val value: Any = TCQTSetting.getValue<Any>(key) ?: return "{}"
-
-            val result = when (value) {
-                is Boolean, Int, String -> value
-                else -> value.toString()
+            val existingSetting = TCQTSetting.settingMap[key]
+            val value: Any? = if (existingSetting != null) {
+                when (existingSetting.type) {
+                    TCQTSetting.SettingType.BOOLEAN -> TCQTSetting.getValue<Boolean>(key)
+                    TCQTSetting.SettingType.INT -> TCQTSetting.getValue<Int>(key)
+                    TCQTSetting.SettingType.STRING -> TCQTSetting.getValue<String>(key)
+                }
+            } else {
+                TCQTSetting.getValue<String>(key)
+                    ?: TCQTSetting.getValue<Boolean>(key)
+                    ?: TCQTSetting.getValue<Int>(key)
             }
 
-            mapOf("value" to result).json.toString()
+            // 如果值为null,返回空对象
+            if (value == null) {
+                // Log.w("getSetting: key=$key, value is null, returning {}")
+                return "{}"
+            }
+
+            val result = mapOf("value" to value).json.toString()
+
+            result
 
         }.onFailure {
             Log.e("Failed to get setting for key: $key", it)
