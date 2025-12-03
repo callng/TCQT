@@ -5,14 +5,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.Process
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MMKVUtils
+import com.owo233.tcqt.utils.PlatformTools
 import com.tencent.mmkv.MMKV
-import mqq.app.MobileQQ
+import kotlin.system.exitProcess
 
 @RegisterAction
 class ModuleCommand : AlwaysRunAction() {
@@ -26,9 +29,15 @@ class ModuleCommand : AlwaysRunAction() {
             override fun onReceive(context: Context, intent: Intent) {
                 val cmd = intent.getStringExtra("cmd") ?: return
                 when (cmd) {
+                    "exitAppChild" -> {
+                        if (!ProcUtil.isMain) {
+                            Process.killProcess(Process.myPid())
+                            exitProcess(0)
+                        }
+                    }
                     "exitApp" -> {
-                        if (process == ActionProcess.MAIN) {
-                            MobileQQ.getMobileQQ().qqProcessExit(true)
+                        if (ProcUtil.isMain) {
+                            PlatformTools.restartHostApp()
                         }
                     }
                     "config_clear" -> {

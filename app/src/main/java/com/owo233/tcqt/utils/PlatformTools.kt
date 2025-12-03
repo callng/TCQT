@@ -13,13 +13,13 @@ import android.provider.Settings
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
+import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.ext.toast
+import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.hooks.base.load
-import com.tencent.qphone.base.util.BaseApplication
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 object PlatformTools {
 
@@ -114,12 +114,36 @@ object PlatformTools {
     @OptIn(DelicateCoroutinesApi::class)
     fun restartMsfProcess(context: Context = HookEnv.hostAppContext) {
         killMsfProcess(context)
-        GlobalScope.launch(Dispatchers.Main) {
-            val componentName = ComponentName(BaseApplication.getContext().packageName, "com.tencent.mobileqq.msf.service.MsfService")
-            val intent = Intent()
-            intent.component = componentName
-            intent.putExtra("to_SenderProcessName", HookEnv.hostAppPackageName)
-            BaseApplication.getContext().startService(intent)
+        GlobalScope.launchWithCatch {
+            val componentName = ComponentName(context.packageName, "com.tencent.mobileqq.msf.service.MsfService")
+            val intent = Intent().apply {
+                component = componentName
+                putExtra("to_SenderProcessName", context.packageName)
+            }
+            context.startService(intent)
         }
+    }
+
+    fun restartHostApp(context: Context = HookEnv.hostAppContext) {
+        // Step 1：让非主进程先退出
+        ModuleCommand.sendCommand(context, "exitAppChild")
+
+        // Step 2：给子进程一点时间
+        Thread.sleep(120)
+
+        // Step 3：枚举所有同包的非主进程并kill
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val myPid = Process.myPid() // 这里的进程是主进程
+        val pkg = context.packageName
+        am.runningAppProcesses?.forEach { proc ->
+            if (proc.processName.startsWith(pkg) && proc.pid != myPid) {
+                Process.killProcess(proc.pid)
+                exitProcess(0)
+            }
+        }
+
+        // Step 4：最后 kill 主进程
+        Process.killProcess(myPid)
+        exitProcess(0)
     }
 }
