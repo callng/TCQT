@@ -59,7 +59,7 @@ class ModuleCommand : AlwaysRunAction() {
             ctx.registerReceiver(receiver, filter, flag)
             registeredReceiver = receiver
         }.onFailure {
-            Log.e(msg = "registerReceiver error", it)
+            Log.e("registerReceiver error", it)
         }
     }
 

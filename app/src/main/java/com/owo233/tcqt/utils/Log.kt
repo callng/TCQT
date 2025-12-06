@@ -1,46 +1,91 @@
 package com.owo233.tcqt.utils
 
+import android.util.Log
 import com.owo233.tcqt.data.TCQTBuild
 import de.robv.android.xposed.XposedBridge
-import android.util.Log as ALog
 
-object Log {
+/**
+ * 本页代码来源: https://github.com/xfqwdsj/IAmNotADeveloper
+ */
+private const val LogTag = TCQTBuild.HOOK_TAG
 
-    private const val TAG = TCQTBuild.HOOK_TAG
+interface Logger {
 
-    fun i(msg: String, e: Throwable? = null) = log(ALog.INFO, msg, e)
-    fun w(msg: String, e: Throwable? = null) = log(ALog.WARN, msg, e)
-    fun e(msg: String, e: Throwable? = null) = log(ALog.ERROR, msg, e)
-    fun d(msg: String, e: Throwable? = null) = log(ALog.DEBUG, msg, e)
+    fun v(message: String, throwable: Throwable? = null) {
+        Log.v(LogTag, message, throwable)
+    }
 
-    private fun log(level: Int, msg: String, e: Throwable?) {
-        val text = format(level, msg, e)
+    fun d(message: String, throwable: Throwable? = null) {
+        Log.d(LogTag, message, throwable)
+    }
 
-        if (level >= ALog.WARN || (level == ALog.DEBUG && TCQTBuild.DEBUG)) {
-            XposedBridge.log(text)
-        } else {
-            ALog.println(level, TAG, text)
+    fun i(message: String, throwable: Throwable? = null) {
+        Log.i(LogTag, message, throwable)
+    }
+
+    fun w(message: String, throwable: Throwable? = null) {
+        Log.w(LogTag, message, throwable)
+    }
+
+    fun e(message: String, throwable: Throwable? = null) {
+        Log.e(LogTag, message, throwable)
+    }
+
+    val debug get() = DebugLogger(this)
+}
+
+interface XposedLogger : Logger {
+
+    override fun w(message: String, throwable: Throwable?) {
+        bridgeLog("WARN", message, throwable)
+    }
+
+    override fun e(message: String, throwable: Throwable?) {
+        bridgeLog("ERROR", message, throwable)
+    }
+
+    private fun bridgeLog(level: String, message: String, throwable: Throwable? = null) {
+        XposedBridge.log("[$level] $LogTag: $message")
+        if (throwable != null) {
+            XposedBridge.log(throwable)
+        }
+    }
+}
+
+object Log : XposedLogger {
+
+    object Android : Logger
+}
+
+class DebugLogger(private val delegate: Logger) : Logger by delegate {
+
+    override fun v(message: String, throwable: Throwable?) {
+        if (TCQTBuild.DEBUG) {
+            delegate.v(message, throwable)
         }
     }
 
-    private fun format(level: Int, msg: String, e: Throwable?) = buildString {
-        append('[').append(TAG).append("][")
+    override fun d(message: String, throwable: Throwable?) {
+        if (TCQTBuild.DEBUG) {
+            delegate.d(message, throwable)
+        }
+    }
 
-        append(
-            when (level) {
-                ALog.DEBUG -> "D"
-                ALog.INFO  -> "I"
-                ALog.WARN  -> "W"
-                ALog.ERROR -> "E"
-                else       -> "?"
-            }
-        )
+    override fun i(message: String, throwable: Throwable?) {
+        if (TCQTBuild.DEBUG) {
+            delegate.i(message, throwable)
+        }
+    }
 
-        append("] ").append(msg).append('\n')
+    override fun w(message: String, throwable: Throwable?) {
+        if (TCQTBuild.DEBUG) {
+            delegate.w(message, throwable)
+        }
+    }
 
-        e?.let {
-            append(ALog.getStackTraceString(it))
-            if (!endsWith('\n')) append('\n')
+    override fun e(message: String, throwable: Throwable?) {
+        if (TCQTBuild.DEBUG) {
+            delegate.e(message, throwable)
         }
     }
 }
