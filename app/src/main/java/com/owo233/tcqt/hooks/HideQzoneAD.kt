@@ -32,7 +32,11 @@ class HideQzoneAD : IAction {
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardMultiPicAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
-                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView"
+                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView",
+                "com.qzone.reborn.feedx.itemview.ad.QZoneAdVideoFeedItemView", // 9.2.5 样式(好友动态)
+                "com.qzone.reborn.feedx.itemview.ad.QZoneAdRewardFeedItemView",
+                "com.qzone.reborn.feedx.itemview.ad.QZoneAdPictureFeedItemView",
+                "com.qzone.reborn.feedx.itemview.ad.QZoneAdMDPAFeedItemView"
             ).forEach { name ->
                 load(name)
                     ?.getDeclaredConstructor(Context::class.java)
