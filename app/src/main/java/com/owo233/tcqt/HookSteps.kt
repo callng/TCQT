@@ -6,13 +6,11 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.hooks.base.XpClassLoader
+import com.owo233.tcqt.hooks.base.FixClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.field
-import com.owo233.tcqt.utils.fieldValue
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
@@ -42,10 +40,8 @@ internal object HookSteps {
                     override fun afterHookedMethod(param: MethodHookParam) {
                         if (hostInit.not()) {
                             hostApp = param.thisObject as Application
-                            initContext(hostApp)
+                            initContext(hostApp, lpparam.classLoader)
                             Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
-
-                            injectClassLoader()
                             initHooks(hostApp)
                         }
                     }
@@ -55,7 +51,7 @@ internal object HookSteps {
         }
     }
 
-    private fun initContext(app: Application) {
+    private fun initContext(app: Application, loader: ClassLoader) {
         val context = app.baseContext ?: run {
             Log.e("initContext: baseContext is null, using app as fallback")
             app
@@ -72,7 +68,7 @@ internal object HookSteps {
             HookEnv.setAppName(appName)
             HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
             HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
-            HookEnv.setHostClassLoader(context.classLoader)
+            HookEnv.setHostClassLoader(loader)
 
             ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
         }.onFailure {
@@ -104,16 +100,17 @@ internal object HookSteps {
     }
 
     @SuppressLint("DiscouragedPrivateApi")
-    private fun injectClassLoader() {
-        val fParent = ClassLoader::class.java.field("parent")!!
-        val mClassloader = HookEnv.moduleClassLoader
-        val parentClassloader = mClassloader.fieldValue("parent", true) as ClassLoader
+    fun injectClassLoader(loader: ClassLoader) {
         runCatching {
-            if (XpClassLoader::class.java != parentClassloader::class.java) {
-                fParent.set(mClassloader, XpClassLoader(HookEnv.hostClassLoader, parentClassloader))
+            val currentLoader = HookEntry::class.java.classLoader
+            val parentF = ClassLoader::class.java.getDeclaredField("parent").apply {
+                isAccessible = true
             }
+            val parent = parentF.get(currentLoader) as ClassLoader
+            val newFixLoader = FixClassLoader(parent, loader)
+            parentF.set(currentLoader, newFixLoader)
         }.onFailure {
-            Log.e("injectClassLoader: Failed to inject classloader", it)
+            Log.e("injectClassLoader failed", it)
         }
     }
 }
