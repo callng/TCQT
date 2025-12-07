@@ -3,8 +3,9 @@ package com.tencent.qphone.base.util;
 import com.tencent.mobileqq.qfix.ApplicationDelegate;
 
 public abstract class BaseApplication extends ApplicationDelegate {
+
     public static BaseApplication getContext() {
-        throw new UnsupportedOperationException();
+        throw new RuntimeException("Stub!");
     }
 
     public abstract Object getAppData(String str);
