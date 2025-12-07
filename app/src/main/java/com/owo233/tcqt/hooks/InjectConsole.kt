@@ -58,29 +58,39 @@ class InjectConsole : IAction {
     private fun loadJavaScriptByEruda(webView: WebView) {
         val jsCode = """
             (() => {
-                if (window.eruda) {
-                    console.log('[Eruda] 已存在，跳过加载');
-                    return;
-                }
+            	if (window.eruda) {
+            		console.log('[Eruda] 已存在 window.eruda，跳过加载');
+            		return;
+            	}
 
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-                script.async = true;
+            	if (document.getElementById('eruda-injector')) {
+            		console.log('[Eruda] 注入标签已存在，跳过加载');
+            		return;
+            	}
 
-                script.onload = () => {
-                    try {
-                        eruda.init();
-                        console.log('[Eruda] 初始化成功');
-                    } catch (error) {
-                        console.error('[Eruda] 初始化失败', error);
-                    }
-                };
+            	const script = document.createElement('script');
+            	script.id = 'eruda-injector';
+            	script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+            	script.async = true;
 
-                script.onerror = () => {
-                    console.error('[Eruda] 加载失败: 资源加载错误');
-                };
+            	script.onload = () => {
+            		try {
+            			eruda.init();
+            			console.log('[Eruda] 初始化成功');
+            		} catch (error) {
+            			console.error('[Eruda] 初始化失败', error);
+            		}
+            	};
 
-                (document.head || document.body).appendChild(script);
+            	script.onerror = () => {
+            		console.error('[Eruda] [JS] 加载失败: 资源加载错误');
+            		const injector = document.getElementById('eruda-injector');
+            		if (injector) {
+            			injector.remove();
+            		}
+            	};
+
+            	(document.head || document.body).appendChild(script);
             })();
         """.trimIndent()
 
