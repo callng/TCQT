@@ -5,7 +5,7 @@ core = "1.17.0"
 
 # Google
 protobuf = "0.9.5"
-protobuf-java = "4.33.1"
+protobuf-java = "4.33.2"
 
 # Kotlin
 kotlin = "2.2.21"
