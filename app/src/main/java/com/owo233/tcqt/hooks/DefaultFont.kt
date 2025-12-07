@@ -16,7 +16,7 @@ import com.tencent.qqnt.kernel.nativeinterface.VASMsgFont
     name = "强制使用默认字体",
     type = SettingType.BOOLEAN,
     desc = "使用默认字体，让花里胡哨的字体不那么花里胡哨。",
-    uiOrder = 3
+    uiOrder = 4
 )
 class DefaultFont : IAction {
 
