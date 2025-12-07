@@ -40,7 +40,7 @@ import kotlin.random.Random
     key = "ptt_forward",
     name = "允许转发语音消息",
     type = SettingType.BOOLEAN,
-    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群，一次支持最多选择9个会话目标转发。",
+    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
     uiOrder = 15
 )
 class PttForward : IAction, OnMenuBuilder {
