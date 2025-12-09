@@ -1,7 +1,5 @@
 package com.owo233.tcqt.hooks
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -33,42 +31,6 @@ class ModuleCommand : AlwaysRunAction() {
         }
     }
 
-    private fun restartApp(ctx: Context) {
-        val alarmManager = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        val launchIntent: Intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
-            ?: return
-
-        val pendingIntent = PendingIntent.getActivity(
-            ctx,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + 1L,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + 1L,
-                    pendingIntent
-                )
-            }
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + 1L,
-                pendingIntent
-            )
-        }
-    }
-
     override fun onRun(ctx: Context, process: ActionProcess) {
         val filter = IntentFilter(ACTION_MODULE_COMMAND)
 
@@ -77,7 +39,6 @@ class ModuleCommand : AlwaysRunAction() {
                 val cmd = intent.getStringExtra("cmd") ?: return
                 when (cmd) {
                     "exitApp" -> {
-                        restartApp(ctx)
                         MobileQQ.getMobileQQ().otherProcessExit(false)
                         MobileQQ.getMobileQQ().qqProcessExit(true)
                     }

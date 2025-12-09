@@ -1,19 +1,26 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.GlobalJson
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.beforeHook
+import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.hookMethod
 import com.owo233.tcqt.utils.isPublic
 import com.owo233.tcqt.utils.paramCount
 import com.tencent.qphone.base.remote.FromServiceMsg
+import kotlinx.serialization.Serializable
+import mqq.app.Foreground
+import java.util.concurrent.ConcurrentHashMap
 
 @RegisterAction
 @RegisterSetting(
@@ -32,33 +39,107 @@ class DisableDialog : IAction {
     }
 
     private fun disableGrayCheckDialog() {
-        val grayCheckClass =
-            load("com.tencent.mobileqq.graycheck.business.GrayCheckHandler")
-                ?: error("无法加载GrayCheckHandler类,屏蔽GrayCheckDialog不会生效!")
-
-        val hookMethod = grayCheckClass.declaredMethods.firstOrNull {
-            it.isPublic && it.returnType == Void.TYPE &&
-                    it.paramCount == 1 && it.parameterTypes[0] == FromServiceMsg::class.java
-        } ?: error("无法找到GrayCheckHandler中被混淆的方法,屏蔽GrayCheckDialog不会生效!")
-
-        hookMethod.hookBeforeMethod { it.result = Unit }
+        loadOrThrow("com.tencent.mobileqq.graycheck.business.GrayCheckHandler")
+            .declaredMethods.firstOrNull {
+                it.isPublic && it.returnType == Void.TYPE &&
+                        it.paramCount == 1 && it.parameterTypes[0] == FromServiceMsg::class.java
+            }?.hookBeforeMethod { it.result = Unit }
     }
 
     private fun disableFekitDialog() {
-        val dtapClass = load("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
-            ?: error("无法加载DTAPIImpl类,屏蔽FekitDialog不会生效!")
-        dtapClass.hookMethod(
-            "onSecDispatchToAppEvent",
-            String::class.java,
-            ByteArray::class.java,
-            beforeHook { param ->
-                val str = param.args[0] as String
-                if (str == "socialError") {
-                    param.result = Unit
+        loadOrThrow("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
+            .hookBeforeMethod(
+                "onSecDispatchToAppEvent",
+                String::class.java,
+                ByteArray::class.java,
+            ) { param ->
+                val currentUin = QQInterfaces.currentUin.toString()
+                val currentIsShow = isShowMap[currentUin] ?: false
+                val shouldUpdateShow = handleSocialErrorOptimized(
+                    param,
+                    currentIsShow,
+                    ::updateWordingAndGenerateNewJson
+                )
+                if (shouldUpdateShow) {
+                    isShowMap[currentUin] = true
                 }
             }
+    }
+
+    private fun handleSocialErrorOptimized(
+        param: MethodHookParam,
+        currentIsShow: Boolean,
+        updateWordingAndGenerateNewJson: (String) -> String
+    ): Boolean {
+        val type = param.args.getOrNull(0) as? String ?: return false
+        if (type != "socialError") return false
+
+        if (currentIsShow) {
+            param.result = Unit
+            return false
+        }
+
+        val jsonString = (param.args.getOrNull(1) as? ByteArray)?.toString(Charsets.UTF_8)
+            ?: return false
+
+        val shouldProceed = Foreground.isCurrentProcessForeground() && // 进程在前台
+                Foreground.getTopActivity()?.run { // 顶层 Activity 存在且不是正在销毁
+                    !isFinishing && !isDestroyed
+                } ?: false
+
+        return if (shouldProceed) {
+            param.args[1] = updateWordingAndGenerateNewJson(jsonString).toByteArray(Charsets.UTF_8)
+            true
+        } else {
+            param.result = Unit
+            false
+        }
+    }
+
+    private fun updateWordingAndGenerateNewJson(jsonString: String): String {
+        val appendText = "${TCQTBuild.APP_NAME}模块提醒您，此弹窗在重新启动${HookEnv.appName}前只会展示一次。"
+
+        val originalReminder: SafetyReminder = try {
+            GlobalJson.decodeFromString(SafetyReminder.serializer(), jsonString)
+        } catch (e: Exception) {
+            Log.e("无法解析社交封禁JSON!", e)
+            return jsonString
+        }
+
+        val newWording = "${originalReminder.wording}$appendText"
+        val modifiedReminder = originalReminder.copy(
+            wording = newWording,
+            title = "${originalReminder.title}弹窗"
         )
+        val newJsonString = GlobalJson.encodeToString(
+            SafetyReminder.serializer(),
+            modifiedReminder
+        )
+
+        return newJsonString
+    }
+
+    @Serializable
+    data class SafetyReminder(
+        val uin: String = "",
+        val wording: String = "",
+        val title: String = "",
+        val buttons: List<Button> = emptyList()
+    )
+
+    @Serializable
+    data class Button(
+        val wording: String = "",
+        val url: String = "",
+        val jumpType: Int = 0,
+        val color: Int = 0
+    )
+
+    companion object {
+        private val isShowMap = ConcurrentHashMap<String, Boolean>()
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_DIALOG
+
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }
