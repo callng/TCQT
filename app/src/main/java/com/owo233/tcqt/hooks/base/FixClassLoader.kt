@@ -8,9 +8,9 @@ class FixClassLoader(
     @Throws(ClassNotFoundException::class)
     override fun loadClass(name: String, resolve: Boolean): Class<*> {
         return try {
-            super.loadClass(name, resolve)
-        } catch (_: ClassNotFoundException) {
             hostClassLoader.loadClass(name)
+        } catch (_: Throwable) {
+            super.loadClass(name, resolve)
         }
     }
 }
