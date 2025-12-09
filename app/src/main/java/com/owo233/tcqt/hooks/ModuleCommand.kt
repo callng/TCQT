@@ -1,26 +1,73 @@
 package com.owo233.tcqt.hooks
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import android.os.Process
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
-import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MMKVUtils
-import com.owo233.tcqt.utils.PlatformTools
-import com.tencent.mmkv.MMKV
-import kotlin.system.exitProcess
+import mqq.app.MobileQQ
 
 @RegisterAction
 class ModuleCommand : AlwaysRunAction() {
 
     private var registeredReceiver: BroadcastReceiver? = null
+
+    companion object {
+        private const val ACTION_MODULE_COMMAND = "com.owo233.tcqt.MODULE_COMMAND"
+
+        fun sendCommand(ctx: Context, command: String) {
+            Intent(ACTION_MODULE_COMMAND).apply {
+                putExtra("cmd", command)
+                setPackage(ctx.packageName)
+            }.also {
+                ctx.sendBroadcast(it)
+            }
+        }
+    }
+
+    private fun restartApp(ctx: Context) {
+        val alarmManager = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val launchIntent: Intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+            ?: return
+
+        val pendingIntent = PendingIntent.getActivity(
+            ctx,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + 1L,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + 1L,
+                    pendingIntent
+                )
+            }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + 1L,
+                pendingIntent
+            )
+        }
+    }
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         val filter = IntentFilter(ACTION_MODULE_COMMAND)
@@ -29,23 +76,12 @@ class ModuleCommand : AlwaysRunAction() {
             override fun onReceive(context: Context, intent: Intent) {
                 val cmd = intent.getStringExtra("cmd") ?: return
                 when (cmd) {
-                    "exitAppChild" -> {
-                        if (!ProcUtil.isMain) {
-                            Process.killProcess(Process.myPid())
-                            exitProcess(0)
-                        }
-                    }
                     "exitApp" -> {
-                        if (ProcUtil.isMain) {
-                            PlatformTools.restartHostApp()
-                        }
+                        restartApp(ctx)
+                        MobileQQ.getMobileQQ().otherProcessExit(false)
+                        MobileQQ.getMobileQQ().qqProcessExit(true)
                     }
-                    "config_clear" -> {
-                        if (process == ActionProcess.MAIN) {
-                            val config: MMKV = MMKVUtils.mmkvWithId("TCQT")
-                            config.clearAll()
-                        }
-                    }
+                    "config_clear" -> MMKVUtils.mmkvWithId("TCQT").also { it.clearAll() }
                 }
             }
         }
@@ -63,17 +99,5 @@ class ModuleCommand : AlwaysRunAction() {
         }
     }
 
-    companion object {
-        private const val ACTION_MODULE_COMMAND = "com.owo233.tcqt.MODULE_COMMAND"
-
-        fun sendCommand(ctx: Context, command: String) {
-            val intent = Intent(ACTION_MODULE_COMMAND).apply {
-                putExtra("cmd", command)
-                setPackage(ctx.packageName)
-            }
-            ctx.sendBroadcast(intent)
-        }
-    }
-
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

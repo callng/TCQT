@@ -2,45 +2,44 @@ package mqq.app;
 
 import com.tencent.qphone.base.remote.SimpleAccount;
 import com.tencent.qphone.base.util.BaseApplication;
-
 import java.util.List;
 
 public abstract class MobileQQ extends BaseApplication {
     public static String PACKAGE_NAME = "com.tencent.mobileqq";
 
     public static MobileQQ getMobileQQ() {
-        throw new UnsupportedOperationException("only view.");
+        throw new RuntimeException("Stub!");
     }
 
     public String getQQProcessName() {
-        throw new UnsupportedOperationException("only view.");
-    }
-
-    public void otherProcessExit(boolean isCrashed) {
-        throw new UnsupportedOperationException("only view.");
+        throw new RuntimeException("Stub!");
     }
 
     public AppRuntime peekAppRuntime() {
-        throw new RuntimeException();
+        throw new RuntimeException("Stub!");
     }
 
-    public void qqProcessExit(boolean stopMSF) {
-        throw new UnsupportedOperationException("only view.");
+    public void otherProcessExit(boolean keepMsfRegistered) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void qqProcessExit(boolean stopMsfService) {
+        throw new RuntimeException("Stub!");
     }
 
     public AppRuntime waitAppRuntime(BaseActivity baseActivity) {
-        return null;
+        throw new RuntimeException("Stub!");
     }
 
     public AppRuntime waitAppRuntime() {
-        return waitAppRuntime(null);
+        throw new RuntimeException("Stub!");
     }
 
     public List<SimpleAccount> getAllAccounts() {
-        return null;
+        throw new RuntimeException("Stub!");
     }
 
     public int getMsfConnectedNetType() {
-        return 0;
+        throw new RuntimeException("Stub!");
     }
 }

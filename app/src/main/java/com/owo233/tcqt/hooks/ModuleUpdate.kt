@@ -49,5 +49,5 @@ class ModuleUpdate : IAction {
 
     override val key: String get() = GeneratedSettingList.MODULE_UPDATE
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

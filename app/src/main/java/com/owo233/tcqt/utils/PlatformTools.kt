@@ -2,8 +2,6 @@ package com.owo233.tcqt.utils
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -14,12 +12,9 @@ import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
 import com.owo233.tcqt.ext.launchWithCatch
-import com.owo233.tcqt.ext.toast
-import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.hooks.base.load
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import kotlin.system.exitProcess
 
 object PlatformTools {
 
@@ -88,19 +83,6 @@ object PlatformTools {
         return Settings.Secure.getString(HookEnv.hostAppContext.contentResolver, "android_id")
     }
 
-    fun copyToClipboard(context: Context = HookEnv.hostAppContext, text: String) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("label", text)
-        clipboard.setPrimaryClip(clip)
-        context.toast("已复制到剪切板")
-    }
-
-    fun isMsfProcessRunning(context: Context = HookEnv.hostAppContext): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val runningProcesses = activityManager.runningAppProcesses
-        return runningProcesses.any { it.processName.contains("msf", ignoreCase = true) }
-    }
-
     fun killMsfProcess(context: Context = HookEnv.hostAppContext) {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val runningProcesses = activityManager.runningAppProcesses
@@ -122,28 +104,5 @@ object PlatformTools {
             }
             context.startService(intent)
         }
-    }
-
-    fun restartHostApp(context: Context = HookEnv.hostAppContext) {
-        // Step 1：让非主进程先退出
-        ModuleCommand.sendCommand(context, "exitAppChild")
-
-        // Step 2：给子进程一点时间
-        Thread.sleep(120)
-
-        // Step 3：枚举所有同包的非主进程并kill
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val myPid = Process.myPid() // 这里的进程是主进程
-        val pkg = context.packageName
-        am.runningAppProcesses?.forEach { proc ->
-            if (proc.processName.startsWith(pkg) && proc.pid != myPid) {
-                Process.killProcess(proc.pid)
-                exitProcess(0)
-            }
-        }
-
-        // Step 4：最后 kill 主进程
-        Process.killProcess(myPid)
-        exitProcess(0)
     }
 }

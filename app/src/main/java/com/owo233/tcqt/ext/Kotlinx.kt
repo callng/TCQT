@@ -3,6 +3,8 @@ package com.owo233.tcqt.ext
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -185,25 +187,24 @@ fun <T> runRetry(
     return null
 }
 
-fun Context.copyToClipboard(text: String, showToast: Boolean = true) {
-    try {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("Copied Text", text)
-        clipboard.setPrimaryClip(clip)
-
+fun Context.copyToClipboard(str: String, showToast: Boolean = true) = runCatching {
+    (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).also {
+        val cd = ClipData.newPlainText("text", str)
+        it.setPrimaryClip(cd)
         if (showToast) Toasts.success(this, "已复制到剪贴板")
-    } catch (e: Exception) {
-        Log.e("复制到剪贴板失败", e)
-        if (showToast) Toasts.error(this, "复制到剪贴板失败")
     }
+}.onFailure {
+    Log.e("复制到剪贴板失败", it)
+    if (showToast) Toasts.error(this, "复制到剪贴板失败")
 }
 
-fun Context.clearClipboard() {
-    try {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
-    } catch (e: Exception) {
-        Log.e("清空剪贴板失败", e)
+fun Context.clearClipboard() = runCatching {
+    (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).also {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            it.clearPrimaryClip()
+        } else {
+            it.setPrimaryClip(ClipData.newPlainText("", ""))
+        }
     }
 }
 
@@ -224,3 +225,27 @@ inline fun AtomicBoolean.runOnceSafe(block: () -> Unit): Result<Unit> {
         Result.success(Unit)
     }
 }
+
+fun Context.getAppSignature(pkgName: String): String = runCatching {
+    val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        packageManager.getPackageInfo(
+            pkgName,
+            PackageManager.GET_SIGNING_CERTIFICATES
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(
+            pkgName,
+            PackageManager.GET_SIGNATURES
+        )
+    }
+
+    val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        packageInfo.signingInfo?.apkContentsSigners
+    } else {
+        @Suppress("DEPRECATION")
+        packageInfo.signatures
+    }
+
+    signatures?.firstOrNull()?.toCharsString() ?: ""
+}.getOrElse { "" }
