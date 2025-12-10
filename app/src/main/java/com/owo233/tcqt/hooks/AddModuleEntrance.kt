@@ -315,7 +315,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun copyTicket(context: Context) {
-        val uin = "${QQInterfaces.currentUin}"
+        val uin = QQInterfaces.currentUin
         val uid = QQInterfaces.currentUid
         val ticket = TicketManager.getA2AndD2()
         val superKey = TicketManager.getSuperKey()

@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 internal object TicketManager {
 
     private val ticketManagerMap = mutableMapOf<String, TicketManager>()
-    val uin: String get() = "${QQInterfaces.currentUin}"
+    private val uin: String get() = QQInterfaces.currentUin
     private var thirdSigService: Any? = null
 
     private fun getTicketManager(): TicketManager {

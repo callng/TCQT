@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
     key = "united_config_hook",
     name = "统一配置Hook",
     type = SettingType.BOOLEAN,
-    desc = "仅高级用户使用，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。",
+    desc = "仅高级用户使用，针对'UnitedConfig'处理，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。",
     hasTextAreas = true,
     uiTab = "高级"
 )

@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
     key = "mmkv_config_hook",
     name = "MMKV配置Hook",
     type = SettingType.BOOLEAN,
-    desc = $$"仅高级用户使用，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
+    desc = $$"仅高级用户使用，针对'common_mmkv_configurations'处理，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
     hasTextAreas = true,
     uiTab = "高级"
 )
@@ -90,7 +90,7 @@ class MMKVConfigHook : IAction {
         private fun String.replaceUinPlaceholder(): String {
             val replacements = try {
                 mapOf(
-                    $$"$uin" to QQInterfaces.currentUin.toString(),
+                    $$"$uin" to QQInterfaces.currentUin,
                     $$"$uid" to QQInterfaces.currentUid,
                     $$"$guid" to QQInterfaces.guid
                 )

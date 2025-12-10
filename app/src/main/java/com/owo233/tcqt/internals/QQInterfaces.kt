@@ -11,7 +11,7 @@ open class QQInterfaces {
     companion object {
         val appRuntime: AppRuntime get() = MobileQQ.getMobileQQ().waitAppRuntime(null)
 
-        val currentUin: Long inline get() = appRuntime.longAccountUin
+        val currentUin: String inline get() = appRuntime.currentUin
 
         val currentUid: String inline get() = appRuntime.currentUid
 

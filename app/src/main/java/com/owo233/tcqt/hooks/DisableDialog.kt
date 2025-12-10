@@ -52,7 +52,7 @@ class DisableDialog : IAction {
                 String::class.java,
                 ByteArray::class.java,
             ) { param ->
-                val currentUin = QQInterfaces.currentUin.toString()
+                val currentUin = QQInterfaces.currentUin
                 val currentIsShow = isShowMap[currentUin] ?: false
                 val shouldUpdateShow = handleSocialErrorOptimized(
                     param,
