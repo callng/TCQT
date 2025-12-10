@@ -22,7 +22,7 @@ import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
     name = "隐藏QQ空间广告",
     type = SettingType.BOOLEAN,
     desc = "隐藏空间里那无时无刻不在显示的广告。",
-    uiOrder = 27
+    uiTab = "界面"
 )
 class HideQzoneAD : IAction {
 

@@ -41,7 +41,7 @@ import kotlin.random.Random
     name = "允许转发语音消息",
     type = SettingType.BOOLEAN,
     desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
-    uiOrder = 15
+    uiTab = "界面"
 )
 class PttForward : IAction, OnMenuBuilder {
 

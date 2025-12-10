@@ -17,7 +17,7 @@ import com.tencent.qqnt.kernel.nativeinterface.ReplyMsgMainInfo
     name = "移除回复消息不存在限制",
     type = SettingType.BOOLEAN,
     desc = "常见于解决‘转发的聊天记录中不包含该内容’的提示，允许查看回复消息。",
-    uiOrder = 18
+    uiTab = "界面"
 )
 class RemoveReplyMsgCheck : IAction {
 

@@ -16,7 +16,7 @@ import com.owo233.tcqt.utils.hookAfterMethod
     name = "伪装多窗口状态",
     type = SettingType.BOOLEAN,
     desc = "不知道有什么用。",
-    uiOrder = 7
+    uiTab = "杂项"
 )
 class FakeMultiWindowStatus : IAction {
 

@@ -16,7 +16,8 @@ import com.tencent.qqnt.kernel.nativeinterface.VASMsgAvatarPendant
     name = "隐藏头像挂件",
     type = SettingType.BOOLEAN,
     desc = "对聊天页面的头像挂件进行隐藏。",
-    uiOrder = 2
+    uiOrder = 2,
+    uiTab = "界面"
 )
 class DefaultAvatarPendant : IAction {
 

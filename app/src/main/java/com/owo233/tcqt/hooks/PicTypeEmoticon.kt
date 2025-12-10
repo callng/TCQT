@@ -19,7 +19,7 @@ import com.tencent.qqnt.kernel.nativeinterface.PicElement
     name = "以图片方式打开表情",
     type = SettingType.BOOLEAN,
     desc = "可以保存一些不让保存的表情。",
-    uiOrder = 13
+    uiTab = "界面"
 )
 class PicTypeEmoticon : IAction {
 

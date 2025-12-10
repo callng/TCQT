@@ -44,8 +44,7 @@ import java.lang.reflect.Proxy
     type = SettingType.BOOLEAN,
     defaultValue = "false",
     desc = "在宿主设置页面额外显示模块附加工具入口",
-    uiTab = "高级",
-    uiOrder = 110
+    uiTab = "高级"
 )
 class AddModuleEntrance : AlwaysRunAction() {
 

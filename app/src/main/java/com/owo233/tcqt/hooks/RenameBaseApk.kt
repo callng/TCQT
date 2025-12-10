@@ -23,7 +23,6 @@ import java.io.File
     name = "重命名.apk文件",
     type = SettingType.BOOLEAN,
     desc = "发送文件时自动重命名 .apk 文件，防止添加.1。",
-    uiOrder = 19
 )
 class RenameBaseApk : IAction {
 

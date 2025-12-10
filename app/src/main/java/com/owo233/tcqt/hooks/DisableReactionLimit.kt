@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.replaceMethod
     name = "禁止过滤反应表情",
     type = SettingType.BOOLEAN,
     desc = "将更多的表情（Emoji）显示出来。",
-    uiOrder = 6
+    uiTab = "界面"
 )
 class DisableReactionLimit : IAction {
 

@@ -19,8 +19,7 @@ import com.owo233.tcqt.utils.isStatic
     name = "禁用QQ崩溃报告管理器",
     type = SettingType.BOOLEAN,
     desc = "没有实际意义的功能，仅供测试使用。",
-    uiTab = "高级",
-    uiOrder = 103
+    uiTab = "高级"
 )
 class DisableQQCrashReportManager : IAction {
 

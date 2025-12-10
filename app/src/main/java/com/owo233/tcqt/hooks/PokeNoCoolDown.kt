@@ -18,7 +18,7 @@ import com.owo233.tcqt.utils.hookAfterMethod
     name = "戳一戳无冷却",
     type = SettingType.BOOLEAN,
     desc = "移除戳一戳冷却时间(每天上限200次)。",
-    uiOrder = 14
+    uiTab = "界面"
 )
 class PokeNoCoolDown : IAction {
 

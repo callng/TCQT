@@ -20,7 +20,7 @@ import com.tencent.mvi.base.route.MsgIntent
     name = "回复信息不带@",
     type = SettingType.BOOLEAN,
     desc = "回复消息时不添加 @ 对方。",
-    uiOrder = 21
+    uiTab = "界面"
 )
 class ReplyNoAt : IAction {
 

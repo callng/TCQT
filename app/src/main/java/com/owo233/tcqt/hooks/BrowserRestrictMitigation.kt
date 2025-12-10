@@ -18,7 +18,7 @@ import com.owo233.tcqt.utils.paramCount
     name = "禁用内置浏览器网页拦截",
     type = SettingType.BOOLEAN,
     desc = "允许在内置浏览器中访问非官方认可的网页。",
-    uiOrder = 26
+    uiTab = "杂项"
 )
 class BrowserRestrictMitigation : IAction {
 

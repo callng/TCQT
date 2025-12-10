@@ -18,7 +18,7 @@ import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
     name = "将闪照视为正常图片",
     type = SettingType.BOOLEAN,
     desc = "好友发送的闪照将作为正常图片显示并添加灰条提示。",
-    uiOrder = 5
+    uiTab = "界面"
 )
 class DisableFlashPic : IAction {
 

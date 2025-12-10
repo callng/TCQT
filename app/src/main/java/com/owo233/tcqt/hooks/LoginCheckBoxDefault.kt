@@ -16,7 +16,7 @@ import com.owo233.tcqt.utils.hookAfterAllConstructors
     name = "默认勾选登录协议",
     type = SettingType.BOOLEAN,
     desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
-    uiOrder = 10
+    uiTab = "杂项"
 )
 class LoginCheckBoxDefault : IAction {
 

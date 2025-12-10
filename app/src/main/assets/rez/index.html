@@ -162,17 +162,51 @@
         .status-disabled { color: var(--warning-color); font-weight: 600; }
 
         /* --- Tab导航 --- */
-        .tab-navigation-wrapper { position: relative; margin: 20px auto; max-width: 720px; width: 100%; }
-        .tab-navigation {
-            display: flex; justify-content: center; gap: 8px; overflow-x: auto; padding: 4px;
-            background-color: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color); transition: var(--transition-smooth); width: 100%;
+        .tab-navigation-wrapper {
+            position: relative;
+            margin: 20px auto;
+            max-width: 720px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .tab-navigation.search-mode-active { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+        .tab-navigation {
+            flex: 1;
+            width: 0;
+            min-width: 0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px;
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition-smooth);
+            scrollbar-width: none;
+        }
+        .tab-navigation::-webkit-scrollbar { display: none; }
+        .tab-navigation.search-mode-active {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
         .tab-button {
-            padding: 10px 20px; background: transparent; border: none; border-radius: var(--radius-md);
-            color: var(--text-muted); font-size: 0.95rem; font-weight: 500; cursor: pointer;
-            transition: var(--transition-smooth); white-space: nowrap; position: relative;
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            white-space: nowrap;
+            position: relative;
+            flex-shrink: 0;
         }
         .tab-button::before {
             content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px;
@@ -184,10 +218,17 @@
 
         /* --- 搜索栏 --- */
         .search-icon-btn {
-            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            position: relative;
+            right: auto;
+            top: auto;
+            transform: none;
             width: 36px; height: 36px; border: none; border-radius: 50%; background-color: transparent;
             color: var(--text-muted); font-size: 1.1rem; cursor: pointer; display: flex;
             align-items: center; justify-content: center; transition: var(--transition-smooth); z-index: 10;
+            flex-shrink: 0;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
         .search-icon-btn:hover { background-color: rgba(59, 130, 246, 0.1); color: var(--primary-color); }
         .search-bar-container {
@@ -305,6 +346,8 @@
             color: var(--text-light); border: none; border-radius: 50%; display: flex;
             align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: var(--shadow-md);
             cursor: pointer; z-index: 1000; transition: var(--transition-smooth); user-select: none;
+            will-change: transform, opacity;
+            transform: translateZ(0);
         }
         .fab-save.hide-on-keyboard { opacity: 0; transform: translateY(80px) scale(0.3); pointer-events: none; }
         .fab-save:hover:not(:disabled) { transform: translateY(-2px) scale(1.05); }
@@ -820,19 +863,43 @@
         }
 
         renderTabs(tabs, currentTab, onTabClick) {
-            this.elements.tabNavigation.innerHTML = '';
+            const navContainer = this.elements.tabNavigation;
+            navContainer.innerHTML = '';
+
             if (tabs.length <= 1) {
-                this.elements.tabNavigation.style.display = 'none';
+                navContainer.style.display = 'none';
                 return;
             }
 
-            this.elements.tabNavigation.style.display = 'flex';
-            tabs.forEach(tab => {
+            navContainer.style.display = 'flex';
+
+            tabs.forEach((tab) => {
                 const button = document.createElement('button');
-                button.className = `tab-button ${tab === currentTab ? 'active' : ''}`;
+                const isActive = tab === currentTab;
+                button.className = `tab-button ${isActive ? 'active' : ''}`;
                 button.textContent = tab;
-                button.addEventListener('click', () => onTabClick(tab));
-                this.elements.tabNavigation.appendChild(button);
+
+                const scrollTabIntoView = (btn, behavior = 'smooth') => {
+                    const scrollLeft = btn.offsetLeft - (navContainer.clientWidth / 2) + (btn.clientWidth / 2);
+
+                    navContainer.scrollTo({
+                        left: scrollLeft,
+                        behavior: behavior
+                    });
+                };
+
+                button.addEventListener('click', (e) => {
+                    onTabClick(tab);
+                    scrollTabIntoView(e.target, 'smooth');
+                });
+
+                navContainer.appendChild(button);
+
+                if (isActive) {
+                    setTimeout(() => {
+                        scrollTabIntoView(button, 'auto');
+                    }, 0);
+                }
             });
         }
 
@@ -996,53 +1063,34 @@
 
         // 键盘检测逻辑
         initializeKeyboardDetection() {
-            const ui = this.app.ui;
-            let checkTimer = null;
-
-            const handleFocus = () => {
-                clearInterval(checkTimer);
-                // 检查间隔 100ms
-                checkTimer = setInterval(() => this.checkKeyboard(), 100);
+            const handleResize = () => {
+                const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                this.checkKeyboard(currentHeight);
             };
 
-            const handleBlur = () => {
-                clearInterval(checkTimer);
-                // 模糊延迟 300ms
-                setTimeout(() => {
-                    if (!document.activeElement ||
-                        (document.activeElement.tagName !== 'TEXTAREA' &&
-                         document.activeElement.id !== 'search-input')) {
-                        this.keyboardVisible = false;
-                        ui.elements.btnSave.classList.remove('hide-on-keyboard');
-                    }
-                }, 300);
-            };
-
-            ui.elements.searchInput.addEventListener('focus', handleFocus);
-            ui.elements.searchInput.addEventListener('blur', handleBlur);
-
-            document.addEventListener('focusin', (e) => {
-                if (e.target.tagName === 'TEXTAREA') handleFocus();
-            });
-
-            document.addEventListener('focusout', (e) => {
-                if (e.target.tagName === 'TEXTAREA') handleBlur();
-            });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', handleResize);
+            } else {
+                window.addEventListener('resize', handleResize);
+            }
         }
 
         // 键盘弹出判断阈值
-        checkKeyboard() {
-            const currentHeight = window.innerHeight;
+        checkKeyboard(currentHeight) {
             const heightDiff = this.initialHeight - currentHeight;
-            const threshold = Math.max(150, this.initialHeight * 0.3);
+            const threshold = Math.max(150, this.initialHeight * 0.2);
             const isLandscape = window.innerWidth > window.innerHeight;
 
             if (heightDiff > threshold && !this.keyboardVisible && !isLandscape) {
                 this.keyboardVisible = true;
-                this.app.ui.elements.btnSave.classList.add('hide-on-keyboard');
-            } else if (heightDiff < 50 && this.keyboardVisible) {
+                requestAnimationFrame(() => {
+                    this.app.ui.elements.btnSave.classList.add('hide-on-keyboard');
+                });
+            } else if (heightDiff < 100 && this.keyboardVisible) {
                 this.keyboardVisible = false;
-                this.app.ui.elements.btnSave.classList.remove('hide-on-keyboard');
+                requestAnimationFrame(() => {
+                    this.app.ui.elements.btnSave.classList.remove('hide-on-keyboard');
+                });
             }
         }
 

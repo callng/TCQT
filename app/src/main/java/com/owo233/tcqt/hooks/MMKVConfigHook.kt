@@ -20,8 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
     type = SettingType.BOOLEAN,
     desc = $$"仅高级用户使用，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
     hasTextAreas = true,
-    uiTab = "高级",
-    uiOrder = 109
+    uiTab = "高级"
 )
 @RegisterSetting(
     key = "mmkv_config_hook.string.saveConfig",

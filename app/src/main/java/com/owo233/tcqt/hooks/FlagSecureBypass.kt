@@ -18,8 +18,7 @@ import com.owo233.tcqt.utils.hookBeforeMethod
     name = "绕过FLAG_SECURE",
     type = SettingType.BOOLEAN,
     desc = "绕过FlagSecure，允许截图和录屏。",
-    uiTab = "高级",
-    uiOrder = 105
+    uiTab = "高级"
 )
 class FlagSecureBypass : IAction {
 

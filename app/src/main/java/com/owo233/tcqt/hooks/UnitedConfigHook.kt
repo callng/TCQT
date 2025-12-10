@@ -20,8 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
     type = SettingType.BOOLEAN,
     desc = "仅高级用户使用，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。",
     hasTextAreas = true,
-    uiTab = "高级",
-    uiOrder = 107
+    uiTab = "高级"
 )
 @RegisterSetting(
     key = "united_config_hook.string.saveConfig",

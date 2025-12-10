@@ -22,7 +22,6 @@ import com.owo233.tcqt.utils.setObjectField
     name = "移除转发选择数量限制",
     type = SettingType.BOOLEAN,
     desc = "移除转发消息时最多选择9名联系人的限制。",
-    uiOrder = 29
 )
 class RemoveShareLimit : IAction {
 

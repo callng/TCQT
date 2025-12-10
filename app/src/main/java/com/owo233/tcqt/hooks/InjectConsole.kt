@@ -17,7 +17,7 @@ import com.tencent.smtt.sdk.WebViewClient
     name = "注入Console",
     type = SettingType.BOOLEAN,
     desc = "对宿主内置浏览器注入Console，方便调试。此外，无论本功能是否启用，都会对每个网页注入剪切板保护代码。",
-    uiOrder = 25
+    uiTab = "杂项"
 )
 class InjectConsole : IAction {
 

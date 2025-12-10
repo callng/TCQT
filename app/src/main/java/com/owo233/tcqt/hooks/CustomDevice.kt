@@ -21,8 +21,7 @@ import com.owo233.tcqt.utils.replaceMethod
     type = SettingType.BOOLEAN,
     desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
     hasTextAreas = true,
-    uiTab = "高级",
-    uiOrder = 101
+    uiTab = "高级"
 )
 @RegisterSetting(
     key = "custom_device.string.device",

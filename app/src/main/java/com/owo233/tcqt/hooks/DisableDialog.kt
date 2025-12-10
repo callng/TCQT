@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap
     type = SettingType.BOOLEAN,
     defaultValue = "true",
     desc = "将一些烦人的弹窗给屏蔽掉，现支持「灰度版本体验」及「社交封禁提醒」弹窗。",
-    uiOrder = 5
 )
 class DisableDialog : IAction {
 

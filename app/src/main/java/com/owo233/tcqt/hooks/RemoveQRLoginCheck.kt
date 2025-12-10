@@ -17,7 +17,6 @@ import com.owo233.tcqt.utils.paramCount
     name = "移除扫码登录检查",
     type = SettingType.BOOLEAN,
     desc = "扫描相册里的二维码时不再拦截登录。",
-    uiOrder = 17
 )
 class RemoveQRLoginCheck : IAction {
 

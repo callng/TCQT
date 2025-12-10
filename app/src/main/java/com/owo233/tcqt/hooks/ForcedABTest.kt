@@ -20,8 +20,7 @@ import com.owo233.tcqt.utils.setObjectField
     type = SettingType.BOOLEAN,
     defaultValue = "false",
     desc = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。",
-    uiTab = "高级",
-    uiOrder = 106
+    uiTab = "高级"
 )
 @RegisterSetting(
     key = "forced_to_ab.mode",
