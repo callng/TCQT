@@ -31,6 +31,15 @@ object ProcUtil {
             am.runningAppProcesses.firstOrNull { it.pid == mPid }?.processName
         } ?: "unknown"
     }
+    val currentProcName: String by lazy {
+        val parts = procName.split(":")
+        if (parts.size == 1) {
+            return@lazy "MAIN"
+        } else {
+            val tail = parts.last()
+            return@lazy tail.uppercase()
+        }
+    }
     val procType: Int by lazy {
         val parts = procName.split(":")
         if (parts.size == 1) {

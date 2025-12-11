@@ -655,8 +655,13 @@
         sortTabs(a, b) {
             if (a === '基础') return -1;
             if (b === '基础') return 1;
+
+            if (a === '调试') return 1;
+            if (b === '调试') return -1;
+
             if (a === '高级') return 1;
             if (b === '高级') return -1;
+
             return a.localeCompare(b, 'zh-CN');
         }
 
