@@ -1,6 +1,6 @@
 [versions]
 # Android
-agp = "8.13.1"
+agp = "8.13.2"
 core = "1.17.0"
 
 # Google
