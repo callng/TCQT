@@ -1,4 +1,4 @@
-package com.owo233.tcqt.ext
+package com.owo233.tcqt.utils.proto2json
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -13,10 +13,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
-val EmptyJsonObject = JsonObject(emptyMap())
-val EmptyJsonArray = JsonArray(emptyList())
-val EmptyJsonString = "".json
-
 val GlobalJson = Json {
     ignoreUnknownKeys = true // 忽略未知key
     isLenient = true // 宽松模式
@@ -25,6 +21,12 @@ val GlobalJson = Json {
     prettyPrint = false // 格式化输出
     coerceInputValues = true // 强制输入值
 }
+
+val EmptyJsonObject = JsonObject(mapOf())
+
+val EmptyJsonArray = JsonArray(emptyList())
+
+val EmptyJsonString = "".json
 
 val String.asJson: JsonElement
     get() = Json.parseToJsonElement(this)
@@ -37,7 +39,7 @@ val Collection<Any>.json: JsonArray
     get() {
         val arrayList = arrayListOf<JsonElement>()
         forEach {
-            when (it) {
+            when(it) {
                 is JsonElement -> arrayList.add(it)
                 is Number -> arrayList.add(it.json)
                 is String -> arrayList.add(it.json)
@@ -51,20 +53,18 @@ val Collection<Any>.json: JsonArray
     }
 
 @Suppress("UNCHECKED_CAST")
-val Map<String, Any?>.json: JsonObject
+val Map<String, Any>.json: JsonObject
     get() {
         val map = hashMapOf<String, JsonElement>()
         forEach { (key, any) ->
-            if (any != null) {
-                when (any) {
-                    is JsonElement -> map[key] = any
-                    is Number -> map[key] = any.json
-                    is String -> map[key] = any.json
-                    is Boolean -> map[key] = any.json
-                    is Map<*, *> -> map[key] = (any as Map<String, Any>).json
-                    is Collection<*> -> map[key] = (any as Collection<Any>).json
-                    else -> error("unknown object type: ${any::class.java}")
-                }
+            when(any) {
+                is JsonElement -> map[key] = any
+                is Number -> map[key] = any.json
+                is String -> map[key] = any.json
+                is Boolean -> map[key] = any.json
+                is Map<*, *> -> map[key] = (any as Map<String, Any>).json
+                is Collection<*> -> map[key] = (any as Collection<Any>).json
+                else -> error("unknown object type: ${any::class.java}")
             }
         }
         return map.jsonObject

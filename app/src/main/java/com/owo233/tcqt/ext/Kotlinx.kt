@@ -90,28 +90,15 @@ fun String?.ifNullOrEmpty(defaultValue: () -> String): String {
 
 @JvmOverloads
 fun String.hex2ByteArray(replace: Boolean = false): ByteArray {
-    val hex = if (replace) {
-        buildString(length) {
-            for (c in this@hex2ByteArray) {
-                if (!c.isWhitespace()) append(c)
-            }
-        }
-    } else this
-
-    if (hex.length % 2 != 0) {
-        throw IllegalArgumentException("Hex string length must be even: $hex")
+    val s = if (replace) this.replace(" ", "")
+        .replace("\n", "")
+        .replace("\t", "")
+        .replace("\r", "") else this
+    val bs = ByteArray(s.length / 2)
+    for (i in 0 until s.length / 2) {
+        bs[i] = s.substring(i * 2, i * 2 + 2).toInt(16).toByte()
     }
-
-    val result = ByteArray(hex.length / 2)
-    for (i in result.indices) {
-        val hi = hex[i * 2].digitToIntOrNull(16)
-        val lo = hex[i * 2 + 1].digitToIntOrNull(16)
-        if (hi == null || lo == null) {
-            throw IllegalArgumentException("Invalid hex character in: $hex at index ${i * 2}")
-        }
-        result[i] = ((hi shl 4) or lo).toByte()
-    }
-    return result
+    return bs
 }
 
 fun CoroutineScope.launchWithCatch(

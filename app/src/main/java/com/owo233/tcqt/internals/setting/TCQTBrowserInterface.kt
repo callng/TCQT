@@ -2,8 +2,8 @@ package com.owo233.tcqt.internals.setting
 
 import android.content.Context
 import android.webkit.JavascriptInterface
-import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.proto2json.json
 
 class TCQTBrowserInterface(private val ctx: Context) {
 

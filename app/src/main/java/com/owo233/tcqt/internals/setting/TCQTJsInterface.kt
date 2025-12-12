@@ -10,12 +10,12 @@ import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
-import com.owo233.tcqt.ext.json
 import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.hooks.ModuleCommand
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.Toasts
+import com.owo233.tcqt.utils.proto2json.json
 import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 class TCQTJsInterface(private val ctx: Context) {
