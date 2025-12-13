@@ -8,10 +8,11 @@ import mqq.app.AppRuntime
 import mqq.app.MobileQQ
 
 open class QQInterfaces {
+
     companion object {
         val appRuntime: AppRuntime get() = MobileQQ.getMobileQQ().waitAppRuntime(null)
 
-        val currentUin: String inline get() = appRuntime.currentUin
+        val currentUin: String inline get() = appRuntime.currentAccountUin
 
         val currentUid: String inline get() = appRuntime.currentUid
 
