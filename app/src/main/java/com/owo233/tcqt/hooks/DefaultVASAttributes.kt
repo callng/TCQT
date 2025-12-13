@@ -18,7 +18,6 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
     name = "净化聊天界面装扮",
     type = SettingType.BOOLEAN,
     desc = "禁用他人消息的个性化气泡、字体与头像挂件。",
-    uiOrder = 3,
     uiTab = "界面"
 )
 class DefaultVASAttributes : IAction {

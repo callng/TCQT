@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -21,10 +22,12 @@ import com.owo233.tcqt.utils.hookBeforeMethod
 class DisablePaoPaoIcon : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        loadOrThrow("com.tencent.qqnt.aio.filtervideo.api.impl.FilterVideoApiImpl")
-            .hookBeforeMethod("isEnable") { param ->
-                param.result = false
-            }
+        if (HookEnv.isQQ()) {
+            loadOrThrow("com.tencent.qqnt.aio.filtervideo.api.impl.FilterVideoApiImpl")
+                .hookBeforeMethod("isEnable") { param ->
+                    param.result = false
+                }
+        }
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_PAO_PAO_ICON
