@@ -4,4 +4,5 @@
     <item name="item_ptt_forward" type="id" />
     <item name="check_ban_url" type="id" />
     <item name="account_get_ticket" type="id" />
+    <item name="open_info_card" type="id" />
 </resources>

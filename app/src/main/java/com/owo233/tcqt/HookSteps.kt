@@ -70,7 +70,7 @@ internal object HookSteps {
             HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
             HookEnv.setHostClassLoader(loader)
 
-            ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
+            ResourcesUtils.injectResourcesToContext(context.resources)
         }.onFailure {
             Log.e("initContext: Failed to initialize context", it)
         }

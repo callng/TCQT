@@ -210,7 +210,7 @@ class PttForward : IAction, OnMenuBuilder {
         ptt = getPttElement(msg)
 
         val context: Context = HookEnv.hostAppContext
-        ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
+        ResourcesUtils.injectResourcesToContext(context.resources)
         val item = CustomMenu.createItemIconNt(
             msg = msg,
             text = "转发",

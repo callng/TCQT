@@ -57,9 +57,8 @@
 }
 
 # protobuf
--keepclassmembers class top.artmoe.inao.entries.**OuterClass$** {
+-keepclassmembers class top.artmoe.inao.entries.** {
     <fields>;
-    <methods>;
 }
 
 # 忽略 kotlin.jvm.internal.Intrinsics 的检查
@@ -79,7 +78,9 @@
 }
 
 # Kotlin function interfaces
--keep class kotlin.jvm.functions.Function1 { *; }
+-keep interface kotlin.jvm.functions.Function1 {
+    public abstract java.lang.Object invoke(java.lang.Object);
+}
 
 -dontwarn java.beans.**
 -obfuscationdictionary obf-dict.txt

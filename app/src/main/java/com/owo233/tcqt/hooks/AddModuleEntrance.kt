@@ -2,8 +2,12 @@ package com.owo233.tcqt.hooks
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Parcelable
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
@@ -21,10 +25,13 @@ import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.CalculationUtils
+import com.owo233.tcqt.utils.ContextUtils
 import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.ResourcesUtils
+import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.utils.afterHook
+import com.owo233.tcqt.utils.context.HostContextFactory
 import com.owo233.tcqt.utils.fieldValue
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getIntField
@@ -156,7 +163,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 val processorInfo = resolveProcessorInfo(result)
                     ?: return@afterHook
 
-                ResourcesUtils.injectResourcesToContext(context, HookEnv.moduleApkPath)
+                ResourcesUtils.injectResourcesToContext(context.resources)
 
                 val showAttached = GeneratedSettingList.getBoolean(
                     GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
@@ -394,6 +401,120 @@ class AddModuleEntrance : AlwaysRunAction() {
         }
     }
 
+    private fun showInfoCardDialog(ctx: Context) {
+        val context = HostContextFactory.createMaterialContext(
+            ContextUtils.getCurrentActivity()!!
+        )
+
+        val editText = EditText(context).apply {
+            hint = "输入QQ号或群号"
+
+            val paddingDp = 16
+            val density = context.resources.displayMetrics.density
+            val paddingPx = (paddingDp * density).toInt()
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+        }
+
+        AlertDialog.Builder(context).apply {
+            setTitle("Open the card")
+            setView(editText)
+            setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            setNeutralButton("Group") { dialog, _ ->
+                val uin = editText.text.toString().trim()
+                if (uin.isEmpty()) {
+                    Toasts.error(context, "请输入群号")
+                    return@setNeutralButton
+                }
+                try {
+                    if (uin.toLong() < 10000) {
+                        Toasts.error(context, "请输入正确的群号")
+                        return@setNeutralButton
+                    }
+                } catch (_: NumberFormatException) {
+                    Toasts.error(context, "请输入正确的群号")
+                    return@setNeutralButton
+                }
+                dialog.dismiss()
+                openGroupInfoCard(context, uin)
+            }
+            setPositiveButton("User") { dialog, _ ->
+                val uin = editText.text.toString().trim()
+                if (uin.isEmpty()) {
+                    Toasts.error(context, "请输入QQ号")
+                    return@setPositiveButton
+                }
+                try {
+                    if (uin.toLong() < 10000) {
+                        Toasts.error(context, "请输入正确的账号")
+                        return@setPositiveButton
+                    }
+                } catch (_: NumberFormatException) {
+                    Toasts.error(context, "请输入正确的账号")
+                    return@setPositiveButton
+                }
+                dialog.dismiss()
+                openUserInfoCard(context, uin)
+            }
+        }.create().show()
+    }
+
+    private fun openUserInfoCard(context: Context, uin: String) {
+        val allInOne = load(
+            "com.tencent.mobileqq.profilecard.data.AllInOne"
+        ) ?: run {
+            Toasts.error(context, "接口异常")
+            return
+        }
+        val newAllInOne = allInOne.new(uin, 83) as Parcelable
+
+        val mActivity = if (HookEnv.isQQ())
+            "com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity" else
+                "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity"
+        if (load(mActivity) == null) {
+            Toasts.error(context, "接口异常")
+            return
+        }
+
+        val intent = Intent().apply {
+            setComponent(ComponentName(context, mActivity))
+            putExtra("key_is_friend_profile_card", true)
+            putExtra("fling_action_key", 2)
+            putExtra("AllInOne", newAllInOne)
+            if (context !is Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+
+        context.startActivity(intent)
+    }
+
+    private fun openGroupInfoCard(context: Context, uin: String) {
+        val mActivity = "com.tencent.mobileqq.activity.QPublicFragmentActivity"
+        val mFragment = load("com.tencent.mobileqq.troop.troopcard.reborn.TroopInfoCardFragment")
+        if (load(mActivity) == null || mFragment == null) {
+            Toasts.error(context, "接口异常")
+            return
+        }
+
+        val intent = Intent().apply {
+            setComponent(ComponentName(context, mActivity))
+            setFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+            putExtra("fling_action_key", 2)
+            putExtra("keyword", uin)
+            putExtra("authSig", "") // 风控, 通过这样的方式打开资料卡申请加群, 请求可能会被屏蔽
+            putExtra("troop_uin", uin)
+            putExtra("vistor_type", 2)
+            putExtra("public_fragment_class", mFragment.name)
+            if (context !is Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+
+        context.startActivity(intent)
+    }
+
     companion object {
         val browserClass by lazy {
             loadOrThrow("com.tencent.mobileqq.activity.QQBrowserActivity")
@@ -410,6 +531,15 @@ class AddModuleEntrance : AlwaysRunAction() {
             groupTag = "TCQT_SettingEntry",
             groupTitle = null,
             onClick = ::openTCQTSettings
+        ),
+        SettingEntryConfig(
+            id = R.id.open_info_card,
+            title = "打开资料卡页面",
+            iconName = "qui_tuning",
+            extraEntry = true,
+            groupTag = "TCQT_OtherSettingEntry",
+            groupTitle = "TCQT工具",
+            onClick = ::showInfoCardDialog
         ),
         SettingEntryConfig(
             id = R.id.check_ban_url,

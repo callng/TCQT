@@ -1,7 +1,6 @@
 package com.owo233.tcqt.utils
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.res.AssetManager
 import android.content.res.Resources
 import android.content.res.loader.ResourcesLoader
@@ -11,14 +10,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import androidx.annotation.RequiresApi
+import com.owo233.tcqt.HookEnv
 import java.io.File
 
 internal object ResourcesUtils {
 
     private lateinit var resourcesLoader: ResourcesLoader
 
-    fun injectResourcesToContext(context: Context, moduleApkPath: String) {
-        val res = context.resources
+    fun injectResourcesToContext(res: Resources) {
+        val moduleApkPath = HookEnv.moduleApkPath
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             injectResourcesAboveApi30(res, moduleApkPath)
         } else {
