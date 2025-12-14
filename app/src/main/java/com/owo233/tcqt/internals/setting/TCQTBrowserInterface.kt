@@ -14,7 +14,7 @@ class TCQTBrowserInterface(private val ctx: Context) {
             val value: Any? = if (existingSetting != null) {
                 when (existingSetting.type) {
                     TCQTSetting.SettingType.BOOLEAN -> TCQTSetting.getValue<Boolean>(key)
-                    TCQTSetting.SettingType.INT -> TCQTSetting.getValue<Int>(key)
+                    TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> TCQTSetting.getValue<Int>(key)
                     TCQTSetting.SettingType.STRING -> TCQTSetting.getValue<String>(key)
                 }
             } else {

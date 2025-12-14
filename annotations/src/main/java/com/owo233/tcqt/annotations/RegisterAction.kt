@@ -63,9 +63,10 @@ annotation class RegisterSetting(
     val hidden: Boolean = false,
 
     /**
-     * 选项列表（仅当type为INT且需要单选/下拉时使用）
+     * 选项列表（仅当type为INT或INT_MULTI时使用）
      * 格式: "选项1|选项2|选项3"
-     * 选项的索引值(0,1,2...)将作为INT值保存
+     * - INT: 选项的索引值(1,2,3...)将作为INT值保存（0保留给关闭状态）
+     * - INT_MULTI: 使用位标志，选项索引对应位(1<<0, 1<<1, 1<<2...)
      */
     val options: String = "",
 
@@ -77,5 +78,5 @@ annotation class RegisterSetting(
 )
 
 enum class SettingType {
-    BOOLEAN, INT, STRING
+    BOOLEAN, INT, STRING, INT_MULTI
 }

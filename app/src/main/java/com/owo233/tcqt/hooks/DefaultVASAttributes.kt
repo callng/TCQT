@@ -20,9 +20,18 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
     desc = "禁用他人消息的个性化气泡、字体与头像挂件。",
     uiTab = "界面"
 )
+@RegisterSetting(
+    key = "default_vas_attrs.type",
+    name = "可选禁用",
+    type = SettingType.INT_MULTI,
+    defaultValue = "0",
+    options = "关闭净化气泡|关闭净化字体|关闭净化挂件"
+)
 class DefaultVASAttributes : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
+        val options = GeneratedSettingList.getInt(GeneratedSettingList.DEFAULT_VAS_ATTRS_TYPE)
+
         AIOMsgItem::class.java.hookAfterMethod("getMsgRecord") { param ->
             val msgRecord = param.result as MsgRecord
             if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
@@ -30,17 +39,23 @@ class DefaultVASAttributes : IAction {
                     u?.vasMsgInfo?.let { vasInfo ->
 
                         // 隐藏头像挂件
-                        vasInfo.avatarPendantInfo?.pendantId = 0L
-                        vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
+                        if ((options and (1 shl 2)) == 0) {
+                            vasInfo.avatarPendantInfo?.pendantId = 0L
+                            vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
+                        }
 
                         // 强制默认气泡
-                        vasInfo.bubbleInfo?.bubbleId = 0
-                        vasInfo.bubbleInfo?.subBubbleId = 0
+                        if ((options and (1 shl 0)) == 0) {
+                            vasInfo.bubbleInfo?.bubbleId = 0
+                            vasInfo.bubbleInfo?.subBubbleId = 0
+                        }
 
                         // 强制默认字体
-                        vasInfo.vasFont?.fontId = 0
-                        vasInfo.vasFont?.subFontId = 0L
-                        vasInfo.vasFont?.magicFontType = 0
+                        if ((options and (1 shl 1)) == 0) {
+                            vasInfo.vasFont?.fontId = 0
+                            vasInfo.vasFont?.subFontId = 0L
+                            vasInfo.vasFont?.magicFontType = 0
+                        }
                     }
                 }
             }

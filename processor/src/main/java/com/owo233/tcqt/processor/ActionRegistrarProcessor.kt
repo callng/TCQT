@@ -155,7 +155,7 @@ class ActionRegistrarProcessor(
 
                 val formattedDefaultValue = when (type) {
                     SettingType.BOOLEAN -> defaultValue?.toBooleanStrictOrNull()?.toString() ?: "false"
-                    SettingType.INT -> defaultValue?.toIntOrNull()?.toString() ?: "0"
+                    SettingType.INT, SettingType.INT_MULTI -> defaultValue?.toIntOrNull()?.toString() ?: "0"
                     SettingType.STRING -> "\"" + (defaultValue ?: "")
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"") + "\""
@@ -237,7 +237,8 @@ object GeneratedFeaturesData {
     data class OptionConfig(
         val key: String,
         val label: String,
-        val value: Int
+        val value: Int,
+        val isMulti: Boolean = false
     )
 
     data class FeatureConfig(
@@ -281,7 +282,8 @@ $$kotlinFeatures
                         append("\n                {")
                         append("\n                    \"key\": \"${escapeJsonString(op.key)}\",")
                         append("\n                    \"label\": \"${escapeJsonString(op.label)}\",")
-                        append("\n                    \"value\": ${op.value}")
+                        append("\n                    \"value\": ${op.value},")
+                        append("\n                    \"isMulti\": ${op.isMulti}")
                         append("\n                }")
                     }
                     append("\n            ],")
@@ -343,8 +345,8 @@ $$kotlinFeatures
                     append("\n            ),")
                 }
 
-                // 处理选项（子配置中的INT类型且有options）
-                val optionSetting = subSettings.find { it.type == SettingType.INT && it.options.isNotBlank() && !it.hidden }
+                // 处理选项（子配置中的INT或INT_MULTI类型且有options）
+                val optionSetting = subSettings.find { (it.type == SettingType.INT || it.type == SettingType.INT_MULTI) && it.options.isNotBlank() && !it.hidden }
                 if (optionSetting != null) {
                     val optionList = optionSetting.options.split("|").map { it.trim() }.filter { it.isNotEmpty() }
                     if (optionList.isNotEmpty()) {
@@ -355,7 +357,9 @@ $$kotlinFeatures
                             append("\n                    key = \"${optionSetting.key}\",")
                             append("\n                    label = \"${escapeKotlinString(label)}\",")
                             // 选项值从1开始，因为0保留给主开关的关闭状态
-                            append("\n                    value = ${index + 1}")
+                            append("\n                    value = ${index + 1},")
+                            // 添加类型标记，用于前端区分单选和多选
+                            append("\n                    isMulti = ${optionSetting.type == SettingType.INT_MULTI}")
                             append("\n                )")
                         }
                         append("\n            ),")

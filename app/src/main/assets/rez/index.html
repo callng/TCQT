@@ -321,6 +321,7 @@
         }
         .radio-option:hover { background-color: rgba(59, 130, 246, 0.05); transform: translateX(2px); }
         .radio-option input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary-color); }
+        .radio-option input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary-color); }
 
         /* --- 文本域 --- */
         textarea {
@@ -821,13 +822,26 @@
             const optionsContainer = document.createElement('div');
             optionsContainer.className = 'textarea-container radio-options';
 
+            // 检查第一个选项是否为多选框（所有选项应该是同一类型）
+            const isMulti = feature.options[0]?.isMulti || false;
+
             feature.options.forEach(opt => {
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'radio-option';
-                optionDiv.innerHTML = `
-                    <input type="radio" name="option-${feature.key}" id="option-${feature.key}-${opt.value}" value="${opt.value}">
-                    <label for="option-${feature.key}-${opt.value}">${opt.label}</label>
-                `;
+                
+                if (isMulti) {
+                    // 多选框
+                    optionDiv.innerHTML = `
+                        <input type="checkbox" name="option-${feature.key}" id="option-${feature.key}-${opt.value}" value="${opt.value}" data-is-multi="true">
+                        <label for="option-${feature.key}-${opt.value}">${opt.label}</label>
+                    `;
+                } else {
+                    // 单选框
+                    optionDiv.innerHTML = `
+                        <input type="radio" name="option-${feature.key}" id="option-${feature.key}-${opt.value}" value="${opt.value}">
+                        <label for="option-${feature.key}-${opt.value}">${opt.label}</label>
+                    `;
+                }
                 optionsContainer.appendChild(optionDiv);
             });
 
@@ -1219,6 +1233,7 @@
             // 选项初始化
             if (feature.options?.length) {
                 const optionKey = feature.options[0].key;
+                const isMulti = feature.options[0].isMulti || false;
                 const pendingOption = this.state.getPendingChange(optionKey, 'value');
 
                 let currentValue;
@@ -1227,13 +1242,27 @@
                 } else {
                     const modeSetting = this.tcqtService.getSetting(optionKey);
                     currentValue = modeSetting.value !== undefined ?
-                        parseInt(modeSetting.value) : feature.options[0].value;
+                        parseInt(modeSetting.value) : (isMulti ? 0 : feature.options[0].value);
                 }
 
-                feature.options.forEach(opt => {
-                    const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
-                    if (radio) radio.checked = (opt.value === currentValue);
-                });
+                if (isMulti) {
+                    // 多选框：使用位标志
+                    feature.options.forEach(opt => {
+                        const checkbox = document.getElementById(`option-${feature.key}-${opt.value}`);
+                        if (checkbox) {
+                            // 检查该位是否被设置
+                            const bitValue = 1 << (opt.value - 1);
+                            const isChecked = (currentValue & bitValue) !== 0;
+                            checkbox.checked = isChecked;
+                        }
+                    });
+                } else {
+                    // 单选框：直接匹配值
+                    feature.options.forEach(opt => {
+                        const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
+                        if (radio) radio.checked = (opt.value === currentValue);
+                    });
+                }
             }
 
             // 文本域初始化
@@ -1260,8 +1289,8 @@
 
                 if (feature.options) {
                     feature.options.forEach(opt => {
-                        const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
-                        if (radio) radio.disabled = true;
+                        const control = document.getElementById(`option-${feature.key}-${opt.value}`);
+                        if (control) control.disabled = true;
                     });
                 }
 
@@ -1288,19 +1317,42 @@
                     });
                 }
 
-                // 监听单选按钮
+                // 监听单选按钮/多选框
                 if (feature.options?.length) {
                     const optionKey = feature.options[0].key;
-                    feature.options.forEach(opt => {
-                        const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
-                        if (radio) {
-                            radio.addEventListener('change', () => {
-                                if (radio.checked) {
-                                    this.state.savePendingChange(optionKey, 'value', parseInt(radio.value));
-                                }
-                            });
-                        }
-                    });
+                    const isMulti = feature.options[0].isMulti || false;
+
+                    if (isMulti) {
+                        // 多选框：监听所有checkbox的变化
+                        feature.options.forEach(opt => {
+                            const checkbox = document.getElementById(`option-${feature.key}-${opt.value}`);
+                            if (checkbox) {
+                                checkbox.addEventListener('change', () => {
+                                    // 重新计算位标志值
+                                    let combinedValue = 0;
+                                    feature.options.forEach(o => {
+                                        const cb = document.getElementById(`option-${feature.key}-${o.value}`);
+                                        if (cb && cb.checked) {
+                                            combinedValue |= (1 << (o.value - 1));
+                                        }
+                                    });
+                                    this.state.savePendingChange(optionKey, 'value', combinedValue);
+                                });
+                            }
+                        });
+                    } else {
+                        // 单选按钮
+                        feature.options.forEach(opt => {
+                            const radio = document.getElementById(`option-${feature.key}-${opt.value}`);
+                            if (radio) {
+                                radio.addEventListener('change', () => {
+                                    if (radio.checked) {
+                                        this.state.savePendingChange(optionKey, 'value', parseInt(radio.value));
+                                    }
+                                });
+                            }
+                        });
+                    }
                 }
 
                 // 监听文本域
@@ -1370,19 +1422,33 @@
                 // 处理选项
                 if (feature.options?.length) {
                     const optionKey = feature.options[0].key;
+                    const isMulti = feature.options[0].isMulti || false;
                     const pendingOption = this.state.getPendingChange(optionKey, 'value');
 
                     let optionValue;
                     if (pendingOption !== null) {
                         optionValue = pendingOption;
                     } else if (isVisible) {
-                        const selectedRadio = document.querySelector(`input[name="option-${feature.key}"]:checked`);
-                        optionValue = selectedRadio ? parseInt(selectedRadio.value) : feature.options[0].value;
+                        if (isMulti) {
+                            // 多选框：计算位标志值
+                            optionValue = 0;
+                            feature.options.forEach(opt => {
+                                const checkbox = document.getElementById(`option-${feature.key}-${opt.value}`);
+                                if (checkbox && checkbox.checked) {
+                                    optionValue |= (1 << (opt.value - 1));
+                                }
+                            });
+                        } else {
+                            // 单选框：直接获取值
+                            const selectedRadio = document.querySelector(`input[name="option-${feature.key}"]:checked`);
+                            optionValue = selectedRadio ? parseInt(selectedRadio.value) : feature.options[0].value;
+                        }
                     } else {
                         return; // 不可见且没有修改，跳过
                     }
 
-                    if (enabledValue && !this.tcqtService.saveIntSetting(optionKey, optionValue)) {
+                    // enabledValue && 无论主开关是否启用，都保存选项值
+                    if (!this.tcqtService.saveIntSetting(optionKey, optionValue)) {
                         hasError = true;
                     }
                 }

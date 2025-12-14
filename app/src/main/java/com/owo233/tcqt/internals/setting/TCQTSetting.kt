@@ -53,7 +53,11 @@ internal object TCQTSetting {
             val setting = settingMap[key]
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
-                if (setting.type != requestedType) {
+                // INT 和 INT_MULTI 互相兼容
+                val isCompatible = setting.type == requestedType ||
+                    (setting.type == SettingType.INT_MULTI && requestedType == SettingType.INT) ||
+                    (setting.type == SettingType.INT && requestedType == SettingType.INT_MULTI)
+                if (!isCompatible) {
                     Log.e("Type mismatch for key: $key, expected: ${setting.type}, requested: $requestedType")
                     return null
                 }
@@ -85,7 +89,11 @@ internal object TCQTSetting {
             val setting = settingMap[key]
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
-                if (setting.type != requestedType) {
+                // INT 和 INT_MULTI 互相兼容
+                val isCompatible = setting.type == requestedType ||
+                    (setting.type == SettingType.INT_MULTI && requestedType == SettingType.INT) ||
+                    (setting.type == SettingType.INT && requestedType == SettingType.INT_MULTI)
+                if (!isCompatible) {
                     Log.e("Type mismatch for key: $key, expected: ${setting.type}, requested: $requestedType")
                     return
                 }
@@ -109,6 +117,7 @@ internal object TCQTSetting {
         return when (typeString) {
             "BOOLEAN" -> SettingType.BOOLEAN
             "INT" -> SettingType.INT
+            "INT_MULTI" -> SettingType.INT_MULTI
             "STRING" -> SettingType.STRING
             else -> null
         }
@@ -123,7 +132,7 @@ internal object TCQTSetting {
     private inline fun <reified T : Any> readFromMMKVByType(key: String, type: SettingType): T? {
         return when (type) {
             SettingType.BOOLEAN -> config.getBoolean(key, false) as T
-            SettingType.INT     -> config.getInt(key, 0) as T
+            SettingType.INT, SettingType.INT_MULTI -> config.getInt(key, 0) as T
             SettingType.STRING  -> (config.getString(key, null) ?: "") as T
         }
     }
@@ -146,7 +155,7 @@ internal object TCQTSetting {
         }
 
     enum class SettingType {
-        BOOLEAN, INT, STRING
+        BOOLEAN, INT, STRING, INT_MULTI
     }
 
     class Setting<T: Any>(
@@ -158,7 +167,7 @@ internal object TCQTSetting {
         fun getValue(mmkv: MMKV): T {
             return when (type) {
                 SettingType.BOOLEAN -> mmkv.getBoolean(key, default as? Boolean ?: false)
-                SettingType.INT     -> mmkv.getInt(key, default as? Int ?: 0)
+                SettingType.INT, SettingType.INT_MULTI -> mmkv.getInt(key, default as? Int ?: 0)
                 SettingType.STRING  -> mmkv.getString(key, default as? String ?: "") ?: ""
             } as T
         }
@@ -171,7 +180,7 @@ internal object TCQTSetting {
                     value as? Boolean ?: runCatching { value.toString().toBooleanStrict() }
                         .getOrDefault(false)
                 )
-                SettingType.INT     -> mmkv.putInt(
+                SettingType.INT, SettingType.INT_MULTI -> mmkv.putInt(
                     key,
                     value as? Int ?: runCatching { value.toString().toInt() }
                         .getOrDefault(0)
