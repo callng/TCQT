@@ -7,6 +7,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.view.LayoutInflater;
 import androidx.annotation.StyleRes;
+
 public class ContextThemeWrapper extends ContextWrapper {
     private LayoutInflater mInflater;
     private Configuration mOverrideConfiguration;
