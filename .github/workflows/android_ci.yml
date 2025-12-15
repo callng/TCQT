@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -85,13 +85,13 @@ jobs:
           echo "|debug|$debug" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Artifacts(release)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           path: ${{ env.APK_FILE_RELEASE }}
           name: TCQT-release-${{ github.event.head_commit.id }}
 
       - name: Upload Artifacts(debug)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           path: ${{ env.APK_FILE_DEBUG }}
           name: TCQT-debug-${{ github.event.head_commit.id }}
@@ -104,7 +104,7 @@ jobs:
       - build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
