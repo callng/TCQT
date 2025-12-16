@@ -50,7 +50,7 @@ android {
         targetSdk = 36
         buildToolsVersion = findBuildToolsVersion()
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
-        versionName = "3.5.6"
+        versionName = "3.6.0"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
