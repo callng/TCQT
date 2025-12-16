@@ -314,10 +314,27 @@
         input:checked + .slider:before { transform: translateX(20px); }
         input:disabled + .slider { background-color: #9ca3af; cursor: not-allowed; opacity: 0.6; }
 
-        .radio-options { display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; align-items: center; }
+        .radio-options {
+            width: 100%;
+            box-sizing: border-box;
+            display: grid;
+            justify-content: center;
+            padding: 0;
+        }
+        .feature-item.is-expanded .radio-options {
+            padding: 4px;
+        }
         .radio-option {
-            display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px;
-            border-radius: var(--radius-sm); transition: var(--transition-fast); user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+            user-select: none;
+            width: 100%;
+            justify-content: flex-start;
         }
         .radio-option:hover { background-color: rgba(59, 130, 246, 0.05); transform: translateX(2px); }
         .radio-option input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary-color); }
