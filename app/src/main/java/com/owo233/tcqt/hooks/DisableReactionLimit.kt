@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -26,20 +27,21 @@ import com.owo233.tcqt.utils.replaceMethod
 class DisableReactionLimit : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.replaceMethod("getFilterEmojiData") { null }
+        if (HookEnv.isQQ()) {
+            load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")?.let {
+                it.replaceMethod("getFilterEmojiData") { null }
+                it.replaceMethod("getFilterSysData") { null }
+            }
 
-        load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")
-            ?.replaceMethod("getFilterSysData") { null }
-
-        // 有意义吗？
-        load("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.utils.a")
-            ?.declaredMethods
-            ?.single {
-                it.returnType == Long::class.javaPrimitiveType &&
-                        it.paramCount == 0 && it.isPublic &&
-                        it.isStatic && it.isFinal
-            }!!.hookAfterMethod { it.result = 0L }
+            // 有意义吗？
+            load("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.utils.a")
+                ?.declaredMethods
+                ?.single {
+                    it.returnType == Long::class.javaPrimitiveType &&
+                            it.paramCount == 0 && it.isPublic &&
+                            it.isStatic && it.isFinal
+                }?.hookAfterMethod { it.result = 0L }
+        }
     }
 
     override val key: String get() = GeneratedSettingList.DISABLE_REACTION_LIMIT

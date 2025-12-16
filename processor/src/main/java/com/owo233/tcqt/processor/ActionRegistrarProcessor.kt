@@ -24,15 +24,22 @@ class ActionRegistrarProcessor(
     }
 
     private fun processActions(resolver: Resolver) {
-        val annotated = resolver.getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
+        val actions = resolver
+            .getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
             .filterIsInstance<KSClassDeclaration>()
             .filter { classDecl ->
-                val ann = classDecl.annotations.find { it.shortName.asString() == "RegisterAction" }
-                val enabled = ann?.arguments?.find { it.name?.asString() == "enabled" }?.value as? Boolean
+                val ann = classDecl.annotations
+                    .firstOrNull { it.shortName.asString() == "RegisterAction" }
+
+                val enabled = ann?.arguments
+                    ?.firstOrNull { it.name?.asString() == "enabled" }
+                    ?.value as? Boolean
+
                 enabled ?: true
             }
+            .toList()
 
-        if (!annotated.iterator().hasNext()) return
+        if (actions.isEmpty()) return
 
         val file = codeGenerator.createNewFile(
             Dependencies.ALL_FILES,
@@ -41,20 +48,78 @@ class ActionRegistrarProcessor(
         )
 
         file.bufferedWriter().use { writer ->
-            writer.write("package com.owo233.tcqt.generated\n\n")
-            writer.write("import com.owo233.tcqt.ext.IAction\n\n")
-            writer.write("object GeneratedActionList {\n")
-            writer.write("    val ACTIONS: Array<Class<out IAction>> = arrayOf(\n")
+            writer.write(
+                """
+            package com.owo233.tcqt.generated
 
-            annotated.forEach { classDecl ->
-                val qName = classDecl.qualifiedName?.asString()
-                if (qName != null) {
-                    writer.write("        $qName::class.java,\n")
-                }
+            import com.owo233.tcqt.ext.IAction
+
+            internal object GeneratedActionList {
+
+                val ACTIONS: Array<Class<out IAction>> = arrayOf(
+            """.trimIndent()
+            )
+            writer.write("\n")
+
+            // Action 类列表
+            actions.forEach { classDecl ->
+                val qName = classDecl.qualifiedName?.asString() ?: return@forEach
+                writer.write("        $qName::class.java,\n")
             }
 
-            writer.write("    )\n")
-            writer.write("}\n")
+            writer.write(
+                """
+                )
+
+                val ACTION_NAME_MAP: Map<String, String> = mapOf(
+            """.trimIndent()
+            )
+            writer.write("\n")
+
+            // name 映射
+            actions.forEach { classDecl ->
+
+                // 跳过 AlwaysRunAction
+                if (classDecl.isAlwaysRunAction()) return@forEach
+
+                val settingAnn = classDecl.annotations
+                    .firstOrNull { it.shortName.asString() == "RegisterSetting" }
+                    ?: return@forEach
+
+                val key = settingAnn.arguments
+                    .firstOrNull { it.name?.asString() == "key" }
+                    ?.value as? String
+                    ?: return@forEach
+
+                val name = settingAnn.arguments
+                    .firstOrNull { it.name?.asString() == "name" }
+                    ?.value as? String
+                    ?: key
+
+                writer.write(
+                    "        \"$key\" to \"$name\",\n"
+                )
+            }
+
+            writer.write(
+                """
+                )
+            }
+            """.trimIndent()
+            )
+        }
+    }
+
+    private fun KSClassDeclaration.isAlwaysRunAction(): Boolean {
+        return superTypes.any { superType ->
+            val resolved = superType.resolve()
+            val decl = resolved.declaration as? KSClassDeclaration
+            when {
+                decl == null -> false
+                decl.qualifiedName?.asString() ==
+                        "com.owo233.tcqt.ext.AlwaysRunAction" -> true
+                else -> decl.isAlwaysRunAction() // 递归向上找
+            }
         }
     }
 

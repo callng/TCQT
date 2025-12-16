@@ -22,6 +22,7 @@ object ClassCacheUtils {
 
     fun findClass(init: FinderBuilder.() -> Unit): Class<*>? {
         val builder = FinderBuilder().apply(init)
+
         val candidates = builder.classNames
         if (candidates.isEmpty()) return null
 
@@ -52,6 +53,7 @@ object ClassCacheUtils {
 
             if (outerClass != null) return outerClass
         }
+
         return null
     }
 }

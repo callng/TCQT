@@ -1,27 +1,19 @@
 package com.owo233.tcqt
 
 import android.content.Context
-import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.utils.Log
 
-object ActionManager {
+internal object ActionManager {
 
     private val FIRST_ACTION = GeneratedActionList.ACTIONS // ksp 自动生成
 
     private val instanceMap = hashMapOf<Class<out IAction>, IAction>()
 
     private val failedActions = hashSetOf<Class<out IAction>>()
-
-    private fun getActionName(cls: Class<out IAction>): String {
-        return runCatching {
-            val annotations = cls.getAnnotationsByType(RegisterSetting::class.java)
-            annotations.firstOrNull()?.name ?: cls.simpleName
-        }.getOrDefault(cls.simpleName)
-    }
 
     private fun instanceOf(cls: Class<out IAction>): IAction? {
         if (cls in failedActions) return null
@@ -35,8 +27,8 @@ object ActionManager {
                 }
             }
         }.getOrElse { e ->
+            Log.e("ActionManager instanceOf failed", e)
             failedActions.add(cls)
-            Log.e("Action [${getActionName(cls)}] 实例化失败", e)
             null
         }
     }
@@ -63,7 +55,7 @@ object ActionManager {
                     action(ctx, proc)
                 }
             }.onFailure { e ->
-                Log.e("Action [${getActionName(actionClass)}] 执行过程异常", e)
+                throw RuntimeException(e)
             }
         }
     }
@@ -84,5 +76,15 @@ object ActionManager {
                 action !is AlwaysRunAction && !action.canRun()
             }.getOrDefault(false)
         }
+    }
+
+    fun resolve(action: IAction): String {
+        if (action.key.isBlank()) {
+            // 被R8混淆过的, simpleName也看不懂, 还是直接看报错罢
+            return action::class.simpleName ?: "Unknown"
+        }
+
+        return GeneratedActionList.ACTION_NAME_MAP[action.key]
+            ?: action.key
     }
 }

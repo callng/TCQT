@@ -1,7 +1,9 @@
-package com.owo233.tcqt.utils
+package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.hooks.base.load
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
+import com.tencent.qqnt.aio.menu.ui.d
+import com.tencent.qqnt.aio.menu.ui.f
 
 internal object CustomMenu {
 
@@ -23,7 +25,7 @@ internal object CustomMenu {
         val type = cachedType ?: detectMenuClass().also { cachedType = it }
 
         return when (type) {
-            MenuType.F -> object : com.tencent.qqnt.aio.menu.ui.f(msg as AIOMsgItem) {
+            MenuType.F -> object : f(msg as AIOMsgItem) {
                 override fun b(): Int = icon
                 override fun c(): Int = id
                 override fun e(): String = text
@@ -31,7 +33,7 @@ internal object CustomMenu {
                 override fun h() = click()
             }
 
-            MenuType.D -> object : com.tencent.qqnt.aio.menu.ui.d(msg as AIOMsgItem) {
+            MenuType.D -> object : d(msg as AIOMsgItem) {
                 override fun b(): Int = icon
                 override fun c(): Int = id
                 override fun e(): String = text

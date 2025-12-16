@@ -1,7 +1,7 @@
 package com.owo233.tcqt.ext
 
 import android.content.Context
-import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
 
@@ -26,18 +26,11 @@ abstract class AlwaysRunAction : IAction {
 
 interface IAction {
 
-    private fun getActionName(): String {
-        return runCatching {
-            val annotations = this::class.java.getAnnotationsByType(RegisterSetting::class.java)
-            annotations.firstOrNull()?.name ?: this::class.simpleName ?: "Unknown"
-        }.getOrDefault(this::class.simpleName ?: "Unknown")
-    }
-
     operator fun invoke(ctx: Context, process: ActionProcess) {
         runCatching {
             if (canRun()) onRun(ctx, process)
         }.onFailure {
-            Log.e("Action [${getActionName()}] invoke 异常", it)
+            Log.e("Action [${ActionManager.resolve(this)}] invoke 异常", it)
         }
     }
 
@@ -46,7 +39,7 @@ interface IAction {
     fun canRun(): Boolean = runCatching {
         GeneratedSettingList.getBoolean(key)
     }.getOrElse { e ->
-        Log.e("Action [${getActionName()}] canRun 检查异常", e)
+        Log.e("Action [${ActionManager.resolve(this)}] canRun 检查异常", e)
         false
     }
 

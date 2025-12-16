@@ -18,7 +18,7 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
-import com.owo233.tcqt.utils.CustomMenu
+import com.owo233.tcqt.hooks.helper.CustomMenu
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.beforeHook
