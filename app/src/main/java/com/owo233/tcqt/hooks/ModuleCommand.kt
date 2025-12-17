@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.utils.Log
@@ -42,7 +43,7 @@ class ModuleCommand : AlwaysRunAction() {
                         MobileQQ.getMobileQQ().otherProcessExit(false)
                         MobileQQ.getMobileQQ().qqProcessExit(true)
                     }
-                    "config_clear" -> MMKVUtils.mmkvWithId("TCQT").also { it.clearAll() }
+                    "config_clear" -> MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).also { it.clearAll() }
                 }
             }
         }

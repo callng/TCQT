@@ -9,11 +9,14 @@ internal object MMKVUtils {
 
     private const val SINGLE_PROCESS_MODE = 1
     private const val MULTI_PROCESS_MODE = 2
-    private val handles = ConcurrentHashMap.newKeySet<Long>()
+
+    private val mmkvCache = ConcurrentHashMap<String, MMKV>()
 
     private val checkProcessModeMethod: Method by lazy {
-        MMKV::class.java.getDeclaredMethod("checkProcessMode", Long::class.javaPrimitiveType)
-            .apply { isAccessible = true }
+        MMKV::class.java.getDeclaredMethod(
+            "checkProcessMode",
+            Long::class.javaPrimitiveType
+        ).apply { isAccessible = true }
     }
 
     private val getMMKVWithIDMethod: Method by lazy {
@@ -28,41 +31,36 @@ internal object MMKVUtils {
     }
 
     private val mmkvConstructor: Constructor<MMKV> by lazy {
-        MMKV::class.java.getDeclaredConstructor(Long::class.javaPrimitiveType)
-            .apply { isAccessible = true }
-    }
-
-    private fun checkProcessMode(handle: Long): Boolean =
-        checkProcessModeMethod.invoke(null, handle) as Boolean
-
-    private fun getMMKVHandle(id: String, processMode: Int): Long =
-        getMMKVWithIDMethod.invoke(null, id, processMode, null, null, 0L) as Long
-
-    private fun createMMKV(nativeHandle: Long): MMKV =
-        mmkvConstructor.newInstance(nativeHandle)
-
-    private fun getOrCreateMMKV(processMode: Int, nativeHandle: Long, id: String): MMKV {
-        require(nativeHandle != 0L) { "Failed to create MMKV instance [$id] in JNI" }
-
-        synchronized(handles) {
-            if (handles.add(nativeHandle)) {
-                if (!checkProcessMode(nativeHandle)) {
-                    val msg = when (processMode) {
-                        SINGLE_PROCESS_MODE -> "Opening multi-process MMKV [$id] with SINGLE_PROCESS_MODE!"
-                        else -> "Opening MMKV [$id] with MULTI_PROCESS_MODE, " +
-                                "but it's already opened as SINGLE_PROCESS_MODE elsewhere!"
-                    }
-                    throw IllegalArgumentException(msg)
-                }
-            }
-        }
-
-        return createMMKV(nativeHandle)
+        MMKV::class.java.getDeclaredConstructor(
+            Long::class.javaPrimitiveType
+        ).apply { isAccessible = true }
     }
 
     fun mmkvWithId(id: String, multiProcess: Boolean = true): MMKV {
-        val mode = if (multiProcess) MULTI_PROCESS_MODE else SINGLE_PROCESS_MODE
-        val handle = getMMKVHandle(id, mode)
-        return getOrCreateMMKV(mode, handle, id)
+        // 优先命中缓存
+        mmkvCache[id]?.let { return it }
+
+        return mmkvCache.computeIfAbsent(id) { _ ->
+            val mode = if (multiProcess) MULTI_PROCESS_MODE else SINGLE_PROCESS_MODE
+
+            // 传入 null 作为 rootPath，意味着使用 MMKV 默认路径
+            val handle = getMMKVWithIDMethod.invoke(
+                null,
+                id, mode, null, null, 0L) as Long
+
+            require(handle != 0L) { "Failed to get MMKV handle for [$id]" }
+
+            val isCorrectMode = checkProcessModeMethod.invoke(null, handle) as Boolean
+            if (!isCorrectMode) {
+                val msg = if (mode == SINGLE_PROCESS_MODE) {
+                    "Opening multi-process MMKV [$id] with SINGLE_PROCESS_MODE!"
+                } else {
+                    "Opening MMKV [$id] with MULTI_PROCESS_MODE but it's already SINGLE!"
+                }
+                throw IllegalArgumentException(msg)
+            }
+
+            mmkvConstructor.newInstance(handle)
+        }
     }
 }

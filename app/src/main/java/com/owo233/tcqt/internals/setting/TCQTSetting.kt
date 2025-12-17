@@ -1,6 +1,7 @@
 package com.owo233.tcqt.internals.setting
 
 import com.owo233.tcqt.HookEnv.moduleClassLoader
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.MMKVUtils
@@ -22,7 +23,7 @@ internal object TCQTSetting {
             }
     }
 
-    private val config: MMKV get() = MMKVUtils.mmkvWithId("TCQT")
+    private val config: MMKV get() = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
 
     val settingMap: HashMap<String, Setting<out Any>> by lazy {
         GeneratedSettingList.SETTING_MAP
