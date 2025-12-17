@@ -2,7 +2,6 @@ package com.owo233.tcqt.internals.helper
 
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.tencent.mobileqq.data.troop.TroopMemberInfo
 import com.tencent.mobileqq.data.troop.TroopMemberNickInfo
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.troopmemberlist.ITroopMemberListRepoApi
@@ -103,27 +102,6 @@ internal object GroupHelper {
         }
 
         return result
-    }
-
-    private fun getTroopMemberInfoByUinFromNt(
-        groupId: Long,
-        uin: Long
-    ): TroopMemberInfo? =
-        QRoute.api(ITroopMemberListRepoApi::class.java)
-            .getTroopMemberFromCacheOrFetchAsync(
-                groupId.toString(),
-                uin.toString(),
-                null,
-                "TroopMemberLevelMsgProcessor",
-                null
-            )
-
-    fun getTroopMemberInfoByUin(
-        groupId: Long,
-        uin: Long
-    ): Result<TroopMemberInfo> = runCatching {
-        getTroopMemberInfoByUinFromNt(groupId, uin)
-            ?: error("获取群成员信息失败")
     }
 }
 

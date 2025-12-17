@@ -33,12 +33,6 @@
     public static ** INSTANCE;
 }
 
-# 保留 IAction 接口
-# -keep interface com.owo233.tcqt.ext.IAction
-
-# 保留 ActionProcess 枚举
-# -keep enum com.owo233.tcqt.ext.ActionProcess
-
 # 大多数 volatile 字段是由 AtomicFU（Kotlin 的原子操作库）自动处理的，不应该被改名或删除。
 -keepclassmembers class kotlinx.io.** {
     volatile <fields>;
@@ -77,9 +71,9 @@
    private static final kotlin.coroutines.jvm.internal.DebugMetadata getDebugMetadataAnnotation(kotlin.coroutines.jvm.internal.BaseContinuationImpl) return null;
 }
 
-# Kotlin function interfaces
--keep interface kotlin.jvm.functions.Function1 {
-    public abstract java.lang.Object invoke(java.lang.Object);
+# Preserve annotated Javascript interface methods.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
 }
 
 -dontwarn java.beans.**
@@ -96,9 +90,3 @@
 -dontpreverify
 -dontnote kotlin.jvm.internal.SourceDebugExtension
 -dontwarn kotlin.jvm.internal.SourceDebugExtension
-
-# 禁用代码优化
--dontoptimize
-
-# 禁用删除未使用的代码
-#-dontshrink

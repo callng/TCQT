@@ -1398,7 +1398,7 @@
 
         saveSettings() {
             if (!this.state.isInjected) {
-                this.showToast('模块接口未注入，无法保存设置');
+                this.showToast('接口未注入，无法保存设置');
                 return;
             }
 
@@ -1521,7 +1521,7 @@
             this.eventManager.isLongPress = false;
 
             if (!this.state.isInjected) {
-                this.showToast('模块接口未注入，无法执行此操作');
+                this.showToast('接口未注入，无法执行此操作');
                 return;
             }
 

@@ -91,11 +91,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            isCrunchPngs = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles("proguard-rules.pro")
             versionNameSuffix = providers.provider {
                 getGitHeadRefsSuffix(rootProject, "release")
             }.get()
