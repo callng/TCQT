@@ -5,6 +5,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.hooks.base.ProcUtil
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.channels.FileLock
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -13,34 +14,41 @@ internal object FileLog {
     private const val LOG_MAX_SIZE = 2 * 1024 * 1024
     private const val LOG_KEEP_DAYS = 7
 
+    private val fileNameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+    private val logTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+
     private val mediaDir: File by lazy {
         @Suppress("DEPRECATION")
-        return@lazy HookEnv.hostAppContext.externalMediaDirs
+        HookEnv.hostAppContext.externalMediaDirs
             ?.firstOrNull { it != null && it.canWrite() }
             ?.let { File(it, "${TCQTBuild.APP_NAME}/log") }
-            ?.apply {
-                if (isFile) delete()
-                if (!exists()) mkdirs()
-            }
+            ?.apply { if (!exists()) mkdirs() }
             ?: throw IllegalStateException("No external storage available")
     }
 
     private val logFile: File
         get() {
-            val file: File by lazy {
-                return@lazy File(mediaDir, "log.txt")
-                    .apply { if (!exists()) createNewFile() }
-            }
-            val f = file.apply {
-                if (length() > LOG_MAX_SIZE) {
-                    renameTo(File(mediaDir, "log_${LocalDateTime.now()}.txt"))
-                    createNewFile()
-                }
+            val baseFile = File(mediaDir, "log.txt")
+            if (!baseFile.exists()) {
+                baseFile.createNewFile()
             }
 
-            cleanOldLogs()
-            return f
+            if (baseFile.length() > LOG_MAX_SIZE) {
+                rotateLogFile(baseFile)
+            }
+
+            return baseFile
         }
+
+    private fun rotateLogFile(currentFile: File) {
+        val timestamp = LocalDateTime.now().format(fileNameFormatter)
+        val backupFile = File(mediaDir, "log_$timestamp.txt")
+
+        if (currentFile.renameTo(backupFile)) {
+            File(mediaDir, "log.txt").createNewFile()
+            cleanOldLogs()
+        }
+    }
 
     fun i(msg: String, tag: String = TCQTBuild.HOOK_TAG, tr: Throwable? = null) =
         writeLog("INFO", tag, msg, tr)
@@ -59,49 +67,47 @@ internal object FileLog {
 
     private fun writeLog(level: String, tag: String, msg: String, tr: Throwable? = null) {
         try {
-            val time = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))
-
+            val time = LocalDateTime.now().format(logTimeFormatter)
             val thread = Thread.currentThread().name
             val procName = ProcUtil.currentProcName
 
-            val logBuilder = StringBuilder()
-                .append(time)
-                .append(" ")
-                .append("[$level]")
-                .append("/")
-                .append("[$tag]")
-                .append(" [$procName]")
-                .append("/")
-                .append("[$thread]: ")
-                .append(msg)
-                .append("\n")
+            val logContent = buildString {
+                append(time).append(" ")
+                append("[$level]/[$tag] ")
+                append("[$procName]/[$thread]: ")
+                append(msg)
+                append("\n")
+                tr?.let { append(it.stackTraceToString()).append("\n") }
+            }
 
-            tr?.let { logBuilder.append(it.stackTraceToString()).append("\n") }
-
-            val bytes = logBuilder.toString().toByteArray()
-
-            val fos = FileOutputStream(logFile, true)
-            fos.channel.use { channel ->
-                channel.lock().use {
-                    fos.write(bytes)
-                    fos.flush()
+            synchronized(this) {
+                val targetFile = logFile
+                FileOutputStream(targetFile, true).use { fos ->
+                    fos.channel.use { channel ->
+                        var lock: FileLock? = null
+                        try {
+                            lock = channel.lock()
+                            fos.write(logContent.toByteArray())
+                            fos.flush()
+                        } finally {
+                            lock?.release()
+                        }
+                    }
                 }
             }
-        } catch (_: Throwable) { }
+        } catch (_: Throwable) {
+            // 吞掉异常
+        }
     }
 
     private fun cleanOldLogs() {
-        val deadlineMillis = System.currentTimeMillis() -
-                LOG_KEEP_DAYS * 24L * 60L * 60L * 1000L
-
-        mediaDir.listFiles()
-            ?.filter { it.isFile && it.name.startsWith("log_") }
-            ?.forEach { file ->
-                val lastModified = file.lastModified()
-                if (lastModified < deadlineMillis) {
-                    file.delete()
-                }
-            }
+        Thread {
+            try {
+                val deadline = System.currentTimeMillis() - LOG_KEEP_DAYS * 24L * 3600L * 1000L
+                mediaDir.listFiles()
+                    ?.filter { it.isFile && it.name.startsWith("log_") }
+                    ?.forEach { if (it.lastModified() < deadline) it.delete() }
+            } catch (_: Throwable) {}
+        }.start()
     }
 }
