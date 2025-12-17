@@ -402,9 +402,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun showInfoCardDialog(ctx: Context) {
-        val context = HostContextFactory.createMaterialContext(
-            ContextUtils.getCurrentActivity()!!
-        )
+        val context = HostContextFactory.createMaterialContext(ctx)
 
         val editText = EditText(context).apply {
             hint = "输入QQ号或群号"
@@ -412,6 +410,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             val paddingDp = 16
             val density = context.resources.displayMetrics.density
             val paddingPx = (paddingDp * density).toInt()
+            setSingleLine()
             setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
         }
 

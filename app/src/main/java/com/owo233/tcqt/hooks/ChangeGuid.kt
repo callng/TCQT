@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Bundle
 import android.text.InputFilter
@@ -13,19 +12,21 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
-import com.owo233.tcqt.HookEnv
+import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.ContextUtils
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.context.HostContextFactory
 import com.owo233.tcqt.utils.hookAfterMethod
-import de.robv.android.xposed.XposedHelpers
 
 @RegisterAction
 @RegisterSetting(
@@ -56,9 +57,12 @@ class ChangeGuid : IAction {
     }
 
     private fun initDefaultGuid() {
-        val defaultGuid = QQInterfaces.guid
-        if (defaultGuid.isNotBlank() && defaultGuid != "null") {
-            GuidConfig.defaultGuid = defaultGuid
+        val guid = GuidConfig.defaultGuid
+        if (guid.isEmpty()) {
+            val defaultGuid = QQInterfaces.guid
+            if (defaultGuid.isNotEmpty() && defaultGuid != "null") {
+                GuidConfig.defaultGuid = defaultGuid
+            }
         }
     }
 
@@ -76,15 +80,19 @@ class ChangeGuid : IAction {
     }
 
     private fun setupLoginUiHook() {
-        val clazz = XposedHelpers.findClass("mqq.app.AppActivity", HookEnv.hostClassLoader)
-        clazz.hookAfterMethod("onCreate", Bundle::class.java) { param ->
+        loadOrThrow("mqq.app.AppActivity").hookAfterMethod(
+            "onCreate",
+            Bundle::class.java
+        ) { param ->
             val activity = param.thisObject as Activity
             if (!activity.javaClass.name.contains("Login")) return@hookAfterMethod
-
             activity.window.decorView.rootView.post {
                 findLoginButton(activity.window.decorView.rootView)?.apply {
                     setOnLongClickListener {
-                        showGuidDialog(activity)
+                        val context = HostContextFactory.createMaterialContext(
+                            ContextUtils.getCurrentActivity()!!
+                        )
+                        showGuidDialog(context)
                         true
                     }
                 }
@@ -92,71 +100,71 @@ class ChangeGuid : IAction {
         }
     }
 
-    private fun showGuidDialog(activity: Activity) {
-        val input = EditText(activity).apply {
+    private fun showGuidDialog(context: Context) {
+        val input = EditText(context).apply {
             hint = "32 位 GUID（可为空）"
             inputType = InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             minHeight = (48 * resources.displayMetrics.density).toInt()
             filters = arrayOf(InputFilter.LengthFilter(32))
-            textSize = 13f
+            textSize = 16f
             gravity = Gravity.CENTER_HORIZONTAL
             setSingleLine()
             setPadding(50, 36, 50, 36)
             setText(if (GuidConfig.isEnabled) GuidConfig.newGuid else GuidConfig.defaultGuid)
         }
 
-        val container = FrameLayout(activity).apply {
+        val container = FrameLayout(context).apply {
             val params = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT )
-            val margin = (20 * activity.resources.displayMetrics.density).toInt()
+            val margin = (20 * context.resources.displayMetrics.density).toInt()
             setPadding(margin, margin, margin, margin)
             addView(input, params)
         }
 
-        val dialog = AlertDialog.Builder(activity)
+        val dialog = AlertDialog.Builder(context)
             .setTitle("设置自定义 GUID")
             .setView(container)
-            .setPositiveButton("保存") { _, _ -> handleSaveGuid(activity, input.text.toString().trim()) }
-            .setNeutralButton("恢复") { _, _ -> handleRestoreGuid(activity) }
+            .setPositiveButton("保存") { _, _ -> handleSaveGuid(context, input.text.toString().trim()) }
+            .setNeutralButton("恢复") { _, _ -> handleRestoreGuid(context) }
             .setNegativeButton("取消", null)
             .create()
 
         dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = GuidConfig.isEnabled
+        dialog.getButton(-3).isEnabled = GuidConfig.isEnabled
     }
 
-    private fun handleSaveGuid(activity: Activity, guid: String) {
+    private fun handleSaveGuid(context: Context, guid: String) {
         when {
             guid.isBlank() -> {
                 GuidConfig.disable()
-                toastAndRestart(activity, "已禁用自定义GUID，立即生效")
+                toastAndRestart(context, "已禁用自定义GUID，立即生效")
             }
             !guid.matches(Regex("^[a-fA-F0-9]{32}$")) -> {
-                toast(activity, "GUID 格式不正确")
+                toast(context, "GUID 格式不正确")
             }
             guid.equals(GuidConfig.newGuid, true) && GuidConfig.isEnabled -> {
-                toast(activity, "GUID 与当前自定义一致，无需修改")
+                toast(context, "GUID 与当前自定义一致，无需修改")
             }
             guid.equals(GuidConfig.defaultGuid, true) -> {
                 if (GuidConfig.isEnabled) {
                     GuidConfig.disable()
-                    toastAndRestart(activity, "已还原为系统默认，立即生效")
+                    toastAndRestart(context, "已还原为系统默认，立即生效")
                 } else {
-                    toast(activity, "与系统默认值一致，无需重复设置")
+                    toast(context, "与系统默认值一致，无需重复设置")
                 }
             }
             else -> {
                 GuidConfig.enableWith(guid)
-                toastAndRestart(activity, "已保存，立即生效")
+                toastAndRestart(context, "已保存，立即生效")
             }
         }
     }
 
-    private fun handleRestoreGuid(activity: Activity) {
+    private fun handleRestoreGuid(context: Context) {
         if (GuidConfig.isEnabled) {
             GuidConfig.disable()
-            toastAndRestart(activity, "已恢复默认，立即生效")
+            toastAndRestart(context, "已恢复默认，立即生效")
         }
     }
 
