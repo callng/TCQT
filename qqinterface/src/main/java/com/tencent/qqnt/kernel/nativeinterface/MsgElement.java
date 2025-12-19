@@ -31,10 +31,9 @@ public final class MsgElement implements IKernelModel, Serializable {
     public PttElement pttElement; // 语音
     public AdelieRecommendedMsgElement recommendedMsgElement;
     public ReplyElement replyElement; // 回复
-    long serialVersionUID = 1;
     public ShareLocationElement shareLocationElement; // 地理位置
     public StructLongMsgElement structLongMsgElement; // 长消息
-    public StructMsgElement structMsgElement;
+    public StructMsgElement structMsgElement; // xml消息
     public TaskTopMsgElement taskTopMsgElement;
     public TextElement textElement; // 文本消息
     public TextGiftElement textGiftElement;

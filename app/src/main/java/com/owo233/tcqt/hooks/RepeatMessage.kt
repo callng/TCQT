@@ -9,20 +9,25 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.Toasts
 import com.owo233.tcqt.utils.callMethod
 import com.owo233.tcqt.utils.getFields
 import com.owo233.tcqt.utils.getMethods
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.paramCount
 import com.tencent.mobileqq.qroute.QRoute
+import com.tencent.qqnt.kernel.nativeinterface.MsgAttributeInfo
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.msg.api.IMsgService
-import kotlin.random.Random
+import mqq.app.Foreground
+import java.lang.reflect.Field
+import java.lang.reflect.Method
 
 @RegisterAction
 @RegisterSetting(
@@ -34,86 +39,137 @@ import kotlin.random.Random
 )
 class RepeatMessage : IAction {
 
-    private var lastClickTime = 0L
-
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val componentClz = load(
-            "com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent"
-        ) ?: error("AIOMsgFollowComponent not found")
+        val componentClz =
+            loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent")
 
-        val imageViewLazyField = componentClz.getFields(false).firstOrNull {
-            it.type.isInterface && it.type.name == "kotlin.Lazy"
-        }?.apply { isAccessible = true } ?: error("imageViewLazy not found")
+        val imageViewLazyField: Field =
+            componentClz.getFields(false)
+                .firstOrNull {
+                    it.type.isInterface && it.type.name == "kotlin.Lazy"
+                }
+                ?.apply { isAccessible = true }
+                ?: error("imageViewLazy field not found")
 
-        val setRepeatMsgIconMethod = componentClz.getMethods(false).firstOrNull {
-            it.paramCount == 1 && it.parameterTypes[0] == Integer.TYPE
-        }?.apply { isAccessible = true } ?: error("setRepeatMsgIcon not found")
+        val setRepeatMsgIconMethod: Method =
+            componentClz.getMethods(false)
+                .firstOrNull {
+                    it.paramCount == 1 && it.parameterTypes[0] == Integer.TYPE
+                }
+                ?.apply { isAccessible = true }
+                ?: error("setRepeatMsgIcon method not found")
 
-        val plusOneMethod = componentClz.getMethods(false).firstOrNull {
-            it.paramCount == 3 &&
-                    it.parameterTypes[0] == Integer.TYPE &&
-                    it.parameterTypes[2] == List::class.java
-        } ?: error("plusOne not found")
+        val plusOneMethod: Method =
+            componentClz.getMethods(false)
+                .firstOrNull {
+                    it.paramCount == 3 &&
+                            it.parameterTypes[0] == Integer.TYPE &&
+                            it.parameterTypes[2] == List::class.java
+                }
+                ?: error("plusOne method not found")
 
-        plusOneMethod.hookAfterMethod {
-            val imageView = imageViewLazyField.get(it.thisObject)!!.callMethod(
-                "getValue"
-            ) as ImageView
+        plusOneMethod.hookAfterMethod { param ->
+            val hostObject = param.thisObject
 
-            if (imageView.context.javaClass.name.contains("MultiForwardActivity")) return@hookAfterMethod
+            val imageView =
+                (imageViewLazyField.get(hostObject)!!
+                    .callMethod("getValue") as? ImageView)
+                    ?: return@hookAfterMethod
 
-            val msgObject = it.args[1]
-            val msgRecord = getMsgRecord(msgObject)
-
-            if (disableRepeat(msgRecord)) return@hookAfterMethod
-
-            if (imageView.visibility != View.VISIBLE) {
-                setRepeatMsgIconMethod.invoke(it.thisObject, View.VISIBLE)
+            if (imageView.context.javaClass.name.contains("MultiForwardActivity")) {
+                return@hookAfterMethod
             }
 
-            imageView.setOnClickListener { _ ->
-                val now = System.currentTimeMillis()
-                if (now - lastClickTime <= 200) {
-                    val contact = ContactHelper.generateContactByUid(msgRecord.chatType, msgRecord.peerUid)
-                    val newMsgId = generateMsgUniSeq(msgRecord.chatType)
-                    val msgService = QRoute.api(IMsgService::class.java)
+            val msgRecord = MsgRecordHelper.getMsgRecord(param.args[1])
 
-                    when (contact) {
-                        is MapleContact.PublicContact -> {
-                            msgService.sendMsgWithMsgId(contact.inner, newMsgId, msgRecord.elements) { result, _ ->
-                                if (result != 0) {
-                                    Log.e("repeat message failed: (msgType = ${msgRecord.msgType}, result = $result)")
-                                }
-                            }
-                        }
-                        else -> {}
+            if (shouldDisableRepeat(msgRecord)) {
+                return@hookAfterMethod
+            }
+
+            if (imageView.visibility != View.VISIBLE) {
+                setRepeatMsgIconMethod.invoke(hostObject, View.VISIBLE)
+            }
+
+            imageView.setDoubleClickListener(interval = 200) {
+                performRepeatMessage(msgRecord)
+            }
+        }
+    }
+
+    private fun performRepeatMessage(msg: MsgRecord) {
+        val contact = ContactHelper.generateContactByUid(msg.chatType, msg.peerUid)
+
+        if (contact !is MapleContact.PublicContact) {
+            Log.e("repeat message failed: Host version too low, need 9.0.70+")
+            return
+        }
+
+        val msgServer = QQInterfaces.msgService
+        val msgIds = arrayListOf(msg.msgId)
+        val attrMap = HashMap<Int, MsgAttributeInfo>()
+
+        msgServer.getMsgsByMsgId(contact.inner, msgIds) { _, _, list ->
+            if (list.isEmpty()) {
+                Log.e("repeat message failed: MsgRecord isEmpty!")
+                Toasts.error(Foreground.getTopActivity(), "无法获取消息,请重试")
+                return@getMsgsByMsgId
+            }
+
+            if (list[0].elements[0].picElement != null) {
+                msgServer.forwardMsg(
+                    msgIds,
+                    contact.inner,
+                    arrayListOf(contact.inner),
+                    attrMap
+                ) { result, str, _ ->
+                    if (result != 0) {
+                        Log.e("repeat message failed: (type=${msg.msgType}, code=$result, msg=$str)")
                     }
-                    lastClickTime = 0L
-                } else {
-                    lastClickTime = now
+                }
+            } else {
+                val iMsgServer = QRoute.api(IMsgService::class.java)
+                iMsgServer.sendMsg(contact.inner, list[0].elements) { result, str ->
+                    if (result != 0) {
+                        Log.e("repeat message failed: (type=${msg.msgType}, code=$result, msg=$str)")
+                    }
                 }
             }
         }
     }
 
-    private fun disableRepeat(msg: MsgRecord): Boolean {
-        return msg.msgType == MsgConstant.KMSGTYPEWALLET // 跟*有关系的消息有必要复读吗？
+    private fun shouldDisableRepeat(msg: MsgRecord): Boolean {
+        return msg.msgType == MsgConstant.KMSGTYPEWALLET
     }
 
-    private fun getMsgRecord(msg: Any): MsgRecord {
-        return getMsgRecordMethod.invoke(msg) as MsgRecord
+    @Suppress("AssignedValueIsNeverRead")
+    private fun View.setDoubleClickListener(
+        interval: Long,
+        action: () -> Unit
+    ) {
+        var lastClickTime: Long? = null
+
+        setOnClickListener {
+            val now = System.currentTimeMillis()
+            val last = lastClickTime
+
+            if (last != null && now - last <= interval) {
+                action()
+                lastClickTime = null
+            } else {
+                lastClickTime = now
+            }
+        }
     }
 
-    private fun generateMsgUniSeq(chatType: Int): Long {
-        val uniseq = (System.currentTimeMillis() / 1000) shl 32
-        val random = Random.nextLong() and 0xffffff00L
-        return uniseq or random or chatType.toLong()
-    }
-
-    companion object {
+    private object MsgRecordHelper {
         private val getMsgRecordMethod by lazy {
-            load("com.tencent.mobileqq.aio.msg.AIOMsgItem")!!
-                .getDeclaredMethod("getMsgRecord").apply { isAccessible = true }
+            loadOrThrow("com.tencent.mobileqq.aio.msg.AIOMsgItem")
+                .getDeclaredMethod("getMsgRecord")
+                .apply { isAccessible = true }
+        }
+
+        fun getMsgRecord(msgItem: Any): MsgRecord {
+            return getMsgRecordMethod.invoke(msgItem) as MsgRecord
         }
     }
 

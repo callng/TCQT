@@ -7,7 +7,8 @@ import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal object NTServiceFetcher {
+object NTServiceFetcher {
+
     private lateinit var iKernelService: IKernelService
     private val isMsgHookInitialized = AtomicBoolean(false)
 

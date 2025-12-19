@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.hooks.maple.MapleContact
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.Log
 import com.owo233.tcqt.utils.proto2json.asJsonObject
 import com.owo233.tcqt.utils.proto2json.json
@@ -44,25 +45,21 @@ object LocalGrayTips {
     ) {
         runCatching {
             val json = Builder().apply(builder).build(align)
-            val msgService = NTServiceFetcher.kernelService.wrapperSession?.msgService
-            if (msgService == null) {
-                Log.e("addLocalGrayTip failed, msgService is null")
-            } else {
-                when (contact) {
-                    is MapleContact.Contact -> {
-                        val element = JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
-                        msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
-                            if (result != 0) {
-                                Log.e("addLocalJsonGrayTipMsg failed, result: $result")
-                            }
+            val msgService = QQInterfaces.msgService
+            when (contact) {
+                is MapleContact.Contact -> {
+                    val element = JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
+                    msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
+                        if (result != 0) {
+                            Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                         }
                     }
-                    is MapleContact.PublicContact -> {
-                        val element = PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
-                        msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
-                            if (result != 0) {
-                                Log.e("addLocalJsonGrayTipMsg failed, result: $result")
-                            }
+                }
+                is MapleContact.PublicContact -> {
+                    val element = PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
+                    msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
+                        if (result != 0) {
+                            Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                         }
                     }
                 }
