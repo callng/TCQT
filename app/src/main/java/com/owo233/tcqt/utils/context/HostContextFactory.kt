@@ -23,7 +23,7 @@ object HostContextFactory {
     }
 
     private fun buildNightModeConfig(base: Context): Configuration? {
-        val night = if (ThemeUtil.isInNightMode(null)) {
+        val night = if (ThemeUtil.isNowThemeIsNight(null, true, null)) {
             Configuration.UI_MODE_NIGHT_YES
         } else {
             Configuration.UI_MODE_NIGHT_NO

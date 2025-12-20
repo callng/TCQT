@@ -134,14 +134,9 @@ class TCQTJsInterface(private val ctx: Context) {
     }
 
     @JavascriptInterface
-    fun isDarkModeBySystem(): Boolean {
-        val mode = ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return mode == Configuration.UI_MODE_NIGHT_YES
-    }
-
-    @JavascriptInterface
     fun isDarkModeByHost(): Boolean {
-        return ThemeUtil.isInNightMode(null) // isInNightMode方法可能会被移除
+        return ThemeUtil.isNowThemeIsNight(null, true, null)
+                || (if (HookEnv.isQQ()) ThemeUtil.isThemeNightModeV2() else false)
     }
 
     @JavascriptInterface
