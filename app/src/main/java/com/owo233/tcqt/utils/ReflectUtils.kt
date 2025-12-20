@@ -1,10 +1,16 @@
 @file:JvmName("ReflectUtil")
 package com.owo233.tcqt.utils
 
+import android.os.Bundle
+import android.util.SparseArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import java.lang.ref.WeakReference
+import java.lang.reflect.Array as JavaArray
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
@@ -204,94 +210,113 @@ private fun isWideningPrimitive(param: Class<*>, argClass: Class<*>): Boolean {
  * @return JSON格式字符串
  */
 fun Any?.toJsonString(maxDepth: Int = 3, withSuper: Boolean = true): String {
-    return this.toJsonObject(maxDepth, withSuper, mutableSetOf()).toString()
+    return this.toJsonElement(maxDepth, withSuper, HashSet()).toString()
 }
 
-/**
- * 将任意对象转换为JsonObject，通过反射获取所有字段
- * @param maxDepth 最大递归深度
- * @param withSuper 是否包含父类字段
- * @param visited 已访问对象集合，用于防止循环引用
- */
-private fun Any?.toJsonObject(
+private fun Any?.toJsonElement(
+    maxDepth: Int,
+    withSuper: Boolean,
+    visited: MutableSet<Int>
+): JsonElement {
+    if (this == null) return JsonNull
+
+    if (this is Number || this is Boolean || this is String || this is Char) {
+        return JsonPrimitive(this.toString())
+    }
+
+    if (this is Enum<*>) return JsonPrimitive(this.name)
+
+    val objectId = System.identityHashCode(this)
+    if (objectId in visited) {
+        return JsonPrimitive("@ref:0x${Integer.toHexString(objectId)}")
+    }
+
+    if (maxDepth <= 0) return JsonPrimitive(this.toString())
+
+    visited.add(objectId)
+    try {
+        return when (this) {
+            is Array<*> -> buildJsonArray {
+                this@toJsonElement.forEach { add(it.toJsonElement(maxDepth - 1, withSuper, visited)) }
+            }
+            is  ByteArray, is ShortArray, is IntArray, is LongArray,
+            is FloatArray, is DoubleArray, is BooleanArray, is CharArray -> buildJsonArray {
+                val length = JavaArray.getLength(this@toJsonElement)
+                for (i in 0 until length) {
+                    add(JavaArray.get(this@toJsonElement, i).toJsonElement(maxDepth - 1, withSuper, visited))
+                }
+            }
+            is Iterable<*> -> buildJsonArray {
+                this@toJsonElement.forEach { add(it.toJsonElement(maxDepth - 1, withSuper, visited)) }
+            }
+            is Map<*, *> -> buildJsonObject {
+                this@toJsonElement.forEach { (k, v) ->
+                    put(k.toString(), v.toJsonElement(maxDepth - 1, withSuper, visited))
+                }
+            }
+            is Bundle -> buildJsonObject {
+                put("_type", JsonPrimitive("android.os.Bundle"))
+                for (key in this@toJsonElement.keySet()) {
+                    @Suppress("DEPRECATION")
+                    put(key, this@toJsonElement.get(key).toJsonElement(maxDepth - 1, withSuper, visited))
+                }
+            }
+            is SparseArray<*> -> buildJsonObject {
+                put("_type", JsonPrimitive("android.util.SparseArray"))
+                for (i in 0 until this@toJsonElement.size()) {
+                    val key = this@toJsonElement.keyAt(i)
+                    val value = this@toJsonElement.valueAt(i)
+                    put(key.toString(), value.toJsonElement(maxDepth - 1, withSuper, visited))
+                }
+            }
+            is WeakReference<*> -> {
+                val target = this.get()
+                target?.toJsonElement(maxDepth - 1, withSuper, visited) ?: JsonPrimitive("<cleared>")
+            }
+            else -> reflectObject(this, maxDepth, withSuper, visited)
+        }
+    } catch (e: Exception) {
+        return JsonPrimitive("<error: ${e.javaClass.simpleName}>")
+    } finally {
+        visited.remove(objectId)
+    }
+}
+
+private fun reflectObject(
+    obj: Any,
     maxDepth: Int,
     withSuper: Boolean,
     visited: MutableSet<Int>
 ): JsonObject = buildJsonObject {
-    if (this@toJsonObject == null) return@buildJsonObject
+    val clazz = obj.javaClass
 
-    // 防止循环引用
-    val objectId = System.identityHashCode(this@toJsonObject)
-    if (objectId in visited || maxDepth <= 0) {
-        put("_ref", JsonPrimitive("@${this@toJsonObject.javaClass.simpleName}#${Integer.toHexString(objectId)}"))
+    if (clazz.name.startsWith("java.") || clazz.name.startsWith("android.")) {
+        put("_value", JsonPrimitive(obj.toString()))
         return@buildJsonObject
     }
-    visited.add(objectId)
+
+    put("_class", JsonPrimitive(clazz.name))
+    put("_hash", JsonPrimitive("0x${Integer.toHexString(System.identityHashCode(obj))}"))
 
     try {
-        // 添加类型信息
-        put("_class", JsonPrimitive(this@toJsonObject.javaClass.name))
-
-        // 获取所有字段
-        val fields = this@toJsonObject.getFields(withSuper)
-
+        val fields = obj.getFields(withSuper)
         fields.forEach { field ->
+            if (Modifier.isStatic(field.modifiers)
+                || field.isSynthetic
+                || field.name.startsWith("shadow$")) return@forEach
+
+            if (field.name.startsWith("this$")) return@forEach
+
+            field.isAccessible = true
+
             try {
-                // 跳过静态字段
-                if (Modifier.isStatic(field.modifiers)) return@forEach
-
-                // 跳过ART虚拟机的影子字段（shadow fields）
-                val fieldName = field.name
-                if (fieldName.startsWith("shadow$")) return@forEach
-
-                field.isAccessible = true
-                when (val value = field.get(this@toJsonObject)) {
-                    null -> put(fieldName, JsonPrimitive(null as String?))
-                    is String -> put(fieldName, JsonPrimitive(value))
-                    is Number -> put(fieldName, JsonPrimitive(value))
-                    is Boolean -> put(fieldName, JsonPrimitive(value))
-                    is Char -> put(fieldName, JsonPrimitive(value.toString()))
-                    is Enum<*> -> put(fieldName, JsonPrimitive(value.name))
-                    is CharSequence -> put(fieldName, JsonPrimitive(value.toString()))
-                    is Array<*> -> {
-                        // 数组转为字符串表示
-                        put(fieldName, JsonPrimitive(value.contentToString()))
-                    }
-                    is Collection<*> -> {
-                        // 集合转为字符串表示
-                        put(fieldName, JsonPrimitive(value.toString()))
-                    }
-                    is Map<*, *> -> {
-                        // Map转为字符串表示
-                        put(fieldName, JsonPrimitive(value.toString()))
-                    }
-                    is WeakReference<*> -> {
-                        // 处理弱引用
-                        val target = value.get()
-                        if (target == null) {
-                            put(fieldName, JsonPrimitive("<cleared>"))
-                        } else {
-                            put(fieldName, target.toJsonObject(maxDepth - 1, withSuper, visited))
-                        }
-                    }
-                    else -> {
-                        // 递归处理对象类型
-                        if (maxDepth > 1 && !value.javaClass.name.startsWith("java.")
-                            && !value.javaClass.name.startsWith("android.")) {
-                            put(fieldName, value.toJsonObject(maxDepth - 1, withSuper, visited))
-                        } else {
-                            // 其他类型转为字符串
-                            put(fieldName, JsonPrimitive(value.toString()))
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                put(field.name, JsonPrimitive("<error: ${e.message}>"))
+                val value = field.get(obj)
+                put(field.name, value.toJsonElement(maxDepth - 1, withSuper, visited))
+            } catch (_: Exception) {
+                put(field.name, JsonPrimitive("<!ACCESS_DENIED!>"))
             }
         }
     } catch (e: Exception) {
-        put("_error", JsonPrimitive(e.message ?: "Unknown error"))
-    } finally {
-        visited.remove(objectId)
+        put("_error", JsonPrimitive(e.message))
     }
 }
