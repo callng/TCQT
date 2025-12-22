@@ -4,11 +4,11 @@ agp = "8.13.2"
 core = "1.17.0"
 
 # Google
-protobuf = "0.9.5"
+protobuf = "0.9.6"
 protobuf-java = "4.33.2"
 
 # Kotlin
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"
@@ -16,7 +16,7 @@ kotlinx-io = "0.1.16"
 kotlinx-serialization = "1.9.0"
 
 # Tools
-ksp = "2.3.3"
+ksp = "2.3.4"
 
 # Xposed
 xposed = "82"

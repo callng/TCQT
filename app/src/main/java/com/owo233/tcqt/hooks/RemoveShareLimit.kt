@@ -67,6 +67,7 @@ class RemoveShareLimit : IAction {
         Log.d("Intent Extras:")
 
         for (key in extras.keySet()) {
+            @Suppress("DEPRECATION")
             val value = extras.get(key)
             val type = value?.javaClass?.name ?: "null"
 
@@ -87,6 +88,7 @@ class RemoveShareLimit : IAction {
         Log.d("${indent}Bundle {")
 
         for (key in bundle.keySet()) {
+            @Suppress("DEPRECATION")
             val value = bundle.get(key)
             val type = value?.javaClass?.name ?: "null"
 
