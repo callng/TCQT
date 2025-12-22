@@ -8,7 +8,7 @@ protobuf = "0.9.5"
 protobuf-java = "4.33.2"
 
 # Kotlin
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"
