@@ -38,5 +38,5 @@ class RemoveEmoReply : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.REMOVE_EMO_REPLY_MENU
+    override val key: String get() = GeneratedSettingList.REMOVE_EMO_REPLY
 }
