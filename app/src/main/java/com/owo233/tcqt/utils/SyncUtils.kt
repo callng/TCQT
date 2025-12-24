@@ -2,6 +2,7 @@ package com.owo233.tcqt.utils
 
 import android.os.Handler
 import android.os.Looper
+import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.atomic.AtomicReference
 
 object SyncUtils {

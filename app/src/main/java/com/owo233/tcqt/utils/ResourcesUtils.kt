@@ -11,6 +11,7 @@ import android.os.Looper
 import android.os.ParcelFileDescriptor
 import androidx.annotation.RequiresApi
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.utils.log.Log
 import java.io.File
 
 internal object ResourcesUtils {

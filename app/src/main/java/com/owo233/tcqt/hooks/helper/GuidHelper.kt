@@ -3,7 +3,7 @@ package com.owo233.tcqt.hooks.helper
 import android.content.Context
 import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
 

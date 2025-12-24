@@ -3,7 +3,6 @@ package com.owo233.tcqt.internals.setting
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.webkit.JavascriptInterface
 import androidx.core.net.toUri
 import com.owo233.tcqt.ActionManager
@@ -11,10 +10,10 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.generated.GeneratedFeaturesData
-import com.owo233.tcqt.hooks.ModuleCommand
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.Toasts
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.proto2json.json
 import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 

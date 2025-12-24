@@ -3,7 +3,7 @@ package com.owo233.tcqt.ext
 import android.content.Context
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.log.Log
 
 enum class ActionProcess {
     MSF, MAIN, TOOL, OPENSDK, QZONE,

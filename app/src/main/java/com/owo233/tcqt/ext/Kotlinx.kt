@@ -8,8 +8,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.owo233.tcqt.utils.Log
-import com.owo233.tcqt.utils.Toasts
+import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.hooks.base.Toasts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

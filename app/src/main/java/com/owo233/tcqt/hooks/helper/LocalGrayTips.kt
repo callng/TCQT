@@ -2,7 +2,7 @@ package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.proto2json.asJsonObject
 import com.owo233.tcqt.utils.proto2json.json
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId

@@ -4,6 +4,7 @@ package com.owo233.tcqt.utils
 
 import android.content.res.XResources
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.utils.log.Log
 import dalvik.system.BaseDexClassLoader
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam

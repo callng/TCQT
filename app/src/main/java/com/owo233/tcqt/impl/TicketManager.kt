@@ -3,10 +3,10 @@ package com.owo233.tcqt.impl
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.getFields
-import com.owo233.tcqt.utils.getMethods
+import com.owo233.tcqt.utils.reflect.getFields
+import com.owo233.tcqt.utils.reflect.getMethods
 import mqq.manager.MainTicketCallback
 import mqq.manager.MainTicketInfo
 import mqq.manager.TicketManager

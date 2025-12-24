@@ -8,7 +8,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.hooks.base.FixClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
-import com.owo233.tcqt.utils.Log
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import de.robv.android.xposed.IXposedHookZygoteInit
