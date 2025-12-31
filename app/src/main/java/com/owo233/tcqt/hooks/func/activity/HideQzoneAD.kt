@@ -29,6 +29,7 @@ class HideQzoneAD : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             listOf(
+                "com.qzone.reborn.feedpro.widget.comment.QZoneFeedProDetailBottomAdBlockView", // 说说详情页广告
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardMultiPicAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
