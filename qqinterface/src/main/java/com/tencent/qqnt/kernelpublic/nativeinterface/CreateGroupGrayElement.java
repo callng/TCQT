@@ -18,7 +18,6 @@ public final class CreateGroupGrayElement implements Serializable {
 
     public CreateGroupGrayElement(ArrayList<GrayTipMember> arrayList) {
         this.serialVersionUID = 1L;
-        new ArrayList();
         this.memberInfo = arrayList;
     }
 }
