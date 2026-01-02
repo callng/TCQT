@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
-import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -9,8 +8,10 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookAfterAllConstructors
 import com.owo233.tcqt.utils.hookBeforeAllMethods
+import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.isPublic
+import com.owo233.tcqt.utils.paramCount
 
 @RegisterAction
 @RegisterSetting(
@@ -28,14 +29,13 @@ class RemoveEmoReply : IAction {
                 param.result = null
             }
 
-        loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.ui.MsgTailFrameLayout")
-            .hookAfterAllConstructors { param ->
-                val view = param.args.getOrNull(2) as? View ?: return@hookAfterAllConstructors
-                if (view.javaClass.name.endsWith("BubbleLayoutCompatPress")) {
-                    val targetView = param.thisObject as View
-                    targetView.visibility = View.GONE
-                }
+        loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgtail.AIOGeneralMsgTailContentComponent")
+            .declaredMethods.first { m ->
+                m.isPublic && m.paramCount == 3 && m.returnType == Void.TYPE
+                        && m.parameterTypes[0] == Int::class.javaPrimitiveType
+                        && m.parameterTypes[2] == List::class.java
             }
+            .hookBeforeMethod { param -> param.result = null }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_EMO_REPLY
