@@ -141,7 +141,6 @@ class RepeatMessage : IAction {
         return msg.msgType == MsgConstant.KMSGTYPEWALLET
     }
 
-    @Suppress("AssignedValueIsNeverRead")
     private fun View.setDoubleClickListener(
         interval: Long,
         action: () -> Unit

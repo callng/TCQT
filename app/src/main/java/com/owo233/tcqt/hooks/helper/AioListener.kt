@@ -172,7 +172,7 @@ object AioListener {
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
                 text("对方想撤回一条")
                 msgRef("消息", msgSeq.toLong())
-                text(", 已拦截")
+                text("(seq=$msgSeq), 已拦截")
             }
         }
     }
@@ -185,7 +185,7 @@ object AioListener {
                 LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
                     text("对方想撤回一条")
                     msgRef("消息", msgSeq)
-                    text(", 已拦截")
+                    text("(seq=$msgSeq), 已拦截")
                 }
             }
         }
@@ -194,7 +194,7 @@ object AioListener {
     private fun showGroupRecallTip(operationInfo: QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo) {
         GlobalScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId
-            val recallMsgSeq = operationInfo.info.msgInfo.msgSeq
+            val msgSeq = operationInfo.info.msgInfo.msgSeq
             val targetUid = operationInfo.info.msgInfo.senderUid
             val operatorUid = operationInfo.info.operatorUid
 
@@ -216,8 +216,8 @@ object AioListener {
                     member(targetUid, targetUin, targetNick, "3")
                 }
                 text("的")
-                msgRef("消息", recallMsgSeq.toLong())
-                text(", 已拦截")
+                msgRef("消息", msgSeq.toLong())
+                text("(seq=$msgSeq), 已拦截")
             }
         }
     }
