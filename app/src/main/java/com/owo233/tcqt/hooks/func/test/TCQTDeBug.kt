@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.test
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -8,6 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.proto2json.ProtoUtils
@@ -58,8 +60,12 @@ class TCQTDeBug : IAction {
             }
         }
 
+        val method = "sendMessageInner".takeIf {
+            !HookEnv.isTim() && HookEnv.versionCode >= PlatformTools.QQ_9_2_60_GRAY_ONE_VER
+        } ?: "sendMessage"
+
         ChannelProxyExt::class.java.hookBeforeMethod(
-            "sendMessage",
+            method,
             String::class.java,
             ByteArray::class.java,
             Long::class.javaPrimitiveType
@@ -69,7 +75,7 @@ class TCQTDeBug : IAction {
             val callbackId = param.args[2] as Long
             val bcmd = ProtoUtils.decodeFromByteArray(body)[1].asUtf8String
 
-            Log.i("sendMessage Log Start\ncmd: $cmd\nbcmd: $bcmd\ncallbackId: $callbackId\nbody: ${body.toHexString()}\nsendMessage Log End")
+            Log.i("sendMessageInner Log Start\ncmd: $cmd\nbcmd: $bcmd\ncallbackId: $callbackId\nbody: ${body.toHexString()}\nsendMessageInner Log End")
         }
     }
 
