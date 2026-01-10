@@ -3,7 +3,11 @@ package com.owo233.tcqt.utils.context
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
+import android.content.Context
+import android.content.ContextWrapper
 import com.owo233.tcqt.utils.log.Log
+import de.robv.android.xposed.callbacks.XC_LoadPackage
+import java.lang.reflect.Method
 
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
 internal object ContextUtils {
@@ -44,6 +48,22 @@ internal object ContextUtils {
             ?: tryGetApplication("android.app.AppGlobals", "getInitialApplication")
     }
 
+    fun getContextCreateMethod(
+        loadParam: XC_LoadPackage.LoadPackageParam
+    ): Method? {
+        val className = loadParam.appInfo?.name ?: return fallbackContextWrapper()
+
+        val clz = runCatching {
+            loadParam.classLoader.loadClass(className)
+        }.getOrElse {
+            Log.e("getContextCreateMethod: Failed to load class $className", it)
+            return fallbackContextWrapper()
+        }
+
+        return findInClassOrSuper(clz)
+            ?: fallbackContextWrapper()
+    }
+
     private fun tryGetApplication(className: String, methodName: String): Application? {
         return runCatching {
             Class.forName(className)
@@ -54,4 +74,31 @@ internal object ContextUtils {
             Log.e("getCurApplication: $className.$methodName failed", it)
         }.getOrNull()
     }
+
+    private fun findInClassOrSuper(clz: Class<*>): Method? {
+        return findMethodInClass(clz)
+            ?: clz.superclass?.let { findMethodInClass(it) }
+    }
+
+    private fun findMethodInClass(clz: Class<*>?): Method? =
+        clz?.let { cls ->
+            cls.getDeclaredMethodOrNull("attachBaseContext", Context::class.java)
+                ?: cls.getDeclaredMethodOrNull("onCreate")
+        }
+
+    private fun fallbackContextWrapper(): Method? =
+        ContextWrapper::class.java
+            .getDeclaredMethodOrNull("attachBaseContext", Context::class.java)
+            .also {
+                if (it == null) {
+                    Log.e("fallbackContextWrapper: ContextWrapper.attachBaseContext not found")
+                }
+            }
+
+    private fun Class<*>.getDeclaredMethodOrNull(
+        name: String,
+        vararg params: Class<*>
+    ): Method? = runCatching {
+        getDeclaredMethod(name, *params)
+    }.getOrNull()
 }

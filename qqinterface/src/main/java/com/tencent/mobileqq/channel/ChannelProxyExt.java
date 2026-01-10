@@ -7,4 +7,8 @@ public abstract class ChannelProxyExt extends ChannelProxy {
     }
 
     public abstract void sendMessage(String cmd, byte[] body, String uin, long callbackId);
+
+    public void sendMessageInner(String cmd, byte[] body, long callbackId) {
+        throw new RuntimeException("Stub!");
+    }
 }

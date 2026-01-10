@@ -23,6 +23,7 @@ import mqq.app.AppRuntime
     key = "disable_hot_patch",
     name = "禁用热补丁",
     type = SettingType.BOOLEAN,
+    defaultValue = "true",
     desc = "顾名思义，但不会删除已有的热补丁。",
     uiTab = "高级"
 )
@@ -66,10 +67,10 @@ class DisableHotPatch : IAction {
             }
 
         load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
-            val kRespGetConfig = load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$RespGetConfig")!!
+            val kRespGetConfig = load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$RespGetConfig")!!
             val kRespGetConfigConfigList = kRespGetConfig.getDeclaredField("config_list")
 
-            val kConfig = load("com.tencent.mobileqq.config.struct.splashproto.ConfigurationService\$Config")!!
+            val kConfig = load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$Config")!!
             val kConfigType = kConfig.getDeclaredField("type")
 
             kConfigServlet.declaredMethods.filter { m ->
@@ -135,6 +136,5 @@ class DisableHotPatch : IAction {
 
     override val key: String get() = GeneratedSettingList.DISABLE_HOT_PATCH
 
-    override val processes: Set<ActionProcess> get() =
-        setOf(ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL)
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }
