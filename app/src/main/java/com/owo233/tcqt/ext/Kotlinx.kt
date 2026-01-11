@@ -178,11 +178,11 @@ fun Context.copyToClipboard(str: String, showToast: Boolean = true) = runCatchin
     (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).also {
         val cd = ClipData.newPlainText("text", str)
         it.setPrimaryClip(cd)
-        if (showToast) Toasts.success(this, "已复制到剪贴板")
+        if (showToast) Toasts.success("已复制到剪贴板")
     }
 }.onFailure {
     Log.e("复制到剪贴板失败", it)
-    if (showToast) Toasts.error(this, "复制到剪贴板失败")
+    if (showToast) Toasts.error("复制到剪贴板失败")
 }
 
 fun Context.clearClipboard() = runCatching {

@@ -66,6 +66,16 @@ public interface IKernelMsgService {
         public void recallMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, ArrayList<Long> arrayList, IOperateCallback iOperateCallback) {
 
         }
+
+        @Override
+        public void getSingleMsg(Contact contact, long j, IMsgOperateCallback iMsgOperateCallback) {
+
+        }
+
+        @Override
+        public void getSingleMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, long j, IMsgOperateCallback iMsgOperateCallback) {
+
+        }
     }
 
     /**
@@ -109,4 +119,8 @@ public interface IKernelMsgService {
     void recallMsg(Contact contact, ArrayList<Long> arrayList, IOperateCallback iOperateCallback);
 
     void recallMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, ArrayList<Long> arrayList, IOperateCallback iOperateCallback);
+
+    void getSingleMsg(Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
+
+    void getSingleMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
 }

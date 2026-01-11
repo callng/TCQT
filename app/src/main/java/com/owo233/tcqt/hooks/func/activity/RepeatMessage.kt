@@ -9,23 +9,22 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.callMethod
+import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.paramCount
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.MsgAttributeInfo
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.msg.api.IMsgService
-import mqq.app.Foreground
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
@@ -111,7 +110,7 @@ class RepeatMessage : IAction {
         msgServer.getMsgsByMsgId(contact.inner, msgIds) { _, _, list ->
             if (list.isEmpty()) {
                 Log.e("repeat message failed: MsgRecord isEmpty!")
-                Toasts.error(Foreground.getTopActivity(), "无法获取消息,请重试")
+                Toasts.error("无法获取消息,请重试")
                 return@getMsgsByMsgId
             }
 

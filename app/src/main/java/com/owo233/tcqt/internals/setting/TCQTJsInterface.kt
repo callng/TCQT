@@ -35,7 +35,7 @@ class TCQTJsInterface(private val ctx: Context) {
 
     @JavascriptInterface
     fun toast(str: String) {
-        Toasts.success(ctx, str)
+        Toasts.success(str)
     }
 
     @JavascriptInterface
@@ -114,7 +114,7 @@ class TCQTJsInterface(private val ctx: Context) {
         if (!openTelegramChannel()) {
             runCatching {
                 if (!url.contains(TCQTBuild.OPEN_SOURCE)) {
-                    Toasts.error(ctx, "尝试打开不支持的链接!")
+                    Toasts.error("尝试打开不支持的链接!")
                     Log.e("尝试打开不受支持的链接: $url !!!")
                     return
                 }
@@ -125,9 +125,9 @@ class TCQTJsInterface(private val ctx: Context) {
                 }
                 ctx.startActivity(intent)
             }.onFailure { _ ->
-                Toasts.error(ctx, "Failed to open url: $url")
+                Toasts.error("Failed to open url: $url")
                 ctx.copyToClipboard(url, false)
-                Toasts.info(ctx, "Url地址已复制到剪贴板,请手动访问.")
+                Toasts.info("Url地址已复制到剪贴板,请手动访问.")
             }
         }
     }

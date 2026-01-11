@@ -422,16 +422,16 @@ class AddModuleEntrance : AlwaysRunAction() {
             setNeutralButton("Group") { dialog, _ ->
                 val uin = editText.text.toString().trim()
                 if (uin.isEmpty()) {
-                    Toasts.error(context, "请输入群号")
+                    Toasts.error("请输入群号")
                     return@setNeutralButton
                 }
                 try {
                     if (uin.toLong() < 10000) {
-                        Toasts.error(context, "请输入正确的群号")
+                        Toasts.error("请输入正确的群号")
                         return@setNeutralButton
                     }
                 } catch (_: NumberFormatException) {
-                    Toasts.error(context, "请输入正确的群号")
+                    Toasts.error("请输入正确的群号")
                     return@setNeutralButton
                 }
                 dialog.dismiss()
@@ -440,16 +440,16 @@ class AddModuleEntrance : AlwaysRunAction() {
             setPositiveButton("User") { dialog, _ ->
                 val uin = editText.text.toString().trim()
                 if (uin.isEmpty()) {
-                    Toasts.error(context, "请输入QQ号")
+                    Toasts.error("请输入QQ号")
                     return@setPositiveButton
                 }
                 try {
                     if (uin.toLong() < 10000) {
-                        Toasts.error(context, "请输入正确的账号")
+                        Toasts.error("请输入正确的账号")
                         return@setPositiveButton
                     }
                 } catch (_: NumberFormatException) {
-                    Toasts.error(context, "请输入正确的账号")
+                    Toasts.error("请输入正确的账号")
                     return@setPositiveButton
                 }
                 dialog.dismiss()
@@ -462,7 +462,7 @@ class AddModuleEntrance : AlwaysRunAction() {
         val allInOne = load(
             "com.tencent.mobileqq.profilecard.data.AllInOne"
         ) ?: run {
-            Toasts.error(context, "接口异常")
+            Toasts.error("接口异常")
             return
         }
         val newAllInOne = allInOne.new(uin, 83) as Parcelable
@@ -471,7 +471,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             "com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity" else
                 "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity"
         if (load(mActivity) == null) {
-            Toasts.error(context, "接口异常")
+            Toasts.error("接口异常")
             return
         }
 
@@ -492,7 +492,7 @@ class AddModuleEntrance : AlwaysRunAction() {
         val mActivity = "com.tencent.mobileqq.activity.QPublicFragmentActivity"
         val mFragment = load("com.tencent.mobileqq.troop.troopcard.reborn.TroopInfoCardFragment")
         if (load(mActivity) == null || mFragment == null) {
-            Toasts.error(context, "接口异常")
+            Toasts.error("接口异常")
             return
         }
 
