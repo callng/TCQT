@@ -33,12 +33,21 @@ import java.lang.reflect.Method
     key = "repeat_message",
     name = "复读机 +1",
     type = SettingType.BOOLEAN,
-    desc = "人类的本质是什么？不支持修改+1图标，为了防止误触，需要在200ms内重复点击才能触发。",
+    desc = "人类的本质是什么？不支持修改+1图标，可选触发方式，默认200ms内重复点击触发。",
     uiTab = "界面"
+)
+@RegisterSetting(
+    key = "repeat_message.type",
+    name = "可选触发方式",
+    type = SettingType.INT_MULTI,
+    defaultValue = "0",
+    options = "单击触发复读"
 )
 class RepeatMessage : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
+        val options = GeneratedSettingList.getInt(GeneratedSettingList.REPEAT_MESSAGE_TYPE)
+
         val componentClz =
             loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent")
 
@@ -89,7 +98,10 @@ class RepeatMessage : IAction {
                 setRepeatMsgIconMethod.invoke(hostObject, View.VISIBLE)
             }
 
-            imageView.setDoubleClickListener(interval = 200) {
+            imageView.setDoubleClickListener(
+                (options and (1 shl 0)) != 0,
+                200L
+            ) {
                 performRepeatMessage(msgRecord)
             }
         }
@@ -141,20 +153,25 @@ class RepeatMessage : IAction {
     }
 
     private fun View.setDoubleClickListener(
+        isSingleClick: Boolean,
         interval: Long,
         action: () -> Unit
     ) {
         var lastClickTime: Long? = null
 
         setOnClickListener {
-            val now = System.currentTimeMillis()
-            val last = lastClickTime
-
-            if (last != null && now - last <= interval) {
+            if (isSingleClick) {
                 action()
-                lastClickTime = null
             } else {
-                lastClickTime = now
+                val now = System.currentTimeMillis()
+                val last = lastClickTime
+
+                if (last != null && now - last <= interval) {
+                    action()
+                    lastClickTime = null
+                } else {
+                    lastClickTime = now
+                }
             }
         }
     }
