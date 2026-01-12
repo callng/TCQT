@@ -69,7 +69,7 @@ class MenuBuilder : AlwaysRunAction() {
     }
 }
 
-interface OnMenuBuilder {
+fun interface OnMenuBuilder {
     val targetComponentTypes: Array<String>
         get() = arrayOf(
             "com.tencent.mobileqq.aio.msglist.holder.component.text.AIOTextContentComponent", // 文本
