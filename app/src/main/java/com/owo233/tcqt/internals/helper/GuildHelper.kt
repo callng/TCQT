@@ -9,11 +9,17 @@ import com.tencent.mobileqq.qroute.QRoute
 import oicq.wlogin_sdk.tools.MD5
 
 object GuildHelper {
-    fun getGuid(): String {
-        val guid = MSFSharedPreUtils.getGuid().takeIf { it.isNotEmpty() }
-            ?: QRoute.api(IGuildUtilApi::class.java).guid.toHexString()
 
-        return guid.ifEmpty { getGuidByAndroidID() }
+    fun getGuid(): String {
+        return runCatching {
+            MSFSharedPreUtils.getGuid()
+                ?.takeIf { it.isNotEmpty() }
+                ?: QRoute.api(IGuildUtilApi::class.java)
+                    .guid
+                    .toHexString()
+                    .takeIf { it.isNotEmpty() }
+        }.getOrNull()
+            ?: getGuidByAndroidID()
     }
 
     private fun getGuidByAndroidID(): String {

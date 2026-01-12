@@ -22,11 +22,10 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.context.ContextUtils
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.context.HostContextFactory
 import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
 @RegisterSetting(
@@ -48,33 +47,19 @@ import com.owo233.tcqt.utils.hookAfterMethod
 class ChangeGuid : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        initDefaultGuid()
-
         when {
             PlatformTools.isMsfProcess() -> setupMsfHook()
             PlatformTools.isMainProcess() -> setupLoginUiHook()
         }
     }
 
-    private fun initDefaultGuid() {
-        val guid = GuidConfig.defaultGuid
-        if (guid.isEmpty()) {
-            val defaultGuid = QQInterfaces.guid
-            if (defaultGuid.isNotEmpty() && defaultGuid != "null") {
-                GuidConfig.defaultGuid = defaultGuid
-            }
-        }
-    }
+    override val key: String get() = GeneratedSettingList.CHANGE_GUID
+
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 
     private fun setupMsfHook() {
         if (GuidConfig.isEnabled && GuidConfig.newGuid.isNotBlank()) {
-            Log.i("""
-
-                设置GUID: ${GuidConfig.newGuid}
-                原始GUID: ${GuidConfig.defaultGuid}
-
-            """.trimIndent())
-
+            Log.i("MSF: 自定义 GUID 已启用, 准备修改")
             GuidHelper.hookGuid(GuidConfig.newGuid)
         }
     }
@@ -89,9 +74,9 @@ class ChangeGuid : IAction {
             activity.window.decorView.rootView.post {
                 findLoginButton(activity.window.decorView.rootView)?.apply {
                     setOnLongClickListener {
-                        val context = HostContextFactory.createMaterialContext(
-                            ContextUtils.getCurrentActivity()!!
-                        )
+                        ensureDefaultGuidInitialized()
+
+                        val context = HostContextFactory.createMaterialContext(activity)
                         showGuidDialog(context)
                         true
                     }
@@ -100,7 +85,22 @@ class ChangeGuid : IAction {
         }
     }
 
+    private fun ensureDefaultGuidInitialized() {
+        if (GuidConfig.defaultGuid.isEmpty()) {
+            val defaultGuid = QQInterfaces.guid
+            if (defaultGuid.isNotEmpty() && defaultGuid != "null") {
+                GuidConfig.defaultGuid = defaultGuid
+            }
+        }
+    }
+
     private fun showGuidDialog(context: Context) {
+        val currentDisplayGuid = if (GuidConfig.isEnabled) {
+            GuidConfig.newGuid
+        } else {
+            GuidConfig.defaultGuid.ifEmpty { "无法获取原始GUID" }
+        }
+
         val input = EditText(context).apply {
             hint = "32 位 GUID（可为空）"
             inputType = InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
@@ -110,7 +110,7 @@ class ChangeGuid : IAction {
             gravity = Gravity.CENTER_HORIZONTAL
             setSingleLine()
             setPadding(50, 36, 50, 36)
-            setText(if (GuidConfig.isEnabled) GuidConfig.newGuid else GuidConfig.defaultGuid)
+            setText(currentDisplayGuid)
         }
 
         val container = FrameLayout(context).apply {
@@ -135,6 +135,8 @@ class ChangeGuid : IAction {
     }
 
     private fun handleSaveGuid(context: Context, guid: String) {
+        ensureDefaultGuidInitialized()
+
         when {
             guid.isBlank() -> {
                 GuidConfig.disable()
@@ -185,10 +187,6 @@ class ChangeGuid : IAction {
         }
         return null
     }
-
-    override val key: String get() = GeneratedSettingList.CHANGE_GUID
-
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 }
 
 private object GuidConfig {
