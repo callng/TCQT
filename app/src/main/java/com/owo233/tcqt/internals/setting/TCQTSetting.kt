@@ -16,6 +16,8 @@ import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
 
+    private var cachedHtml: String? = null
+
     val dataDir by lazy {
         MobileQQ.getContext().getExternalFilesDir(null)!!
             .parentFile!!.resolve("Tencent/TCQT").also {
@@ -32,21 +34,33 @@ internal object TCQTSetting {
     val settingUrl: String get() = "http://tcqt.qq.com/"
 
     fun getSettingHtml(): String {
-        val localFile = dataDir.resolve("index.html")
+        cachedHtml?.let { return it }
+
         val assetPath = "rez/index.html"
+        val localFile = dataDir.resolve("index.html")
 
-        val assetContent = openAsset(assetPath).readText()
-        val assetMd5 = MD5.toMD5Byte(assetContent)
+        return runCatching {
+            val assetStream = openAsset(assetPath)
+                ?: throw IllegalStateException("Asset not found: $assetPath")
 
-        val localContent = if (localFile.exists()) localFile.readText() else null
-        val localMd5 = localContent?.let { MD5.toMD5Byte(it) }
+            val assetContent = assetStream.readText()
+            val assetMd5 = MD5.toMD5Byte(assetContent)
 
-        if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
-            localFile.writeText(assetContent)
-            return assetContent
+            val localContent = if (localFile.exists()) localFile.readText() else null
+            val localMd5 = localContent?.let { MD5.toMD5Byte(it) }
+
+            if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
+                localFile.writeText(assetContent)
+                cachedHtml = assetContent
+                assetContent
+            } else {
+                cachedHtml = localContent
+                localContent
+            }
+        }.getOrElse { e ->
+            Log.e("Failed to get HTML, returning fallback", e)
+            "<html><body><h1>TCQT Error</h1><p>Module updated, please restart QQ.</p></body></html>"
         }
-
-        return localContent
     }
 
     inline fun <reified T : Any> getValue(key: String): T? {
@@ -200,8 +214,10 @@ internal object TCQTSetting {
         }
     }
 
-    private fun openAsset(fileName: String): InputStream {
-        return moduleClassLoader.getResourceAsStream("assets/${fileName}")
+    private fun openAsset(fileName: String): InputStream? {
+        return runCatching {
+            moduleClassLoader.getResourceAsStream("assets/${fileName}")
+        }.getOrNull()
     }
 
     private fun InputStream.readText(): String {
