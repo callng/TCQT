@@ -53,11 +53,11 @@ class AIOViewUpdate : AlwaysRunAction() {
 
                 val rootLayout = FieldUtils.create(host)
                     .typed<View>()
-                    .getOrThrow() as? ViewGroup ?: return@hookAfterMethod
+                    .getOrNull() as? ViewGroup ?: return@hookAfterMethod
 
                 val aioMsgItem = FieldUtils.create(uiState)
                     .typed(AIOMsgItem::class.java.superclass as Class<*>)
-                    .getOrThrow() as? AIOMsgItem ?: return@hookAfterMethod
+                    .getOrNull() as? AIOMsgItem ?: return@hookAfterMethod
 
                 if (aioMsgItem is GrayTipsMsgItem) return@hookAfterMethod
 
