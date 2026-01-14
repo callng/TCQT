@@ -5,7 +5,7 @@ core = "1.17.0"
 
 # Google
 protobuf = "0.9.6"
-protobuf-java = "4.33.3"
+protobuf-lib = "4.33.4"
 
 # Kotlin
 kotlin = "2.3.0"
@@ -34,7 +34,8 @@ kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotl
 
 # Google / Tools
 ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
-protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-java" }
+protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-lib" }
+protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf-lib" }
 
 # Xposed
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }

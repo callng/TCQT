@@ -1,5 +1,6 @@
 import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.ByteArrayOutputStream
 
 plugins {
@@ -36,8 +37,8 @@ abstract class GitShortHash : ValueSource<String, ValueSourceParameters.None> {
     }
 }
 
-val gitCommitCount = providers.of(GitCommitCount::class.java) {}
-val gitShortHash = providers.of(GitShortHash::class.java) {}
+val gitCommitCount: Provider<Int> = providers.of(GitCommitCount::class.java) {}
+val gitShortHash: Provider<String> = providers.of(GitShortHash::class.java) {}
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
 android {
@@ -138,20 +139,33 @@ android {
         }
     }
 
+    tasks.withType<KotlinCompile> {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_21
+        }
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
     java {
         toolchain {
             languageVersion = JavaLanguageVersion.of(21)
             vendor = JvmVendorSpec.ADOPTIUM
         }
     }
+
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_21)
-            freeCompilerArgs.set(listOf(
-                "-Xno-call-assertions",
-                "-Xno-param-assertions",
-                "-Xno-receiver-assertions"
-            ))
+            freeCompilerArgs.addAll(
+                listOf(
+                    "-Xno-call-assertions",
+                    "-Xno-param-assertions",
+                    "-Xno-receiver-assertions"
+                )
+            )
         }
 
         sourceSets.configureEach { kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin")) }
@@ -160,13 +174,15 @@ android {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.33.3"
+        artifact = libs.protobuf.protoc.get().toString()
     }
-    generateProtoTasks {
-        all().forEach { task ->
-            task.builtins {
-                create("java") {
-                    option("lite")
+    plugins {
+        generateProtoTasks {
+            all().forEach { task ->
+                task.builtins {
+                    create("java") {
+                        option("lite")
+                    }
                 }
             }
         }
