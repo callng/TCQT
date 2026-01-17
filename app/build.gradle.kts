@@ -1,11 +1,12 @@
+import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.gradle.AppExtension
 import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import java.io.ByteArrayOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -13,7 +14,6 @@ plugins {
 
 abstract class GitCommitCount : ValueSource<Int, ValueSourceParameters.None> {
     @get:Inject abstract val execOperations: ExecOperations
-
     override fun obtain(): Int {
         val output = ByteArrayOutputStream()
         execOperations.exec {
@@ -26,7 +26,6 @@ abstract class GitCommitCount : ValueSource<Int, ValueSourceParameters.None> {
 
 abstract class GitShortHash : ValueSource<String, ValueSourceParameters.None> {
     @get:Inject abstract val execOperations: ExecOperations
-
     override fun obtain(): String {
         val output = ByteArrayOutputStream()
         execOperations.exec {
@@ -41,7 +40,7 @@ val gitCommitCount: Provider<Int> = providers.of(GitCommitCount::class.java) {}
 val gitShortHash: Provider<String> = providers.of(GitShortHash::class.java) {}
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
-android {
+extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
     compileSdk = 36
 
@@ -49,7 +48,6 @@ android {
         applicationId = "com.owo233.tcqt"
         minSdk = 27
         targetSdk = 36
-        buildToolsVersion = findBuildToolsVersion()
         versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
         versionName = "3.6.1"
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
@@ -60,16 +58,18 @@ android {
     }
 
     signingConfigs {
-        if (!keystorePath.isNullOrBlank()) {
-            named("debug").configure {
+        create("release") {
+            if (!keystorePath.isNullOrBlank()) {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
                 enableV2Signing = true
             }
+        }
 
-            maybeCreate("release").apply {
+        getByName("debug") {
+            if (!keystorePath.isNullOrBlank()) {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
@@ -82,12 +82,13 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
     buildTypes {
         debug {
             versionNameSuffix = providers.provider {
                 getGitHeadRefsSuffix(rootProject, "debug")
             }.get()
-            signingConfigs.findByName("debug")?.let { signingConfig = it }
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
@@ -96,15 +97,17 @@ android {
             versionNameSuffix = providers.provider {
                 getGitHeadRefsSuffix(rootProject, "release")
             }.get()
-            signingConfigs.findByName("release")?.let { signingConfig = it }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
+
     androidResources {
         additionalParameters += arrayOf(
             "--allow-reserved-package-id",
             "--package-id", "0x53"
         )
     }
+
     packaging {
         resources.excludes.addAll(
             arrayOf(
@@ -126,6 +129,13 @@ android {
         }
     }
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+}
+
+configure<AppExtension> {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
@@ -138,37 +148,30 @@ android {
             }
         }
     }
+}
 
-    tasks.withType<KotlinCompile> {
-        compilerOptions {
-            jvmTarget = JvmTarget.JVM_21
-        }
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+        vendor = JvmVendorSpec.ADOPTIUM
     }
+}
 
-    java {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
-            vendor = JvmVendorSpec.ADOPTIUM
-        }
-    }
-
-    kotlin {
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                listOf(
-                    "-Xno-call-assertions",
-                    "-Xno-param-assertions",
-                    "-Xno-receiver-assertions"
-                )
+extensions.configure(KotlinAndroidProjectExtension::class.java) {
+    compilerOptions {
+        languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2
+        jvmTarget.set(JvmTarget.JVM_21)
+        freeCompilerArgs.addAll(
+            listOf(
+                "-Xno-call-assertions",
+                "-Xno-param-assertions",
+                "-Xno-receiver-assertions"
             )
-        }
+        )
+    }
 
-        sourceSets.configureEach { kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin")) }
+    sourceSets.configureEach {
+        kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin"))
     }
 }
 
@@ -224,15 +227,6 @@ fun getBuildVersionCode(project: Project): Int {
         println("Git HEAD file not found")
         1
     }
-}
-
-fun findBuildToolsVersion(): String {
-    val defaultBuildToolsVersion = "36.1.0"
-    return File(System.getenv("ANDROID_HOME"), "build-tools").listFiles()
-        ?.filter { it.isDirectory }
-        ?.maxOfOrNull { it.name }
-        ?.also { println("Using build tools version $it") }
-        ?: defaultBuildToolsVersion
 }
 
 tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }
