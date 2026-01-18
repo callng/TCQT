@@ -21,7 +21,6 @@ import com.owo233.tcqt.ext.shortClassName
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
 import com.owo233.tcqt.ui.CustomDialog
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.QQVersion
@@ -176,8 +175,7 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
     }
 
     private fun showDetailInfoDialog(context: Context, title: String, msg: String) {
-        val ctx = context.toMaterialContext()
-        CustomDialog.create(ctx)
+        CustomDialog.create(context)
             .setTitle(title)
             .setMessage(msg)
             .setCancelable(true)

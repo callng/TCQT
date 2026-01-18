@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.view.View
 import androidx.appcompat.app.AlertDialog
-import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
+import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 
 class CustomDialog {
 
@@ -91,7 +91,7 @@ class CustomDialog {
         @JvmStatic
         fun create(ctx: Context): CustomDialog {
             val ref = CustomDialog()
-            ref.mBuilder = AlertDialog.Builder(ctx.toMaterialContext())
+            ref.mBuilder = AlertDialog.Builder(ctx.toCompatibleContext())
             return ref
         }
     }

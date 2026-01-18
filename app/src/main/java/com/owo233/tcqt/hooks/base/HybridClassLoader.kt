@@ -69,6 +69,7 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
 
     // 宿主类加载器的类名前缀
     private val HOST_PREFIXES = arrayOf(
+        "androidx.constraintlayout.",
         "com.tencent.",
         "com.qq.",
         "com.qzone.",
@@ -79,8 +80,8 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
 
     // 冲突类加载器的类名前缀
     private val CONFLICTING_PREFIXES = arrayOf(
-        "androidx.",
         "android.support.",
+        "androidx.appcompat.",
         "kotlin.",
         "kotlinx.",
         "com.android.tools.r8.",

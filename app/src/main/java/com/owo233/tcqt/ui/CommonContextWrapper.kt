@@ -84,7 +84,7 @@ class CommonContextWrapper @JvmOverloads constructor(
             }
         }
 
-        fun isMaterialDesignContext(context: Context): Boolean {
+        /*fun isMaterialDesignContext(context: Context): Boolean {
             if (!isAppCompatContext(context)) return false
 
             val attrs = intArrayOf(com.google.android.material.R.attr.colorPrimaryVariant)
@@ -94,7 +94,7 @@ class CommonContextWrapper @JvmOverloads constructor(
             } finally {
                 a.recycle()
             }
-        }
+        }*/
 
         fun checkContextClassLoader(context: Context): Boolean {
             val cl = context.classLoader ?: return false
@@ -115,8 +115,8 @@ class CommonContextWrapper @JvmOverloads constructor(
             return conf
         }
 
-        fun Context.toMaterialContext(): Context {
-            if (isMaterialDesignContext(this)) return this
+        fun Context.toCompatibleContext(): Context {
+            if (isAppCompatContext(this)) return this
 
             val themeId = androidx.appcompat.R.style.Theme_AppCompat_DayNight
             val nightModeMask = getNightModeMasked()

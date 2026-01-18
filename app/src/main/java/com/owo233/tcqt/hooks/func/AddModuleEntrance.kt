@@ -25,7 +25,7 @@ import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
+import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.FuzzyClassKit
 import com.owo233.tcqt.utils.ResourcesUtils
@@ -425,7 +425,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun showInfoCardDialog(ctx: Context) {
-        val context = ctx.toMaterialContext()
+        val context = ctx.toCompatibleContext()
 
         val editText = EditText(context).apply {
             hint = "输入QQ号或群号"

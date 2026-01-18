@@ -66,15 +66,15 @@
     ** requireNonNull(...);
 }
 
-# 去除 DebugMetadataKt() 注释
--assumenosideeffects public final class kotlin.coroutines.jvm.internal.DebugMetadataKt {
-   private static final kotlin.coroutines.jvm.internal.DebugMetadata getDebugMetadataAnnotation(kotlin.coroutines.jvm.internal.BaseContinuationImpl) return null;
-}
-
 # Preserve annotated Javascript interface methods.
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+-dontwarn androidx.constraintlayout.core.Metrics
+-dontwarn androidx.constraintlayout.core.widgets.ConstraintAnchor$Type
+-dontwarn androidx.constraintlayout.core.widgets.ConstraintWidget
+-dontwarn androidx.constraintlayout.core.widgets.ConstraintWidgetContainer
 
 -dontwarn java.beans.**
 -obfuscationdictionary obf-dict.txt
@@ -86,7 +86,7 @@
 
 -renamesourcefileattribute *
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
--keepattributes SourceFile,LineNumberTable
+# -keepattributes SourceFile,LineNumberTable
 -dontpreverify
 -dontnote kotlin.jvm.internal.SourceDebugExtension
 -dontwarn kotlin.jvm.internal.SourceDebugExtension

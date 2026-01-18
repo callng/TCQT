@@ -57,6 +57,11 @@ extensions.configure<ApplicationExtension> {
         buildConfigField("String", "TG_GROUP", "\"astcqt\"")
     }
 
+    @Suppress("UnstableApiUsage")
+    androidResources {
+        localeFilters += listOf("zh-rCN")
+    }
+
     signingConfigs {
         create("release") {
             if (!keystorePath.isNullOrBlank()) {
@@ -244,13 +249,12 @@ dependencies {
     ksp(project(":processor"))
     implementation(project(":annotations"))
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
+    compileOnly(libs.androidx.constraintlayout)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
-    implementation(libs.material)
     implementation(libs.protobuf.java)
 }
