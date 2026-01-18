@@ -172,7 +172,7 @@ object AioListener {
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
                 text("对方想撤回一条")
                 msgRef("消息", msgSeq.toLong())
-                text("(seq=$msgSeq), 已拦截")
+                text(", 已拦截")
             }
         }
     }
@@ -185,7 +185,7 @@ object AioListener {
                 LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
                     text("对方想撤回一条")
                     msgRef("消息", msgSeq)
-                    text("(seq=$msgSeq), 已拦截")
+                    text(", 已拦截")
                 }
             }
         }
@@ -217,7 +217,7 @@ object AioListener {
                 }
                 text("的")
                 msgRef("消息", msgSeq.toLong())
-                text("(seq=$msgSeq), 已拦截")
+                text(", 已拦截")
             }
         }
     }
