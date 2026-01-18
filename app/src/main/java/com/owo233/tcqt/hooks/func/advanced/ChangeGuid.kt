@@ -22,8 +22,8 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.context.HostContextFactory
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.log.Log
 
@@ -76,7 +76,7 @@ class ChangeGuid : IAction {
                     setOnLongClickListener {
                         ensureDefaultGuidInitialized()
 
-                        val context = HostContextFactory.createMaterialContext(activity)
+                        val context = activity.toMaterialContext()
                         showGuidDialog(context)
                         true
                     }

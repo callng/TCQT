@@ -6,7 +6,7 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.hooks.base.FixClassLoader
+import com.owo233.tcqt.hooks.base.HybridClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
@@ -101,13 +101,9 @@ internal object HookSteps {
     @SuppressLint("DiscouragedPrivateApi")
     fun injectClassLoader(loader: ClassLoader) {
         runCatching {
-            val currentLoader = HookEntry::class.java.classLoader
-            val parentF = ClassLoader::class.java.getDeclaredField("parent").apply {
-                isAccessible = true
-            }
-            val parent = parentF.get(currentLoader) as ClassLoader
-            val newFixLoader = FixClassLoader(parent, loader)
-            parentF.set(currentLoader, newFixLoader)
+            val self = HookEntry::class.java.classLoader
+            HybridClassLoader.setHostClassLoader(loader)
+            HybridClassLoader.inject(self!!)
         }.onFailure {
             Log.e("injectClassLoader failed", it)
         }

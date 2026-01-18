@@ -63,7 +63,7 @@
 
 # 忽略 java.util.Objects 的检查
 -assumenosideeffects class java.util.Objects {
-    public static ** requireNonNull(...);
+    ** requireNonNull(...);
 }
 
 # 去除 DebugMetadataKt() 注释

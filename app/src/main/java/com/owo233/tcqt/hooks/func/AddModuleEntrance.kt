@@ -19,27 +19,27 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.FuzzyClassKit
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.context.HostContextFactory
-import com.owo233.tcqt.utils.reflect.fieldValue
-import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.getIntField
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.isNotStatic
-import com.owo233.tcqt.utils.reflect.new
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.reflect.fieldValue
+import com.owo233.tcqt.utils.reflect.getFields
+import com.owo233.tcqt.utils.reflect.invoke
+import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
 import java.lang.reflect.Method
@@ -425,7 +425,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     private fun showInfoCardDialog(ctx: Context) {
-        val context = HostContextFactory.createMaterialContext(ctx)
+        val context = ctx.toMaterialContext()
 
         val editText = EditText(context).apply {
             hint = "输入QQ号或群号"

@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import java.lang.reflect.Field
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -236,3 +237,12 @@ fun Context.getAppSignature(pkgName: String): String = runCatching {
 
     signatures?.firstOrNull()?.toCharsString() ?: ""
 }.getOrElse { "" }
+
+val Any?.shortClassName: String
+    get() = when (this) {
+        null -> "null"
+        is String -> this.replace("/", ".").substringAfterLast('.')
+        is Class<*> -> this.name.substringAfterLast('.')
+        is Field -> this.type.name.substringAfterLast('.')
+        else -> this.javaClass.name.substringAfterLast('.')
+    }

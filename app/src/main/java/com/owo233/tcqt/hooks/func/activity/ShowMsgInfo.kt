@@ -2,24 +2,35 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.view.Gravity
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.View
-import android.widget.FrameLayout
-import android.widget.ScrollView
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.children
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.copyToClipboard
+import com.owo233.tcqt.ext.shortClassName
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
-import com.owo233.tcqt.utils.context.HostContextFactory
+import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toMaterialContext
+import com.owo233.tcqt.ui.CustomDialog
+import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.QQVersion
+import com.owo233.tcqt.utils.TIMVersion
+import com.owo233.tcqt.utils.new
+import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.toJsonString
-import com.tencent.mobileqq.vas.theme.api.ThemeUtil
+import com.owo233.tcqt.utils.toClass
+import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,82 +50,153 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     }
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
-        // 无需任何实现
-    }
+    override fun onRun(ctx: Context, process: ActionProcess) = Unit
 
     override val key: String get() = GeneratedSettingList.SHOW_MSG_INFO
 
-    @SuppressLint("SetTextI18n")
-    override fun onUpdate(frameLayout: FrameLayout, msgRecord: MsgRecord) {
-        val timeView = frameLayout.getOrCreateTimeView()
+    override fun onGetViewNt(
+        rootView: ViewGroup,
+        chatMessage: MsgRecord,
+        param: MethodHookParam
+    ) {
+        if (!isVersionSupported()) return
 
-        val timeString = timeFormatter.format(Date(msgRecord.msgTime * 1000L))
-        val infoText = "Seq: ${msgRecord.msgSeq} Time: $timeString"
-
-        if (timeView.text != infoText) {
-            timeView.text = infoText
-        }
-
-        timeView.setOnClickListener {
-            showDetailDialog(it.context, msgRecord)
-        }
+        val layout = ensureInfoLayout(rootView, chatMessage)
+        bindMessageInfo(layout, chatMessage)
     }
 
-    private fun showDetailDialog(context: Context, msgRecord: MsgRecord) {
-        val newContext = HostContextFactory.createMaterialContext(context)
-        val detail = msgRecord.toJsonString()
-
-        val textView = TextView(newContext).apply {
-            text = detail
-            textSize = 14f
-            setPadding(20.dp, 10.dp, 20.dp, 10.dp)
-            setTextIsSelectable(true)
-            setTextColor(0xFF333333.toInt())
-        }
-
-        val scrollView = ScrollView(newContext).apply {
-            isVerticalScrollBarEnabled = true
-            scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            addView(textView)
-        }
-
-        val dialog = AlertDialog.Builder(newContext)
-            .setTitle("消息详情")
-            .setView(scrollView)
-            .setPositiveButton("复制") { _, _ -> context.copyToClipboard(detail, true) }
-            .setNeutralButton("确定", null)
-            .create()
-
-        dialog.show()
-    }
-
-    private fun FrameLayout.getOrCreateTimeView(): TextView {
-        return findViewWithTag<TextView>(VIEW_TAG) ?: TextView(context).apply {
-            setTextColor(if (isDarkMode()) 0xBBBBBBBB.toInt() else 0x88444444.toInt())
-
-            tag = VIEW_TAG
-            textSize = 11f
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.END or Gravity.BOTTOM
+    private fun ensureInfoLayout(
+        rootView: ViewGroup,
+        msg: MsgRecord
+    ): LinearLayout {
+        return rootView.findViewById(ID_ADD_LAYOUT)
+            ?: buildInfoLayout(rootView).also {
+                rootView.addView(it)
+                applyConstraints(rootView, msg)
             }
+    }
 
-            this@getOrCreateTimeView.addView(this)
+    private fun buildInfoLayout(rootView: ViewGroup): LinearLayout {
+        val context = rootView.context
+        return LinearLayout(context).apply {
+            id = ID_ADD_LAYOUT
+            layoutParams = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.BLACK)
+                cornerRadius = 10f
+                alpha = 0x22
+            }
+            val px4 = context.dp2px(4f)
+            val px6 = context.dp2px(6f)
+            setPadding(px6, px4, px6, px4)
+            addView(buildInfoTextView(context))
         }
     }
 
-    private fun isDarkMode(): Boolean {
-        return ThemeUtil.isNowThemeIsNight(null, true, null)
-                || (if (HookEnv.isQQ()) ThemeUtil.isThemeNightModeV2() else false)
+    private fun buildInfoTextView(context: Context): TextView {
+        return TextView(context).apply {
+            id = ID_ADD_TEXTVIEW
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                val record = it.tag as MsgRecord
+                showDetailInfoDialog(
+                    context,
+                    record.shortClassName,
+                    record.toJsonString()
+                )
+            }
+        }
     }
 
-    private val Int.dp: Int
-        get() = (this * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
+    private fun applyConstraints(
+        rootView: ViewGroup,
+        msg: MsgRecord
+    ) {
+        val constraintSet = constraintSetClz.new()
+        constraintSet.invoke("clone", rootView)
+
+        val anchorIndex = rootView.children.indexOfFirst { it is LinearLayout && it.id != View.NO_ID }
+        if (anchorIndex < 1) return
+
+        val msgId = rootView.getChildAt(anchorIndex).id
+        val nameId = rootView.getChildAt(anchorIndex - 1).id
+
+        constraintSet.invoke(
+            "connect",
+            ID_ADD_LAYOUT,
+            ConstraintLayout.LayoutParams.TOP,
+            msgId,
+            ConstraintLayout.LayoutParams.BOTTOM,
+            0
+        )
+
+        val isSelf = msg.senderUin == QQInterfaces.currentUin.toLong()
+
+        if (isSelf) {
+            constraintSet.invoke("connect", ID_ADD_LAYOUT, ConstraintSet.RIGHT, nameId, ConstraintSet.RIGHT)
+            if (msg.chatType == 1) {
+                constraintSet.invoke("setMargin", ID_ADD_LAYOUT, ConstraintSet.END, rootView.context.dp2px(10f))
+            }
+        } else {
+            constraintSet.invoke("connect", ID_ADD_LAYOUT, ConstraintSet.LEFT, nameId, ConstraintSet.LEFT)
+            val margin = when (msg.chatType) {
+                1 -> 10f
+                2 if msg.msgType == MsgConstant.KELEMTYPEFILE -> 55f
+                else -> 0f
+            }
+            if (margin > 0) {
+                constraintSet.invoke(
+                    "setMargin",
+                    ID_ADD_LAYOUT,
+                    ConstraintSet.START,
+                    rootView.context.dp2px(margin)
+                )
+            }
+        }
+
+        constraintSet.invoke("applyTo", rootView)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun bindMessageInfo(layout: LinearLayout, msg: MsgRecord) {
+        val textView = layout.findViewById<TextView>(ID_ADD_TEXTVIEW)
+        textView.tag = msg
+
+        val time = timeFormatter.format(Date(msg.msgTime * 1000L))
+        textView.text = "${msg.msgSeq} $time"
+
+        layout.visibility = View.VISIBLE
+        textView.visibility = View.VISIBLE
+    }
+
+    private fun isVersionSupported(): Boolean {
+        return HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_63_BETA_11345) ||
+                HookEnv.requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)
+    }
+
+    private fun showDetailInfoDialog(context: Context, title: String, msg: String) {
+        val ctx = context.toMaterialContext()
+        CustomDialog.create(ctx)
+            .setTitle(title)
+            .setMessage(msg)
+            .setCancelable(true)
+            .setPositiveButton("确定", null)
+            .show()
+            .apply {
+                findViewById<TextView>(android.R.id.message).setTextIsSelectable(true)
+            }
+    }
+
+    private fun Context.dp2px(dp: Float): Int =
+        (dp * resources.displayMetrics.density + 0.5f).toInt()
 
     companion object {
-        private const val VIEW_TAG = "tcqt_msg_time_info"
+        private const val ID_ADD_LAYOUT = 0x114510
+        private const val ID_ADD_TEXTVIEW = 0x114511
+
+        private val constraintSetClz by lazy {
+            "androidx.constraintlayout.widget.ConstraintSet".toClass
+        }
     }
 }

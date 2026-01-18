@@ -87,4 +87,12 @@ internal object HookEnv {
     fun isMainProcess() = ::processName.isInitialized &&
             ::hostAppPackageName.isInitialized &&
             processName == hostAppPackageName
+
+    fun requireMinQQVersion(versionCode: Long): Boolean {
+        return this.isQQ() && this.versionCode >= versionCode
+    }
+
+    fun requireMinTimVersion(versionCode: Long): Boolean {
+        return this.isTim() && this.versionCode >= versionCode
+    }
 }
