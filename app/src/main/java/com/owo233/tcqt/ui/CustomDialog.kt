@@ -1,9 +1,9 @@
 package com.owo233.tcqt.ui
 
-import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
 import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 
@@ -11,6 +11,11 @@ class CustomDialog {
 
     private var mFailsafeDialog: AlertDialog? = null
     private lateinit var mBuilder: AlertDialog.Builder
+    private var isMessageSelectable: Boolean = false
+
+    fun setMessageSelectable(selectable: Boolean): CustomDialog = apply {
+        this.isMessageSelectable = selectable
+    }
 
     fun setCancelable(flag: Boolean): CustomDialog = apply {
         mBuilder.setCancelable(flag)
@@ -32,11 +37,11 @@ class CustomDialog {
     }
 
     fun setPositiveButton(textId: Int, listener: DialogInterface.OnClickListener?): CustomDialog {
-        return setPositiveButton(mBuilder.context.getString(textId), listener)
+        return setPositiveButton(context.getString(textId), listener)
     }
 
     fun setNegativeButton(textId: Int, listener: DialogInterface.OnClickListener?): CustomDialog {
-        return setNegativeButton(mBuilder.context.getString(textId), listener)
+        return setNegativeButton(context.getString(textId), listener)
     }
 
     fun ok(): CustomDialog = apply {
@@ -59,19 +64,18 @@ class CustomDialog {
         mBuilder.setNegativeButton(text, listener)
     }
 
-    fun create(): Dialog {
+    fun create(): AlertDialog {
         if (mFailsafeDialog == null) {
             mFailsafeDialog = mBuilder.create()
         }
         return mFailsafeDialog!!
     }
 
-    fun show(): Dialog {
-        if (mFailsafeDialog == null) {
-            mFailsafeDialog = mBuilder.create()
-        }
-        mFailsafeDialog?.show()
-        return mFailsafeDialog!!
+    fun show(): AlertDialog {
+        val dialog = create()
+        dialog.show()
+        applyCustomDecor()
+        return dialog
     }
 
     fun dismiss() {
@@ -81,9 +85,11 @@ class CustomDialog {
     val isShowing: Boolean
         get() = mFailsafeDialog?.isShowing == true
 
-    class DummyCallback : DialogInterface.OnClickListener {
-        override fun onClick(dialog: DialogInterface, which: Int) {
-            // Do nothing
+    private fun applyCustomDecor() {
+        val dialog = mFailsafeDialog ?: return
+
+        if (isMessageSelectable) {
+            dialog.findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
         }
     }
 

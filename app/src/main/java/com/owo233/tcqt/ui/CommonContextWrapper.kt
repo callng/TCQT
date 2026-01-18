@@ -106,19 +106,25 @@ class CommonContextWrapper @JvmOverloads constructor(
         }
 
         private fun recreateNightModeConfig(base: Context, uiNightMode: Int): Configuration? {
-            val baseConfig = base.resources.configuration
-            if ((baseConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK) == uiNightMode) {
+            val baseConfig = base.resources.configuration ?: return null
+            val currentNightMode = baseConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            if (currentNightMode == uiNightMode) {
                 return null
             }
-            val conf = Configuration()
-            conf.uiMode = uiNightMode or (baseConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv())
-            return conf
+
+            return Configuration(baseConfig).apply {
+                uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or uiNightMode
+            }
         }
 
         fun Context.toCompatibleContext(): Context {
             if (isAppCompatContext(this)) return this
 
-            val themeId = androidx.appcompat.R.style.Theme_AppCompat_DayNight
+            val themeId = if (isNightMode()) {
+                androidx.appcompat.R.style.Theme_AppCompat
+            } else {
+                androidx.appcompat.R.style.Theme_AppCompat_Light
+            }
             val nightModeMask = getNightModeMasked()
 
             return CommonContextWrapper(
@@ -135,6 +141,10 @@ class CommonContextWrapper @JvmOverloads constructor(
             } else {
                 Configuration.UI_MODE_NIGHT_NO
             }
+        }
+
+        private fun isNightMode(): Boolean {
+            return getNightModeMasked() == Configuration.UI_MODE_NIGHT_YES
         }
     }
 }

@@ -179,11 +179,9 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
             .setTitle(title)
             .setMessage(msg)
             .setCancelable(true)
+            .setMessageSelectable(true)
             .setPositiveButton("确定", null)
             .show()
-            .apply {
-                findViewById<TextView>(android.R.id.message).setTextIsSelectable(true)
-            }
     }
 
     private fun Context.dp2px(dp: Float): Int =
