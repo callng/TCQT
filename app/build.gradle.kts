@@ -1,9 +1,6 @@
 import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.gradle.AppExtension
 import com.google.protobuf.gradle.proto
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
-import java.io.ByteArrayOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -12,44 +9,26 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-abstract class GitCommitCount : ValueSource<Int, ValueSourceParameters.None> {
-    @get:Inject abstract val execOperations: ExecOperations
-    override fun obtain(): Int {
-        val output = ByteArrayOutputStream()
-        execOperations.exec {
-            commandLine("git", "rev-list", "--count", "HEAD")
-            standardOutput = output
-        }
-        return output.toString().trim().toInt()
-    }
-}
-
-abstract class GitShortHash : ValueSource<String, ValueSourceParameters.None> {
-    @get:Inject abstract val execOperations: ExecOperations
-    override fun obtain(): String {
-        val output = ByteArrayOutputStream()
-        execOperations.exec {
-            commandLine("git", "rev-parse", "--short=7", "HEAD")
-            standardOutput = output
-        }
-        return output.toString().trim()
-    }
-}
-
-val gitCommitCount: Provider<Int> = providers.of(GitCommitCount::class.java) {}
-val gitShortHash: Provider<String> = providers.of(GitShortHash::class.java) {}
+val androidMinSdkVersion: Int by rootProject.extra
+val androidTargetSdkVersion: Int by rootProject.extra
+val androidCompileSdkVersion: Int by rootProject.extra
+val androidBuildToolsVersion: String by rootProject.extra
+val androidSourceCompatibility: JavaVersion by rootProject.extra
+val androidTargetCompatibility: JavaVersion by rootProject.extra
+val appVersionName: String by rootProject.extra
+val appVersionCode: Int by rootProject.extra
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
-    compileSdk = 36
+    compileSdk = androidCompileSdkVersion
+    buildToolsVersion = androidBuildToolsVersion
 
     defaultConfig {
-        applicationId = "com.owo233.tcqt"
-        minSdk = 27
-        targetSdk = 36
-        versionCode = providers.provider { getBuildVersionCode(rootProject) }.get()
-        versionName = "3.6.1"
+        minSdk = androidMinSdkVersion
+        targetSdk = androidTargetSdkVersion
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
@@ -90,18 +69,12 @@ extensions.configure<ApplicationExtension> {
 
     buildTypes {
         debug {
-            versionNameSuffix = providers.provider {
-                getGitHeadRefsSuffix(rootProject, "debug")
-            }.get()
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-rules.pro")
-            versionNameSuffix = providers.provider {
-                getGitHeadRefsSuffix(rootProject, "release")
-            }.get()
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -114,16 +87,11 @@ extensions.configure<ApplicationExtension> {
     }
 
     packaging {
-        resources.excludes.addAll(
-            arrayOf(
-                "google/**",
-                "kotlin/**",
-                "META-INF/**",
-                "WEB-INF/**",
-                "**.bin",
-                "kotlin-tooling-metadata.json"
-            )
-        )
+        resources {
+            excludes += "META-INF/*.version"
+            excludes += "DebugProbesKt.bin"
+            excludes += "kotlin-tooling-metadata.json"
+        }
     }
 
     sourceSets {
@@ -135,37 +103,19 @@ extensions.configure<ApplicationExtension> {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = androidSourceCompatibility
+        targetCompatibility = androidTargetCompatibility
     }
 }
 
-configure<AppExtension> {
-    applicationVariants.all {
-        outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName?.let { fileName ->
-                if (fileName.endsWith(".apk")) {
-                    val projectName = rootProject.name
-                    val currentVersionName = versionName
-                    output.outputFileName = "${projectName}-v${currentVersionName}.APK"
-                }
-            }
-        }
-    }
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-        vendor = JvmVendorSpec.ADOPTIUM
-    }
+base {
+    archivesName.set(
+        "${rootProject.name}-${appVersionName}"
+    )
 }
 
 extensions.configure(KotlinAndroidProjectExtension::class.java) {
     compilerOptions {
-        languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2
-        jvmTarget.set(JvmTarget.JVM_21)
         freeCompilerArgs.addAll(
             listOf(
                 "-Xno-call-assertions",
@@ -194,43 +144,6 @@ protobuf {
                 }
             }
         }
-    }
-}
-
-fun getGitHeadRefsSuffix(project: Project, buildType: String): String {
-    val rootProject = project.rootProject
-    val projectDir = rootProject.projectDir
-    val headFile = File(projectDir, ".git" + File.separator + "HEAD")
-    return if (headFile.exists()) {
-        try {
-            val commitCount = gitCommitCount.get()
-            val hash = gitShortHash.get()
-            val prefix = if (buildType == "debug") ".d" else ".r"
-            "$prefix$commitCount.$hash"
-        } catch (e: Exception) {
-            println("Failed to get git info: ${e.message}")
-            ".standalone"
-        }
-    } else {
-        println("Git HEAD file not found")
-        ".standalone"
-    }
-}
-
-fun getBuildVersionCode(project: Project): Int {
-    val rootProject = project.rootProject
-    val projectDir = rootProject.projectDir
-    val headFile = File(projectDir, ".git" + File.separator + "HEAD")
-    return if (headFile.exists()) {
-        try {
-            gitCommitCount.get()
-        } catch (e: Exception) {
-            println("Failed to get git commit count: ${e.message}")
-            1
-        }
-    } else {
-        println("Git HEAD file not found")
-        1
     }
 }
 

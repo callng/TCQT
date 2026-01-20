@@ -27,5 +27,5 @@ extensions.configure<LibraryExtension> {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    compileOnly(libs.androidx.core.ktx)
 }
