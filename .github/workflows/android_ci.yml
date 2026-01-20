@@ -121,8 +121,17 @@ jobs:
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
         run: |
           ESCAPED=`python3 -c 'import json,os,urllib.parse; msg = json.dumps(os.environ["COMMIT_MESSAGE"]); print(urllib.parse.quote(msg if len(msg) <= 1024 else json.dumps(os.environ["COMMIT_URL"])))'`
-          export release=$(find artifacts -type f -iregex '.*/[^/]*\.r[0-9]+\.[^.]*\.apk' | head -n 1 || true)
-          export debug=$(find artifacts -type f -iregex '.*/[^/]*\.d[0-9]+\.[^.]*\.apk' | head -n 1 || true)
+          export release=$(find artifacts -type f -name "*-release.apk" | head -n 1)
+          export debug=$(find artifacts -type f -name "*-debug.apk" | head -n 1)
+
+          echo "Release path: $release"
+          echo "Debug path: $debug"
+
+          if [ -z "$release" ] || [ -z "$debug" ]; then
+            echo "❌ 错误：没找到对应的 APK 文件"
+            exit 1
+          fi
+
           curl -v "https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup?chat_id=${CHANNEL_ID}&media=%5B%7B%22type%22%3A%22document%22%2C%22media%22%3A%22attach%3A%2F%2Frelease%22%7D%2C%7B%22type%22%3A%22document%22%2C%22media%22%3A%22attach%3A%2F%2Fdebug%22%2C%22parse_mode%22%3A%22MarkdownV2%22%2C%22caption%22%3A${ESCAPED}%7D%5D" \
            -F release="@$release" \
            -F debug="@$debug" \
