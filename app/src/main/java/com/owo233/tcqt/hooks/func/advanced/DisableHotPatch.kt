@@ -23,7 +23,6 @@ import mqq.app.AppRuntime
     key = "disable_hot_patch",
     name = "禁用热补丁",
     type = SettingType.BOOLEAN,
-    defaultValue = "true",
     desc = "顾名思义，但不会删除已有的热补丁。",
     uiTab = "高级"
 )
