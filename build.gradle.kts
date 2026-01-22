@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 buildscript {
     dependencies {
-        classpath(libs.kotlin.gradle.plugin)
+        classpath(libs.kotlinx.coroutines.android)
     }
 }
 

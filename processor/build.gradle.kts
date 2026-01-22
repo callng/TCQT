@@ -10,5 +10,5 @@ java {
 
 dependencies {
     implementation(project(":annotations"))
-    implementation(libs.ksp)
+    implementation(libs.ksp.api)
 }

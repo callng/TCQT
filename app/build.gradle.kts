@@ -88,7 +88,10 @@ extensions.configure<ApplicationExtension> {
 
     packaging {
         resources {
+            excludes += "google/**"
+            excludes += "kotlin/**"
             excludes += "META-INF/*.version"
+            excludes += "WEB-INF/**"
             excludes += "DebugProbesKt.bin"
             excludes += "kotlin-tooling-metadata.json"
         }

@@ -19,9 +19,9 @@ import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 @RegisterAction
 @RegisterSetting(
     key = "hide_qzone_ad",
-    name = "隐藏QQ空间广告",
+    name = "隐藏空间广告",
     type = SettingType.BOOLEAN,
-    desc = "隐藏空间里那无时无刻不在显示的广告。",
+    desc = "隐藏好友动态里那无时无刻不在显示的广告。",
     uiTab = "界面"
 )
 class HideQzoneAD : IAction {
@@ -34,6 +34,7 @@ class HideQzoneAD : IAction {
                 "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardMultiPicAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
                 "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView",
+                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractFullFrameAdFeedProItemView",
                 "com.qzone.reborn.feedx.itemview.ad.QZoneAdVideoFeedItemView", // 9.2.5 样式(好友动态)
                 "com.qzone.reborn.feedx.itemview.ad.QZoneAdRewardFeedItemView",
                 "com.qzone.reborn.feedx.itemview.ad.QZoneAdPictureFeedItemView",
