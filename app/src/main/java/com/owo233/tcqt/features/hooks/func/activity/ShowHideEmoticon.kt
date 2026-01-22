@@ -1,0 +1,44 @@
+package com.owo233.tcqt.features.hooks.func.activity
+
+import android.content.Context
+import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.annotations.RegisterSetting
+import com.owo233.tcqt.annotations.SettingType
+import com.owo233.tcqt.actions.ActionProcess
+import com.owo233.tcqt.actions.IAction
+import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.features.hooks.base.load
+import com.owo233.tcqt.foundation.utils.hookBeforeMethod
+import com.owo233.tcqt.foundation.utils.isNotAbstract
+import com.tencent.qqnt.kernel.nativeinterface.CommonTabEmojiInfo
+import com.tencent.qqnt.kernel.nativeinterface.SysEmoji
+
+@RegisterAction
+@RegisterSetting(
+    key = "show_hide_emoticon",
+    name = "显示隐藏表情",
+    type = SettingType.BOOLEAN,
+    desc = "一些表情只会在特定时间内可见，启用后，这些隐藏表情将显示到表情列表中。",
+    uiTab = "界面"
+)
+class ShowHideEmoticon : IAction {
+
+    override fun onRun(ctx: Context, process: ActionProcess) {
+        load("com.tencent.mobileqq.emoticon.QQSysAndEmojiResInfo")
+            ?.declaredMethods
+            ?.filter { m -> m.returnType == Boolean::class.java && m.isNotAbstract }
+            ?.onEach { it.hookBeforeMethod { p -> p.result = false } }
+
+        SysEmoji::class.java.hookBeforeMethod("getIsHide") {
+            val emoji = it.thisObject as SysEmoji
+            emoji.isHide = false
+        }
+
+        CommonTabEmojiInfo::class.java.hookBeforeMethod("getIsHide") {
+            val emoji = it.thisObject as CommonTabEmojiInfo
+            emoji.isHide = false
+        }
+    }
+
+    override val key: String get() = GeneratedSettingList.SHOW_HIDE_EMOTICON
+}

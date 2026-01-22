@@ -52,7 +52,7 @@ class ActionRegistrarProcessor(
                 """
             package com.owo233.tcqt.generated
 
-            import com.owo233.tcqt.ext.IAction
+            import com.owo233.tcqt.actions.IAction
 
             internal object GeneratedActionList {
 
@@ -117,7 +117,7 @@ class ActionRegistrarProcessor(
             when {
                 decl == null -> false
                 decl.qualifiedName?.asString() ==
-                        "com.owo233.tcqt.ext.AlwaysRunAction" -> true
+                        "com.owo233.tcqt.actions.AlwaysRunAction" -> true
                 else -> decl.isAlwaysRunAction() // 递归向上找
             }
         }
@@ -151,8 +151,8 @@ class ActionRegistrarProcessor(
             val sb = StringBuilder()
             sb.appendLine("package com.owo233.tcqt.generated")
             sb.appendLine()
-            sb.appendLine("import com.owo233.tcqt.internals.setting.TCQTSetting")
-            sb.appendLine("import com.owo233.tcqt.internals.setting.TCQTSetting.Setting")
+            sb.appendLine("import com.owo233.tcqt.foundation.internal.setting.TCQTSetting")
+            sb.appendLine("import com.owo233.tcqt.foundation.internal.setting.TCQTSetting.Setting")
             sb.appendLine()
             sb.appendLine("internal object GeneratedSettingList {")
             sb.appendLine()

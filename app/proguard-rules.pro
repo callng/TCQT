@@ -21,15 +21,15 @@
 #-renamesourcefileattribute SourceFile
 
 # 保留 XposedHelper 中创建的所有 Hook 对象
--keep,allowobfuscation class com.owo233.tcqt.utils.XposedHelper** { *; }
+-keep,allowobfuscation class com.owo233.tcqt.foundation.utils.XposedHelper** { *; }
 
 # 保留所有 IAction 实现类的无参构造函数（用于 newInstance）
--keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
+-keepclassmembers class * implements com.owo233.tcqt.actions.IAction {
     public <init>();
 }
 
 # 保留 Kotlin object 的 INSTANCE 字段（用于单例访问）
--keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
+-keepclassmembers class * implements com.owo233.tcqt.actions.IAction {
     public static ** INSTANCE;
 }
 
