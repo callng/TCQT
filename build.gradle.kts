@@ -8,12 +8,6 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 import javax.inject.Inject
 
-buildscript {
-    dependencies {
-        classpath(libs.kotlinx.coroutines.android)
-    }
-}
-
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.jvm) apply false
