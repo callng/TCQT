@@ -1,15 +1,19 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
+import android.widget.LinearLayout
+import androidx.core.view.children
+import com.highcapable.kavaref.KavaRef.Companion.asResolver
+import com.highcapable.kavaref.condition.type.VagueType
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hookAfterMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -23,9 +27,22 @@ class DisablePaoPaoIcon : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
-            loadOrThrow("com.tencent.qqnt.aio.filtervideo.api.impl.FilterVideoApiImpl")
-                .hookBeforeMethod("isEnable") { param ->
-                    param.result = false
+            "com.tencent.qqnt.aio.shortcutbar.PanelIconLinearLayout".toHostClass()
+                .asResolver()
+                .optional()
+                .firstMethodOrNull {
+                    parameters(Int::class, String::class, VagueType::class)
+                }?.self?.hookAfterMethod { param ->
+                    /*
+                    val layout = param.thisObject as LinearLayout
+                    val tags = (0 until layout.childCount).map { idx -> layout.getChildAt(idx).tag }
+                    Log.e("PanelIconLinearLayout child tags = $tags")
+                    */
+                    (param.thisObject as LinearLayout).run {
+                        children
+                            .firstOrNull { (it.tag as? Int) == 1016 }
+                            ?.let(::removeView)
+                    }
                 }
         }
     }
