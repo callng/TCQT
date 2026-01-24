@@ -4,6 +4,7 @@ import org.gradle.api.provider.ValueSourceParameters
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Provider
 import org.gradle.process.ExecOperations
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 import javax.inject.Inject
@@ -79,6 +80,7 @@ val androidCompileSdkVersion     by extra(36)
 val androidBuildToolsVersion     by extra("36.1.0")
 val androidSourceCompatibility   by extra(JavaVersion.VERSION_21)
 val androidTargetCompatibility   by extra(JavaVersion.VERSION_21)
+val kotlinJvmTarget              by extra(JvmTarget.JVM_21)
 
 val appVersionCode: Int    by extra(gitInfo.commitCount)
 val appVersionName: String by extra(gitInfo.versionName)

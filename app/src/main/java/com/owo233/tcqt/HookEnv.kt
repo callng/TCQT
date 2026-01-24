@@ -2,6 +2,8 @@ package com.owo233.tcqt
 
 import android.app.Application
 import android.content.Context
+import com.highcapable.kavaref.extension.toClass
+import com.highcapable.kavaref.extension.toClassOrNull
 
 internal object HookEnv {
 
@@ -95,4 +97,8 @@ internal object HookEnv {
     fun requireMinTimVersion(versionCode: Long): Boolean {
         return this.isTim() && this.versionCode >= versionCode
     }
+
+    fun String.toHostClass() = toClass(hostClassLoader)
+
+    fun String.toHostClassOrNull() = toClassOrNull(hostClassLoader)
 }

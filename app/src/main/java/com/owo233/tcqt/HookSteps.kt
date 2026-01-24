@@ -2,19 +2,19 @@ package com.owo233.tcqt
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.app.Instrumentation
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
+import com.highcapable.kavaref.KavaRef.Companion.asResolver
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.hooks.base.HybridClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.context.ContextUtils
+import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.log.Log
 import de.robv.android.xposed.IXposedHookZygoteInit
-import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 internal object HookSteps {
@@ -31,22 +31,22 @@ internal object HookSteps {
         HookEnv.setModuleApkPath(startupParam.modulePath)
     }
 
-    fun initLoad(lpparam: XC_LoadPackage.LoadPackageParam) {
-        runCatching {
-            val contextCreateMethod = ContextUtils.getContextCreateMethod(lpparam)
-            XposedBridge.hookMethod(contextCreateMethod, object : XC_MethodHook() {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    if (hostInit.not()) {
-                        hostApp = param.thisObject as Application
-                        injectClassLoader(hostApp.classLoader)
-                        initContext(hostApp, hostApp.classLoader)
-                        Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
-                        initHooks(hostApp)
-                    }
+    fun initLoad() {
+        Instrumentation::class.asResolver().apply {
+            firstMethod {
+                name = "callApplicationOnCreate"
+                parameters(Application::class)
+            }.self.hookAfterMethod { param ->
+                val application = param.args[0] as Application
+                val context = application.baseContext
+                if (hostInit.not()) {
+                    hostApp = application
+                    injectClassLoader(context.classLoader)
+                    initContext(application, context.classLoader)
+                    Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
+                    initHooks(application)
                 }
-            })
-        }.onFailure {
-            Log.e("hookStartup failed", it)
+            }
         }
     }
 

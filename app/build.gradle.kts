@@ -1,5 +1,6 @@
 import com.android.build.api.dsl.ApplicationExtension
 import com.google.protobuf.gradle.proto
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 
 plugins {
@@ -17,6 +18,7 @@ val androidSourceCompatibility: JavaVersion by rootProject.extra
 val androidTargetCompatibility: JavaVersion by rootProject.extra
 val appVersionName: String by rootProject.extra
 val appVersionCode: Int by rootProject.extra
+val kotlinJvmTarget: JvmTarget by rootProject.extra
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
 extensions.configure<ApplicationExtension> {
@@ -119,6 +121,7 @@ base {
 
 extensions.configure(KotlinAndroidProjectExtension::class.java) {
     compilerOptions {
+        jvmTarget.set(kotlinJvmTarget)
         freeCompilerArgs.addAll(
             listOf(
                 "-Xno-call-assertions",
@@ -168,6 +171,8 @@ dependencies {
     compileOnly(libs.androidx.constraintlayout)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.kavaref.core)
+    implementation(libs.kavaref.extension)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

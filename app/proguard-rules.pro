@@ -71,6 +71,13 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
+# Kavaref TypeRef
+-keepattributes SourceFile,LineNumberTable
+-keep,allowobfuscation class * extends com.highcapable.kavaref.extension.TypeRef {
+    <init>(...);
+}
+-dontwarn java.lang.reflect.AnnotatedType
+
 -dontwarn androidx.constraintlayout.core.Metrics
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintAnchor$Type
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidget
@@ -85,8 +92,6 @@
 -overloadaggressively
 
 -renamesourcefileattribute *
--keepattributes RuntimeVisibleAnnotations,AnnotationDefault
-# -keepattributes SourceFile,LineNumberTable
 -dontpreverify
 -dontnote kotlin.jvm.internal.SourceDebugExtension
 -dontwarn kotlin.jvm.internal.SourceDebugExtension

@@ -5,6 +5,9 @@ androidx-core = "1.17.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
 
+# KavaRef
+kavaref = "1.0.2"
+
 # Kotlin
 kotlin = "2.3.0"
 ksp = "2.3.4"
@@ -28,6 +31,10 @@ androidx-core = { group = "androidx.core", name = "core", version.ref = "android
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidx-constraintlayout" }
+
+# KavaRef
+kavaref-core = { group = "com.highcapable.kavaref", name = "kavaref-core", version.ref = "kavaref" }
+kavaref-extension = { group = "com.highcapable.kavaref", name = "kavaref-extension", version.ref = "kavaref" }
 
 # KotlinX
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }

@@ -13,7 +13,7 @@ class HookEntry: IXposedHookLoadPackage, IXposedHookZygoteInit {
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         if (HostTypeEnum.contain(lpparam.packageName)) { //  && lpparam.isFirstApplication
             HookSteps.initHandleLoadPackage(lpparam)
-            HookSteps.initLoad(lpparam)
+            HookSteps.initLoad()
         }
     }
 
