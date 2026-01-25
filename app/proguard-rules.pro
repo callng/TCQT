@@ -1,35 +1,9 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-
 # 保留 XposedHelper 中创建的所有 Hook 对象
 -keep,allowobfuscation class com.owo233.tcqt.utils.XposedHelper** { *; }
 
-# 保留所有 IAction 实现类的无参构造函数（用于 newInstance）
+# 保留 IAction 及其实现类的无参构造和 INSTANCE
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
     public <init>();
-}
-
-# 保留 Kotlin object 的 INSTANCE 字段（用于单例访问）
--keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
     public static ** INSTANCE;
 }
 
@@ -50,7 +24,7 @@
     volatile <fields>;
 }
 
-# protobuf
+# protobuf 保留字段名和类型
 -keepclassmembers class top.artmoe.inao.entries.** {
     <fields>;
 }
@@ -71,27 +45,21 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# Kavaref TypeRef
--keepattributes SourceFile,LineNumberTable
--keep,allowobfuscation class * extends com.highcapable.kavaref.extension.TypeRef {
-    <init>(...);
-}
--dontwarn java.lang.reflect.AnnotatedType
+-keepattributes LineNumberTable,SourceFile
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
 -dontwarn androidx.constraintlayout.core.Metrics
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintAnchor$Type
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidget
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidgetContainer
-
 -dontwarn java.beans.**
--obfuscationdictionary obf-dict.txt
+
 -classobfuscationdictionary obf-dict.txt
--packageobfuscationdictionary obf-dict.txt
+-obfuscationdictionary obf-dict.txt
+
 -repackageclasses ''
 -allowaccessmodification
--overloadaggressively
-
--renamesourcefileattribute *
+-dontoptimize
 -dontpreverify
--dontnote kotlin.jvm.internal.SourceDebugExtension
--dontwarn kotlin.jvm.internal.SourceDebugExtension
+-overloadaggressively
+-renamesourcefileattribute *

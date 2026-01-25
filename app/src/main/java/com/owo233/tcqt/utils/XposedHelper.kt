@@ -646,13 +646,3 @@ val Constructor<*>.emptyParam: Boolean
     inline get() = this.paramCount == 0
 val Constructor<*>.notEmptyParam: Boolean
     inline get() = this.paramCount != 0
-
-val String.clazz: Class<*>?
-    get() = load(this).also {
-        if (it == null) {
-            Log.e("class: $this not found")
-        }
-    }
-
-val String.toClass: Class<*>
-    get() = loadOrThrow(this)

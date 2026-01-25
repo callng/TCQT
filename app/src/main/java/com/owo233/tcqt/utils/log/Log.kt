@@ -4,95 +4,84 @@ import android.util.Log
 import com.owo233.tcqt.data.TCQTBuild
 import de.robv.android.xposed.XposedBridge
 
-/**
- * 本页代码来源: https://github.com/xfqwdsj/IAmNotADeveloper
- */
-private const val LogTag = TCQTBuild.HOOK_TAG
+enum class LogLevel {
+    VERBOSE, DEBUG, INFO, WARN, ERROR
+}
+
+private val XPOSED_OUTPUT_LEVELS = setOf(LogLevel.DEBUG, LogLevel.WARN, LogLevel.ERROR)
 
 interface Logger {
+    fun log(level: LogLevel, message: String, throwable: Throwable? = null)
 
-    fun v(message: String, throwable: Throwable? = null) {
-        Log.v(LogTag, message, throwable)
-        FileLog.v(message, LogTag, throwable)
-    }
-
-    fun d(message: String, throwable: Throwable? = null) {
-        Log.d(LogTag, message, throwable)
-        FileLog.d(message, LogTag, throwable)
-    }
-
-    fun i(message: String, throwable: Throwable? = null) {
-        Log.i(LogTag, message, throwable)
-        FileLog.i(message, LogTag, throwable)
-    }
-
-    fun w(message: String, throwable: Throwable? = null) {
-        Log.w(LogTag, message, throwable)
-        FileLog.w(message, LogTag, throwable)
-    }
-
-    fun e(message: String, throwable: Throwable? = null) {
-        Log.e(LogTag, message, throwable)
-        FileLog.e(message, LogTag, throwable)
-    }
-
-    val debug get() = DebugLogger(this)
+    fun v(message: String, throwable: Throwable? = null) = log(LogLevel.VERBOSE, message, throwable)
+    fun d(message: String, throwable: Throwable? = null) = log(LogLevel.DEBUG, message, throwable)
+    fun i(message: String, throwable: Throwable? = null) = log(LogLevel.INFO, message, throwable)
+    fun w(message: String, throwable: Throwable? = null) = log(LogLevel.WARN, message, throwable)
+    fun e(message: String, throwable: Throwable? = null) = log(LogLevel.ERROR, message, throwable)
 }
 
-interface XposedLogger : Logger {
-
-    override fun w(message: String, throwable: Throwable?) {
-        bridgeLog("WARN", message, throwable)
-        FileLog.w(message, tr = throwable)
-    }
-
-    override fun e(message: String, throwable: Throwable?) {
-        bridgeLog("ERROR", message, throwable)
-        FileLog.e(message, tr = throwable)
-    }
-
-    private fun bridgeLog(level: String, message: String, throwable: Throwable? = null) {
-        XposedBridge.log("[$level] $LogTag: $message")
-        if (throwable != null) {
-            XposedBridge.log(throwable)
+class AndroidLogger(private val tag: String) : Logger {
+    override fun log(level: LogLevel, message: String, throwable: Throwable?) {
+        when (level) {
+            LogLevel.VERBOSE -> Log.v(tag, message, throwable)
+            LogLevel.DEBUG -> Log.d(tag, message, throwable)
+            LogLevel.INFO -> Log.i(tag, message, throwable)
+            LogLevel.WARN -> Log.w(tag, message, throwable)
+            LogLevel.ERROR -> Log.e(tag, message, throwable)
         }
     }
 }
 
-object Log : XposedLogger {
+class XposedLogger(private val tag: String) : Logger {
 
-    object Android : Logger
-}
-
-class DebugLogger(private val delegate: Logger) : Logger by delegate {
-
-    override fun v(message: String, throwable: Throwable?) {
-        if (TCQTBuild.DEBUG) {
-            delegate.v(message, throwable)
+    override fun log(level: LogLevel, message: String, throwable: Throwable?) {
+        val levelTag = when (level) {
+            LogLevel.VERBOSE -> "VERBOSE"
+            LogLevel.DEBUG -> "DEBUG"
+            LogLevel.INFO -> "INFO"
+            LogLevel.WARN -> "WARN"
+            LogLevel.ERROR -> "ERROR"
         }
-    }
 
-    override fun d(message: String, throwable: Throwable?) {
-        if (TCQTBuild.DEBUG) {
-            delegate.d(message, throwable)
+        if (level in XPOSED_OUTPUT_LEVELS) {
+            XposedBridge.log("[$levelTag] $tag: $message")
+            throwable?.let { XposedBridge.log(it) }
         }
-    }
 
-    override fun i(message: String, throwable: Throwable?) {
-        if (TCQTBuild.DEBUG) {
-            delegate.i(message, throwable)
-        }
-    }
-
-    override fun w(message: String, throwable: Throwable?) {
-        if (TCQTBuild.DEBUG) {
-            delegate.w(message, throwable)
-        }
-    }
-
-    override fun e(message: String, throwable: Throwable?) {
-        if (TCQTBuild.DEBUG) {
-            delegate.e(message, throwable)
+        when (level) {
+            LogLevel.VERBOSE -> FileLog.v(message, tag, throwable)
+            LogLevel.DEBUG -> FileLog.d(message, tag, throwable)
+            LogLevel.INFO -> FileLog.i(message, tag, throwable)
+            LogLevel.WARN -> FileLog.w(message, tag, throwable)
+            LogLevel.ERROR -> FileLog.e(message, tag, throwable)
         }
     }
 }
+
+class DebugFilterLogger(
+    private val delegate: Logger,
+    private val isDebug: Boolean = TCQTBuild.DEBUG
+) : Logger by delegate {
+
+    override fun log(level: LogLevel, message: String, throwable: Throwable?) {
+        if (isDebug) {
+            delegate.log(level, message, throwable)
+        }
+    }
+}
+
+object LogUtils {
+    private const val TAG = TCQTBuild.HOOK_TAG
+
+    val xposed: Logger = DebugFilterLogger(XposedLogger(TAG))
+
+    val android: Logger = DebugFilterLogger(AndroidLogger(TAG))
+
+    val xposedNoFilter: Logger = XposedLogger(TAG)
+
+    val androidNoFilter: Logger = AndroidLogger(TAG)
+}
+
+object Log : Logger by LogUtils.xposed
+
+object LogAndroid : Logger by LogUtils.android

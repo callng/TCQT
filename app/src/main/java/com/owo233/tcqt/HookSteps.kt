@@ -5,7 +5,6 @@ import android.app.Application
 import android.app.Instrumentation
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
-import com.highcapable.kavaref.KavaRef.Companion.asResolver
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.hooks.base.HybridClassLoader
@@ -14,6 +13,7 @@ import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.reflect.MethodUtils
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
@@ -32,11 +32,11 @@ internal object HookSteps {
     }
 
     fun initLoad() {
-        Instrumentation::class.asResolver().apply {
-            firstMethod {
-                name = "callApplicationOnCreate"
-                parameters(Application::class)
-            }.self.hookAfterMethod { param ->
+        MethodUtils.create(Instrumentation::class.java)
+            .named("callApplicationOnCreate")
+            .params(Application::class.java)
+            .findOrThrow()
+            .hookAfterMethod { param ->
                 val application = param.args[0] as Application
                 val context = application.baseContext
                 if (hostInit.not()) {
@@ -47,7 +47,6 @@ internal object HookSteps {
                     initHooks(application)
                 }
             }
-        }
     }
 
     private fun initContext(app: Application, loader: ClassLoader) {

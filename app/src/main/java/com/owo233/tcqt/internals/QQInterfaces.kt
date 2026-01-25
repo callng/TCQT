@@ -3,7 +3,7 @@ package com.owo233.tcqt.internals
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
 import com.owo233.tcqt.hooks.maple.Maple
-import com.owo233.tcqt.internals.helper.GuildHelper
+import com.owo233.tcqt.internals.helper.GuidHelper
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.PlatformTools.getHostVersionCode
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
@@ -19,7 +19,7 @@ open class QQInterfaces {
 
         val currentUid: String inline get() = appRuntime.currentUid
 
-        val guid: String inline get() = GuildHelper.getGuid()
+        val guid: String inline get() = GuidHelper.getGuid()
 
         val maple by lazy {
             val ver = getHostVersionCode()

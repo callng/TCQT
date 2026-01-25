@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.View
 import android.widget.LinearLayout
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -19,7 +20,6 @@ import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.new
 import com.owo233.tcqt.utils.paramCount
-import com.owo233.tcqt.utils.toClass
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -133,17 +133,17 @@ class MultiSelectRecall : IAction {
                 "com.tencent.mobileqq.aio.input.multiselect.MultiSelectBarVB"
             } else {
                 "com.tencent.tim.aio.inputbar.TimMultiSelectBarVB"
-            }.toClass
+            }.toHostClass()
 
-            val operationLambda = $$"$${barVB.name}$mOperationLayout$2".toClass
+            val operationLambda = $$"$${barVB.name}$mOperationLayout$2".toHostClass()
 
-            multiForwardClass = "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toClass
+            multiForwardClass = "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toHostClass()
 
             getMsgList = multiForwardClass.declaredMethods.single { method ->
                 method.returnType == List::class.java && method.paramCount == 1
             }
 
-            getContext = "com.tencent.mvi.mvvm.framework.FrameworkVM".toClass
+            getContext = "com.tencent.mvi.mvvm.framework.FrameworkVM".toHostClass()
                 .declaredMethods
                 .first { method ->
                     method.returnType == getMsgList.parameterTypes[0].superclass && method.paramCount == 0
@@ -158,7 +158,7 @@ class MultiSelectRecall : IAction {
             }
 
             createVM = barVB.declaredMethods.single { method ->
-                method.returnType == "com.tencent.mvi.mvvm.BaseVM".toClass && method.paramCount == 0
+                method.returnType == "com.tencent.mvi.mvvm.BaseVM".toHostClass() && method.paramCount == 0
             }
 
             operationInvoke = operationLambda.declaredMethods.first { method ->

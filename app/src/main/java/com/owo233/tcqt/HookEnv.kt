@@ -2,8 +2,9 @@ package com.owo233.tcqt
 
 import android.app.Application
 import android.content.Context
-import com.highcapable.kavaref.extension.toClass
-import com.highcapable.kavaref.extension.toClassOrNull
+import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.log.Log
 
 internal object HookEnv {
 
@@ -98,7 +99,11 @@ internal object HookEnv {
         return this.isTim() && this.versionCode >= versionCode
     }
 
-    fun String.toHostClass() = toClass(hostClassLoader)
+    fun String.toHostClass(): Class<*> = loadOrThrow(this)
 
-    fun String.toHostClassOrNull() = toClassOrNull(hostClassLoader)
+    fun String.toHostClassOrNull(): Class<*>? = load(this).also {
+        if (it == null) {
+            Log.e("class: $this not found")
+        }
+    }
 }

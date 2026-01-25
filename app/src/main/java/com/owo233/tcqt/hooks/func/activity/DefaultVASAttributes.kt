@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
-import com.highcapable.kavaref.KavaRef.Companion.asResolver
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -12,6 +11,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.reflect.MethodUtils
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
@@ -35,11 +35,10 @@ class DefaultVASAttributes : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val options = GeneratedSettingList.getInt(GeneratedSettingList.DEFAULT_VAS_ATTRS_TYPE)
 
-        AIOMsgItem::class.asResolver()
-            .firstMethod {
-                name = "getMsgRecord"
-                emptyParameters()
-            }.self
+        MethodUtils.create(AIOMsgItem::class.java)
+            .named("getMsgRecord")
+            .paramCount(0)
+            .findOrThrow()
             .hookAfterMethod { param ->
                 val msgRecord = param.result as MsgRecord
                 if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
@@ -71,18 +70,18 @@ class DefaultVASAttributes : IAction {
 
         if (options and (1 shl 3) == 0) {
             // 新版超级QQ秀 应该是在 9.2.35 版本或以上才有的
-            "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toHostClass()
-                .asResolver()
-                .optional()
-                .firstMethodOrNull {
-                    name = "isQQShowEnableForAIO"
-                    parameters(Long::class, Int::class, Long::class)
-                }?.self?.hookBeforeMethod { param ->
-                    val uin = (param.args[2] as Long).toString()
-                    if (uin != QQInterfaces.currentUin) {
-                        param.result = false
+            "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toHostClass().also {
+                MethodUtils.create(it)
+                    .named("isQQShowEnableForAIO")
+                    .params(Long::class.java, Int::class.javaPrimitiveType, Long::class.java)
+                    .findOrThrow()
+                    .hookBeforeMethod { param ->
+                        val uin = (param.args[2] as Long).toString()
+                        if (uin != QQInterfaces.currentUin) {
+                            param.result = false
+                        }
                     }
-                }
+            }
         }
     }
 

@@ -15,6 +15,7 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.util.size
 
 private val fieldCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Field>>()
 private val methodCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Method>>()
@@ -283,7 +284,7 @@ private fun Any?.toJsonElement(
             }
             is SparseArray<*> -> buildJsonObject {
                 put("_type", JsonPrimitive("android.util.SparseArray"))
-                for (i in 0 until this@toJsonElement.size()) {
+                for (i in 0 until this@toJsonElement.size) {
                     val key = this@toJsonElement.keyAt(i)
                     val value = this@toJsonElement.valueAt(i)
                     put(key.toString(), value.toJsonElement(maxDepth - 1, withSuper, visited))

@@ -171,8 +171,6 @@ dependencies {
     compileOnly(libs.androidx.constraintlayout)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.kavaref.core)
-    implementation(libs.kavaref.extension)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

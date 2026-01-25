@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks.helper
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
@@ -14,7 +15,6 @@ import com.owo233.tcqt.utils.isPublic
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.reflect.FieldUtils
-import com.owo233.tcqt.utils.toClass
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.mobileqq.aio.msg.GrayTipsMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
@@ -22,8 +22,8 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 @RegisterAction
 class AIOViewUpdate : AlwaysRunAction() {
 
-    private val vbClass by lazy { "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB".toClass }
-    private val mviStateClass by lazy { "com.tencent.mvi.base.mvi.MviUIState".toClass }
+    private val vbClass by lazy { "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB".toHostClass() }
+    private val mviStateClass by lazy { "com.tencent.mvi.base.mvi.MviUIState".toHostClass() }
 
     private val decorators: Array<OnAIOViewUpdate> = arrayOf(
         ShowMsgInfo()

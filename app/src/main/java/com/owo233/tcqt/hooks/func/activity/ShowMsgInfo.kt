@@ -11,7 +11,9 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.children
-import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.requireMinQQVersion
+import com.owo233.tcqt.HookEnv.requireMinTimVersion
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -28,7 +30,6 @@ import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.new
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.toJsonString
-import com.owo233.tcqt.utils.toClass
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import java.text.SimpleDateFormat
@@ -170,8 +171,8 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
     }
 
     private fun isVersionSupported(): Boolean {
-        return HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_63_BETA_11345) ||
-                HookEnv.requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)
+        return requireMinQQVersion(QQVersion.QQ_8_9_63_BETA_11345) ||
+                requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)
     }
 
     private fun showDetailInfoDialog(context: Context, title: String, msg: String) {
@@ -192,7 +193,7 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
         private const val ID_ADD_TEXTVIEW = 0x114511
 
         private val constraintSetClz by lazy {
-            "androidx.constraintlayout.widget.ConstraintSet".toClass
+            "androidx.constraintlayout.widget.ConstraintSet".toHostClass()
         }
     }
 }

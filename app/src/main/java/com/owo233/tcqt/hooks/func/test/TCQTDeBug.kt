@@ -49,7 +49,7 @@ class TCQTDeBug : IAction {
                         val result = (args[1] as ByteArray).toString(Charsets.UTF_8)
 
                         if (!result.isEmpty()) {
-                            Log.e("dispatchEvent Log Start\neventName: $eventName\neventData: $eventData\ncode: $code\nresult: $result\ndispatchEvent Log End")
+                            Log.i("dispatchEvent Log Start\neventName: $eventName\neventData: $eventData\ncode: $code\nresult: $result\ndispatchEvent Log End")
                         }
                     }
 

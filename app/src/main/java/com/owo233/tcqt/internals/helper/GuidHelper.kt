@@ -8,7 +8,7 @@ import com.tencent.mobileqq.msf.sdk.MSFSharedPreUtils
 import com.tencent.mobileqq.qroute.QRoute
 import oicq.wlogin_sdk.tools.MD5
 
-object GuildHelper {
+object GuidHelper {
 
     fun getGuid(): String {
         return runCatching {
