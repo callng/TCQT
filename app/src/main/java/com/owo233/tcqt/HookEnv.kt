@@ -5,6 +5,7 @@ import android.content.Context
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.log.Log
+import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 internal object HookEnv {
 
@@ -105,5 +106,10 @@ internal object HookEnv {
         if (it == null) {
             Log.e("class: $this not found")
         }
+    }
+
+    fun isNightMode(): Boolean {
+        return ThemeUtil.isNowThemeIsNight(null, true, null)
+                || (if (isQQ()) ThemeUtil.isThemeNightModeV2() else false)
     }
 }

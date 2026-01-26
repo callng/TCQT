@@ -1,9 +1,7 @@
 package mqq.manager;
 
 import android.content.Context;
-
 import java.util.HashMap;
-
 import mqq.app.TicketManagerListener;
 import oicq.wlogin_sdk.request.Ticket;
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot;
@@ -64,4 +62,8 @@ public interface TicketManager extends Manager {
     void unregistTicketManagerListener(TicketManagerListener ticketManagerListener);
 
     boolean useAsyncTicketInterface();
+
+    public interface IPskeyManager {
+        void reportGetPskey(String[] strArr);
+    }
 }

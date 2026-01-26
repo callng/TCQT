@@ -168,6 +168,7 @@ dependencies {
     ksp(project(":processor"))
     implementation(project(":annotations"))
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.browser)
     compileOnly(libs.androidx.constraintlayout)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)

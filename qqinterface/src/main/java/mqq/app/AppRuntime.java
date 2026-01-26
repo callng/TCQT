@@ -1,27 +1,25 @@
 package mqq.app;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
-
 import androidx.annotation.NonNull;
-
+import com.tencent.qphone.base.remote.FromServiceMsg;
 import com.tencent.qphone.base.remote.SimpleAccount;
-
-import org.jetbrains.annotations.Nullable;
-
+import com.tencent.qphone.base.remote.ToServiceMsg;
+import com.tencent.qphone.base.util.BaseApplication;
 import mqq.app.api.IRuntimeService;
 import mqq.manager.Manager;
+import mqq.observer.BusinessObserver;
 
 public abstract class AppRuntime {
     public static final int ACCOUNT_MANAGER = 0;
     public static final int END_UN_LOGIN_MANAGER = 4;
-    private static final int IMPORT_RUNTIME_DEPEND_CNT = 2;
     public static final int LOGIN_AUTO = 2;
     public static final int LOGIN_MANUAL = 1;
     public static final int LOGIN_UNINIT = 0;
     public static final String PROCESS = "process";
     public static final int PUSH_MANAGER = 4;
-    private static final int RUNTIME_SERVICE_CAPACITY = 1024;
     public static final int SERVER_CONFIG_MANAGER = 3;
     public static final String SP_UIN_TO_UID = "MSF_SP_UIN_TO_UID";
     protected static final String TAG = "mqq";
@@ -50,31 +48,31 @@ public abstract class AppRuntime {
         }
 
         public static Status build(int i) {
-            if (i != 11) {
-                if (i != 21) {
-                    if (i != 31) {
-                        if (i != 41) {
-                            if (i != 50) {
-                                if (i != 60) {
-                                    if (i != 70) {
-                                        if (i != 95) {
-                                            return null;
-                                        }
-                                        return receiveofflinemsg;
-                                    }
-                                    return dnd;
-                                }
-                                return qme;
-                            }
-                            return busy;
-                        }
-                        return invisiable;
-                    }
-                    return away;
-                }
+            if (i == 11) {
+                return online;
+            }
+            if (i == 21) {
                 return offline;
             }
-            return online;
+            if (i == 31) {
+                return away;
+            }
+            if (i == 41) {
+                return invisiable;
+            }
+            if (i == 50) {
+                return busy;
+            }
+            if (i == 60) {
+                return qme;
+            }
+            if (i == 70) {
+                return dnd;
+            }
+            if (i != 95) {
+                return null;
+            }
+            return receiveofflinemsg;
         }
 
         public int getValue() {
@@ -82,37 +80,72 @@ public abstract class AppRuntime {
         }
     }
 
-    @Deprecated
-    public static boolean canAutoLoginFromCache(Context context, String str) {
-        return true;
+    public static class KickParams {
+        public Object fromServiceMsg;
+        boolean isSameDevice;
+        boolean isTokenExpired;
+        public Object toServiceMsg;
+
+        public KickParams(ToServiceMsg toServiceMsg, FromServiceMsg fromServiceMsg, boolean z, boolean z2) {
+            this.toServiceMsg = toServiceMsg;
+            this.fromServiceMsg = fromServiceMsg;
+            this.isTokenExpired = z;
+            this.isSameDevice = z2;
+        }
     }
 
-    @Nullable
-    private String getCurrentUidFromSp() {
-        return null;
+    public <T extends BusinessObserver> void addDirectNotifyObserver(Class<T> cls, int i) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public <T extends BusinessObserver> void addWithoutPostObserver(Class<T> cls) {
+        throw new RuntimeException("Stub!");
     }
 
     protected boolean canAutoLogin(String str) {
-        return true;
+        throw new RuntimeException("Stub!");
     }
+
+    public abstract BaseApplication getApp();
 
     public AppRuntime getAppRuntime(String str) {
         return null;
     }
 
     public MobileQQ getApplication() {
-        return MobileQQ.getMobileQQ();
+        throw new RuntimeException("Stub!");
     }
 
     public Context getApplicationContext() {
         throw new RuntimeException("Stub!");
     }
 
+    public int getCurAccLoginType() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public Intent getKickIntent() {
+        throw new RuntimeException("Stub!");
+    }
+
+    /**
+     * 0: AccountManagerImpl
+     * 1: WtloginManagerImpl
+     * 2: TicketManagerImpl
+     */
     public Manager getManager(int i) {
         throw new RuntimeException("Stub!");
     }
 
     public final SharedPreferences getPreferences() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public ToServiceMsg getRegisterCmdCallMsg(Intent intent) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getRunningModuleSize() {
         throw new RuntimeException("Stub!");
     }
 
@@ -132,36 +165,51 @@ public abstract class AppRuntime {
         throw new RuntimeException("Stub!");
     }
 
-    public <T extends IRuntimeService> T getRuntimeService(Class<T> cls, String namespace) {
-        throw new UnsupportedOperationException();
+    @NonNull
+    public <T extends IRuntimeService> T getRuntimeService(@NonNull Class<T> cls, String str) {
+        throw new RuntimeException("Stub!");
     }
 
+    @NonNull
     public <T extends IRuntimeService> T getRuntimeServiceIPCSync(@NonNull Class<T> cls, String str) {
         throw new UnsupportedOperationException();
     }
 
-    public void switchAccount(SimpleAccount simpleAccount, String process) {
-
+    public boolean isModuleRunning(String str) {
+        throw new RuntimeException("Stub!");
     }
+
+    public boolean isRunning() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void switchAccount(SimpleAccount simpleAccount, String process) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void kick(KickParams kickParams) {
+        throw new RuntimeException("Stub!");
+    }
+
     public String getAccount() {
-        return "";
+        throw new RuntimeException("Stub!");
     }
 
     public abstract String getCurrentAccountUin();
 
     public String getCurrentUin() {
-        return "";
+        throw new RuntimeException("Stub!");
     }
 
     public String getCurrentUid() {
-        return "";
+        throw new RuntimeException("Stub!");
     }
 
     public long getLongAccountUin() {
-        return 0;
+        throw new RuntimeException("Stub!");
     }
 
     public boolean isLogin() {
-        return false;
+        throw new RuntimeException("Stub!");
     }
 }
