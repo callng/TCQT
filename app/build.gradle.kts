@@ -118,7 +118,7 @@ androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
             if (output is VariantOutputImpl) {
-                val newApkName = "${rootProject.name}-${appVersionName}.apk"
+                val newApkName = "${rootProject.name}-${appVersionName}-${variant.buildType}.apk"
                 output.outputFileName = newApkName
             }
         }
