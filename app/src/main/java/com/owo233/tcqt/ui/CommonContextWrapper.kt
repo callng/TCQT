@@ -135,8 +135,7 @@ class CommonContextWrapper @JvmOverloads constructor(
         }
 
         private fun getNightModeMasked(): Int {
-            return if (ThemeUtil.isNowThemeIsNight(null, true, null)
-                || (if (HookEnv.isQQ()) ThemeUtil.isThemeNightModeV2() else false)) {
+            return if (HookEnv.isNightMode()) {
                 Configuration.UI_MODE_NIGHT_YES
             } else {
                 Configuration.UI_MODE_NIGHT_NO

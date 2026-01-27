@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.log.Log
 import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
@@ -109,7 +110,11 @@ internal object HookEnv {
     }
 
     fun isNightMode(): Boolean {
-        return ThemeUtil.isNowThemeIsNight(null, true, null)
-                || (if (isQQ()) ThemeUtil.isThemeNightModeV2() else false)
+        if (ThemeUtil.isNowThemeIsNight(null, true, null)) return true
+        return if (isQQ() && requireMinQQVersion(QQVersion.QQ_9_2_55_BETA_32895)) {
+            ThemeUtil.isThemeNightModeV2()
+        } else {
+            false
+        }
     }
 }

@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.variant.impl.VariantOutputImpl
 import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
@@ -113,10 +114,15 @@ extensions.configure<ApplicationExtension> {
     }
 }
 
-base {
-    archivesName.set(
-        "${rootProject.name}-${appVersionName}"
-    )
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            if (output is VariantOutputImpl) {
+                val newApkName = "${rootProject.name}-${appVersionName}.apk"
+                output.outputFileName = newApkName
+            }
+        }
+    }
 }
 
 extensions.configure(KotlinAndroidProjectExtension::class.java) {

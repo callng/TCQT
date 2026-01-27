@@ -10,12 +10,11 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.generated.GeneratedFeaturesData
-import com.owo233.tcqt.hooks.func.ModuleCommand
-import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.hooks.base.Toasts
+import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.proto2json.json
-import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 class TCQTJsInterface(private val ctx: Context) {
     @JavascriptInterface
@@ -134,8 +133,7 @@ class TCQTJsInterface(private val ctx: Context) {
 
     @JavascriptInterface
     fun isDarkModeByHost(): Boolean {
-        return ThemeUtil.isNowThemeIsNight(null, true, null)
-                || (if (HookEnv.isQQ()) ThemeUtil.isThemeNightModeV2() else false)
+        return HookEnv.isNightMode()
     }
 
     @JavascriptInterface
