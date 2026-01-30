@@ -11,6 +11,7 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.children
+import androidx.core.view.isVisible
 import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.HookEnv.requireMinTimVersion
 import com.owo233.tcqt.HookEnv.toHostClass
@@ -30,7 +31,6 @@ import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.new
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.toJsonString
-import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -116,33 +116,57 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
         val constraintSet = constraintSetClz.new()
         constraintSet.invoke("clone", rootView)
 
-        val anchorIndex = rootView.children.indexOfFirst { it is LinearLayout && it.id != View.NO_ID }
+        val anchorIndex = rootView.children.indexOfFirst {
+            it is LinearLayout && it.id != View.NO_ID
+        }
         if (anchorIndex < 1) return
 
-        val msgId = rootView.getChildAt(anchorIndex).id
         val nameId = rootView.getChildAt(anchorIndex - 1).id
+
+        val verticalAnchor = rootView.children.lastOrNull { child ->
+            child.id != View.NO_ID &&
+                    child.id != ID_ADD_LAYOUT &&
+                    child.isVisible
+        } ?: return
 
         constraintSet.invoke(
             "connect",
             ID_ADD_LAYOUT,
-            ConstraintLayout.LayoutParams.TOP,
-            msgId,
-            ConstraintLayout.LayoutParams.BOTTOM,
+            ConstraintSet.TOP,
+            verticalAnchor.id,
+            ConstraintSet.BOTTOM,
             0
         )
 
         val isSelf = msg.senderUin == QQInterfaces.currentUin.toLong()
 
         if (isSelf) {
-            constraintSet.invoke("connect", ID_ADD_LAYOUT, ConstraintSet.RIGHT, nameId, ConstraintSet.RIGHT)
+            constraintSet.invoke(
+                "connect",
+                ID_ADD_LAYOUT,
+                ConstraintSet.END,
+                nameId,
+                ConstraintSet.END
+            )
             if (msg.chatType == 1) {
-                constraintSet.invoke("setMargin", ID_ADD_LAYOUT, ConstraintSet.END, rootView.context.dp2px(10f))
+                constraintSet.invoke(
+                    "setMargin",
+                    ID_ADD_LAYOUT,
+                    ConstraintSet.END,
+                    rootView.context.dp2px(10f)
+                )
             }
         } else {
-            constraintSet.invoke("connect", ID_ADD_LAYOUT, ConstraintSet.LEFT, nameId, ConstraintSet.LEFT)
+            constraintSet.invoke(
+                "connect",
+                ID_ADD_LAYOUT,
+                ConstraintSet.START,
+                nameId,
+                ConstraintSet.START
+            )
             val margin = when (msg.chatType) {
                 1 -> 10f
-                2 if msg.msgType == MsgConstant.KELEMTYPEFILE -> 55f
+                /*2 if msg.msgType == MsgConstant.KELEMTYPEFILE -> 55f*/
                 else -> 0f
             }
             if (margin > 0) {
