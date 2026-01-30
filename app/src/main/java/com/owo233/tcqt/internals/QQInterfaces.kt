@@ -15,9 +15,11 @@ open class QQInterfaces {
     companion object {
         val appRuntime: AppRuntime get() = MobileQQ.getMobileQQ().waitAppRuntime(null)
 
-        val currentUin: String inline get() = appRuntime.currentAccountUin
+        val isLogin: Boolean inline get() = appRuntime.isLogin
 
-        val currentUid: String inline get() = appRuntime.currentUid
+        val currentUin: String inline get() = appRuntime.currentAccountUin ?: ""
+
+        val currentUid: String inline get() = appRuntime.currentUid ?: ""
 
         val guid: String inline get() = GuidHelper.getGuid()
 

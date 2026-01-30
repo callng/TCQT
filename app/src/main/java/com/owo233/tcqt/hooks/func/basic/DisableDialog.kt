@@ -52,6 +52,8 @@ class DisableDialog : IAction {
                 String::class.java,
                 ByteArray::class.java,
             ) { param ->
+                if (!QQInterfaces.isLogin) return@hookBeforeMethod
+
                 val currentUin = QQInterfaces.currentUin
                 val currentIsShow = isShowMap[currentUin] ?: false
                 val shouldUpdateShow = handleSocialErrorOptimized(
