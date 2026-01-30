@@ -51,7 +51,7 @@ class AllowViewingCard : IAction {
                     )
                 .findOrThrow()
                 .hookBeforeMethod { param ->
-                    val respHead = param.args[1]
+                    val respHead = param.args.getOrNull(1) ?: return@hookBeforeMethod
                     val result = respHead.getIntField("iResult")
                     if (result == 201 || result == 202) {
                         respHead.setIntField("iResult", 0)
@@ -70,7 +70,7 @@ class AllowViewingCard : IAction {
             .returns<Card>()
             .findOrThrow()
             .hookAfterMethod { param ->
-                val card = param.result as Card
+                val card = param.result as? Card ?: return@hookAfterMethod
                 if (card.forbidCode == 201 || card.forbidCode == 202) {
                     card.isForbidAccount = false
                     card.forbidCode = 0
