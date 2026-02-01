@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }} && success() && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' && !startsWith(github.event.head_commit.message, '[skip ci]') && github.ref == 'refs/heads/main' }}
 
     steps:
       - uses: actions/checkout@v6
