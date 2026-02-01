@@ -1,19 +1,18 @@
 package com.owo233.tcqt.hooks.func.advanced
 
 import android.content.Context
-import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toUtf8ByteArray
-import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.ConcurrentHashMap
 
-@RegisterAction
+/*@RegisterAction*/
 @RegisterSetting(
     key = "united_config_hook",
     name = "统一配置Hook",
