@@ -10,7 +10,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.reflect.MethodUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
@@ -42,18 +42,17 @@ class FakePicSize : IAction {
     override val key: String get() = GeneratedSettingList.FAKE_PIC_SIZE
 
     private fun hookSendMsg(targetSize: Int) {
-        MethodUtils.create(IKernelMsgService.CppProxy::class.java)
-            .named("sendMsg")
-            .paramCount(5)
-            .findOrThrow()
-            .hookBeforeMethod { param ->
-                val contact = param.args[1] as Contact
-                val elements = param.args[2] as Iterable<*>
+        IKernelMsgService.CppProxy::class.java.findMethod {
+            name = "sendMsg"
+            paramCount = 5
+        }.hookBeforeMethod { param ->
+            val contact = param.args[1] as Contact
+            val elements = param.args[2] as Iterable<*>
 
-                elements
-                    .filterIsInstance<MsgElement>()
-                    .forEach { it.adjustPicSize(contact, targetSize) }
-            }
+            elements
+                .filterIsInstance<MsgElement>()
+                .forEach { it.adjustPicSize(contact, targetSize) }
+        }
     }
 
     private fun MsgElement.adjustPicSize(contact: Contact, targetSize: Int) {

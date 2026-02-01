@@ -11,7 +11,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.reflect.MethodUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
@@ -35,52 +35,50 @@ class DefaultVASAttributes : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         val options = GeneratedSettingList.getInt(GeneratedSettingList.DEFAULT_VAS_ATTRS_TYPE)
 
-        MethodUtils.create(AIOMsgItem::class.java)
-            .named("getMsgRecord")
-            .paramCount(0)
-            .findOrThrow()
-            .hookAfterMethod { param ->
-                val msgRecord = param.result as MsgRecord
-                if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
-                    msgRecord.msgAttrs?.values?.forEach { u ->
-                        u?.vasMsgInfo?.let { vasInfo ->
+        AIOMsgItem::class.java.findMethod {
+            name = "getMsgRecord"
+            paramCount = 0
+        }.hookAfterMethod { param ->
+            val msgRecord = param.result as MsgRecord
+            if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
+                msgRecord.msgAttrs?.values?.forEach { u ->
+                    u?.vasMsgInfo?.let { vasInfo ->
 
-                            // 隐藏头像挂件
-                            if ((options and (1 shl 2)) == 0) {
-                                vasInfo.avatarPendantInfo?.pendantId = 0L
-                                vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
-                            }
+                        // 隐藏头像挂件
+                        if ((options and (1 shl 2)) == 0) {
+                            vasInfo.avatarPendantInfo?.pendantId = 0L
+                            vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
+                        }
 
-                            // 强制默认气泡
-                            if ((options and (1 shl 0)) == 0) {
-                                vasInfo.bubbleInfo?.bubbleId = 0
-                                vasInfo.bubbleInfo?.subBubbleId = 0
-                            }
+                        // 强制默认气泡
+                        if ((options and (1 shl 0)) == 0) {
+                            vasInfo.bubbleInfo?.bubbleId = 0
+                            vasInfo.bubbleInfo?.subBubbleId = 0
+                        }
 
-                            // 强制默认字体
-                            if ((options and (1 shl 1)) == 0) {
-                                vasInfo.vasFont?.fontId = 0
-                                vasInfo.vasFont?.subFontId = 0L
-                                vasInfo.vasFont?.magicFontType = 0
-                            }
+                        // 强制默认字体
+                        if ((options and (1 shl 1)) == 0) {
+                            vasInfo.vasFont?.fontId = 0
+                            vasInfo.vasFont?.subFontId = 0L
+                            vasInfo.vasFont?.magicFontType = 0
                         }
                     }
                 }
             }
+        }
 
         if (options and (1 shl 3) == 0) {
             // 新版超级QQ秀 应该是在 9.2.35 版本或以上才有的
             "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toHostClass().also {
-                MethodUtils.create(it)
-                    .named("isQQShowEnableForAIO")
-                    .params(Long::class.java, Int::class.javaPrimitiveType, Long::class.java)
-                    .findOrThrow()
-                    .hookBeforeMethod { param ->
-                        val uin = (param.args[2] as Long).toString()
-                        if (uin != QQInterfaces.currentUin) {
-                            param.result = false
-                        }
+                it.findMethod {
+                    name = "isQQShowEnableForAIO"
+                    paramTypes(long, int, long)
+                }.hookBeforeMethod { param ->
+                    val uin = (param.args[2] as Long).toString()
+                    if (uin != QQInterfaces.currentUin) {
+                        param.result = false
                     }
+                }
             }
         }
     }

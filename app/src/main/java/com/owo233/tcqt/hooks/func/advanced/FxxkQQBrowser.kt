@@ -1,11 +1,9 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.app.Activity
 import android.app.Instrumentation
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import android.os.IBinder
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
@@ -17,7 +15,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.reflect.MethodUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import java.util.regex.Pattern
 
 @RegisterAction
@@ -41,29 +39,20 @@ class FxxkQQBrowser : IAction {
         get() = setOf(ActionProcess.ALL)
 
     private fun hookExecStartActivity() {
-        MethodUtils.create(Instrumentation::class.java)
-            .named("execStartActivity")
-            .params(
-                Context::class.java,
-                IBinder::class.java,
-                IBinder::class.java,
-                Activity::class.java,
-                Intent::class.java,
-                Int::class.javaPrimitiveType,
-                Bundle::class.java
-            )
-            .findOrThrow()
-            .hookBeforeMethod { param ->
-                val intent = param.args.getOrNull(4) as? Intent ?: return@hookBeforeMethod
-                val url = intent.getStringExtra("url") ?: return@hookBeforeMethod
+        Instrumentation::class.java.findMethod {
+            name = "execStartActivity"
+            paramTypes(context, IBinder::class.java, IBinder::class.java, activity, intent, int, bundle)
+        }.hookBeforeMethod { param ->
+            val intent = param.args.getOrNull(4) as? Intent ?: return@hookBeforeMethod
+            val url = intent.getStringExtra("url") ?: return@hookBeforeMethod
 
-                if (!shouldHijack(intent, url)) {
-                    return@hookBeforeMethod
-                }
-
-                openWithCustomTabs(url)
-                param.result = null
+            if (!shouldHijack(intent, url)) {
+                return@hookBeforeMethod
             }
+
+            openWithCustomTabs(url)
+            param.result = null
+        }
     }
 
     private fun shouldHijack(intent: Intent, url: String): Boolean {

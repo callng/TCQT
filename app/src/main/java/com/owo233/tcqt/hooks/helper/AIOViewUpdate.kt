@@ -11,10 +11,9 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.activity.ShowMsgInfo
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.isPublic
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.paramCount
 import com.owo233.tcqt.utils.reflect.FieldUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.mobileqq.aio.msg.GrayTipsMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
@@ -36,12 +35,11 @@ class AIOViewUpdate : AlwaysRunAction() {
             .filterIsInstance<OnAIOViewUpdate>()
             .takeIf { it.isNotEmpty() } ?: return
 
-        val targetMethod = vbClass.declaredMethods.singleOrNull { method ->
-            method.isPublic &&
-                    method.returnType == Void.TYPE &&
-                    method.paramCount == 1 &&
-                    method.parameterTypes[0] == mviStateClass
-        } ?: error("Target method in AIOBubbleMsgItemVB not found!")
+        val targetMethod = vbClass.findMethod {
+            returnType = void
+            visibility = public
+            paramTypes(mviStateClass)
+        }
 
         targetMethod.hookAfterMethod { param ->
             runCatching {

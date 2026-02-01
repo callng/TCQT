@@ -13,7 +13,7 @@ import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.hookAfterMethod
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.reflect.MethodUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
@@ -32,21 +32,20 @@ internal object HookSteps {
     }
 
     fun initLoad() {
-        MethodUtils.create(Instrumentation::class.java)
-            .named("callApplicationOnCreate")
-            .params(Application::class.java)
-            .findOrThrow()
-            .hookAfterMethod { param ->
-                val application = param.args[0] as Application
-                val context = application.baseContext
-                if (hostInit.not()) {
-                    hostApp = application
-                    injectClassLoader(context.classLoader)
-                    initContext(application, context.classLoader)
-                    Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
-                    initHooks(application)
-                }
+        Instrumentation::class.java.findMethod {
+            name = "callApplicationOnCreate"
+            paramTypes(Application::class.java)
+        }.hookAfterMethod { param ->
+            val application = param.args[0] as Application
+            val context = application.baseContext
+            if (hostInit.not()) {
+                hostApp = application
+                injectClassLoader(context.classLoader)
+                initContext(application, context.classLoader)
+                Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
+                initHooks(application)
             }
+        }
     }
 
     private fun initContext(app: Application, loader: ClassLoader) {

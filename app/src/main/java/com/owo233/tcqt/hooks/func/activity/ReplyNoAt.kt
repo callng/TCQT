@@ -10,7 +10,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.invokeOriginalMethod
 import com.owo233.tcqt.utils.reflect.ClassUtils
 import com.owo233.tcqt.utils.reflect.FieldUtils
-import com.owo233.tcqt.utils.reflect.MethodUtils
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.replaceMethod
 import com.tencent.mobileqq.aio.event.AIOMsgSendEvent
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
@@ -37,11 +37,10 @@ class ReplyNoAt : IAction {
             }
             .findFirstClass() ?: error("回复信息不带@: 找不到符合hook条件的类.")
 
-        val handleIntent = MethodUtils.create(targetClass)
-            .returns(Void.TYPE)
-            .paramCount(1)
-            .params(MsgIntent::class.java)
-            .findOrThrow()
+        val handleIntent = targetClass.findMethod {
+            returnType = void
+            paramTypes(MsgIntent::class.java)
+        }
 
         handleIntent.replaceMethod { param ->
             val event = param.args.getOrNull(0)
