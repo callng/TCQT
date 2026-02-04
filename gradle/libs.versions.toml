@@ -8,7 +8,7 @@ androidx-constraintlayout = "2.2.1"
 
 # Kotlin
 kotlin = "2.3.0"
-ksp = "2.3.4"
+ksp = "2.3.5"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"
