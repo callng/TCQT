@@ -14,7 +14,6 @@ plugins {
 val androidMinSdkVersion: Int by rootProject.extra
 val androidTargetSdkVersion: Int by rootProject.extra
 val androidCompileSdkVersion: Int by rootProject.extra
-val androidBuildToolsVersion: String by rootProject.extra
 val androidSourceCompatibility: JavaVersion by rootProject.extra
 val androidTargetCompatibility: JavaVersion by rootProject.extra
 val appVersionName: String by rootProject.extra
@@ -25,7 +24,6 @@ val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
     compileSdk = androidCompileSdkVersion
-    buildToolsVersion = androidBuildToolsVersion
 
     defaultConfig {
         minSdk = androidMinSdkVersion
@@ -33,36 +31,24 @@ extensions.configure<ApplicationExtension> {
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
-        buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
         buildConfigField("String", "TG_CHANNEL", "\"citcqt\"")
         buildConfigField("String", "TG_GROUP", "\"astcqt\"")
     }
 
-    @Suppress("UnstableApiUsage")
-    androidResources {
-        localeFilters += listOf("zh-rCN")
+    fun com.android.build.api.dsl.SigningConfig.applyEnvKeystore() {
+        if (!keystorePath.isNullOrBlank()) {
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
     }
 
     signingConfigs {
-        create("release") {
-            if (!keystorePath.isNullOrBlank()) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
-                enableV2Signing = true
-            }
-        }
-
-        getByName("debug") {
-            if (!keystorePath.isNullOrBlank()) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
-                enableV2Signing = true
-            }
+        create("ci") {
+            applyEnvKeystore()
+            enableV2Signing = true
         }
     }
 
@@ -72,17 +58,19 @@ extensions.configure<ApplicationExtension> {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("ci")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("ci")
         }
     }
 
+    @Suppress("UnstableApiUsage")
     androidResources {
+        localeFilters += listOf("zh-rCN")
         additionalParameters += arrayOf(
             "--allow-reserved-package-id",
             "--package-id", "0x53"
@@ -118,8 +106,8 @@ androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
             if (output is VariantOutputImpl) {
-                val newApkName = "${rootProject.name}-${appVersionName}-${variant.buildType}.apk"
-                output.outputFileName = newApkName
+                output.outputFileName =
+                    "${rootProject.name}-${appVersionName}-${variant.buildType}.apk"
             }
         }
     }
@@ -146,27 +134,17 @@ protobuf {
     protoc {
         artifact = libs.protobuf.protoc.get().toString()
     }
-    plugins {
-        generateProtoTasks {
-            all().forEach { task ->
-                task.builtins {
-                    create("java") {
-                        option("lite")
-                    }
+
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
                 }
             }
         }
     }
 }
-
-tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }
-    .configureEach {
-        val variantName = name.removePrefix("ksp").removeSuffix("Kotlin")
-        val protoTaskName = "generate${variantName}Proto"
-        tasks.findByName(protoTaskName)?.let { protoTask ->
-            dependsOn(protoTask)
-        }
-    }
 
 dependencies {
     compileOnly(libs.xposed.api)

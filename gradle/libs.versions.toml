@@ -7,7 +7,7 @@ androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
 
 # Kotlin
-kotlin = "2.3.0"
+kotlin = "2.3.10"
 ksp = "2.3.5"
 
 # KotlinX
