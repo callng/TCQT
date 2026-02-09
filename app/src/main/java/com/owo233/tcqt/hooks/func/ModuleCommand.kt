@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
@@ -44,7 +45,13 @@ class ModuleCommand : AlwaysRunAction() {
             }
         }
 
-        ContextCompat.registerReceiver(ctx, receiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        } else {
+            ContextCompat.RECEIVER_EXPORTED
+        }
+
+        ctx.registerReceiver(receiver, intentFilter, flag)
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
