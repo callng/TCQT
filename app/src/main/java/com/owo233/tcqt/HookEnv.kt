@@ -45,6 +45,8 @@ internal object HookEnv {
     lateinit var hostClassLoader: ClassLoader
         private set
 
+    private var targetSdkVersion: Int = 0
+
     fun setApplication(app: Application) {
         application = app
     }
@@ -116,5 +118,18 @@ internal object HookEnv {
         } else {
             false
         }
+    }
+
+    fun getTargetSdkVersion(): Int {
+        if (targetSdkVersion > 0) {
+            return targetSdkVersion
+        }
+        targetSdkVersion = 31
+        try {
+            targetSdkVersion = hostAppContext.applicationInfo.targetSdkVersion
+        } catch (e: Exception) {
+            Log.e("getTargetSdkVersion error", e)
+        }
+        return targetSdkVersion
     }
 }

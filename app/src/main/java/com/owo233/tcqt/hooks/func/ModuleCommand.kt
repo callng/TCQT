@@ -4,20 +4,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.MMKVUtils
 import mqq.app.MobileQQ
 
 @RegisterAction
 class ModuleCommand : AlwaysRunAction() {
-
-    private var registeredReceiver: BroadcastReceiver? = null
 
     companion object {
         private const val ACTION_MODULE_COMMAND = "com.owo233.tcqt.MODULE_COMMAND"
@@ -33,7 +29,7 @@ class ModuleCommand : AlwaysRunAction() {
     }
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val filter = IntentFilter(ACTION_MODULE_COMMAND)
+        val intentFilter = IntentFilter(ACTION_MODULE_COMMAND)
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -48,17 +44,7 @@ class ModuleCommand : AlwaysRunAction() {
             }
         }
 
-        runCatching {
-            val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.RECEIVER_NOT_EXPORTED
-            } else {
-                ContextCompat.RECEIVER_EXPORTED
-            }
-            ctx.registerReceiver(receiver, filter, flag)
-            registeredReceiver = receiver
-        }.onFailure {
-            Log.e("registerReceiver error", it)
-        }
+        ContextCompat.registerReceiver(ctx, receiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)

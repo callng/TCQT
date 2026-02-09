@@ -1,9 +1,16 @@
 package com.tencent.mobileqq.msfcore;
 
+import android.content.Context;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.HashMap;
+
 public class MSFKernel {
     public static final int BUILD_TYPE_CI = 2;
     public static final int BUILD_TYPE_GRAY_VERSION = 1;
     public static final int BUILD_TYPE_PUBLICATION = 0;
+    private static volatile MSFKernel INSTANCE = null;
     public static final int IP_TYPE_DUAL = 3;
     public static final int IP_TYPE_IPV4 = 1;
     public static final int IP_TYPE_IPV6 = 2;
@@ -158,7 +165,180 @@ public class MSFKernel {
     public static final int SSO_SEC_SIG_SOME = 2;
     public static final String TAG = "MSFKernel";
 
+    MSFKernel(UpperBridgesImpl upperBridgesImpl, boolean z) {
+        throw new RuntimeException("Stub!");
+    }
+
+    @NonNull
+    public static MSFKernel getInstance(UpperBridgesImpl upperBridgesImpl, boolean z) {
+        if (INSTANCE == null) {
+            synchronized (MSFKernel.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new MSFKernel(upperBridgesImpl, z);
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+    @Nullable
+    public static MSFKernel getOrNull() {
+        return INSTANCE;
+    }
+
     public int sendPacket(MSFRequestAdapter mSFRequestAdapter) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int connectState() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int currentConnType() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public long currentRtt() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public String currentSSOAddr() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public String currentSSOIP() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void disconnect() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getApnState() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public String getClientIP() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public long getConnSeq() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getCurrentUsedIPType() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getIPStackType() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getNextPacketSeq() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public int getServerTimeDiff() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void init(Context context, IAppInfoProvider iAppInfoProvider, IMSFCallbackBridge iMSFCallbackBridge) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public boolean isBadNetwork() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public boolean isConnected() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public boolean isConnecting() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public boolean isPullIpOver() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void notifyLoginSuccess(String str, int i, String str2, byte[] bArr, byte[] bArr2, byte[] bArr3) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void notifyLogout() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void notifyNetworkInfo(int i, int i2, MSFExternNetworkInfo mSFExternNetworkInfo) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void notifyRefreshSign(String str, int i, String str2, byte[] bArr, byte[] bArr2, byte[] bArr3) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void onAppBackground() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void onAppForeground() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public long recvQueueSize() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void sendMSFPingCheck(int i) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public long sendQueueSize() {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setCanaryId(String str) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public boolean setCertificateData(String str) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setLogLevel(int i) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setMSFConfig(int i, MSFConfig mSFConfig) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setMSFReportSampleRate(HashMap<String, Integer> hashMap) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setMSFWhiteList(int i, ArrayList<String> arrayList) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setPatchVersion(int i) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setQimei36(String str) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setSSOTestEnv(String str, int i, String str2) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void setTestServerList(ArrayList<String> arrayList, ArrayList<String> arrayList2, ArrayList<String> arrayList3, ArrayList<String> arrayList4, MSFTestConfig mSFTestConfig) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public void updateSidewayNetId(long j) {
         throw new RuntimeException("Stub!");
     }
 }
