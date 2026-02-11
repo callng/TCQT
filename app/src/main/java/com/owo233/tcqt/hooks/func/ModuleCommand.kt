@@ -1,11 +1,10 @@
 package com.owo233.tcqt.hooks.func
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
-import androidx.core.content.ContextCompat
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
@@ -30,6 +29,7 @@ class ModuleCommand : AlwaysRunAction() {
         }
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onRun(ctx: Context, process: ActionProcess) {
         val intentFilter = IntentFilter(ACTION_MODULE_COMMAND)
 
@@ -57,11 +57,7 @@ class ModuleCommand : AlwaysRunAction() {
             }
         }
 
-        val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        } else 0
-
-        ctx.registerReceiver(receiver, intentFilter, flag)
+        MobileQQ.getMobileQQ().registerReceiver(receiver, intentFilter)
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)

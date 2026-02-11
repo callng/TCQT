@@ -4,12 +4,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
-import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.utils.log.Log
+import mqq.app.MobileQQ
 
 @RegisterAction
 class AccountChange : IAction, BroadcastReceiver() {
@@ -19,13 +18,7 @@ class AccountChange : IAction, BroadcastReceiver() {
             getActions().forEach(::addAction)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            HookEnv.getTargetSdkVersion() >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-        ) {
-            ctx.registerReceiver(this, intentFilter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            ctx.registerReceiver(this, intentFilter)
-        }
+        MobileQQ.getMobileQQ().registerReceiver(this, intentFilter)
     }
 
     override fun canRun(): Boolean {
