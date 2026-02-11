@@ -42,4 +42,8 @@ public abstract class MobileQQ extends BaseApplication {
     public int getMsfConnectedNetType() {
         throw new RuntimeException("Stub!");
     }
+
+    public boolean isRuntimeReady() {
+        throw new RuntimeException("Stub!");
+    }
 }

@@ -11,6 +11,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.utils.MMKVUtils
+import com.owo233.tcqt.utils.log.Log
 import mqq.app.MobileQQ
 
 @RegisterAction
@@ -37,19 +38,28 @@ class ModuleCommand : AlwaysRunAction() {
                 val cmd = intent.getStringExtra("cmd") ?: return
                 when (cmd) {
                     "exitApp" -> {
-                        MobileQQ.getMobileQQ().otherProcessExit(false)
-                        MobileQQ.getMobileQQ().qqProcessExit(true)
+                        MobileQQ.getMobileQQ()?.takeIf {
+                            it.isRuntimeReady
+                        }?.run {
+                            otherProcessExit(false)
+                            qqProcessExit(true)
+                        }
                     }
-                    "config_clear" -> MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).also { it.clearAll() }
+
+                    "config_clear" -> {
+                        try {
+                            MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).also { it.clearAll() }
+                        } catch (t: Throwable) {
+                            Log.e("ModuleCommand onReceive config_clear error", t)
+                        }
+                    }
                 }
             }
         }
 
         val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.RECEIVER_NOT_EXPORTED
-        } else {
-            ContextCompat.RECEIVER_EXPORTED
-        }
+        } else 0
 
         ctx.registerReceiver(receiver, intentFilter, flag)
     }
