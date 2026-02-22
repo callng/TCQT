@@ -28,4 +28,5 @@ extensions.configure<LibraryExtension> {
 
 dependencies {
     compileOnly(libs.androidx.core.ktx)
+    compileOnly(libs.androidx.fragment)
 }

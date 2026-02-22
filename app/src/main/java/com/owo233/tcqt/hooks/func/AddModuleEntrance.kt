@@ -40,8 +40,11 @@ import com.owo233.tcqt.utils.reflect.fieldValue
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.new
+import com.tencent.mobileqq.app.BaseActivity
+import com.tencent.mobileqq.app.utils.RouteUtils
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
+import com.tencent.qphone.base.util.BaseApplication
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
@@ -116,7 +119,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
         onClick.hookBeforeMethod { param ->
             if (param.args[0].getIntField("id") == menuItemId) {
-                openTCQTSettings(HookEnv.hostAppContext)
+                openTCQTSettings()
                 param.result = Unit
             }
         }
@@ -383,45 +386,41 @@ class AddModuleEntrance : AlwaysRunAction() {
         }.show()
     }
 
-    private fun openBanRecordQuery(context: Context) {
-        browserClass.let {
-            val intent = Intent(context, it).apply {
-                putExtra("fling_action_key", 2)
-                putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                putExtra("useDefBackText", true)
-                putExtra("param_force_internal_browser", true)
-                putExtra("url", "https://m.q.qq.com/a/s/07befc388911b30c2359bfa383f2d693")
-            }
-            if (context !is Activity) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+    @SuppressLint("IntentWithNullActionLaunch")
+    private fun openBanRecordQuery() {
+        val intent = Intent().apply {
+            putExtra("url", "https://m.q.qq.com/a/s/07befc388911b30c2359bfa383f2d693")
         }
+
+        val baseApplication = BaseActivity.sTopActivity ?: BaseApplication.getContext()
+            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+
+        RouteUtils.startActivity(baseApplication, intent, "/base/browser")
     }
 
-    private fun openTCQTSettings(context: Context) {
-        browserClass.let {
-            val intent = Intent(context, it).apply {
-                putExtra("fling_action_key", 2)
-                putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-                putExtra("url", TCQTSetting.settingUrl)
-                putExtra("hide_more_button", true)
-                putExtra("hide_operation_bar", true)
-                putExtra("hide_title_bar", true)
-                putExtra("hide_title_left_arrow", true)
-                putExtra("hide_left_button", true)
-                putExtra("hideRightButton", true)
-                putExtra("finish_animation_up_down", true)
-                putExtra("ishiderefresh", true)
-                putExtra("ishidebackforward", true)
-                putExtra("portraitOnly", true)
-                putExtra("webStyle", "noBottomBar")
-            }
-            if (context !is Activity) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+    @SuppressLint("IntentWithNullActionLaunch")
+    private fun openTCQTSettings() {
+        val intent = Intent().apply {
+            putExtra("fling_action_key", 2)
+            putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
+            putExtra("url", TCQTSetting.settingUrl)
+            putExtra("hide_more_button", true)
+            putExtra("hide_operation_bar", true)
+            putExtra("hide_title_bar", true)
+            putExtra("hide_title_left_arrow", true)
+            putExtra("hide_left_button", true)
+            putExtra("hideRightButton", true)
+            putExtra("finish_animation_up_down", true)
+            putExtra("ishiderefresh", true)
+            putExtra("ishidebackforward", true)
+            putExtra("portraitOnly", true)
+            putExtra("webStyle", "noBottomBar")
         }
+
+        val baseApplication = BaseActivity.sTopActivity ?: BaseApplication.getContext()
+            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+
+        RouteUtils.startActivity(baseApplication, intent, "/base/browser")
     }
 
     private fun showInfoCardDialog(ctx: Context) {
@@ -537,12 +536,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         context.startActivity(intent)
     }
 
-    companion object {
-        val browserClass by lazy {
-            loadOrThrow("com.tencent.mobileqq.activity.QQBrowserActivity")
-        }
-    }
-
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 
     private val entryConfigs = listOf(
@@ -552,7 +545,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             iconName = "qui_setting",
             groupTag = "TCQT_SettingEntry",
             groupTitle = null,
-            onClick = ::openTCQTSettings
+            onClick = { openTCQTSettings() }
         ),
         SettingEntryConfig(
             id = R.id.open_info_card,
@@ -570,7 +563,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             extraEntry = true,
             groupTag = "TCQT_OtherSettingEntry",
             groupTitle = "TCQT小工具",
-            onClick = ::openBanRecordQuery
+            onClick = { openBanRecordQuery() }
         ),
         SettingEntryConfig(
             id = R.id.account_get_ticket,

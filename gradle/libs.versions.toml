@@ -1,6 +1,7 @@
 [versions]
 # Android Gradle Plugin / AndroidX
-agp = "9.0.0"
+agp = "9.0.1"
+androidx-fragment = "1.8.9"
 androidx-core = "1.17.0"
 androidx-browser = "1.9.0"
 androidx-appcompat = "1.7.1"
@@ -25,6 +26,7 @@ xposed = "82"
 
 [libraries]
 # AndroidX
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "androidx-fragment" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidx-browser" }
 androidx-core = { group = "androidx.core", name = "core", version.ref = "androidx-core" }
