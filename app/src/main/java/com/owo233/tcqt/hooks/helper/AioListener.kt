@@ -1,6 +1,5 @@
 package com.owo233.tcqt.hooks.helper
 
-import com.google.protobuf.ByteString
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -12,11 +11,15 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import top.artmoe.inao.entries.InfoSyncPushOuterClass
-import top.artmoe.inao.entries.MsgPushOuterClass
-import top.artmoe.inao.entries.QQMessageOuterClass
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.protobuf.ProtoBuf
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
+import com.owo233.tcqt.hooks.entries.InfoSyncPush
+import com.owo233.tcqt.hooks.entries.MsgPush
+import com.owo233.tcqt.hooks.entries.QQMessage
 
-@OptIn(DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalSerializationApi::class)
 object AioListener {
 
     private const val MSG_TYPE_C2C = 528
@@ -28,26 +31,20 @@ object AioListener {
     private const val MSG_TYPE_FLASH_PIC = 166
     private const val SUB_TYPE_FLASH_PIC = 11
 
-    // 群撤回 OperationInfo 头部偏移量
     private const val GROUP_OP_HEADER_SIZE = 7
     private const val INFO_SYNC_PUSH_FLAG_RECALL = 2
 
-    /**
-     * 单条消息推送 (MsgPush)
-     */
     fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
-        val msgPush = MsgPushOuterClass.MsgPush.parseFrom(buffer)
-        val msg = msgPush.qqMessage
-        val msgType = msg.messageContentInfo.msgType
-        val subType = msg.messageContentInfo.subSeq
+        val msgPush = ProtoBuf.decodeFromByteArray<MsgPush>(buffer)
+        val msg = msgPush.qqMessage ?: return
+
+        val contentInfo = msg.messageContentInfo ?: return
+        val msgType = contentInfo.msgType
+        val subType = contentInfo.subSeq
 
         when (msgType to subType) {
-            MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> {
-                processC2CRecallPush(msgPush, param)
-            }
-            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> {
-                processGroupRecallPush(msgPush, param)
-            }
+            MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> processC2CRecallPush(msgPush, param)
+            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> processGroupRecallPush(msgPush, param)
             MSG_TYPE_FLASH_PIC to SUB_TYPE_FLASH_PIC -> {
                 if (GeneratedSettingList.getBoolean(GeneratedSettingList.DISABLE_FLASH_PIC)) {
                     processFlashPicPush(msgPush)
@@ -56,115 +53,104 @@ object AioListener {
         }
     }
 
-    /**
-     * 消息同步推送 (InfoSyncPush)
-     */
     fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
-        val infoSyncPush = InfoSyncPushOuterClass.InfoSyncPush.parseFrom(buffer)
+        val infoSyncPush = ProtoBuf.decodeFromByteArray<InfoSyncPush>(buffer)
 
-        // 只有 flag=2 才包含可能的撤回逻辑
-        if (infoSyncPush.pushFlag != INFO_SYNC_PUSH_FLAG_RECALL) return
+        if (infoSyncPush.pushFlag.toInt() != INFO_SYNC_PUSH_FLAG_RECALL) return
+
+        val recall = infoSyncPush.syncMsgRecall ?: return
+        val bodies = recall.syncInfoBody
+        if (bodies.isEmpty()) return
 
         val interceptedC2CRecalls = mutableListOf<Pair<String, Long>>()
 
-        val newInfoSyncPush = infoSyncPush.toBuilder().apply {
-            syncMsgRecall = syncMsgRecall.toBuilder().apply {
-                for (i in 0 until syncInfoBodyCount) {
-                    val bodyBuilder = getSyncInfoBody(i).toBuilder()
+        val newBodies = bodies.map { body ->
+            val kept = body.msg.filter { m ->
+                val ci = m.messageContentInfo ?: return@filter true
+                val type = ci.msgType
+                val sub = ci.subSeq
 
-                    // 保留非撤回消息，或者非目标类型的撤回消息
-                    val keptMessages = bodyBuilder.msgList.filter { msg ->
-                        val type = msg.messageContentInfo.msgType
-                        val sub = msg.messageContentInfo.subSeq
-
-                        when (type) {
-                            // 拦截群撤回：直接过滤掉
-                            MSG_TYPE_GROUP if sub == SUB_TYPE_GROUP_RECALL -> false
-
-                            // 拦截私聊撤回：记录信息并过滤掉
-                            MSG_TYPE_C2C if sub == SUB_TYPE_C2C_RECALL -> {
-                                extractC2CRecallInfo(msg)?.let { interceptedC2CRecalls.add(it) }
-                                false
-                            }
-
-                            // 其他消息保留
-                            else -> true
-                        }
+                when {
+                    type == MSG_TYPE_GROUP && sub == SUB_TYPE_GROUP_RECALL -> false
+                    type == MSG_TYPE_C2C && sub == SUB_TYPE_C2C_RECALL -> {
+                        extractC2CRecallInfo(m)?.let { interceptedC2CRecalls.add(it) }
+                        false
                     }
-
-                    setSyncInfoBody(i, bodyBuilder.clearMsg().addAllMsg(keptMessages).build())
+                    else -> true
                 }
-            }.build()
-        }.build()
+            }
+            body.copy(msg = kept)
+        }
 
-        param.args[1] = newInfoSyncPush.toByteArray()
+        val newRecall = recall.copy(syncInfoBody = newBodies)
+        val newInfoSyncPush = infoSyncPush.copy(syncMsgRecall = newRecall)
 
-        // 批量触发撤回提示
+        param.args[1] = ProtoBuf.encodeToByteArray(newInfoSyncPush)
+
         showInterceptedC2CTips(interceptedC2CRecalls)
     }
 
-    // 业务逻辑方法
+    private fun processC2CRecallPush(msgPush: MsgPush, param: MethodHookParam) {
+        val msg = msgPush.qqMessage ?: return
+        val opBytes = msg.messageBody?.operationInfo ?: return
 
-    private fun processC2CRecallPush(msgPush: MsgPushOuterClass.MsgPush, param: MethodHookParam) {
-        val opInfoBytes = msgPush.qqMessage.messageBody.operationInfo.toByteArray()
-        val operationInfo = QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfoBytes)
+        val operationInfo = ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.C2CRecallOperationInfo>(opBytes)
+        val info = operationInfo.info ?: return
 
-        val operatorUid = operationInfo.info.operatorUid
-        if (operatorUid == QQInterfaces.currentUid) return // 操作者是自己则不拦截
+        val operatorUid = info.operatorUid
+        if (operatorUid == QQInterfaces.currentUid) return
 
-        // 使撤回失效
-        val newOpInfoBytes = operationInfo.toBuilder().apply {
-            info = info.toBuilder().setMsgSeq(1).build()
-        }.build().toByteArray()
+        val newInfo = info.copy(msgSeq = 1)
+        val newOp = operationInfo.copy(info = newInfo)
+        val newOpBytes = ProtoBuf.encodeToByteArray(newOp)
 
-        param.args[1] = msgPush.updateOperationInfo(newOpInfoBytes).toByteArray()
+        val newMsgBody = msg.messageBody.copy(operationInfo = newOpBytes)
+        val newMsg = msg.copy(messageBody = newMsgBody)
+        val newPush = msgPush.copy(qqMessage = newMsg)
 
-        // 触发撤回提示
-        showC2CRecallTip(operatorUid, operationInfo.info.msgSeq)
+        param.args[1] = ProtoBuf.encodeToByteArray(newPush)
+
+        showC2CRecallTip(operatorUid, info.msgSeq)
     }
 
-    private fun processGroupRecallPush(msgPush: MsgPushOuterClass.MsgPush, param: MethodHookParam) {
-        val fullOpBytes = msgPush.qqMessage.messageBody.operationInfo.toByteArray()
+    private fun processGroupRecallPush(msgPush: MsgPush, param: MethodHookParam) {
+        val msg = msgPush.qqMessage ?: return
+        val fullOpBytes = msg.messageBody?.operationInfo ?: return
 
-        // 分离头部和主体 (Header 7 bytes + Protobuf Body)
         if (fullOpBytes.size <= GROUP_OP_HEADER_SIZE) return
         val headerBytes = fullOpBytes.copyOfRange(0, GROUP_OP_HEADER_SIZE)
         val bodyBytes = fullOpBytes.copyOfRange(GROUP_OP_HEADER_SIZE, fullOpBytes.size)
 
-        val operationInfo = QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(bodyBytes)
+        val operationInfo = ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.GroupRecallOperationInfo>(bodyBytes)
+        val info = operationInfo.info ?: return
 
-        val operatorUid = operationInfo.info.operatorUid
-        if (operatorUid == QQInterfaces.currentUid) return // 操作者是自己则不拦截
+        val operatorUid = info.operatorUid
+        if (operatorUid == QQInterfaces.currentUid) return
 
-        // 使撤回失效
-        val modifiedBodyBytes = operationInfo.toBuilder().apply {
-            msgSeq = 1
-            info = info.toBuilder().apply {
-                msgInfo = msgInfo.toBuilder().setMsgSeq(1).build()
-            }.build()
-        }.build().toByteArray()
+        val newMsgInfo = info.msgInfo?.copy(msgSeq = 1)
+        val newInfo = info.copy(msgInfo = newMsgInfo)
+        val newOp = operationInfo.copy(msgSeq = 1, info = newInfo)
 
-        // 重新拼接 Header + Modified Body
+        val modifiedBodyBytes = ProtoBuf.encodeToByteArray(newOp)
         val newFullOpBytes = headerBytes + modifiedBodyBytes
 
-        param.args[1] = msgPush.updateOperationInfo(newFullOpBytes).toByteArray()
+        val newMsgBody = msg.messageBody.copy(operationInfo = newFullOpBytes)
+        val newMsg = msg.copy(messageBody = newMsgBody)
+        val newPush = msgPush.copy(qqMessage = newMsg)
 
-        // 触发撤回提示
+        param.args[1] = ProtoBuf.encodeToByteArray(newPush)
+
         showGroupRecallTip(operationInfo)
     }
 
-    private fun processFlashPicPush(msgPush: MsgPushOuterClass.MsgPush) {
-        val contentList = msgPush.qqMessage.messageBody.richMsg.msgContentList
-
-        // 检查是否包含闪照特定字段 (mtType == 3)
-        val isFlashPic = contentList.getOrNull(2)?.myCustomField?.mtType == 3
-
+    private fun processFlashPicPush(msgPush: MsgPush) {
+        val list = msgPush.qqMessage?.messageBody?.richMsg?.msgContent.orEmpty()
+        val isFlashPic = list.any { it.myCustomField?.mtType == 3 }
         if (isFlashPic) {
-            showFlashPicTip(msgPush.qqMessage)
+            val msg = msgPush.qqMessage ?: return
+            showFlashPicTip(msg)
         }
     }
-
-    // 灰条提示方法
 
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
         GlobalScope.launchWithCatch {
@@ -191,14 +177,13 @@ object AioListener {
         }
     }
 
-    private fun showGroupRecallTip(operationInfo: QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo) {
+    private fun showGroupRecallTip(operationInfo: QQMessage.MessageBody.GroupRecallOperationInfo) {
         GlobalScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId
-            val msgSeq = operationInfo.info.msgInfo.msgSeq
+            val msgSeq = operationInfo.info?.msgInfo?.msgSeq ?: return@launchWithCatch
             val targetUid = operationInfo.info.msgInfo.senderUid
             val operatorUid = operationInfo.info.operatorUid
 
-            // 获取昵称
             val targetNick = getMemberDisplayName(groupPeerId, targetUid)
             val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
 
@@ -222,13 +207,13 @@ object AioListener {
         }
     }
 
-    private fun showFlashPicTip(msg: QQMessageOuterClass.QQMessage) {
+    private fun showFlashPicTip(msg: QQMessage) {
         GlobalScope.launchWithCatch {
             delay(233L)
-            val operatorUid = msg.messageHead.senderUid
+            val operatorUid = msg.messageHead?.senderUid.orEmpty()
             if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
 
-            val msgSeq = msg.messageContentInfo.msgSeqId
+            val msgSeq = msg.messageContentInfo?.msgSeqId ?: return@launchWithCatch
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
 
             LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
@@ -238,11 +223,6 @@ object AioListener {
         }
     }
 
-    // 工具方法
-
-    /**
-     * 获取群成员显示名称 (群名片 -> 昵称 -> UID)
-     */
     private suspend fun getMemberDisplayName(groupPeerId: Long, uid: String): String {
         val uin = ContactHelper.getUinByUidAsync(uid)
         if (uin.isEmpty()) return uid
@@ -252,31 +232,13 @@ object AioListener {
             ?: uid
     }
 
-    /**
-     * 提取 C2C 撤回信息
-     */
-    private fun extractC2CRecallInfo(qqMessage: QQMessageOuterClass.QQMessage): Pair<String, Long>? {
-        return try {
-            val opInfo = qqMessage.messageBody.operationInfo
-            val c2cRecall = QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfo)
-            val msgSeq = c2cRecall.info.msgSeq.toLong()
-            val senderUid = qqMessage.messageHead.senderUid
-            senderUid to msgSeq
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    /**
-     * 快速替换 MsgPush 中的 OperationInfo
-     */
-    private fun MsgPushOuterClass.MsgPush.updateOperationInfo(newBytes: ByteArray): MsgPushOuterClass.MsgPush {
-        return this.toBuilder().apply {
-            qqMessage = qqMessage.toBuilder().apply {
-                messageBody = messageBody.toBuilder().apply {
-                    setOperationInfo(ByteString.copyFrom(newBytes))
-                }.build()
-            }.build()
-        }.build()
+    private fun extractC2CRecallInfo(qqMessage: QQMessage): Pair<String, Long>? {
+        return runCatching {
+            val opBytes = qqMessage.messageBody?.operationInfo ?: return null
+            val recall = ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.C2CRecallOperationInfo>(opBytes)
+            val info = recall.info ?: return null
+            val senderUid = qqMessage.messageHead?.senderUid ?: return null
+            senderUid to info.msgSeq.toLong()
+        }.getOrNull()
     }
 }

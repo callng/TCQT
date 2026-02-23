@@ -16,9 +16,8 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.1.16"
 kotlinx-serialization = "1.10.0"
 
-# Google / Protobuf
-protobuf-plugin = "0.9.6"
-protobuf-lib = "4.33.5"
+# Protobuf
+protobuf = "4.33.5"
 
 # Xposed
 xposed = "82"
@@ -36,13 +35,13 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 # KotlinX
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-io-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-jvm", version.ref = "kotlinx-io" }
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 
 # Google / Protobuf
 ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
-protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-lib" }
-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf-lib" }
+protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
 
 # Xposed
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
@@ -57,6 +56,3 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-
-# Google
-protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
