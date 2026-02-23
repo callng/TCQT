@@ -9,7 +9,7 @@ androidx-constraintlayout = "2.2.1"
 
 # Kotlin
 kotlin = "2.3.10"
-ksp = "2.3.5"
+ksp = "2.3.6"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"
