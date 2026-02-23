@@ -2,6 +2,8 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.os.Parcelable
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -11,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -21,6 +24,8 @@ import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.reflect.FieldUtils
+import com.owo233.tcqt.utils.reflect.new
 import com.tencent.qqnt.aio.widget.AIOMsgTextView
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
@@ -45,8 +50,8 @@ class AitChameleon : IAction, OnAIOViewUpdate {
     companion object {
         private const val TAG_KEY_MSG = -0x7E00_0001
         private const val TAG_KEY_GUARD = -0x7E00_0002
-        private const val COLOR_GOLD = 0xFFFFD700.toInt()
-        private const val COLOR_GOLD_2 = 0x88000000.toInt()
+        private const val COLOR_MENTION = 0xFF448AFF.toInt()
+        private const val COLOR_SHADOW = 0x44000000
     }
 
     override val key: String get() = GeneratedSettingList.AIT_CHAMELEON
@@ -115,6 +120,22 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         val context = view.context
 
         runCatching {
+            val allInOne = "com.tencent.mobileqq.profilecard.data.AllInOne"
+                .toHostClass()
+                .new(uid.toString(), 20)
+
+            FieldUtils.create(allInOne).apply {
+                named("uid").setValue(ntUid)
+                named("troopUin").setValue(peerId)
+                named("troopCode").setValue(peerId)
+                named("profileEntryType").setValue(1)
+                named("subSourceId").setValue(11)
+                named("extras").setValue(Bundle().apply {
+                    putInt("enter_page_sourceid", 1)
+                    putInt("enter_page_subsourceid", 11)
+                })
+            }
+
             val intent = Intent().apply {
                 setClassName(
                     context,
@@ -123,6 +144,7 @@ class AitChameleon : IAction, OnAIOViewUpdate {
                 )
                 putExtra("memberUin", uid.toString())
                 putExtra("troopUin", peerId)
+                putExtra("AllInOne", allInOne as Parcelable)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
@@ -163,8 +185,8 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         override fun onClick(widget: View) = click(widget, peerId, uid, ntUid, display)
         override fun updateDrawState(ds: android.text.TextPaint) {
             ds.isUnderlineText = false
-            ds.color = COLOR_GOLD
-            ds.setShadowLayer(1.5f, 1f, 1f, COLOR_GOLD_2)
+            ds.color = COLOR_MENTION
+            // ds.setShadowLayer(1.2f, 0.8f, 0.8f, COLOR_SHADOW)
         }
     }
 }
