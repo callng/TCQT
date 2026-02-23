@@ -8,6 +8,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.hooks.func.activity.AitChameleon
 import com.owo233.tcqt.hooks.func.activity.ShowMsgInfo
 import com.owo233.tcqt.utils.MethodHookParam
 import com.owo233.tcqt.utils.hookAfterMethod
@@ -25,7 +26,8 @@ class AIOViewUpdate : AlwaysRunAction() {
     private val mviStateClass by lazy { "com.tencent.mvi.base.mvi.MviUIState".toHostClass() }
 
     private val decorators: Array<OnAIOViewUpdate> = arrayOf(
-        ShowMsgInfo()
+        ShowMsgInfo(),
+        AitChameleon()
     )
 
     override fun onRun(ctx: Context, process: ActionProcess) {

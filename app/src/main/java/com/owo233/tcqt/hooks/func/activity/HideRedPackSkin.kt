@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.paramCount
     desc = "隐藏点击红包按钮后出现的红包皮肤推荐。",
     uiTab = "界面"
 )
-class HideRedPackSkin : IAction{
+class HideRedPackSkin : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
