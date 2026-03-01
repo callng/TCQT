@@ -9,10 +9,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.getObjectField
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.setObjectField
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
 import java.io.File
@@ -47,23 +46,25 @@ class RenameBaseApk : IAction {
     private fun renameGroupUploadApk(ctx: Context) {
         val clz = load("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
             ?: error("renameGroupUploadApk: 找不到TroopFileTransferMgr类!!!")
-        val method = clz.declaredMethods.firstOrNull {
-            it.returnType == Void.TYPE && it.paramCount == 2 &&
-                    it.parameterTypes[0] == Long::class.javaPrimitiveType &&
-                    it.parameterTypes[1].name.contains($$"TroopFileTransferManager$Item")
+
+        val method = clz.declaredMethods.firstOrNull { m ->
+            val params = m.parameterTypes
+            m.returnType == Void.TYPE && params.any { it.name.contains("Item") } &&
+                    (params.size == 1 || (params.size == 2 && params[0] == Long::class.javaPrimitiveType))
         } ?: error("renameGroupUploadApk: 没有找到合适的方法!!!")
 
         method.hookBeforeMethod { param ->
-            val item = param.args[1]
+            val item = param.args.firstOrNull { it?.javaClass?.name?.contains("Item") == true }
+                ?: return@hookBeforeMethod
+
             val fileName = item.getObjectField("FileName") as? String ?: return@hookBeforeMethod
             val localFile = item.getObjectField("LocalFile") as? String ?: return@hookBeforeMethod
 
             if (!fileName.endsWith(".apk")) return@hookBeforeMethod
-            File(localFile).also {
-                if (!it.exists()) {
-                    Log.e("renameGroupUploadApk: File not exists: $localFile")
-                    return@hookBeforeMethod
-                }
+
+            if (!File(localFile).exists()) {
+                Log.e("renameGroupUploadApk: File not exists: $localFile")
+                return@hookBeforeMethod
             }
 
             val newFileName = getFormattedFileNameByPath(ctx, localFile)
