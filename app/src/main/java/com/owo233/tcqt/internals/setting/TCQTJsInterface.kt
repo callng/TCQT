@@ -109,8 +109,8 @@ class TCQTJsInterface(private val ctx: Context) {
     }
 
     @JavascriptInterface
-    fun openUrlInDefaultBrowser(url: String) {
-        if (!openTelegramChannel()) {
+    fun openUrlInDefaultBrowser(url: String, isSkip: Boolean) {
+        if (!openTelegramChannel(isSkip)) {
             runCatching {
                 if (!url.contains(TCQTBuild.OPEN_SOURCE)) {
                     Toasts.error("尝试打开不支持的链接!")
@@ -137,7 +137,9 @@ class TCQTJsInterface(private val ctx: Context) {
     }
 
     @JavascriptInterface
-    fun openTelegramChannel(): Boolean {
+    fun openTelegramChannel(isSkip: Boolean): Boolean {
+        if (isSkip) return false
+
         val tgIntent = Intent(Intent.ACTION_VIEW).apply {
             data = "tg://resolve?domain=${TCQTBuild.TG_GROUP}".toUri()
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
