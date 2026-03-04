@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.ext.runOnce
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.helper.message.AioListenerDispatcher
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
@@ -30,14 +31,14 @@ object NTServiceFetcher {
             ByteArray::class.java,
             PushExtraInfo::class.java
         ) {
-            val cmd = it.args[0] as? String ?: return@hookBeforeMethod
-            val buffer = it.args[1] as? ByteArray ?: return@hookBeforeMethod
+            val cmd = it.args[0] as String
+            val buffer = it.args[1] as ByteArray
             when(cmd) {
                 "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
-                    AioListener.handleInfoSyncPush(buffer, it)
+                    AioListenerDispatcher.handleInfoSyncPush(buffer, it)
                 }
                 "trpc.msg.olpush.OlPushService.MsgPush" -> {
-                    AioListener.handleMsgPush(buffer, it)
+                    AioListenerDispatcher.handleMsgPush(buffer, it)
                 }
             }
         }
