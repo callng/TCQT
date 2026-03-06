@@ -39,7 +39,8 @@ internal object ActionManager {
             ActionProcess.MAIN,
             ActionProcess.TOOL,
             ActionProcess.OPENSDK,
-            ActionProcess.QZONE
+            ActionProcess.QZONE,
+            ActionProcess.QQFAV
         )
 
         FIRST_ACTION.forEach { actionClass ->

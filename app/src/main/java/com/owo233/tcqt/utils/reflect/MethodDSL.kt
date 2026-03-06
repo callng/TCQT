@@ -52,6 +52,8 @@ class MethodSearcher internal constructor(
     val intent: Class<*> get() = android.content.Intent::class.java
     val view: Class<*> get() = android.view.View::class.java
 
+    val classLoader: Class<*> get() = ClassLoader::class.java
+
     /* ---------- array shortcuts ---------- */
     val byteArr: Class<*> get() = ByteArray::class.java
     val intArr: Class<*> get() = IntArray::class.java
