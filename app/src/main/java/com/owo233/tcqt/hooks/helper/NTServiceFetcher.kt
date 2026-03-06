@@ -30,8 +30,8 @@ object NTServiceFetcher {
             ByteArray::class.java,
             PushExtraInfo::class.java
         ) {
-            val cmd = it.args[0] as? String ?: return@hookBeforeMethod
-            val buffer = it.args[1] as? ByteArray ?: return@hookBeforeMethod
+            val cmd = it.args[0] as String
+            val buffer = it.args[1] as ByteArray
             when(cmd) {
                 "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
                     AioListener.handleInfoSyncPush(buffer, it)
