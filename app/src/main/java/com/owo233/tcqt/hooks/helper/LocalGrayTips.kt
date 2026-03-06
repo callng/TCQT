@@ -18,27 +18,21 @@ import com.tencent.qqnt.kernel.nativeinterface.JsonGrayElement as JGE
 import com.tencent.qqnt.kernelpublic.nativeinterface.JsonGrayElement as PJGE
 
 object LocalGrayTips {
-    private const val TYPE_NOR = "nor"
-    private const val TYPE_QQ = "qq"
-    private const val TYPE_URL = "url"
-    private const val TYPE_IMG = "img"
-    private const val DEFAULT_COL = "1"
-    private const val LINK_COL = "3"
 
-    private val module = SerializersModule {
-        polymorphic(GrayTipItem::class) {
-            subclass(Text::class)
-            subclass(MemberRef::class)
-            subclass(Url::class)
-            subclass(Image::class)
+    private val module by lazy {
+        SerializersModule {
+            polymorphic(GrayTipItem::class) {
+                subclass(Text::class)
+                subclass(MemberRef::class)
+                subclass(Url::class)
+                subclass(Image::class)
+            }
         }
     }
 
     private val format by lazy {
         Json {
             serializersModule = module
-            encodeDefaults = true
-            ignoreUnknownKeys = true
             classDiscriminator = "_type"
         }
     }
@@ -50,65 +44,72 @@ object LocalGrayTips {
         builder: Builder.() -> Unit
     ) {
         runCatching {
-            val (showText, jsonObject) = Builder().apply(builder).build(align)
-            val jsonString = jsonObject.toString()
+            val json = Builder().apply(builder).build(align)
             val msgService = QQInterfaces.msgService
-
-            val busiIdLong = busiId.toLong()
-
             when (contact) {
                 is MapleContact.Contact -> {
-                    val element = JGE(busiIdLong, jsonString, showText, false, null)
+                    val element = JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
                     msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
-                        if (result != 0) Log.e("addLocalJsonGrayTipMsg failed: $result")
+                        if (result != 0) {
+                            Log.e("addLocalJsonGrayTipMsg failed, result: $result")
+                        }
                     }
                 }
                 is MapleContact.PublicContact -> {
-                    val element = PJGE(busiIdLong, jsonString, showText, false, null)
+                    val element = PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
                     msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
-                        if (result != 0) Log.e("addLocalJsonGrayTipMsg failed: $result")
+                        if (result != 0) {
+                            Log.e("addLocalJsonGrayTipMsg failed, result: $result")
+                        }
                     }
                 }
             }
         }.onFailure {
-            Log.e("addLocalGrayTip fatal error", it)
+            Log.e("addLocalGrayTip failed", it)
         }
     }
 
     class Builder {
-        private val items = ArrayList<GrayTipItem>()
+        private val items = mutableListOf<GrayTipItem>()
         private val showText = StringBuilder()
 
-        fun text(string: String, col: String = DEFAULT_COL) = apply {
+        fun text(string: String, col: String = "1") = apply {
             items.add(Text(string, col))
             showText.append(string)
         }
 
-        fun member(uid: String, uin: String, nick: String, col: String = LINK_COL) = apply {
+        fun member(uid: String, uin: String, nick: String, col: String = "3") = apply {
             items.add(MemberRef(uid, uid, uin, "0", nick, col))
             showText.append(nick)
         }
 
-        fun msgRef(text: String, seq: Long, col: String = LINK_COL) = apply {
-            val param = mapOf("seq" to seq).json.asJsonObject
-            items.add(Url(text, 58, param, col))
-            showText.append(text)
+        fun msgRef(text: String, seq: Long, col: String = "3") = apply {
+            items.add(Url(
+                text = text,
+                jp = 58,
+                param = mapOf("seq" to seq).json.asJsonObject,
+                col = col
+            ))
         }
 
-        fun imageJump(url: String, alt: String, jumpUrl: String = url, col: String = LINK_COL) = apply {
-            val param = mapOf("url" to jumpUrl).json.asJsonObject
-            items.add(Image(url, alt, 58, param, col))
+        fun imageJump(url: String, alt: String, jumpUrl: String = url, col: String = "3") = apply {
+            items.add(Image(
+                src = url,
+                alt = alt,
+                jp = 58,
+                param = mapOf("url" to jumpUrl).json.asJsonObject,
+                col = col
+            ))
             showText.append(alt)
         }
 
-        fun image(url: String, alt: String, col: String = LINK_COL) = apply {
-            items.add(Image(url, alt, col = col))
+        fun image(url: String, alt: String, col: String = "3") = apply {
+            items.add(Image(src = url, alt = alt, col = col))
             showText.append(alt)
         }
 
-        fun build(align: Align): Pair<String, JsonObject> {
-            val grayTip = GrayTip(align, items)
-            return showText.toString() to format.encodeToJsonElement(grayTip).asJsonObject
+        fun build(align: Align = Align.CENTER): Pair<String, JsonObject> {
+            return showText.toString() to format.encodeToJsonElement(GrayTip(align, items)).asJsonObject
         }
     }
 
@@ -119,48 +120,44 @@ object LocalGrayTips {
     )
 
     @Serializable
-    sealed class GrayTipItem
+    sealed class GrayTipItem(@SerialName("type") val type: String)
 
+    @SerialName("_text")
     @Serializable
-    @SerialName("text_item")
     data class Text(
         @SerialName("txt") val text: String,
-        @SerialName("col") val col: String = DEFAULT_COL,
-        @SerialName("type") val type: String = TYPE_NOR
-    ) : GrayTipItem()
+        @SerialName("col") val col: String = "1"
+    ) : GrayTipItem("nor")
 
+    @SerialName("_member")
     @Serializable
-    @SerialName("member_item")
     data class MemberRef(
         @SerialName("uid") val uid: String,
         @SerialName("jp") val jp: String,
         @SerialName("uin") val uin: String,
         @SerialName("tp") val tp: String,
         @SerialName("nm") val nick: String,
-        @SerialName("col") val col: String,
-        @SerialName("type") val type: String = TYPE_QQ
-    ) : GrayTipItem()
+        @SerialName("col") val col: String
+    ) : GrayTipItem("qq")
 
+    @SerialName("_url")
     @Serializable
-    @SerialName("url_item")
     data class Url(
         @SerialName("txt") val text: String,
         @SerialName("local_jp") val jp: Int,
         @SerialName("param") val param: JsonObject,
-        @SerialName("col") val col: String,
-        @SerialName("type") val type: String = TYPE_URL
-    ) : GrayTipItem()
+        @SerialName("col") val col: String
+    ) : GrayTipItem("url")
 
+    @SerialName("_img")
     @Serializable
-    @SerialName("img_item")
     data class Image(
         @SerialName("src") val src: String,
         @SerialName("alt") val alt: String,
         @SerialName("local_jp") val jp: Int? = null,
         @SerialName("param") val param: JsonObject? = null,
-        @SerialName("col") val col: String,
-        @SerialName("type") val type: String = TYPE_IMG
-    ) : GrayTipItem()
+        @SerialName("col") val col: String
+    ) : GrayTipItem("img")
 
     @Serializable
     enum class Align {
