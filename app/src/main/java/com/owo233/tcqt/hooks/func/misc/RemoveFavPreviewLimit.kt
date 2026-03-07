@@ -33,8 +33,6 @@ class RemoveFavPreviewLimit : PluginHook() {
     override val pluginID: String
         get() = "qqfav.apk"
 
-    override fun onRun(ctx: Context, process: ActionProcess) = Unit
-
     override fun canRun(): Boolean {
         return HookEnv.isQQ() && HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
     }

@@ -70,6 +70,8 @@ abstract class PluginHook : IAction {
     @Throws(Throwable::class)
     abstract fun startHook(classLoader: ClassLoader)
 
+    override fun onRun(ctx: Context, process: ActionProcess) = Unit
+
     override fun initOnce(): Boolean {
         if (disablePluginHook) {
             Log.e("pluginHook Unsupported versions")

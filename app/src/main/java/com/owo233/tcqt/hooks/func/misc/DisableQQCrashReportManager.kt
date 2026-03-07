@@ -1,4 +1,4 @@
-package com.owo233.tcqt.hooks.func.test
+package com.owo233.tcqt.hooks.func.misc
 
 import android.content.Context
 import com.owo233.tcqt.HookEnv
@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.paramCount
     name = "禁用QQ崩溃报告管理器",
     type = SettingType.BOOLEAN,
     desc = "没有实际意义的功能，仅供测试使用。",
-    uiTab = "调试"
+    uiTab = "杂项"
 )
 class DisableQQCrashReportManager : IAction {
 

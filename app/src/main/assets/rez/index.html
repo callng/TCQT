@@ -97,7 +97,8 @@
         body {
             margin: 0;
             padding: 0;
-            padding-bottom: var(--kbd);
+            padding-bottom: calc(var(--kbd) + env(safe-area-inset-bottom, 0px));
+            min-height: 100dvh;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--md-sys-color-background);
             color: var(--md-sys-color-on-background);
@@ -106,7 +107,6 @@
             transition: background-color var(--transition-standard), color var(--transition-standard);
         }
 
-        /* Icons */
         .icon {
             fill: currentColor;
             display: inline-block;
@@ -137,7 +137,6 @@
             pointer-events: none;
         }
 
-        /* 高性能背景 */
         .app-background {
             position: fixed;
             inset: 0;
@@ -154,7 +153,6 @@
                 radial-gradient(circle at 85% 90%, rgba(109, 213, 140, 0.1) 0%, transparent 40%);
         }
 
-        /* 加载动画 */
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -204,7 +202,6 @@
             }
         }
 
-        /* 布局 */
         .app-container {
             max-width: 600px;
             margin: 0 auto;
@@ -219,7 +216,6 @@
             transform: translateY(0);
         }
 
-        /* 头部 */
         .app-header {
             margin-bottom: 24px;
             text-align: center;
@@ -308,7 +304,6 @@
             background-color: var(--md-sys-color-surface-variant);
         }
 
-        /* 导航 */
         .sticky-nav-wrapper {
             position: sticky;
             top: 0;
@@ -386,7 +381,6 @@
             background: var(--md-sys-color-surface-variant);
         }
 
-        /* 搜索栏 */
         .search-bar-container {
             position: absolute;
             inset: 0;
@@ -447,14 +441,12 @@
             padding: 0 2px;
         }
 
-        /* 列表容器 */
         .feature-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        /* 卡片特效 (Material 3 Accordion) */
         .feature-item {
             background: var(--md-sys-color-surface);
             border-radius: var(--md-sys-shape-corner-medium);
@@ -520,7 +512,6 @@
             white-space: nowrap;
         }
 
-        /* 展开内容 */
         .feature-content-wrapper {
             display: grid;
             grid-template-rows: 0fr;
@@ -551,7 +542,6 @@
             line-height: 1.5;
         }
 
-        /* Switch 开关 */
         .switch-wrapper {
             position: relative;
             display: inline-block;
@@ -613,7 +603,6 @@
             cursor: not-allowed;
         }
 
-        /* Radio & Checkbox Options */
         .options-group {
             display: flex;
             flex-direction: column;
@@ -654,7 +643,6 @@
             color: var(--md-sys-color-on-surface);
         }
 
-        /* Textarea */
         .input-group {
             display: flex;
             flex-direction: column;
@@ -682,7 +670,6 @@
             box-shadow: 0 0 0 1px var(--md-sys-color-primary) inset;
         }
 
-        /* 空状态 */
         .empty-state {
             text-align: center;
             padding: 48px 16px;
@@ -700,7 +687,6 @@
             font-size: 0.875rem;
         }
 
-        /* 底部 */
         .app-footer {
             margin-top: 32px;
             text-align: center;
@@ -729,7 +715,6 @@
             margin-top: 16px;
         }
 
-        /* FAB */
         .fab {
             position: fixed;
             right: 24px;
@@ -768,12 +753,6 @@
             animation: fabPulse 2s infinite;
         }
 
-        .fab.keyboard-hidden {
-            transform: scale(0.92) translateY(8px) !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-
         @keyframes fabPulse {
             0% {
                 box-shadow: 0 0 0 0 rgba(10, 86, 217, 0.4);
@@ -806,7 +785,6 @@
             }
         }
 
-        /* Toast */
         .toast-container {
             position: fixed;
             bottom: 100px;
@@ -874,7 +852,7 @@
 
 <div id="app-container" class="app-container">
     <header class="app-header">
-        <div class="header-content">
+        <div>
             <h1 class="page-title">模块功能配置</h1>
             <div class="version-badges">
                 <div class="badge badge-host" id="hostVersionBadge">
@@ -909,7 +887,7 @@
 
     <div class="sticky-nav-wrapper">
         <nav id="tab-navigation-wrapper" class="tab-navigation-wrapper">
-            <div id="tab-navigation" class="tab-navigation scroll-hide"></div>
+            <div id="tab-navigation" class="tab-navigation"></div>
             <button id="btn-search" class="icon-btn search-trigger" aria-label="搜索">
                 <svg class="icon icon-md" viewBox="0 0 16 16">
                     <path
@@ -958,8 +936,7 @@
     </footer>
 </div>
 
-<!-- 悬浮保存按钮，支持长按清空 -->
-<button id="btnSave" class="fab md3-elevation-3 disabled" aria-label="保存设置" title="长按清空配置">
+<button id="btnSave" class="fab disabled" aria-label="保存设置" title="长按清空配置">
     <svg class="icon" viewBox="0 0 16 16" width="24" height="24">
         <path
                 d="M0 1.5A1.5 1.5 0 0 1 1.5 0H3v5.5A1.5 1.5 0 0 0 4.5 7h7A1.5 1.5 0 0 0 13 5.5V0h.086a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5H14v-5.5A1.5 1.5 0 0 0 12.5 9h-9A1.5 1.5 0 0 0 2 10.5V16h-.5A1.5 1.5 0 0 1 0 14.5v-13Z" />
@@ -974,40 +951,176 @@
     'use strict';
 
     class TCQTService {
-        get isAvailable() { return typeof TCQT !== 'undefined'; }
+        constructor() {
+            this._settingCache = new Map();
+        }
+
+        get isAvailable() {
+            return typeof TCQT !== 'undefined';
+        }
+
         getHostInfo() {
             if (!this.isAvailable) return null;
-            try { return { name: TCQT.getHostName() || 'QQ', version: TCQT.getHostVersion() || '未知', channel: TCQT.getHostChannel() || '' }; }
-            catch (e) { return null; }
+            try {
+                return {
+                    name: TCQT.getHostName() || 'QQ',
+                    version: TCQT.getHostVersion() || '未知',
+                    channel: TCQT.getHostChannel() || ''
+                };
+            } catch (e) {
+                return null;
+            }
         }
+
         getModuleInfo() {
             if (!this.isAvailable) return null;
-            try { return { name: TCQT.getModuleName() || 'TCQT', version: TCQT.getModuleVersion() || '未知' }; }
-            catch (e) { return null; }
+            try {
+                return {
+                    name: TCQT.getModuleName() || 'TCQT',
+                    version: TCQT.getModuleVersion() || '未知'
+                };
+            } catch (e) {
+                return null;
+            }
         }
+
         getFeaturesConfig() {
             if (!this.isAvailable) return [];
-            try { const cfg = JSON.parse(TCQT.getFeaturesConfig()); return Array.isArray(cfg) ? cfg.sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000)) : []; }
-            catch (e) { return []; }
+            try {
+                const cfg = JSON.parse(TCQT.getFeaturesConfig());
+                return Array.isArray(cfg) ? cfg : [];
+            } catch (e) {
+                return [];
+            }
         }
+
+        invalidateSetting(key) {
+            if (typeof key === 'string' && key.length > 0) {
+                this._settingCache.delete(key);
+            }
+        }
+
+        invalidateAllSettings() {
+            this._settingCache.clear();
+        }
+
         getSetting(key) {
             if (!this.isAvailable) return { value: false };
-            try { return JSON.parse(TCQT.getSetting(key)); } catch (e) { return { value: false }; }
+
+            if (this._settingCache.has(key)) {
+                return this._settingCache.get(key);
+            }
+
+            let result = { value: false };
+            try {
+                result = JSON.parse(TCQT.getSetting(key));
+            } catch (e) {
+                result = { value: false };
+            }
+
+            this._settingCache.set(key, result);
+            return result;
         }
-        saveBooleanSetting(k, v) { if (this.isAvailable) try { TCQT.saveValueB(k, v); return true; } catch (e) { return false; } return false; }
-        saveStringSetting(k, v) { if (this.isAvailable) try { TCQT.saveValueS(k, v); return true; } catch (e) { return false; } return false; }
-        saveIntSetting(k, v) { if (this.isAvailable) try { TCQT.saveValueI(k, v); return true; } catch (e) { return false; } return false; }
-        getEnabledActionCount() { return this.isAvailable ? TCQT.getEnabledActionCount() : 0; }
-        getDisabledActionCount() { return this.isAvailable ? TCQT.getDisabledActionCount() : 0; }
-        showToast(msg) { if (this.isAvailable) try { TCQT.toast(msg); return true; } catch (e) { return false; } return false; }
-        clearConfig() { if (this.isAvailable) try { TCQT.clear(); return true; } catch (e) { return false; } return false; }
-        exitApp() { if (this.isAvailable) try { TCQT.exitApp(); return true; } catch (e) { return false; } return false; }
-        openUrl(url, skip = false) { if (this.isAvailable) try { TCQT.openUrlInDefaultBrowser(url, skip); return true; } catch (e) { return false; } return false; }
+
+        getSettingValue(key, fallback = false) {
+            const setting = this.getSetting(key);
+            return setting && setting.value !== undefined ? setting.value : fallback;
+        }
+
+        setSettingCacheValue(key, value) {
+            this._settingCache.set(key, { value });
+        }
+
+        saveBooleanSetting(key, value) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.saveValueB(key, value);
+                this.setSettingCacheValue(key, value);
+                return true;
+            } catch (e) {
+                this.invalidateSetting(key);
+                return false;
+            }
+        }
+
+        saveStringSetting(key, value) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.saveValueS(key, value);
+                this.setSettingCacheValue(key, value);
+                return true;
+            } catch (e) {
+                this.invalidateSetting(key);
+                return false;
+            }
+        }
+
+        saveIntSetting(key, value) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.saveValueI(key, value);
+                this.setSettingCacheValue(key, value);
+                return true;
+            } catch (e) {
+                this.invalidateSetting(key);
+                return false;
+            }
+        }
+
+        getEnabledActionCount() {
+            return this.isAvailable ? TCQT.getEnabledActionCount() : 0;
+        }
+
+        getDisabledActionCount() {
+            return this.isAvailable ? TCQT.getDisabledActionCount() : 0;
+        }
+
+        showToast(msg) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.toast(msg);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        clearConfig() {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.clear();
+                this.invalidateAllSettings();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        exitApp() {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.exitApp();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        openUrl(url, skip = false) {
+            if (!this.isAvailable) return false;
+            try {
+                TCQT.openUrlInDefaultBrowser(url, skip);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
     }
 
     class AppState {
         constructor() {
             this.features = [];
+            this.featuresByTab = new Map();
             this.isInjected = false;
             this.currentTab = '';
             this.tabs = [];
@@ -1015,36 +1128,92 @@
             this.searchKey = '';
             this.pending = new Map();
         }
+
         setFeatures(list) {
-            this.features = list;
-            const set = new Set(list.map(f => f.uiTab || '基础'));
-            this.tabs = Array.from(set).sort((a, b) => {
-                if (a === '基础') return -1; if (b === '基础') return 1;
-                if (a === '调试') return 1; if (b === '调试') return -1;
-                if (a === '高级') return 1; if (b === '高级') return -1;
+            const sorted = (Array.isArray(list) ? list.slice() : [])
+                .sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
+
+            this.features = sorted.map((f, index) => {
+                const label = f.label || '';
+                const desc = f.desc || '';
+                const tab = f.uiTab || '基础';
+                const labelLower = label.toLowerCase();
+                const descLower = desc.toLowerCase();
+                return Object.assign({}, f, {
+                    _order: index,
+                    _tab: tab,
+                    _labelLower: labelLower,
+                    _descLower: descLower,
+                    _searchHaystack: `${labelLower} ${descLower}`.trim()
+                });
+            });
+
+            const tabSet = new Set();
+            const grouped = new Map();
+
+            this.features.forEach(f => {
+                tabSet.add(f._tab);
+                if (!grouped.has(f._tab)) grouped.set(f._tab, []);
+                grouped.get(f._tab).push(f);
+            });
+
+            this.featuresByTab = grouped;
+            this.tabs = Array.from(tabSet).sort((a, b) => {
+                if (a === '基础') return -1;
+                if (b === '基础') return 1;
+                if (a === '调试') return 1;
+                if (b === '调试') return -1;
+                if (a === '高级') return 1;
+                if (b === '高级') return -1;
                 return a.localeCompare(b, 'zh-CN');
             });
-            if (!this.currentTab && this.tabs.length) this.currentTab = this.tabs[0];
+
+            if ((!this.currentTab || !grouped.has(this.currentTab)) && this.tabs.length) {
+                this.currentTab = this.tabs[0];
+            }
         }
+
         getVisibleFeatures() {
             if (this.isSearch && this.searchKey.trim()) {
-                const k = this.searchKey.toLowerCase().trim();
-                return this.features.map(f => {
-                    const label = (f.label || '').toLowerCase(), desc = (f.desc || '').toLowerCase();
+                const k = this.searchKey.trim().toLowerCase();
+                const matched = [];
+
+                for (const f of this.features) {
                     let prio = 0;
-                    if (label === k || desc === k) prio = 3; else if (label.indexOf(k) > -1) prio = 2; else if (desc.indexOf(k) > -1) prio = 1;
-                    return prio > 0 ? Object.assign(Object.assign({}, f), { searchPriority: prio }) : null;
-                }).filter(Boolean).sort((a, b) => b.searchPriority - a.searchPriority || (a.uiOrder || 1000) - (b.uiOrder || 1000));
+                    if (f._labelLower === k || f._descLower === k) prio = 3;
+                    else if (f._labelLower.indexOf(k) > -1) prio = 2;
+                    else if (f._descLower.indexOf(k) > -1) prio = 1;
+
+                    if (prio > 0) {
+                        matched.push({ feature: f, prio });
+                    }
+                }
+
+                matched.sort((a, b) => b.prio - a.prio || a.feature._order - b.feature._order);
+                return matched.map(item => item.feature);
             }
-            return this.features.filter(f => (f.uiTab || '基础') === this.currentTab).sort((a, b) => (a.uiOrder || 1000) - (b.uiOrder || 1000));
+
+            return this.featuresByTab.get(this.currentTab) || [];
         }
-        savePending(key, type, val) {
+
+        savePending(key, type, value) {
             if (!this.pending.has(key)) this.pending.set(key, {});
-            this.pending.get(key)[type] = val;
+            this.pending.get(key)[type] = value;
         }
-        getPending(key, type) { return this.pending.has(key) && type in this.pending.get(key) ? this.pending.get(key)[type] : null; }
-        clearPending() { this.pending.clear(); }
-        hasPending() { return this.pending.size > 0; }
+
+        getPending(key, type) {
+            return this.pending.has(key) && type in this.pending.get(key)
+                ? this.pending.get(key)[type]
+                : null;
+        }
+
+        clearPending() {
+            this.pending.clear();
+        }
+
+        hasPending() {
+            return this.pending.size > 0;
+        }
     }
 
     class UIManager {
@@ -1058,186 +1227,354 @@
                 tabs: document.getElementById('tab-navigation'),
                 toast: document.getElementById('toast-container'),
                 btnSave: document.getElementById('btnSave'),
-                searchBar: document.getElementById('search-bar'),
                 searchInput: document.getElementById('search-input'),
                 btnSearch: document.getElementById('btn-search'),
                 searchBackBtn: document.getElementById('search-back-btn'),
                 navWrapper: document.getElementById('tab-navigation-wrapper')
             };
-        }
-        renderTabs(tabs, activeTab) {
-            this.els.tabs.innerHTML = '';
-            if (tabs.length <= 1) { this.els.tabs.style.display = 'none'; return; }
-            tabs.forEach(t => {
-                const btn = document.createElement('button');
-                btn.className = `tab-btn ${t === activeTab ? 'active' : ''}`;
-                btn.textContent = t;
-                btn.onclick = (e) => {
-                    this.app.switchTab(t);
-                    const scrollLeft = btn.offsetLeft - (this.els.tabs.clientWidth / 2) + (btn.clientWidth / 2);
-                    this.els.tabs.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-                };
-                this.els.tabs.appendChild(btn);
-            });
+
+            this._tabRenderSignature = '';
+            this._tabCenterKey = '';
+            this._featureNodeCache = new Map();
         }
 
-        highlight(text, k) {
-            if (!k || !text) return text;
-            const regex = new RegExp(`(${k.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
+        scrollTabToCenter(btn, behavior = 'auto') {
+            if (!btn || !this.els.tabs) return;
+            const tabsEl = this.els.tabs;
+            const target = btn.offsetLeft - ((tabsEl.clientWidth - btn.clientWidth) / 2);
+            const max = Math.max(0, tabsEl.scrollWidth - tabsEl.clientWidth);
+            const left = Math.max(0, Math.min(target, max));
+            tabsEl.scrollTo({ left, behavior });
+        }
+
+        renderTabs(tabs, activeTab) {
+            const signature = `${tabs.join('\u0001')}__${activeTab}`;
+            const needRebuild = this._tabRenderSignature !== signature;
+
+            if (tabs.length <= 1) {
+                this.els.tabs.style.display = 'none';
+                this._tabRenderSignature = signature;
+                return;
+            }
+
+            this.els.tabs.style.display = 'flex';
+
+            if (needRebuild) {
+                const frag = document.createDocumentFragment();
+
+                tabs.forEach(t => {
+                    const btn = document.createElement('button');
+                    btn.className = `tab-btn ${t === activeTab ? 'active' : ''}`;
+                    btn.textContent = t;
+                    btn.dataset.tab = t;
+                    frag.appendChild(btn);
+                });
+
+                this.els.tabs.innerHTML = '';
+                this.els.tabs.appendChild(frag);
+                this._tabRenderSignature = signature;
+            } else {
+                const btns = this.els.tabs.querySelectorAll('.tab-btn');
+                btns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === activeTab);
+                });
+            }
+
+            const centerKey = `${activeTab}__${tabs.length}`;
+            if (this._tabCenterKey !== centerKey) {
+                const activeBtn = this.els.tabs.querySelector('.tab-btn.active');
+                this.scrollTabToCenter(activeBtn, 'auto');
+                this._tabCenterKey = centerKey;
+            }
+        }
+
+        createHighlighter(keyword) {
+            const k = (keyword || '').trim();
+            if (!k) return text => text || '';
+
+            const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escaped})`, 'gi');
+
+            return text => {
+                if (!text) return '';
+                return text.replace(regex, '<span class="highlight">$1</span>');
+            };
+        }
+
+        createFeatureNode(feature) {
+            const item = document.createElement('div');
+            item.className = 'feature-item';
+            item.dataset.expandable = '0';
+            item.dataset.manualExpanded = '0';
+
+            const header = document.createElement('div');
+            header.className = 'feature-header';
+
+            const titleWrap = document.createElement('div');
+            titleWrap.className = 'feature-title-wrap';
+
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            icon.setAttribute('class', 'icon icon-sm feature-icon-toggle');
+            icon.setAttribute('viewBox', '0 0 16 16');
+            icon.setAttribute('aria-hidden', 'true');
+
+            const iconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            iconPath.setAttribute('fill-rule', 'evenodd');
+            iconPath.setAttribute('d', 'M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z');
+            icon.appendChild(iconPath);
+
+            const title = document.createElement('span');
+            title.className = 'feature-title';
+
+            titleWrap.appendChild(icon);
+            titleWrap.appendChild(title);
+
+            const switchWrap = document.createElement('label');
+            switchWrap.className = 'switch-wrapper';
+
+            const switchInput = document.createElement('input');
+            switchInput.type = 'checkbox';
+            switchInput.dataset.role = 'switch';
+            switchInput.dataset.settingKey = feature.key;
+
+            const switchTrack = document.createElement('span');
+            switchTrack.className = 'switch-track';
+
+            switchWrap.appendChild(switchInput);
+            switchWrap.appendChild(switchTrack);
+
+            header.appendChild(titleWrap);
+            header.appendChild(switchWrap);
+            item.appendChild(header);
+
+            const contentWrap = document.createElement('div');
+            contentWrap.className = 'feature-content-wrapper';
+
+            const content = document.createElement('div');
+            content.className = 'feature-content';
+
+            let descEl = null;
+            if (feature.desc) {
+                descEl = document.createElement('div');
+                descEl.className = 'feature-desc';
+                content.appendChild(descEl);
+            }
+
+            let optionInputs = [];
+            if (feature.options && feature.options.length) {
+                const grp = document.createElement('div');
+                grp.className = 'options-group';
+
+                const optKey = feature.options[0].key;
+                const isMulti = !!feature.options[0].isMulti;
+
+                feature.options.forEach(opt => {
+                    const lbl = document.createElement('label');
+                    lbl.className = 'option-label';
+
+                    const input = document.createElement('input');
+                    input.type = isMulti ? 'checkbox' : 'radio';
+                    input.name = `opt-${feature.key}`;
+                    input.value = String(opt.value);
+                    input.dataset.role = 'option';
+                    input.dataset.settingKey = optKey;
+                    input.dataset.optionValue = String(opt.value);
+                    input.dataset.multi = isMulti ? '1' : '0';
+
+                    const text = document.createElement('span');
+                    text.className = 'option-text';
+                    text.textContent = opt.label;
+
+                    lbl.appendChild(input);
+                    lbl.appendChild(text);
+                    grp.appendChild(lbl);
+                    optionInputs.push(input);
+                });
+
+                content.appendChild(grp);
+            }
+
+            const textareaRefs = [];
+            if (feature.textareas && feature.textareas.length) {
+                const grp = document.createElement('div');
+                grp.className = 'input-group';
+
+                feature.textareas.forEach(ta => {
+                    const txt = document.createElement('textarea');
+                    txt.className = 'custom-textarea';
+                    txt.placeholder = ta.placeholder || '';
+                    txt.dataset.role = 'textarea';
+                    txt.dataset.settingKey = ta.key;
+                    grp.appendChild(txt);
+
+                    textareaRefs.push({
+                        key: ta.key,
+                        el: txt
+                    });
+                });
+
+                content.appendChild(grp);
+            }
+
+            contentWrap.appendChild(content);
+            item.appendChild(contentWrap);
+
+            const refs = {
+                item,
+                header,
+                title,
+                icon,
+                switchInput,
+                descEl,
+                optionInputs,
+                textareaRefs,
+                expandable: !!(feature.desc || (feature.options && feature.options.length) || (feature.textareas && feature.textareas.length))
+            };
+
+            item._refs = refs;
+            this._featureNodeCache.set(feature.key, item);
+            return item;
+        }
+
+        getFeatureNode(feature) {
+            if (this._featureNodeCache.has(feature.key)) {
+                return this._featureNodeCache.get(feature.key);
+            }
+            return this.createFeatureNode(feature);
+        }
+
+        updateFeatureNode(node, feature, context) {
+            const refs = node._refs;
+            const {
+                highlight,
+                normalizedKeyword,
+                isInjected,
+                getSettingValue,
+                index
+            } = context;
+
+            node.style.animationDelay = `${index * 18}ms`;
+
+            refs.title.innerHTML = highlight(feature.label || '');
+
+            if (refs.descEl) {
+                refs.descEl.innerHTML = highlight(feature.desc || '');
+            }
+
+            const expandable = refs.expandable;
+            node.dataset.expandable = expandable ? '1' : '0';
+            refs.icon.style.display = expandable ? '' : 'none';
+
+            const switchPending = this.app.state.getPending(feature.key, 'enabled');
+            const switchValue = switchPending !== null
+                ? switchPending
+                : !!getSettingValue(feature.key, false);
+
+            refs.switchInput.checked = switchValue;
+            refs.switchInput.disabled = !isInjected;
+
+            if (feature.options && feature.options.length && refs.optionInputs.length) {
+                const optKey = feature.options[0].key;
+                const isMulti = !!feature.options[0].isMulti;
+                const optPending = this.app.state.getPending(optKey, 'value');
+                const rawBaseValue = getSettingValue(optKey, isMulti ? 0 : feature.options[0].value);
+                const parsed = parseInt(rawBaseValue, 10);
+                const baseValue = Number.isNaN(parsed)
+                    ? (isMulti ? 0 : feature.options[0].value)
+                    : parsed;
+                const currentValue = optPending !== null ? optPending : baseValue;
+
+                refs.optionInputs.forEach(input => {
+                    const optValue = parseInt(input.dataset.optionValue, 10);
+                    if (isMulti) {
+                        input.checked = (currentValue & (1 << (optValue - 1))) !== 0;
+                    } else {
+                        input.checked = currentValue === optValue;
+                    }
+                    input.disabled = !isInjected;
+                });
+            }
+
+            if (refs.textareaRefs.length) {
+                refs.textareaRefs.forEach(ref => {
+                    const pendingValue = this.app.state.getPending(ref.key, 'value');
+                    const resolved = pendingValue !== null
+                        ? pendingValue
+                        : (getSettingValue(ref.key, '') || '');
+
+                    if (document.activeElement !== ref.el && ref.el.value !== resolved) {
+                        ref.el.value = resolved;
+                    }
+                    ref.el.disabled = !isInjected;
+                });
+            }
+
+            if (normalizedKeyword && expandable) {
+                node.classList.toggle('expanded', feature._searchHaystack.indexOf(normalizedKeyword) > -1);
+            } else {
+                node.classList.toggle('expanded', node.dataset.manualExpanded === '1');
+            }
         }
 
         renderFeatures(features, keyword = '') {
-            const frag = document.createDocumentFragment();
-            features.forEach((f, i) => {
-                const item = document.createElement('div');
-                item.className = 'feature-item';
-                item.style.animationDelay = `${i * 30}ms`;
+            const highlight = this.createHighlighter(keyword);
+            const normalizedKeyword = (keyword || '').trim().toLowerCase();
+            const isInjected = this.app.state.isInjected;
 
-                // Header
-                const header = document.createElement('div');
-                header.className = 'feature-header';
-                const titleWrap = document.createElement('div');
-                titleWrap.className = 'feature-title-wrap';
-
-                const isExpandable = (f.desc) || (f.options && f.options.length) || (f.textareas && f.textareas.length);
-
-                if (isExpandable) titleWrap.innerHTML += `<svg class="icon icon-sm feature-icon-toggle" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
-                const title = document.createElement('span');
-                title.className = 'feature-title';
-                title.innerHTML = this.highlight(f.label, keyword);
-                titleWrap.appendChild(title);
-
-                const switchWrap = document.createElement('label');
-                switchWrap.className = 'switch-wrapper';
-                switchWrap.innerHTML = `<input type="checkbox" id="switch-${f.key}" /><span class="switch-track"></span>`;
-
-                header.append(titleWrap, switchWrap);
-
-                if (isExpandable) {
-                    header.onclick = (e) => {
-                        if (e.target.tagName === 'INPUT' || e.target.closest('.switch-wrapper')) {
-                            return;
-                        }
-                        item.classList.toggle('expanded');
-                    };
+            const settingSnapshot = new Map();
+            const getSettingValue = (key, fallback) => {
+                if (settingSnapshot.has(key)) {
+                    return settingSnapshot.get(key);
                 }
-                item.appendChild(header);
+                const value = this.app.tcqt.getSettingValue(key, fallback);
+                settingSnapshot.set(key, value);
+                return value;
+            };
 
-                // Content
-                const contentWrap = document.createElement('div');
-                contentWrap.className = 'feature-content-wrapper';
-                const content = document.createElement('div');
-                content.className = 'feature-content';
+            const desiredNodes = [];
 
-                if (f.desc) {
-                    const desc = document.createElement('div');
-                    desc.className = 'feature-desc';
-                    desc.innerHTML = this.highlight(f.desc, keyword);
-                    content.appendChild(desc);
+            for (let i = 0; i < features.length; i++) {
+                const feature = features[i];
+                const node = this.getFeatureNode(feature);
+
+                this.updateFeatureNode(node, feature, {
+                    highlight,
+                    normalizedKeyword,
+                    isInjected,
+                    getSettingValue,
+                    index: i
+                });
+
+                desiredNodes.push(node);
+            }
+
+            const parent = this.els.list;
+            const visibleNodeSet = new Set(desiredNodes);
+
+            const currentChildren = Array.from(parent.children);
+            currentChildren.forEach(child => {
+                if (!visibleNodeSet.has(child)) {
+                    parent.removeChild(child);
                 }
-
-                if (f.options && f.options.length) {
-                    const grp = document.createElement('div');
-                    grp.className = 'options-group';
-                    const isMulti = f.options[0].isMulti || false;
-                    f.options.forEach(opt => {
-                        const lbl = document.createElement('label');
-                        lbl.className = 'option-label';
-                        lbl.innerHTML = `<input type="${isMulti ? 'checkbox' : 'radio'}" name="opt-${f.key}" id="opt-${f.key}-${opt.value}" value="${opt.value}" />
-                             <span class="option-text">${opt.label}</span>`;
-                        grp.appendChild(lbl);
-                    });
-                    content.appendChild(grp);
-                }
-
-                if (f.textareas && f.textareas.length) {
-                    const grp = document.createElement('div');
-                    grp.className = 'input-group';
-                    f.textareas.forEach(ta => {
-                        const txt = document.createElement('textarea');
-                        txt.className = 'custom-textarea';
-                        txt.id = `ta-${ta.key}`;
-                        txt.placeholder = ta.placeholder || '';
-                        grp.appendChild(txt);
-                    });
-                    content.appendChild(grp);
-                }
-
-                contentWrap.appendChild(content);
-                item.appendChild(contentWrap);
-
-                // Auto-expand search results
-                if (keyword && isExpandable) {
-                    const k = keyword.trim().toLowerCase();
-                    const hay = ((f.label || '') + ' ' + (f.desc || '')).toLowerCase();
-                    if (k && hay.indexOf(k) > -1) item.classList.add('expanded');
-                }
-
-                frag.appendChild(item);
             });
 
-            this.els.list.innerHTML = '';
-            this.els.list.appendChild(frag);
+            let cursor = parent.firstChild;
+            for (const node of desiredNodes) {
+                if (node === cursor) {
+                    cursor = cursor.nextSibling;
+                    continue;
+                }
+                parent.insertBefore(node, cursor);
+            }
+
             this.els.list.style.display = features.length ? 'flex' : 'none';
             this.els.empty.style.display = features.length ? 'none' : 'block';
-        }
-
-        syncState(features) {
-            features.forEach(f => {
-                const cb = document.getElementById(`switch-${f.key}`);
-                if (cb) {
-                    const pend = this.app.state.getPending(f.key, 'enabled');
-                    cb.checked = pend !== null ? pend : this.app.tcqt.getSetting(f.key).value;
-                    cb.onchange = () => { this.app.state.savePending(f.key, 'enabled', cb.checked); this.updateFab(); };
-                    if (!this.app.state.isInjected) cb.disabled = true;
-                }
-                if (f.options && f.options.length) {
-                    const optKey = f.options[0].key;
-                    const isMulti = f.options[0].isMulti || false;
-                    const pend = this.app.state.getPending(optKey, 'value');
-                    let val = pend !== null ? pend : (this.app.tcqt.getSetting(optKey).value !== undefined ? parseInt(this.app.tcqt.getSetting(optKey).value) : (isMulti ? 0 : f.options[0].value));
-
-                    f.options.forEach(opt => {
-                        const el = document.getElementById(`opt-${f.key}-${opt.value}`);
-                        if (!el) return;
-                        if (isMulti) el.checked = (val & (1 << (opt.value - 1))) !== 0;
-                        else el.checked = val === opt.value;
-                        if (!this.app.state.isInjected) el.disabled = true;
-
-                        el.onchange = () => {
-                            if (isMulti) {
-                                let cv = 0;
-                                f.options.forEach(o => {
-                                    const cell = document.getElementById(`opt-${f.key}-${o.value}`);
-                                    if (cell && cell.checked) {
-                                        cv |= (1 << (o.value - 1));
-                                    }
-                                });
-                                this.app.state.savePending(optKey, 'value', cv);
-                            } else {
-                                if (el.checked) this.app.state.savePending(optKey, 'value', opt.value);
-                            }
-                            this.updateFab();
-                        };
-                    });
-                }
-                if (f.textareas && f.textareas.length) {
-                    f.textareas.forEach(ta => {
-                        const el = document.getElementById(`ta-${ta.key}`);
-                        if (!el) return;
-                        const pend = this.app.state.getPending(ta.key, 'value');
-                        el.value = pend !== null ? pend : (this.app.tcqt.getSetting(ta.key).value || '');
-                        if (!this.app.state.isInjected) el.disabled = true;
-                        el.oninput = () => { this.app.state.savePending(ta.key, 'value', el.value); this.updateFab(); };
-                    });
-                }
-            });
             this.updateFab();
         }
 
         updateFab() {
             const canSave = this.app.state.isInjected && this.app.state.hasPending();
+
             if (!this.app.state.isInjected) {
                 this.els.btnSave.classList.add('disabled');
             } else {
@@ -1252,14 +1589,23 @@
         }
 
         showLoader(show) {
-            if (show) { this.els.loading.style.opacity = '1'; this.els.container.classList.remove('ready'); }
-            else { this.els.loading.style.opacity = '0'; setTimeout(() => { this.els.loading.style.display = 'none'; this.els.container.classList.add('ready'); }, 200); }
+            if (show) {
+                this.els.loading.style.opacity = '1';
+                this.els.container.classList.remove('ready');
+            } else {
+                this.els.loading.style.opacity = '0';
+                setTimeout(() => {
+                    this.els.loading.style.display = 'none';
+                    this.els.container.classList.add('ready');
+                }, 200);
+            }
         }
 
         toast(msg) {
             if (!this.app.tcqt.showToast(msg)) {
                 const el = document.createElement('div');
-                el.className = 'toast'; el.textContent = msg;
+                el.className = 'toast';
+                el.textContent = msg;
                 this.els.toast.appendChild(el);
                 setTimeout(() => el.remove(), 3000);
             }
@@ -1271,14 +1617,21 @@
             this.tcqt = new TCQTService();
             this.state = new AppState();
             this.ui = new UIManager(this);
+
+            this._renderScheduled = false;
+
             this.init();
         }
 
         init() {
             this.ui.showLoader(true);
+
             setTimeout(() => {
                 this.state.isInjected = this.tcqt.isAvailable;
-                const h = this.tcqt.getHostInfo(), m = this.tcqt.getModuleInfo();
+
+                const h = this.tcqt.getHostInfo();
+                const m = this.tcqt.getModuleInfo();
+
                 if (h && m) {
                     document.getElementById('hostVersion').textContent = `${h.name} ${h.version} ${h.channel}`;
                     document.getElementById('moduleVersion').textContent = `${m.name} ${m.version}`;
@@ -1292,42 +1645,67 @@
 
                 this.state.setFeatures(this.tcqt.getFeaturesConfig());
                 this.updateStats();
-                this.render();
                 this.bindEvents();
+                this.renderNow();
                 this.ui.showLoader(false);
             }, 150);
         }
 
-        render() {
-            this.ui.renderTabs(this.state.tabs, this.state.currentTab);
-            const fb = this.state.getVisibleFeatures();
-            this.ui.renderFeatures(fb, this.state.searchKey);
-            this.ui.syncState(fb);
+        requestRender() {
+            if (this._renderScheduled) return;
+            this._renderScheduled = true;
+
+            requestAnimationFrame(() => {
+                this._renderScheduled = false;
+                this.renderNow();
+            });
         }
 
-        switchTab(t) {
-            if (this.state.isSearch) this.exitSearch();
-            this.state.currentTab = t;
-            this.render();
+        renderNow() {
+            this.ui.renderTabs(this.state.tabs, this.state.currentTab);
+            this.ui.renderFeatures(this.state.getVisibleFeatures(), this.state.searchKey);
+        }
+
+        switchTab(tab) {
+            if (this.state.currentTab === tab && !this.state.isSearch) return;
+            if (this.state.isSearch) {
+                this.state.isSearch = false;
+                this.state.searchKey = '';
+                this.ui.els.searchInput.value = '';
+                this.ui.els.navWrapper.classList.remove('search-active');
+                document.getElementById('search-clear-btn').classList.remove('visible');
+            }
+            this.state.currentTab = tab;
+            this.requestRender();
         }
 
         updateStats() {
-            document.getElementById('enabledCount').textContent = this.state.isInjected ? this.tcqt.getEnabledActionCount() : '-';
-            document.getElementById('disabledCount').textContent = this.state.isInjected ? this.tcqt.getDisabledActionCount() : '-';
+            document.getElementById('enabledCount').textContent = this.state.isInjected
+                ? this.tcqt.getEnabledActionCount()
+                : '-';
+            document.getElementById('disabledCount').textContent = this.state.isInjected
+                ? this.tcqt.getDisabledActionCount()
+                : '-';
         }
 
         enterSearch() {
+            if (this.state.isSearch) return;
             this.state.isSearch = true;
             this.ui.els.navWrapper.classList.add('search-active');
             setTimeout(() => this.ui.els.searchInput.focus(), 100);
         }
+
         exitSearch() {
+            const hadSearch = this.state.isSearch || this.state.searchKey !== '';
             this.state.isSearch = false;
             this.state.searchKey = '';
             this.ui.els.searchInput.value = '';
             this.ui.els.navWrapper.classList.remove('search-active');
             document.getElementById('search-clear-btn').classList.remove('visible');
-            this.render();
+
+            if (hadSearch) {
+                this.requestRender();
+            }
         }
 
         save() {
@@ -1335,15 +1713,12 @@
             if (!this.state.hasPending()) return this.ui.toast('没有修改需要保存');
 
             let err = false;
-            // Only iterate over pending items to save
-            const entries = this.state.pending.entries();
-            for (let entry of entries) {
-                const key = entry[0];
-                const changes = entry[1];
 
+            for (const [key, changes] of this.state.pending.entries()) {
                 if ('enabled' in changes) {
                     if (!this.tcqt.saveBooleanSetting(key, changes.enabled)) err = true;
                 }
+
                 if ('value' in changes) {
                     if (typeof changes.value === 'string') {
                         if (!this.tcqt.saveStringSetting(key, changes.value)) err = true;
@@ -1367,129 +1742,250 @@
         }
 
         bindEvents() {
-            // Search
-            let timer = null;
-            if (this.ui.els.btnSearch) this.ui.els.btnSearch.onclick = () => this.enterSearch();
-            if (this.ui.els.searchBackBtn) this.ui.els.searchBackBtn.onclick = () => this.exitSearch();
+            let searchTimer = null;
+
+            if (this.ui.els.btnSearch) {
+                this.ui.els.btnSearch.onclick = () => this.enterSearch();
+            }
+
+            if (this.ui.els.searchBackBtn) {
+                this.ui.els.searchBackBtn.onclick = () => this.exitSearch();
+            }
+
             const searchClearBtn = document.getElementById('search-clear-btn');
             if (searchClearBtn) {
                 searchClearBtn.onclick = () => {
+                    const hadValue = this.state.searchKey !== '';
                     this.ui.els.searchInput.value = '';
                     searchClearBtn.classList.remove('visible');
                     this.state.searchKey = '';
-                    this.render();
-                    if (this.ui.els.searchInput) this.ui.els.searchInput.focus();
+                    if (hadValue) this.requestRender();
+                    this.ui.els.searchInput.focus();
                 };
             }
+
             if (this.ui.els.searchInput) {
                 this.ui.els.searchInput.oninput = (e) => {
-                    const v = e.target.value;
+                    const v = e.target.value || '';
+
                     if (searchClearBtn) {
-                        if (v.length > 0) {
-                            searchClearBtn.classList.add('visible');
+                        searchClearBtn.classList.toggle('visible', v.length > 0);
+                    }
+
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(() => {
+                        if (this.state.searchKey === v) return;
+                        this.state.searchKey = v;
+                        this.requestRender();
+                    }, 120);
+                };
+            }
+
+            this.ui.els.tabs.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tab-btn');
+                if (!btn) return;
+                this.switchTab(btn.dataset.tab);
+                requestAnimationFrame(() => {
+                    const activeBtn = this.ui.els.tabs.querySelector('.tab-btn.active');
+                    this.ui.scrollTabToCenter(activeBtn, 'smooth');
+                });
+            });
+
+            this.ui.els.list.addEventListener('click', (e) => {
+                const header = e.target.closest('.feature-header');
+                if (!header) return;
+                if (e.target.closest('.switch-wrapper')) return;
+
+                const item = header.closest('.feature-item');
+                if (!item || item.dataset.expandable !== '1') return;
+
+                const expanded = !item.classList.contains('expanded');
+                item.classList.toggle('expanded', expanded);
+                item.dataset.manualExpanded = expanded ? '1' : '0';
+            });
+
+            this.ui.els.list.addEventListener('change', (e) => {
+                const t = e.target;
+                if (!(t instanceof HTMLInputElement)) return;
+
+                const role = t.dataset.role;
+                if (role === 'switch') {
+                    this.state.savePending(t.dataset.settingKey, 'enabled', t.checked);
+                    this.ui.updateFab();
+                    return;
+                }
+
+                if (role === 'option') {
+                    const settingKey = t.dataset.settingKey;
+                    const isMulti = t.dataset.multi === '1';
+
+                    if (isMulti) {
+                        let value = 0;
+                        const group = t.closest('.options-group');
+                        if (group) {
+                            const inputs = group.querySelectorAll('input[data-role="option"]');
+                            inputs.forEach(input => {
+                                if (input.checked) {
+                                    const optValue = parseInt(input.dataset.optionValue, 10);
+                                    if (!Number.isNaN(optValue)) {
+                                        value |= (1 << (optValue - 1));
+                                    }
+                                }
+                            });
+                        }
+                        this.state.savePending(settingKey, 'value', value);
+                    } else if (t.checked) {
+                        const optValue = parseInt(t.dataset.optionValue, 10);
+                        this.state.savePending(settingKey, 'value', optValue);
+                    }
+
+                    this.ui.updateFab();
+                }
+            });
+
+            this.ui.els.list.addEventListener('input', (e) => {
+                const t = e.target;
+                if (!(t instanceof HTMLTextAreaElement)) return;
+                if (t.dataset.role !== 'textarea') return;
+
+                this.state.savePending(t.dataset.settingKey, 'value', t.value);
+                this.ui.updateFab();
+            });
+
+            const bindLongPress = (el, onTap, onLongPress, delay = 600) => {
+                if (!el) return;
+
+                let lpTimer = 0;
+                let triggered = false;
+                let pointerId = null;
+
+                const clear = () => {
+                    clearTimeout(lpTimer);
+                    lpTimer = 0;
+                    pointerId = null;
+                };
+
+                el.addEventListener('pointerdown', (e) => {
+                    if (!e.isPrimary || e.button !== 0) return;
+                    pointerId = e.pointerId;
+                    triggered = false;
+                    clearTimeout(lpTimer);
+                    lpTimer = setTimeout(() => {
+                        triggered = true;
+                        onLongPress();
+                    }, delay);
+                }, { passive: true });
+
+                el.addEventListener('pointerup', (e) => {
+                    if (pointerId !== e.pointerId) return;
+                    clear();
+                    if (!triggered) onTap();
+                    triggered = false;
+                });
+
+                const cancel = (e) => {
+                    if (pointerId !== null && e.pointerId !== pointerId) return;
+                    clear();
+                    triggered = false;
+                };
+
+                el.addEventListener('pointercancel', cancel);
+                el.addEventListener('pointerleave', cancel);
+                el.addEventListener('contextmenu', e => e.preventDefault());
+            };
+
+            bindLongPress(
+                this.ui.els.btnSave,
+                () => this.save(),
+                () => {
+                    if (!this.state.isInjected) return this.ui.toast('环境异常');
+
+                    if (confirm('是否清空所有配置？此操作不可逆！')) {
+                        if (this.tcqt.clearConfig()) {
+                            this.state.clearPending();
+
+                            if (confirm('配置已清空，是否重启？')) {
+                                if (!this.tcqt.exitApp()) this.ui.toast('重启失败');
+                            } else {
+                                this.updateStats();
+                                this.requestRender();
+                            }
                         } else {
-                            searchClearBtn.classList.remove('visible');
+                            this.ui.toast('清空失败');
                         }
                     }
-                    clearTimeout(timer);
-                    timer = setTimeout(() => { this.state.searchKey = v; this.render(); }, 150);
-                };
-            }
+                }
+            );
 
-            // Save Btn Long Press
-            let lpTimer = null, isLp = false;
-            const btn = this.ui.els.btnSave;
-            if (btn) {
-                const down = (e) => {
-                    if (e.type === 'mousedown' && e.button !== 0) return;
-                    lpTimer = setTimeout(() => {
-                        isLp = true;
-                        if (!this.state.isInjected) return this.ui.toast('环境异常');
-                        if (confirm('是否清空所有配置？此操作不可逆！')) {
-                            if (this.tcqt.clearConfig()) {
-                                this.state.clearPending();
-                                if (confirm('配置已清空，是否重启？')) {
-                                    if (!this.tcqt.exitApp()) this.ui.toast('重启失败');
-                                } else {
-                                    this.updateStats();
-                                    this.render();
-                                }
-                            } else this.ui.toast('清空失败');
-                        }
-                    }, 600);
-                };
-                const up = (e) => { e.preventDefault(); clearTimeout(lpTimer); if (!isLp) this.save(); isLp = false; };
-                const cancel = () => { clearTimeout(lpTimer); isLp = false; };
-
-                btn.addEventListener('mousedown', down);
-                btn.addEventListener('touchstart', down, { passive: false });
-                btn.addEventListener('mouseup', up);
-                btn.addEventListener('touchend', up, { passive: false });
-                btn.addEventListener('mouseleave', cancel);
-                btn.addEventListener('touchcancel', cancel);
-                btn.addEventListener('contextmenu', e => e.preventDefault());
-            }
-
-            // Footer Link Handling
             const issueLink = document.getElementById('issueLink');
             if (issueLink) {
-                let lpTimer = null, isLp = false;
                 const url = 'https://github.com/callng/TCQT/issues';
-                const down = (e) => {
-                    if (e.type === 'mousedown' && e.button !== 0) return;
-                    lpTimer = setTimeout(() => {
-                        isLp = true;
-                        this.tcqt.openUrl(url, true);
-                    }, 600);
-                };
-                const up = (e) => {
-                    e.preventDefault();
-                    clearTimeout(lpTimer);
-                    if (!isLp) this.tcqt.openUrl(url, false);
-                    isLp = false;
-                };
-                const cancel = () => { clearTimeout(lpTimer); isLp = false; };
-
-                issueLink.addEventListener('mousedown', down);
-                issueLink.addEventListener('touchstart', down, { passive: false });
-                issueLink.addEventListener('mouseup', up);
-                issueLink.addEventListener('touchend', up, { passive: false });
-                issueLink.addEventListener('mouseleave', cancel);
-                issueLink.addEventListener('touchcancel', cancel);
+                bindLongPress(
+                    issueLink,
+                    () => this.tcqt.openUrl(url, false),
+                    () => this.tcqt.openUrl(url, true)
+                );
                 issueLink.addEventListener('click', e => e.preventDefault());
-                issueLink.addEventListener('contextmenu', e => e.preventDefault());
             }
-            // Keyboard safe-area handling for Android WebViews
-            // Use visualViewport to compute keyboard height and add bottom padding.
+
             const root = document.documentElement;
+
             const setKbd = (px) => {
                 const v = Math.max(0, px | 0);
                 root.style.setProperty('--kbd', v + 'px');
                 root.classList.toggle('keyboard-open', v > 0);
             };
 
+            const KBD_THRESHOLD = 80;
+            let layoutBaseline = Math.max(window.innerHeight, document.documentElement.clientHeight);
+
+            const updateBaseline = () => {
+                const vv = window.visualViewport;
+                const layoutNow = Math.max(window.innerHeight, document.documentElement.clientHeight);
+
+                if (!vv) {
+                    layoutBaseline = layoutNow;
+                    return;
+                }
+
+                const delta = Math.max(0, layoutNow - vv.height - (vv.offsetTop || 0));
+                if (delta < KBD_THRESHOLD) {
+                    layoutBaseline = Math.max(layoutBaseline, layoutNow);
+                }
+            };
+
             const calcKbd = () => {
                 const vv = window.visualViewport;
                 if (!vv) return 0;
-                // innerHeight is layout viewport, vv.height shrinks when keyboard appears
-                const k = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
-                return k;
+
+                const layoutNow = Math.max(layoutBaseline, window.innerHeight, document.documentElement.clientHeight);
+                const k = Math.max(
+                    0,
+                    layoutNow - vv.height - (vv.offsetTop || 0),
+                    layoutNow - vv.height
+                );
+
+                return k >= KBD_THRESHOLD ? k : 0;
             };
 
             let raf = 0;
             const applyKbd = () => {
                 cancelAnimationFrame(raf);
-                raf = requestAnimationFrame(() => setKbd(calcKbd()));
+                raf = requestAnimationFrame(() => {
+                    updateBaseline();
+                    setKbd(calcKbd());
+                });
             };
 
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', applyKbd);
                 window.visualViewport.addEventListener('scroll', applyKbd);
             }
+
             window.addEventListener('resize', applyKbd);
+            window.addEventListener('orientationchange', applyKbd);
             applyKbd();
 
-            // Focus scroll debounce: do one final adjustment after layout settles
             let focusTimer = 0;
             const ensureVisible = (el) => {
                 if (!el) return;
@@ -1497,7 +1993,10 @@
                 focusTimer = setTimeout(() => {
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
-                            try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { }
+                            try {
+                                el.scrollIntoView({ block: 'center', inline: 'nearest' });
+                            } catch (e) {
+                            }
                         });
                     });
                 }, 80);
@@ -1516,11 +2015,16 @@
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', () => ensureVisible(document.activeElement));
             }
+
+            document.addEventListener('focusout', () => {
+                setTimeout(applyKbd, 50);
+            }, true);
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => window.app = new TCQTApp());
-
+    document.addEventListener('DOMContentLoaded', () => {
+        window.app = new TCQTApp();
+    });
 </script>
 </body>
 
