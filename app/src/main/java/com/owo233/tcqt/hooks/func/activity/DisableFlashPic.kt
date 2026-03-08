@@ -1,16 +1,18 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv.requireMinTimVersion
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.invokeOriginalWithArgs
-import com.owo233.tcqt.utils.isPublic
-import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
+import com.tencent.mobileqq.aio.msg.AIOMsgItem
+import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
 @RegisterAction
 @RegisterSetting(
@@ -23,15 +25,14 @@ import com.tencent.mobileqq.aio.msglist.AIOMsgItemFactoryProvider
 class DisableFlashPic : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        AIOMsgItemFactoryProvider::class.java.declaredMethods.first {
-            it.isPublic && it.returnType != Void.TYPE
-                    && it.parameterCount == 1 && it.parameterTypes[0] == Integer.TYPE
-        }.hookAfterMethod {
-            val id = it.args[0] as Int
-            if (id == 84) {
-                it.result = it.invokeOriginalWithArgs(5)
-            } else if (id == 85) {
-                it.result = it.invokeOriginalWithArgs(4)
+        if (PlatformTools.isNt() || requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)) {
+            AIOMsgItem::class.java.hookAfterMethod("getMsgRecord") { param ->
+                val msgRecord = param.result as MsgRecord
+                val subMsgType = msgRecord.subMsgType // 位掩码（Bitmask）
+                // 8192 (闪照标记) + 2 (图片基础类型) = 8194
+                if ((subMsgType and 8192) != 0) { // 带有闪照属性
+                    msgRecord.subMsgType = subMsgType and 8192.inv() // 移除闪照属性
+                }
             }
         }
     }
