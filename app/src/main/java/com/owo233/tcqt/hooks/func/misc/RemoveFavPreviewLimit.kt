@@ -1,6 +1,5 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.content.Context
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -34,7 +33,9 @@ class RemoveFavPreviewLimit : PluginHook() {
         get() = "qqfav.apk"
 
     override fun canRun(): Boolean {
-        return HookEnv.isQQ() && HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
+        return GeneratedSettingList.getBoolean(key) &&
+            HookEnv.isQQ() &&
+            HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
     }
 
     override fun startHook(classLoader: ClassLoader) {
