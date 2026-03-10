@@ -10,6 +10,7 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
+import com.owo233.tcqt.activity.SettingActivity
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -24,7 +25,6 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.FuzzyClassKit
@@ -265,7 +265,10 @@ class AddModuleEntrance : AlwaysRunAction() {
         ).take(info.argCount).toTypedArray()
 
         val settingItem = info.clazz.new(*args)
+
+        // 绑定单击事件
         bindClickAction(settingItem, info.onClickMethod, config.onClick, context)
+
         return settingItem
     }
 
@@ -398,29 +401,12 @@ class AddModuleEntrance : AlwaysRunAction() {
         RouteUtils.startActivity(baseApplication, intent, "/base/browser")
     }
 
-    @SuppressLint("IntentWithNullActionLaunch")
-    private fun openTCQTSettings() {
-        val intent = Intent().apply {
-            putExtra("fling_action_key", 2)
-            putExtra("fling_code_key", this@AddModuleEntrance.hashCode())
-            putExtra("url", TCQTSetting.settingUrl)
-            putExtra("hide_more_button", true)
-            putExtra("hide_operation_bar", true)
-            putExtra("hide_title_bar", true)
-            putExtra("hide_title_left_arrow", true)
-            putExtra("hide_left_button", true)
-            putExtra("hideRightButton", true)
-            putExtra("finish_animation_up_down", true)
-            putExtra("ishiderefresh", true)
-            putExtra("ishidebackforward", true)
-            putExtra("portraitOnly", true)
-            putExtra("webStyle", "noBottomBar")
+    private fun openTCQTSettings(ctx: Context? = null) {
+        if (ctx != null) {
+            ctx.startActivity(Intent(ctx, SettingActivity::class.java))
+        } else {
+            BaseActivity.sTopActivity.startActivity(Intent(BaseActivity.sTopActivity, SettingActivity::class.java))
         }
-
-        val baseApplication = BaseActivity.sTopActivity ?: BaseApplication.getContext()
-            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-
-        RouteUtils.startActivity(baseApplication, intent, "/base/browser")
     }
 
     private fun showInfoCardDialog(ctx: Context) {
@@ -545,7 +531,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             iconName = "qui_setting",
             groupTag = "TCQT_SettingEntry",
             groupTitle = null,
-            onClick = { openTCQTSettings() }
+            onClick = ::openTCQTSettings
         ),
         SettingEntryConfig(
             id = R.id.open_info_card,

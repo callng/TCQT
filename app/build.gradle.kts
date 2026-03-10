@@ -32,6 +32,7 @@ extensions.configure<ApplicationExtension> {
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
+        buildConfigField("String", "OPEN_ISSUES", "\"https://github.com/callng/TCQT/issues\"")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
         buildConfigField("String", "TG_CHANNEL", "\"citcqt\"")
         buildConfigField("String", "TG_GROUP", "\"astcqt\"")
@@ -172,6 +173,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.activity)
     implementation(libs.compose.animation)
     implementation(libs.lifecycle.viewmodel.compose)

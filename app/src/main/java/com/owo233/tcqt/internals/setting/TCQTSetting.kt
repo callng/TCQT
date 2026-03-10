@@ -1,66 +1,18 @@
 package com.owo233.tcqt.internals.setting
 
-import com.owo233.tcqt.HookEnv.moduleClassLoader
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.MMKVUtils
 import com.tencent.mmkv.MMKV
-import mqq.app.MobileQQ
-import oicq.wlogin_sdk.tools.MD5
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.nio.charset.StandardCharsets
 import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
-
-    private var cachedHtml: String? = null
-
-    val dataDir by lazy {
-        MobileQQ.getContext().getExternalFilesDir(null)!!
-            .parentFile!!.resolve("Tencent/TCQT").also {
-                it.mkdirs()
-            }
-    }
 
     private val config: MMKV get() = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
 
     val settingMap: HashMap<String, Setting<out Any>> by lazy {
         GeneratedSettingList.SETTING_MAP
-    }
-
-    val settingUrl: String get() = "http://tcqt.qq.com/"
-
-    fun getSettingHtml(): String {
-        cachedHtml?.let { return it }
-
-        val assetPath = "rez/index.html"
-        val localFile = dataDir.resolve("index.html")
-
-        return runCatching {
-            val assetStream = openAsset(assetPath)
-                ?: throw IllegalStateException("Asset not found: $assetPath")
-
-            val assetContent = assetStream.readText()
-            val assetMd5 = MD5.toMD5Byte(assetContent)
-
-            val localContent = if (localFile.exists()) localFile.readText() else null
-            val localMd5 = localContent?.let { MD5.toMD5Byte(it) }
-
-            if (localMd5 == null || !localMd5.contentEquals(assetMd5)) {
-                localFile.writeText(assetContent)
-                cachedHtml = assetContent
-                assetContent
-            } else {
-                cachedHtml = localContent
-                localContent
-            }
-        }.getOrElse { e ->
-            Log.e("Failed to get HTML, returning fallback", e)
-            "<html><body><h1>TCQT Error</h1><p>Module updated, please restart QQ.</p></body></html>"
-        }
     }
 
     inline fun <reified T : Any> getValue(key: String): T? {
@@ -211,26 +163,6 @@ internal object TCQTSetting {
 
         operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
             setValue(config, value)
-        }
-    }
-
-    private fun openAsset(fileName: String): InputStream? {
-        return runCatching {
-            moduleClassLoader.getResourceAsStream("assets/${fileName}")
-        }.getOrNull()
-    }
-
-    private fun InputStream.readText(): String {
-        this.use {
-            val sb = StringBuilder()
-            val reader = BufferedReader(InputStreamReader(this, StandardCharsets.UTF_8))
-            var line: String? = reader.readLine()
-            while (line != null) {
-                sb.append(line)
-                sb.append("\n")
-                line = reader.readLine()
-            }
-            return sb.toString()
         }
     }
 }

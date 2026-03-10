@@ -1,3 +1,6 @@
+# 保留所有继承自 BaseComposeActivity 的类 不混淆它们的无参构造函数
+-keep class * extends com.owo233.tcqt.activity.BaseComposeActivity { <init>(); }
+
 # 保留 XposedHelper 中创建的所有 Hook 对象
 -keep,allowobfuscation class com.owo233.tcqt.utils.XposedHelper** { *; }
 
@@ -52,6 +55,10 @@
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintAnchor$Type
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidget
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidgetContainer
+-dontwarn androidx.window.extensions.area.ExtensionWindowAreaPresentation
+-dontwarn androidx.window.extensions.core.util.function.Consumer
+-dontwarn androidx.window.extensions.core.util.function.Function
+-dontwarn androidx.window.extensions.core.util.function.Predicate
 -dontwarn java.beans.**
 
 -classobfuscationdictionary obf-dict.txt

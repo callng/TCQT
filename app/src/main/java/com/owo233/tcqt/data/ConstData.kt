@@ -7,6 +7,7 @@ object BuildWrapper {
     const val VERSION_CODE = BuildConfig.VERSION_CODE
     const val VERSION_NAME = BuildConfig.VERSION_NAME
     const val APP_NAME = BuildConfig.APP_NAME
+    const val OPEN_ISSUES = BuildConfig.OPEN_ISSUES
     const val OPEN_SOURCE = BuildConfig.OPEN_SOURCE
     const val TG_CHANNEL = BuildConfig.TG_CHANNEL
     const val TG_GROUP = BuildConfig.TG_GROUP
@@ -21,5 +22,6 @@ object TCQTBuild {
     const val HOOK_TAG = APP_NAME
     const val TG_CHANNEL = BuildWrapper.TG_CHANNEL
     const val TG_GROUP = BuildWrapper.TG_GROUP
+    const val OPEN_ISSUES = BuildWrapper.OPEN_ISSUES
     const val OPEN_SOURCE = BuildWrapper.OPEN_SOURCE
 }

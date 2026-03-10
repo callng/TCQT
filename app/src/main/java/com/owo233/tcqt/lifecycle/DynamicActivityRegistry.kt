@@ -1,3 +1,8 @@
+/**
+ * 本页代码是 QFun 项目的一部分
+ * https://github.com/oneQAQone/QFun
+ */
+
 package com.owo233.tcqt.lifecycle
 
 import android.app.Activity

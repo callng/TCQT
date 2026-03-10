@@ -1,3 +1,8 @@
+/**
+ * 本页代码是 QFun 项目的一部分
+ * https://github.com/oneQAQone/QFun
+ */
+
 package com.owo233.tcqt.lifecycle
 
 import android.annotation.SuppressLint
@@ -57,12 +62,11 @@ object ParasiticActivity {
         get() = sdkInt >= Build.VERSION_CODES.S
 
     fun initForStubActivity(ctx: Context) {
-        runCatching {
-            val activityThread = currentActivityThread() ?: return
-            hookInstrumentation(activityThread)
-            hookMainHandler(activityThread)
+        currentActivityThread()?.also {
+            hookInstrumentation(it)
+            hookMainHandler(it)
             hookIActivityManager()
-            hookIPackageManager(ctx, activityThread)
+            hookIPackageManager(ctx, it)
         }
     }
 
