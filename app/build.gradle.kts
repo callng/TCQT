@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -54,6 +55,7 @@ extensions.configure<ApplicationExtension> {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     buildTypes {
@@ -147,13 +149,16 @@ protobuf {
 }
 
 dependencies {
+    compileOnly(libs.androidx.constraintlayout)
     compileOnly(libs.xposed.api)
     compileOnly(project(":qqinterface"))
+
     ksp(project(":processor"))
+
     implementation(project(":annotations"))
+
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)
-    compileOnly(libs.androidx.constraintlayout)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.io.jvm)
@@ -161,4 +166,14 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(libs.protobuf.java)
+
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.activity)
+    implementation(libs.compose.animation)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
 }
