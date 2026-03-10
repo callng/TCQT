@@ -9,6 +9,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.hooks.base.HybridClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
+import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.hookAfterMethod
@@ -67,6 +68,7 @@ internal object HookSteps {
             HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
             HookEnv.setHostClassLoader(loader)
 
+            ParasiticActivity.initForStubActivity(context)
             ResourcesUtils.injectResourcesToContext(context.resources)
         }.onFailure {
             Log.e("initContext: Failed to initialize context", it)

@@ -13,7 +13,7 @@ internal object HookEnv {
     const val TIM_PACKAGE = "com.tencent.tim"
     const val QQ_PACKAGE = "com.tencent.mobileqq"
 
-    val moduleClassLoader: ClassLoader = HookEntry::class.java.classLoader!!
+    val moduleClassLoader: ClassLoader by lazy { this::class.java.classLoader!! }
 
     lateinit var hostAppPackageName: String
         private set
