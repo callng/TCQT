@@ -24,4 +24,10 @@ object TCQTBuild {
     const val TG_GROUP = BuildWrapper.TG_GROUP
     const val OPEN_ISSUES = BuildWrapper.OPEN_ISSUES
     const val OPEN_SOURCE = BuildWrapper.OPEN_SOURCE
+
+    val COPYRIGHT_YEAR: String by lazy {
+        val startYear = 2025
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        if (currentYear > startYear) "$startYear - $currentYear" else "$startYear"
+    }
 }

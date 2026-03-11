@@ -9,7 +9,6 @@ import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -39,6 +38,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -64,8 +64,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -75,8 +77,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -157,7 +159,7 @@ class SettingActivity : BaseComposeActivity() {
                             TextButton(
                                 onClick = {
                                     restartPrompt = null
-                                    ModuleCommand.sendCommand(this, "exitApp")
+                                    ModuleCommand.sendCommand(this@SettingActivity, "exitApp")
                                 }
                             ) {
                                 Text("立即重启")
@@ -230,17 +232,6 @@ private fun SettingScreen(
     val visibleFeatures by viewModel.visibleFeaturesState
     val hasPending = viewModel.hasPendingChanges
 
-    val pulse = rememberInfiniteTransition(label = "savePulse")
-        .animateFloat(
-            initialValue = 1f,
-            targetValue = 1.04f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "savePulseValue"
-        ).value
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
@@ -253,7 +244,6 @@ private fun SettingScreen(
             SavePill(
                 hasPendingChanges = hasPending,
                 pendingCount = viewModel.pendingChangeCount,
-                pulseScale = if (hasPending) pulse else 1f,
                 onClick = onSaveClick,
                 onLongClick = onSaveLongClick
             )
@@ -308,18 +298,22 @@ private fun SettingScreen(
                 items(
                     items = visibleFeatures,
                     key = { it.key }
-                ) { feature ->
+                ) { item ->
                     FeatureCard(
-                        feature = feature,
+                        item = item,
                         searchQuery = viewModel.searchQuery,
-                        enabled = viewModel.isFeatureEnabled(feature.key),
-                        expanded = viewModel.isExpanded(feature),
-                        hasPending = viewModel.hasPendingFor(feature),
-                        onExpandToggle = { viewModel.toggleExpanded(feature.key) },
-                        onEnabledChange = { checked -> viewModel.setFeatureEnabled(feature.key, checked) },
-                        onOptionChanged = { key, value -> viewModel.setOptionValue(key, value) },
-                        onTextChanged = { key, value -> viewModel.setTextValue(key, value) },
-                        viewModel = viewModel
+                        onToggleExpanded = { viewModel.toggleExpanded(item.key) },
+                        onFeatureEnabledChange = { checked ->
+                            viewModel.setFeatureEnabled(item.key, checked)
+                        },
+                        onOptionValueChange = { value ->
+                            item.optionGroup?.let { group ->
+                                viewModel.setOptionValue(group.key, value)
+                            }
+                        },
+                        onTextValueChange = { key, value ->
+                            viewModel.setTextValue(key, value)
+                        }
                     )
                 }
             }
@@ -353,7 +347,6 @@ private fun CompactHeaderCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 标题行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
@@ -373,7 +366,6 @@ private fun CompactHeaderCard(
                 }
             }
 
-            // 合并后的宿主环境 + 模块版本卡片，居中显示，左右留边距
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -388,7 +380,6 @@ private fun CompactHeaderCard(
                 )
             }
 
-            // 统计卡片行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -410,9 +401,6 @@ private fun CompactHeaderCard(
     }
 }
 
-/**
- * 合并后的信息卡片，垂直排列宿主环境和模块版本，居中显示
- */
 @Composable
 private fun CombinedInfoCard(
     hostName: String,
@@ -423,8 +411,8 @@ private fun CombinedInfoCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer, // 统一背景色
-        modifier = modifier.wrapContentWidth() // 宽度包裹内容
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = modifier.wrapContentWidth()
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -447,9 +435,6 @@ private fun CombinedInfoCard(
     }
 }
 
-/**
- * 单行信息（标题 + 值），居中对齐
- */
 @Composable
 private fun InfoRow(
     title: String,
@@ -518,6 +503,15 @@ private fun ControlCard(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit
 ) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(currentTab) {
+        val index = tabs.indexOf(currentTab)
+        if (index >= 0) {
+            listState.animateScrollToItem(index)
+        }
+    }
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -568,8 +562,10 @@ private fun ControlCard(
 
                 if (tabs.isNotEmpty()) {
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 2.dp)
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        contentPadding = PaddingValues(horizontal = 3.dp)
                     ) {
                         items(tabs, key = { it }) { tab ->
                             FilterChip(
@@ -737,7 +733,7 @@ private fun FooterCard(
         }
 
         Text(
-            text = "TCQT Module © 2026",
+            text = "TCQT Module © ${TCQTBuild.COPYRIGHT_YEAR}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline
         )
@@ -748,10 +744,24 @@ private fun FooterCard(
 private fun SavePill(
     hasPendingChanges: Boolean,
     pendingCount: Int,
-    pulseScale: Float,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    val pulseScale = if (hasPendingChanges) {
+        val infiniteTransition = rememberInfiniteTransition(label = "savePulse")
+        infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "savePulseValue"
+        )
+    } else {
+        null
+    }
+
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = if (hasPendingChanges) {
@@ -766,7 +776,11 @@ private fun SavePill(
         },
         shadowElevation = if (hasPendingChanges) 8.dp else 0.dp,
         modifier = Modifier
-            .scale(pulseScale)
+            .graphicsLayer {
+                val scale = pulseScale?.value ?: 1f
+                scaleX = scale
+                scaleY = scale
+            }
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -793,39 +807,38 @@ private fun SavePill(
 
 @Composable
 private fun FeatureCard(
-    feature: SettingFeature,
+    item: FeatureItemUiState,
     searchQuery: String,
-    enabled: Boolean,
-    expanded: Boolean,
-    hasPending: Boolean,
-    onExpandToggle: () -> Unit,
-    onEnabledChange: (Boolean) -> Unit,
-    onOptionChanged: (String, Int) -> Unit,
-    onTextChanged: (String, String) -> Unit,
-    viewModel: SettingViewModel
+    onToggleExpanded: () -> Unit,
+    onFeatureEnabledChange: (Boolean) -> Unit,
+    onOptionValueChange: (Int) -> Unit,
+    onTextValueChange: (String, String) -> Unit
 ) {
+    val feature = item.feature
     val query = searchQuery.trim()
+
     val borderColor = when {
-        expanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-        hasPending -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-        enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        item.expanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+        item.hasPending -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+        item.enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
     }
 
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = if (expanded || enabled) 1.dp else 0.dp,
+        tonalElevation = if (item.expanded || item.enabled) 1.dp else 0.dp,
         border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = feature.expandable, onClick = onExpandToggle)
+                    .clickable(
+                        enabled = feature.expandable,
+                        onClick = onToggleExpanded
+                    )
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -848,7 +861,7 @@ private fun FeatureCard(
 
                         if (feature.expandable) {
                             Icon(
-                                imageVector = if (expanded) {
+                                imageVector = if (item.expanded) {
                                     Icons.Rounded.KeyboardArrowUp
                                 } else {
                                     Icons.Rounded.KeyboardArrowDown
@@ -864,20 +877,20 @@ private fun FeatureCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         StatusPill(
-                            text = if (enabled) "已启用" else "未启用",
-                            containerColor = if (enabled) {
+                            text = if (item.enabled) "已启用" else "未启用",
+                            containerColor = if (item.enabled) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant
                             },
-                            contentColor = if (enabled) {
+                            contentColor = if (item.enabled) {
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
 
-                        if (hasPending) {
+                        if (item.hasPending) {
                             StatusPill(
                                 text = "未保存",
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -885,7 +898,7 @@ private fun FeatureCard(
                             )
                         }
 
-                        if (feature.optionGroup != null) {
+                        if (item.optionGroup != null) {
                             StatusPill(
                                 text = "选项",
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -893,9 +906,9 @@ private fun FeatureCard(
                             )
                         }
 
-                        if (feature.textAreas.isNotEmpty()) {
+                        if (item.textAreas.isNotEmpty()) {
                             StatusPill(
-                                text = "文本 ${feature.textAreas.size}",
+                                text = "文本 ${item.textAreas.size}",
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -904,13 +917,13 @@ private fun FeatureCard(
                 }
 
                 Switch(
-                    checked = enabled,
-                    onCheckedChange = onEnabledChange,
+                    checked = item.enabled,
+                    onCheckedChange = onFeatureEnabledChange,
                     modifier = Modifier.padding(start = 12.dp)
                 )
             }
 
-            AnimatedVisibility(visible = expanded && feature.expandable) {
+            AnimatedVisibility(visible = item.expanded && feature.expandable) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -928,25 +941,24 @@ private fun FeatureCard(
                         )
                     }
 
-                    feature.optionGroup?.let { group ->
+                    item.optionGroup?.let { group ->
                         if (feature.desc.isBlank()) {
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                             )
                         }
-                        val currentValue = viewModel.currentOptionValue(group)
+
                         OptionGroup(
                             group = group,
-                            currentValue = currentValue,
-                            onValueChange = { value -> onOptionChanged(group.key, value) }
+                            currentValue = item.optionValue ?: group.fallbackValue,
+                            onValueChange = onOptionValueChange
                         )
                     }
 
-                    feature.textAreas.forEach { area ->
-                        val textValue = viewModel.currentTextValue(area.key)
+                    item.textAreas.forEach { area ->
                         OutlinedTextField(
-                            value = textValue,
-                            onValueChange = { onTextChanged(area.key, it) },
+                            value = area.value,
+                            onValueChange = { value -> onTextValueChange(area.key, value) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text(area.label) },
                             placeholder = {
@@ -1063,9 +1075,7 @@ private fun OptionGroup(
 
 @Composable
 private fun highlightedText(text: String, keyword: String): AnnotatedString {
-    // 先获取 colorScheme（在 Composable 上下文中）
     val colorScheme = MaterialTheme.colorScheme
-    // 将 colorScheme 作为 remember 的依赖，确保主题变化时重新计算
     return remember(text, keyword, colorScheme) {
         if (keyword.isBlank() || text.isBlank()) {
             return@remember AnnotatedString(text)
@@ -1150,45 +1160,61 @@ class SettingViewModel : ViewModel() {
     val pendingChangeCount: Int
         get() = pendingBooleans.size + pendingInts.size + pendingStrings.size
 
-    private val _visibleFeatures = mutableStateOf<List<SettingFeature>>(emptyList())
-    val visibleFeaturesState: State<List<SettingFeature>> = _visibleFeatures
+    val visibleFeaturesState: State<List<FeatureItemUiState>> = derivedStateOf {
+        computeVisibleFeatureUiStates()
+    }
 
     init {
         reloadPersistedSettings()
-        refreshStats()
-        updateVisibleFeatures()
+        recalculateStats()
     }
 
-    private fun updateVisibleFeatures() {
-        _visibleFeatures.value = computeVisibleFeatures()
-    }
-
-    private fun computeVisibleFeatures(): List<SettingFeature> {
+    private fun computeVisibleFeatureUiStates(): List<FeatureItemUiState> {
         val keyword = searchQuery.trim().lowercase()
 
-        if (keyword.isBlank()) {
-            return if (currentTab.isBlank()) {
+        val visibleFeatures = if (keyword.isBlank()) {
+            if (currentTab.isBlank()) {
                 allFeatures
             } else {
                 allFeatures.filter { it.tab == currentTab }
             }
+        } else {
+            allFeatures
+                .mapNotNull { feature ->
+                    val priority = when {
+                        feature.labelLower == keyword || feature.descLower == keyword -> 3
+                        feature.labelLower.contains(keyword) -> 2
+                        feature.descLower.contains(keyword) -> 1
+                        else -> 0
+                    }
+                    if (priority == 0) null else priority to feature
+                }
+                .sortedWith(
+                    compareByDescending<Pair<Int, SettingFeature>> { it.first }
+                        .thenBy { it.second.order }
+                )
+                .map { it.second }
         }
 
-        return allFeatures
-            .mapNotNull { feature ->
-                val priority = when {
-                    feature.labelLower == keyword || feature.descLower == keyword -> 3
-                    feature.labelLower.contains(keyword) -> 2
-                    feature.descLower.contains(keyword) -> 1
-                    else -> 0
+        return visibleFeatures.map { feature ->
+            FeatureItemUiState(
+                key = feature.key,
+                feature = feature,
+                enabled = effectiveBoolean(feature.key),
+                expanded = expandedKeys[feature.key] == true,
+                hasPending = hasPendingFor(feature),
+                optionGroup = feature.optionGroup,
+                optionValue = feature.optionGroup?.let(::currentOptionValue),
+                textAreas = feature.textAreas.map { area ->
+                    TextAreaUiState(
+                        key = area.key,
+                        label = area.label,
+                        placeholder = area.placeholder,
+                        value = effectiveString(area.key)
+                    )
                 }
-                if (priority == 0) null else priority to feature
-            }
-            .sortedWith(
-                compareByDescending<Pair<Int, SettingFeature>> { it.first }
-                    .thenBy { it.second.order }
             )
-            .map { it.second }
+        }
     }
 
     fun enterSearch() {
@@ -1198,25 +1224,20 @@ class SettingViewModel : ViewModel() {
     fun exitSearch() {
         isSearchActive = false
         searchQuery = ""
-        updateVisibleFeatures()
     }
 
     fun updateSearchQuery(value: String) {
         searchQuery = value
-        updateVisibleFeatures()
     }
 
     fun clearSearchQuery() {
         searchQuery = ""
-        updateVisibleFeatures()
     }
 
     fun selectTab(tab: String) {
         currentTab = tab
         if (isSearchActive) {
             exitSearch()
-        } else {
-            updateVisibleFeatures()
         }
     }
 
@@ -1224,45 +1245,21 @@ class SettingViewModel : ViewModel() {
         expandedKeys[key] = !(expandedKeys[key] ?: false)
     }
 
-    fun isExpanded(feature: SettingFeature): Boolean {
-        return if (searchQuery.isNotBlank()) {
-            feature.expandable
-        } else {
-            expandedKeys[feature.key] == true
-        }
-    }
-
-    fun hasPendingFor(feature: SettingFeature): Boolean {
-        if (pendingBooleans.containsKey(feature.key)) return true
-        if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
-        return feature.textAreas.any { pendingStrings.containsKey(it.key) }
-    }
-
-    fun isFeatureEnabled(key: String): Boolean {
-        return pendingBooleans[key] ?: persistedBooleans[key] ?: false
-    }
-
-    fun currentOptionValue(group: FeatureOptionGroup): Int {
-        val baseValue = pendingInts[group.key] ?: persistedInts[group.key] ?: group.fallbackValue
-        return if (group.isMulti) {
-            baseValue
-        } else {
-            group.options.firstOrNull { it.value == baseValue }?.value ?: group.fallbackValue
-        }
-    }
-
-    fun currentTextValue(key: String): String {
-        return pendingStrings[key] ?: persistedStrings[key].orEmpty()
-    }
-
     fun setFeatureEnabled(key: String, value: Boolean) {
+        val before = effectiveBoolean(key)
         val persisted = persistedBooleans[key] ?: false
+
         if (value == persisted) {
             pendingBooleans.remove(key)
         } else {
             pendingBooleans[key] = value
         }
-        refreshStats()
+
+        val after = effectiveBoolean(key)
+        if (before != after) {
+            enabledCount += if (after) 1 else -1
+            disabledCount = (allFeatures.size - enabledCount).coerceAtLeast(0)
+        }
     }
 
     fun setOptionValue(key: String, value: Int) {
@@ -1300,7 +1297,7 @@ class SettingViewModel : ViewModel() {
         pendingBooleans.clear()
         pendingInts.clear()
         pendingStrings.clear()
-        refreshStats()
+        recalculateStats()
     }
 
     fun clearAllSettings() {
@@ -1312,8 +1309,7 @@ class SettingViewModel : ViewModel() {
         expandedKeys.clear()
 
         reloadPersistedSettings()
-        refreshStats()
-        updateVisibleFeatures()
+        recalculateStats()
     }
 
     private fun reloadPersistedSettings() {
@@ -1339,12 +1335,39 @@ class SettingViewModel : ViewModel() {
         }
     }
 
-    private fun refreshStats() {
+    private fun recalculateStats() {
         val enabled = allFeatures.count { feature ->
-            pendingBooleans[feature.key] ?: persistedBooleans[feature.key] ?: false
+            effectiveBoolean(feature.key)
         }
         enabledCount = enabled
         disabledCount = (allFeatures.size - enabled).coerceAtLeast(0)
+    }
+
+    private fun hasPendingFor(feature: SettingFeature): Boolean {
+        if (pendingBooleans.containsKey(feature.key)) return true
+        if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
+        return feature.textAreas.any { pendingStrings.containsKey(it.key) }
+    }
+
+    private fun effectiveBoolean(key: String): Boolean {
+        return pendingBooleans[key] ?: persistedBooleans[key] ?: false
+    }
+
+    private fun effectiveInt(key: String, fallback: Int = 0): Int {
+        return pendingInts[key] ?: persistedInts[key] ?: fallback
+    }
+
+    private fun effectiveString(key: String): String {
+        return pendingStrings[key] ?: persistedStrings[key].orEmpty()
+    }
+
+    private fun currentOptionValue(group: FeatureOptionGroup): Int {
+        val baseValue = effectiveInt(group.key, group.fallbackValue)
+        return if (group.isMulti) {
+            baseValue
+        } else {
+            group.options.firstOrNull { it.value == baseValue }?.value ?: group.fallbackValue
+        }
     }
 
     private fun tabPriority(tab: String): Int {
@@ -1352,7 +1375,7 @@ class SettingViewModel : ViewModel() {
             "基础" -> 0
             "杂项" -> 100
             "调试" -> 101
-            else   -> 1
+            else -> 1
         }
     }
 
@@ -1405,7 +1428,7 @@ private fun openUrlInDefaultBrowser(url: String, isSkip: Boolean) {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             HookEnv.hostAppContext.startActivity(intent)
-        }.onFailure { _ ->
+        }.onFailure {
             Toasts.error("Failed to open url: $url")
             HookEnv.hostAppContext.copyToClipboard(url, false)
             Toasts.info("Url地址已复制到剪贴板,请手动访问.")
@@ -1421,17 +1444,17 @@ private fun openTelegramChannel(isSkip: Boolean): Boolean {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }
 
-    try {
+    return try {
         HookEnv.hostAppContext.startActivity(tgIntent)
-        return true
+        true
     } catch (_: ActivityNotFoundException) {
-        return false
+        false
     } catch (_: Exception) {
-        return false
+        false
     }
 }
 
-@Stable
+@Immutable
 data class SettingFeature(
     val key: String,
     val label: String,
@@ -1448,36 +1471,51 @@ data class SettingFeature(
     val descLower: String = desc.lowercase()
 }
 
-@Stable
+@Immutable
+data class FeatureItemUiState(
+    val key: String,
+    val feature: SettingFeature,
+    val enabled: Boolean,
+    val expanded: Boolean,
+    val hasPending: Boolean,
+    val optionGroup: FeatureOptionGroup?,
+    val optionValue: Int?,
+    val textAreas: List<TextAreaUiState>
+)
+
+@Immutable
+data class TextAreaUiState(
+    val key: String,
+    val label: String,
+    val placeholder: String,
+    val value: String
+)
+
+@Immutable
 data class TextAreaField(
     val key: String,
     val label: String,
     val placeholder: String
 )
 
-@Stable
+@Immutable
 data class FeatureOptionGroup(
     val key: String,
     val isMulti: Boolean,
     val fallbackValue: Int,
     val options: List<OptionItem>
 ) {
+    private val useOptionValueAsMask: Boolean = isMulti && options.all { option ->
+        option.value > 0 && (option.value and (option.value - 1)) == 0
+    }
+
     fun resolveMask(option: OptionItem, index: Int): Int {
         if (!isMulti) return option.value
-
-        val allPowerOfTwo = options.all { value ->
-            value.value > 0 && (value.value and (value.value - 1)) == 0
-        }
-
-        return if (allPowerOfTwo) {
-            option.value
-        } else {
-            1 shl index
-        }
+        return if (useOptionValueAsMask) option.value else (1 shl index)
     }
 }
 
-@Stable
+@Immutable
 data class OptionItem(
     val label: String,
     val value: Int
