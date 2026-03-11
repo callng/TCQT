@@ -61,13 +61,13 @@ extensions.configure<ApplicationExtension> {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("ci")
+            signingConfig = if (keystorePath.isNullOrBlank()) null else signingConfigs.getByName("ci")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("ci")
+            signingConfig = if (keystorePath.isNullOrBlank()) null else signingConfigs.getByName("ci")
         }
     }
 
