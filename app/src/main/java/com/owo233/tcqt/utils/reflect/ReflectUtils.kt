@@ -150,6 +150,47 @@ fun Any.setValue(name: String, value: Any): Boolean {
     return true
 }
 
+fun Any.invokeMethod(
+    withSuper: Boolean = false,
+    vararg args: Any?,
+    predicate: Method.() -> Boolean
+): Any? {
+    val clazz = (this as? Class<*>) ?: this::class.java
+    val receiver = if (this is Class<*>) null else this
+
+    clazz.allMethods(withSuper).forEach { method ->
+        if (!method.predicate()) return@forEach
+        if (!parametersMatch(method.parameterTypes, args)) return@forEach
+
+        method.isAccessible = true
+        return try {
+            method.invoke(receiver, *args)
+        } catch (e: InvocationTargetException) {
+            throw (e.cause ?: e)
+        }
+    }
+
+    throw NoSuchMethodException(
+        buildString {
+            append("No matching method found in ")
+            append(clazz.name)
+            append(", args=")
+            append(args.joinToString(prefix = "[", postfix = "]") {
+                it?.javaClass?.name ?: "null"
+            })
+        }
+    )
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T> Any.invokeMethodAs(
+    withSuper: Boolean = false,
+    vararg args: Any?,
+    predicate: Method.() -> Boolean
+): T? {
+    return invokeMethod(withSuper, *args, predicate = predicate) as T?
+}
+
 private fun parametersMatch(paramTypes: Array<Class<*>>, args: Array<out Any?>): Boolean {
     if (paramTypes.size != args.size) return false
     for (i in paramTypes.indices) {
