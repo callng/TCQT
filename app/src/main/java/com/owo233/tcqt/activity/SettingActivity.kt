@@ -1,11 +1,14 @@
-﻿@file:OptIn(ExperimentalFoundationApi::class)
+@file:OptIn(ExperimentalFoundationApi::class)
 
 package com.owo233.tcqt.activity
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import com.owo233.tcqt.utils.ConfigBackupManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -43,10 +46,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
@@ -74,11 +80,16 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -104,6 +115,74 @@ import kotlinx.coroutines.launch
 
 class SettingActivity : BaseComposeActivity() {
 
+    private var pendingBackupDirectoryUri: Uri? = null
+    private var onRestoreSuccessCallback: (() -> Unit)? = null
+
+    private val backupDirectoryPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            pendingBackupDirectoryUri = uri
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            createBackupFile()
+        }
+    }
+
+    private val createBackupFilePicker = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            performBackup(uri)
+        }
+    }
+
+    private val restoreFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            performRestore(uri) {
+                onRestoreSuccessCallback?.invoke()
+            }
+        }
+    }
+
+    private fun createBackupFile() {
+        val fileName = ConfigBackupManager.generateBackupFileName()
+        createBackupFilePicker.launch(fileName)
+    }
+
+    private fun performBackup(uri: Uri) {
+        val success = ConfigBackupManager.backupConfig(this, uri)
+        if (success) {
+            Toasts.success("备份成功")
+        } else {
+            Toasts.error("备份失败")
+        }
+    }
+
+    private fun performRestore(uri: Uri, onSuccess: () -> Unit) {
+        when (val result = ConfigBackupManager.restoreConfig(this, uri)) {
+            is ConfigBackupManager.RestoreResult.Success -> {
+                Toasts.success("还原成功，已恢复 ${result.count} 项配置")
+                onSuccess()
+            }
+            ConfigBackupManager.RestoreResult.InvalidFile -> {
+                Toasts.error("无效的备份文件")
+            }
+            ConfigBackupManager.RestoreResult.VersionMismatch -> {
+                Toasts.error("备份文件版本不兼容")
+            }
+            is ConfigBackupManager.RestoreResult.Error -> {
+                Toasts.error("还原失败: ${result.exception.message}")
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -113,8 +192,17 @@ class SettingActivity : BaseComposeActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
 
-                var restartPrompt by remember { mutableStateOf<RestartPrompt?>(null) }
-                var showClearDialog by remember { mutableStateOf(false) }
+                var restartPrompt by rememberSaveable { mutableStateOf<RestartPrompt?>(null) }
+                var showClearDialog by rememberSaveable { mutableStateOf(false) }
+                var showBackupDialog by rememberSaveable { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    onRestoreSuccessCallback = {
+                        viewModel.reloadPersistedSettings()
+                        viewModel.recalculateStats()
+                        restartPrompt = RestartPrompt.Restore
+                    }
+                }
 
                 BackHandler(enabled = viewModel.isSearchActive) {
                     viewModel.exitSearch()
@@ -139,6 +227,167 @@ class SettingActivity : BaseComposeActivity() {
                         dismissButton = {
                             TextButton(onClick = { showClearDialog = false }) {
                                 Text("取消")
+                            }
+                        }
+                    )
+                }
+
+                if (showBackupDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showBackupDialog = false },
+                        title = {
+                            Text(
+                                "备份/还原",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "请选择你要执行的操作",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {
+                                                showBackupDialog = false
+                                                backupDirectoryPicker.launch(null)
+                                            }
+                                        )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Backup,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                "备份配置",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                "保存当前配置到文件",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {
+                                                showBackupDialog = false
+                                                restoreFilePicker.launch(arrayOf("application/json"))
+                                            }
+                                        )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Restore,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                "还原配置",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.secondary
+                                            )
+                                            Text(
+                                                "从备份文件恢复配置",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {
+                                                showBackupDialog = false
+                                                showClearDialog = true
+                                            }
+                                        )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                "清空配置",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                            Text(
+                                                "清除所有配置恢复默认",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showBackupDialog = false }) {
+                                Text(
+                                    "取消",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
                             }
                         }
                     )
@@ -198,8 +447,8 @@ class SettingActivity : BaseComposeActivity() {
                         viewModel.saveChanges()
                         restartPrompt = RestartPrompt.Save
                     },
-                    onSaveLongClick = {
-                        showClearDialog = true
+                    onBackupRestoreClick = {
+                        showBackupDialog = true
                     }
                 )
             }
@@ -227,13 +476,58 @@ private fun SettingScreen(
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onSaveLongClick: () -> Unit
+    onBackupRestoreClick: () -> Unit
 ) {
     val visibleFeatures by viewModel.visibleFeaturesState
-    val hasPending = viewModel.hasPendingChanges
+    val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
+    val lazyListState = rememberLazyListState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onBackupRestoreClick
+                            )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Backup,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "备份/还原",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        },
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -241,23 +535,38 @@ private fun SettingScreen(
             )
         },
         floatingActionButton = {
-            SavePill(
-                hasPendingChanges = hasPending,
-                pendingCount = viewModel.pendingChangeCount,
-                onClick = onSaveClick,
-                onLongClick = onSaveLongClick
-            )
+            AnimatedVisibility(
+                visible = hasPending,
+                enter = androidx.compose.animation.fadeIn(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                ) + androidx.compose.animation.scaleIn(
+                    initialScale = 0.85f,
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                ),
+                exit = androidx.compose.animation.fadeOut(
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                ) + androidx.compose.animation.scaleOut(
+                    targetScale = 0.85f,
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                )
+            ) {
+                SavePill(
+                    hasPendingChanges = hasPending,
+                    pendingCount = viewModel.pendingChangeCount,
+                    onClick = onSaveClick
+                )
+            }
         }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 112.dp),
+            state = lazyListState,
+            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = if (hasPending) 112.dp else 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
+            item(key = "header") {
                 CompactHeaderCard(
                     hostName = PlatformTools.getHostName(),
                     hostVersion = "${PlatformTools.getHostVersion()} (${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}",
@@ -268,7 +577,7 @@ private fun SettingScreen(
                 )
             }
 
-            stickyHeader {
+            stickyHeader(key = "control") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -291,13 +600,14 @@ private fun SettingScreen(
             }
 
             if (visibleFeatures.isEmpty()) {
-                item {
+                item(key = "empty") {
                     EmptyStateCard()
                 }
             } else {
                 items(
                     items = visibleFeatures,
-                    key = { it.key }
+                    key = { it.key },
+                    contentType = { "feature_card" }
                 ) { item ->
                     FeatureCard(
                         item = item,
@@ -318,7 +628,7 @@ private fun SettingScreen(
                 }
             }
 
-            item {
+            item(key = "footer") {
                 FooterCard(
                     onIssueClick = onIssueClick,
                     onIssueLongClick = onIssueLongClick
@@ -351,12 +661,13 @@ private fun CompactHeaderCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
+                Spacer(modifier = Modifier.width(48.dp))
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "TCQT 设置中心",
+                        text = "${TCQTBuild.APP_NAME} 模块配置",
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.titleLarge,
@@ -364,6 +675,7 @@ private fun CompactHeaderCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+                Spacer(modifier = Modifier.width(48.dp))
             }
 
             Box(
@@ -597,7 +909,12 @@ private fun CircleActionButton(
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier
             .size(40.dp)
-            .clickable(onClick = onClick)
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -645,7 +962,13 @@ private fun SearchBar(
                         imageVector = Icons.Rounded.Clear,
                         contentDescription = "清空",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.clickable(onClick = onClearClick)
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onClearClick
+                            )
                     )
                 }
             }
@@ -733,7 +1056,7 @@ private fun FooterCard(
         }
 
         Text(
-            text = "TCQT Module © ${TCQTBuild.COPYRIGHT_YEAR}",
+            text = "${TCQTBuild.APP_NAME} Module © ${TCQTBuild.COPYRIGHT_YEAR}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline
         )
@@ -744,9 +1067,9 @@ private fun FooterCard(
 private fun SavePill(
     hasPendingChanges: Boolean,
     pendingCount: Int,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onClick: () -> Unit
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
     val pulseScale = if (hasPendingChanges) {
         val infiniteTransition = rememberInfiniteTransition(label = "savePulse")
         infiniteTransition.animateFloat(
@@ -781,11 +1104,16 @@ private fun SavePill(
                 scaleX = scale
                 scaleY = scale
             }
-            .combinedClickable(
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
+                onClick = {
+                    if (hasPendingChanges) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    onClick()
+                }
             )
     ) {
         Row(
@@ -835,8 +1163,11 @@ private fun FeatureCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
                     .clickable(
                         enabled = feature.expandable,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
                         onClick = onToggleExpanded
                     )
                     .padding(horizontal = 18.dp, vertical = 12.dp),
@@ -851,7 +1182,7 @@ private fun FeatureCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = highlightedText(feature.label, query),
+                            text = rememberHighlightedText(feature.label, query),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -935,7 +1266,7 @@ private fun FeatureCard(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                         )
                         Text(
-                            text = highlightedText(feature.desc, query),
+                            text = rememberHighlightedText(feature.desc, query),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -975,6 +1306,48 @@ private fun FeatureCard(
 }
 
 @Composable
+private fun rememberHighlightedText(text: String, keyword: String): AnnotatedString {
+    val colorScheme = MaterialTheme.colorScheme
+    return remember(text, keyword, colorScheme) {
+        if (keyword.isBlank() || text.isBlank()) {
+            return@remember AnnotatedString(text)
+        }
+
+        val lowerText = text.lowercase()
+        val lowerKeyword = keyword.lowercase()
+        val highlightBackground = colorScheme.primaryContainer.copy(alpha = 0.9f)
+        val highlightColor = colorScheme.primary
+
+        buildAnnotatedString {
+            var cursor = 0
+            while (cursor < text.length) {
+                val index = lowerText.indexOf(lowerKeyword, startIndex = cursor)
+                if (index < 0) {
+                    append(text.substring(cursor))
+                    break
+                }
+
+                if (index > cursor) {
+                    append(text.substring(cursor, index))
+                }
+
+                pushStyle(
+                    SpanStyle(
+                        color = highlightColor,
+                        background = highlightBackground,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                append(text.substring(index, index + keyword.length))
+                pop()
+
+                cursor = index + keyword.length
+            }
+        }
+    }
+}
+
+@Composable
 private fun StatusPill(
     text: String,
     containerColor: Color,
@@ -1000,6 +1373,7 @@ private fun OptionGroup(
     currentValue: Int,
     onValueChange: (Int) -> Unit
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -1028,7 +1402,12 @@ private fun OptionGroup(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         val nextValue = if (group.isMulti) {
                             currentValue xor mask
                         } else {
@@ -1068,48 +1447,6 @@ private fun OptionGroup(
                         }
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun highlightedText(text: String, keyword: String): AnnotatedString {
-    val colorScheme = MaterialTheme.colorScheme
-    return remember(text, keyword, colorScheme) {
-        if (keyword.isBlank() || text.isBlank()) {
-            return@remember AnnotatedString(text)
-        }
-
-        val lowerText = text.lowercase()
-        val lowerKeyword = keyword.lowercase()
-        val highlightBackground = colorScheme.primaryContainer.copy(alpha = 0.9f)
-        val highlightColor = colorScheme.primary
-
-        buildAnnotatedString {
-            var cursor = 0
-            while (cursor < text.length) {
-                val index = lowerText.indexOf(lowerKeyword, startIndex = cursor)
-                if (index < 0) {
-                    append(text.substring(cursor))
-                    break
-                }
-
-                if (index > cursor) {
-                    append(text.substring(cursor, index))
-                }
-
-                pushStyle(
-                    SpanStyle(
-                        color = highlightColor,
-                        background = highlightBackground,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                append(text.substring(index, index + keyword.length))
-                pop()
-
-                cursor = index + keyword.length
             }
         }
     }
@@ -1312,7 +1649,7 @@ class SettingViewModel : ViewModel() {
         recalculateStats()
     }
 
-    private fun reloadPersistedSettings() {
+    fun reloadPersistedSettings() {
         persistedBooleans.clear()
         persistedInts.clear()
         persistedStrings.clear()
@@ -1335,7 +1672,7 @@ class SettingViewModel : ViewModel() {
         }
     }
 
-    private fun recalculateStats() {
+    fun recalculateStats() {
         val enabled = allFeatures.count { feature ->
             effectiveBoolean(feature.key)
         }
@@ -1467,8 +1804,8 @@ data class SettingFeature(
     val expandable: Boolean
         get() = desc.isNotBlank() || textAreas.isNotEmpty() || optionGroup != null
 
-    val labelLower: String = label.lowercase()
-    val descLower: String = desc.lowercase()
+    val labelLower: String by lazy(LazyThreadSafetyMode.NONE) { label.lowercase() }
+    val descLower: String by lazy(LazyThreadSafetyMode.NONE) { desc.lowercase() }
 }
 
 @Immutable
@@ -1505,8 +1842,10 @@ data class FeatureOptionGroup(
     val fallbackValue: Int,
     val options: List<OptionItem>
 ) {
-    private val useOptionValueAsMask: Boolean = isMulti && options.all { option ->
-        option.value > 0 && (option.value and (option.value - 1)) == 0
+    private val useOptionValueAsMask: Boolean by lazy(LazyThreadSafetyMode.NONE) {
+        isMulti && options.all { option ->
+            option.value > 0 && (option.value and (option.value - 1)) == 0
+        }
     }
 
     fun resolveMask(option: OptionItem, index: Int): Int {
@@ -1535,6 +1874,11 @@ private enum class RestartPrompt(
         title = "配置已清空",
         message = "是否现在重启宿主以应用默认配置？",
         dismissMessage = "配置已清空，重启后生效"
+    ),
+    Restore(
+        title = "配置已还原",
+        message = "是否现在重启宿主以应用还原的配置？",
+        dismissMessage = "配置已还原，重启后生效"
     )
 }
 
