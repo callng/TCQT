@@ -21,6 +21,11 @@ object ConfigBackupManager {
     private val json = Json {
         prettyPrint = false
         ignoreUnknownKeys = true
+        encodeDefaults = true
+        isLenient = false
+        allowStructuredMapKeys = false
+        coerceInputValues = false
+        useArrayPolymorphism = false
     }
 
     @Serializable
