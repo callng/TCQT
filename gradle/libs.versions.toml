@@ -1,13 +1,14 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
 agp = "9.1.0"
+androidx-documentfile = "1.1.0"
 androidx-fragment = "1.8.9"
-androidx-core = "1.17.0"
+androidx-core = "1.18.0"
 androidx-browser = "1.9.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
-compose-bom = "2026.02.01"
-activity-compose = "1.12.4"
+compose-bom = "2026.03.00"
+activity-compose = "1.13.0"
 lifecycle = "2.10.0"
 
 # Kotlin
@@ -27,8 +28,10 @@ protobuf-lib = "4.34.0"
 xposed = "82"
 
 
+
 [libraries]
 # AndroidX
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidx-documentfile" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "androidx-fragment" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidx-browser" }
@@ -61,7 +64,6 @@ protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref 
 
 # Xposed
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
-
 
 [plugins]
 # Android

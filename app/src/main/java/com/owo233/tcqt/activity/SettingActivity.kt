@@ -115,53 +115,82 @@ import kotlinx.coroutines.launch
 
 class SettingActivity : BaseComposeActivity() {
 
-    private var pendingBackupDirectoryUri: Uri? = null
     private var onRestoreSuccessCallback: (() -> Unit)? = null
 
     private val backupDirectoryPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            pendingBackupDirectoryUri = uri
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
-            createBackupFile()
-        }
-    }
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
 
-    private val createBackupFilePicker = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri != null) {
-            performBackup(uri)
+        val data = result.data ?: return@registerForActivityResult
+        val uri = data.data ?: return@registerForActivityResult
+
+        val takeFlags = data.flags and
+                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+        }.onFailure { e ->
+            Log.w("Failed to persist tree uri permission: $uri, flags=$takeFlags", e)
         }
+
+        if (!ConfigBackupManager.isBackupDirectoryUriValid(this, uri)) {
+            Toasts.error("目录无效或无写入权限，请重新选择")
+            return@registerForActivityResult
+        }
+
+        ConfigBackupManager.saveBackupDirectoryUri(uri)
+        performBackupToDirectory(uri)
     }
 
     private val restoreFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            try {
+                contentResolver.takePersistableUriPermission(uri, takeFlags)
+            } catch (_: Exception) {
+            }
             performRestore(uri) {
                 onRestoreSuccessCallback?.invoke()
             }
         }
     }
 
-    private fun createBackupFile() {
-        val fileName = ConfigBackupManager.generateBackupFileName()
-        createBackupFilePicker.launch(fileName)
+    private fun startBackup(forceChooseDirectory: Boolean = false) {
+        if (forceChooseDirectory) {
+            ConfigBackupManager.clearBackupDirectoryUri()
+            launchBackupDirectoryPicker()
+            return
+        }
+
+        val savedUri = ConfigBackupManager.getBackupDirectoryUri()
+        if (savedUri != null && ConfigBackupManager.isBackupDirectoryUriValid(this, savedUri)) {
+            performBackupToDirectory(savedUri)
+        } else {
+            ConfigBackupManager.clearBackupDirectoryUri()
+            launchBackupDirectoryPicker()
+        }
     }
 
-    private fun performBackup(uri: Uri) {
-        val success = ConfigBackupManager.backupConfig(this, uri)
+    private fun launchBackupDirectoryPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+            )
+        }
+        backupDirectoryPicker.launch(intent)
+    }
+
+    private fun performBackupToDirectory(directoryUri: Uri) {
+        val success = ConfigBackupManager.backupConfigToDirectory(this, directoryUri)
         if (success) {
             Toasts.success("备份成功")
         } else {
-            Toasts.error("备份失败")
+            ConfigBackupManager.clearBackupDirectoryUri()
+            Toasts.error("备份失败，请手动重新选择目录")
         }
     }
 
@@ -257,12 +286,17 @@ class SettingActivity : BaseComposeActivity() {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(16.dp))
-                                        .clickable(
+                                        .combinedClickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
                                             onClick = {
                                                 showBackupDialog = false
-                                                backupDirectoryPicker.launch(null)
+                                                startBackup()
+                                            },
+                                            onLongClick = {
+                                                showBackupDialog = false
+                                                Toasts.info("请重新选择备份目录")
+                                                startBackup(forceChooseDirectory = true)
                                             }
                                         )
                                 ) {
@@ -281,13 +315,13 @@ class SettingActivity : BaseComposeActivity() {
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
                                             Text(
-                                                "备份配置",
+                                                "备份模块设置",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
-                                                "保存当前配置到文件",
+                                                "导出模块设置到外部存储文件。",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -324,13 +358,13 @@ class SettingActivity : BaseComposeActivity() {
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
                                             Text(
-                                                "还原配置",
+                                                "还原模块设置",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.secondary
                                             )
                                             Text(
-                                                "从备份文件恢复配置",
+                                                "读取配置文件并覆盖当前设置。",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -367,13 +401,13 @@ class SettingActivity : BaseComposeActivity() {
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
                                             Text(
-                                                "清空配置",
+                                                "清空模块设置",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.error
                                             )
                                             Text(
-                                                "清除所有配置恢复默认",
+                                                "清空全部配置并恢复默认行为。",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )

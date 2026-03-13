@@ -2,6 +2,9 @@ package com.owo233.tcqt.utils
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -17,6 +20,7 @@ object ConfigBackupManager {
 
     private const val BACKUP_MARKER = "TCQT_CONFIG_BACKUP"
     private const val BACKUP_VERSION = 1
+    private const val KEY_BACKUP_DIRECTORY_URI = "backup_directory_uri"
 
     private val json = Json {
         prettyPrint = false
@@ -26,6 +30,35 @@ object ConfigBackupManager {
         allowStructuredMapKeys = false
         coerceInputValues = false
         useArrayPolymorphism = false
+    }
+
+    fun getBackupDirectoryUri(): Uri? {
+        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
+        val uriString = config.getString(KEY_BACKUP_DIRECTORY_URI, null)
+        return uriString?.toUri()
+    }
+
+    fun saveBackupDirectoryUri(uri: Uri) {
+        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
+        config.putString(KEY_BACKUP_DIRECTORY_URI, uri.toString())
+    }
+
+    fun clearBackupDirectoryUri() {
+        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
+        config.remove(KEY_BACKUP_DIRECTORY_URI)
+    }
+
+    fun isBackupDirectoryUriValid(context: Context, uri: Uri): Boolean {
+        return try {
+            if (!DocumentsContract.isTreeUri(uri)) {
+                return false
+            }
+            val documentFile = DocumentFile.fromTreeUri(context, uri)
+            documentFile?.exists() == true && documentFile.canWrite()
+        } catch (e: Exception) {
+            Log.w("Backup directory URI invalid", e)
+            false
+        }
     }
 
     @Serializable
@@ -57,8 +90,16 @@ object ConfigBackupManager {
         return "${TCQTBuild.APP_NAME}_Backup_$timestamp.json"
     }
 
-    fun backupConfig(context: Context, uri: Uri): Boolean {
+    fun backupConfigToDirectory(context: Context, directoryUri: Uri): Boolean {
         return try {
+            val tree = DocumentFile.fromTreeUri(context, directoryUri)
+            if (tree == null || !tree.exists() || !tree.canWrite() || !tree.isDirectory) {
+                Log.e("Backup failed: invalid directory uri = $directoryUri")
+                return false
+            }
+
+            val fileName = generateBackupFileName()
+
             val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
             val settings = mutableListOf<SettingItem>()
 
@@ -67,7 +108,6 @@ object ConfigBackupManager {
                 if (!isDefaultValue(config, setting)) {
                     val typeStr = setting.type.name
                     val valueStr = getValueAsString(config, setting)
-
                     settings.add(SettingItem(key, typeStr, valueStr))
                 }
             }
@@ -75,14 +115,24 @@ object ConfigBackupManager {
             val backupData = BackupData(settings = settings)
             val jsonStr = json.encodeToString(backupData)
 
-            context.contentResolver.openOutputStream(uri)?.use { output ->
+            val file = tree.createFile("application/json", fileName)
+                ?: run {
+                    Log.e("Backup failed: createFile returned null")
+                    return false
+                }
+
+            context.contentResolver.openOutputStream(file.uri, "wt")?.use { output ->
                 output.write(jsonStr.toByteArray(Charsets.UTF_8))
+                output.flush()
+            } ?: run {
+                Log.e("Backup failed: openOutputStream returned null")
+                return false
             }
 
-            Log.d("Backup successful: ${settings.size} settings saved")
+            Log.d("Backup successful: ${settings.size} settings saved to $fileName")
             true
         } catch (e: Exception) {
-            Log.e("Backup failed", e)
+            Log.e("Backup to directory failed", e)
             false
         }
     }

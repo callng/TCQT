@@ -162,6 +162,7 @@ dependencies {
     implementation(libs.androidx.browser)
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.documentfile)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
