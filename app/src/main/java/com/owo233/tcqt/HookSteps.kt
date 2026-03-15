@@ -38,7 +38,7 @@ internal object HookSteps {
             paramTypes(Application::class.java)
         }.hookAfterMethod { param ->
             val application = param.args[0] as Application
-            val context = application.baseContext
+            val context = application.baseContext ?: application
             if (hostInit.not()) {
                 hostApp = application
                 injectClassLoader(context.classLoader)
@@ -55,24 +55,20 @@ internal object HookSteps {
             app
         }
 
-        runCatching {
-            val packageManager = context.packageManager
-            val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-            val appName = packageManager.getApplicationLabel(context.applicationInfo).toString()
+        val packageManager = context.packageManager
+        val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
+        val appName = packageManager.getApplicationLabel(context.applicationInfo).toString()
 
-            HookEnv.setHostAppContext(context)
-            HookEnv.setApplication(app)
-            HookEnv.setHostApkPath(context.applicationInfo.sourceDir)
-            HookEnv.setAppName(appName)
-            HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
-            HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
-            HookEnv.setHostClassLoader(loader)
+        HookEnv.setHostAppContext(context)
+        HookEnv.setApplication(app)
+        HookEnv.setHostApkPath(context.applicationInfo.sourceDir)
+        HookEnv.setAppName(appName)
+        HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
+        HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
+        HookEnv.setHostClassLoader(loader)
 
-            ParasiticActivity.initForStubActivity(context)
-            ResourcesUtils.injectResourcesToContext(context.resources)
-        }.onFailure {
-            Log.e("initContext: Failed to initialize context", it)
-        }
+        ParasiticActivity.initForStubActivity(context)
+        ResourcesUtils.injectResourcesToContext(context.resources)
     }
 
     private fun initHooks(app: Application) {

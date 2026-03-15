@@ -295,7 +295,6 @@ class SettingActivity : BaseComposeActivity() {
                                             },
                                             onLongClick = {
                                                 showBackupDialog = false
-                                                Toasts.info("请重新选择备份目录")
                                                 startBackup(forceChooseDirectory = true)
                                             }
                                         )
