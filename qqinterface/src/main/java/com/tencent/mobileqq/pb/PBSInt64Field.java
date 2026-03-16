@@ -2,10 +2,10 @@ package com.tencent.mobileqq.pb;
 
 import java.io.IOException;
 
-public final class PBUInt64Field extends PBPrimitiveField<Long> {
+public final class PBSInt64Field extends PBPrimitiveField<Long> {
     private long value = 0;
 
-    public PBUInt64Field(long j, boolean z) {
+    public PBSInt64Field(long j, boolean z) {
         set(j, z);
     }
 
@@ -16,18 +16,18 @@ public final class PBUInt64Field extends PBPrimitiveField<Long> {
 
     public int computeSize(int i) {
         if (has()) {
-            return CodedOutputStreamMicro.computeUInt64Size(i, this.value);
+            return CodedOutputStreamMicro.computeSInt64Size(i, this.value);
         }
         return 0;
     }
 
     public int computeSizeDirectly(int i, Long l) {
-        return CodedOutputStreamMicro.computeUInt64Size(i, l.longValue());
+        return CodedOutputStreamMicro.computeSInt64Size(i, l.longValue());
     }
 
     protected void copyFrom(PBField<Long> pBField) {
-        PBUInt64Field pBUInt64Field = (PBUInt64Field) pBField;
-        set(pBUInt64Field.value, pBUInt64Field.has());
+        PBSInt64Field pBSInt64Field = (PBSInt64Field) pBField;
+        set(pBSInt64Field.value, pBSInt64Field.has());
     }
 
     public long get() {
@@ -35,12 +35,12 @@ public final class PBUInt64Field extends PBPrimitiveField<Long> {
     }
 
     public void readFrom(CodedInputStreamMicro codedInputStreamMicro) throws IOException {
-        this.value = codedInputStreamMicro.readUInt64();
+        this.value = codedInputStreamMicro.readSInt64();
         setHasFlag(true);
     }
 
     public Long readFromDirectly(CodedInputStreamMicro codedInputStreamMicro) throws IOException {
-        return Long.valueOf(codedInputStreamMicro.readUInt64());
+        return Long.valueOf(codedInputStreamMicro.readSInt64());
     }
 
     public void set(long j) {
@@ -49,12 +49,12 @@ public final class PBUInt64Field extends PBPrimitiveField<Long> {
 
     public void writeTo(CodedOutputStreamMicro codedOutputStreamMicro, int i) throws IOException {
         if (has()) {
-            codedOutputStreamMicro.writeUInt64(i, this.value);
+            codedOutputStreamMicro.writeSInt64(i, this.value);
         }
     }
 
     public void writeToDirectly(CodedOutputStreamMicro codedOutputStreamMicro, int i, Long l) throws IOException {
-        codedOutputStreamMicro.writeUInt64(i, l.longValue());
+        codedOutputStreamMicro.writeSInt64(i, l.longValue());
     }
 
     public void set(long j, boolean z) {
