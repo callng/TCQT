@@ -1,18 +1,19 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.app.Activity
-import android.app.Application
 import android.content.Context
-import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.servlet.MiniSvc
+import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.hookAfterMethod
-import java.util.concurrent.atomic.AtomicBoolean
+import com.tencent.smtt.sdk.WebView
+import com.tencent.smtt.sdk.WebViewClient
+import java.util.WeakHashMap
 
 @RegisterAction
 @RegisterSetting(
@@ -27,59 +28,45 @@ class CardFetcher : IAction {
     override val key: String
         get() = GeneratedSettingList.CARD_FETCHER
 
+    override val processes: Set<ActionProcess>
+        get() = setOf(ActionProcess.TOOL)
+
     override fun onRun(ctx: Context, process: ActionProcess) {
-        Application::class.java.hookAfterMethod("onCreate") { param ->
-            val application = param.thisObject as? Application ?: return@hookAfterMethod
-            registerLifecycleCallbacksIfNeeded(application)
-        }
-    }
+        WebViewClient::class.java.hookAfterMethod(
+            "onPageFinished",
+            WebView::class.java,
+            String::class.java
+        ) { param ->
+            val webView = param.args[0] as WebView
+            val url = param.args[1] as String
 
-    private fun registerLifecycleCallbacksIfNeeded(application: Application) {
-        if (!lifecycleRegistered.compareAndSet(false, true)) return
-        application.registerActivityLifecycleCallbacks(CardFetcherLifecycleCallbacks())
-    }
+            if (!isTargetUrl(url)) return@hookAfterMethod
+            if (!markTriggered(webView, url)) return@hookAfterMethod
 
-    private inner class CardFetcherLifecycleCallbacks : SimpleActivityLifecycleCallbacks() {
-
-        override fun onActivityResumed(activity: Activity) {
-            if (!activity.isTargetBrowserActivity()) return
-            if (!activity.isTargetDarenPage()) return
-
-            activity.window?.decorView?.postDelayed(
-                {
-                    if (activity.isFinishing || activity.isDestroyed) return@postDelayed
+            SyncUtils.postDelayed(1500L) {
+                runCatching {
                     MiniSvc.judgeTiming()
-                },
-                FETCH_DELAY_MILLIS
-            )
+                    Toasts.success("已领取补登卡")
+                }
+            }
         }
     }
 
-    private fun Activity.isTargetBrowserActivity(): Boolean {
-        return javaClass.name == QQ_BROWSER_ACTIVITY
+    private fun isTargetUrl(url: String): Boolean {
+        return url != "about:blank" && url.startsWith(QQ_DAREN_URL_PREFIX)
     }
 
-    private fun Activity.isTargetDarenPage(): Boolean {
-        val url = intent?.getStringExtra(KEY_URL) ?: return false
-        return url.startsWith(QQ_DAREN_URL_PREFIX)
-    }
-
-    private open class SimpleActivityLifecycleCallbacks : Application.ActivityLifecycleCallbacks {
-        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-        override fun onActivityStarted(activity: Activity) = Unit
-        override fun onActivityResumed(activity: Activity) = Unit
-        override fun onActivityPaused(activity: Activity) = Unit
-        override fun onActivityStopped(activity: Activity) = Unit
-        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-        override fun onActivityDestroyed(activity: Activity) = Unit
+    private fun markTriggered(webView: WebView, url: String): Boolean {
+        synchronized(triggerHistory) {
+            val lastUrl = triggerHistory[webView]
+            if (lastUrl == url) return false
+            triggerHistory[webView] = url
+            return true
+        }
     }
 
     private companion object {
-        private const val QQ_BROWSER_ACTIVITY = "com.tencent.mobileqq.activity.QQBrowserActivity"
         private const val QQ_DAREN_URL_PREFIX = "https://ti.qq.com/qqdaren/index"
-        private const val KEY_URL = "url"
-        private const val FETCH_DELAY_MILLIS = 1500L
-
-        private val lifecycleRegistered = AtomicBoolean(false)
+        private val triggerHistory = WeakHashMap<WebView, String>()
     }
 }
