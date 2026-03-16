@@ -76,6 +76,8 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
         "mqq.",
         "oicq.",
         "tencent.",
+        "NS_MINI_INTERFACE",
+        "NS_COMM"
     )
 
     // 冲突类加载器的类名前缀
