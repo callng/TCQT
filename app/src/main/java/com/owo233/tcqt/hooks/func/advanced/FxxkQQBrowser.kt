@@ -14,6 +14,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.reflect.findMethod
 import java.util.regex.Pattern
@@ -57,7 +58,7 @@ class FxxkQQBrowser : IAction {
 
     private fun shouldHijack(intent: Intent, url: String): Boolean {
         if (!URL_PATTERN.matcher(url.lowercase()).matches()) return false
-        if (shouldUseInternalBrowser(url)) return false
+        if (PlatformTools.isHostWhitelisted(url)) return false
 
         val shortName = intent.component?.shortClassName ?: return false
         return shortName.contains("QQBrowserActivity")
@@ -78,22 +79,6 @@ class FxxkQQBrowser : IAction {
 
         customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         customTabsIntent.launchUrl(HookEnv.application, uri)
-    }
-
-    private fun shouldUseInternalBrowser(url: String): Boolean {
-        val host = extractHost(url) ?: return true
-
-        return host.endsWith("qq.com") ||
-                host.endsWith("tenpay.com") ||
-                host.endsWith("meeting.tencent.com") ||
-                host == "qq-web.cdn-go.cn"
-    }
-
-    private fun extractHost(url: String): String? {
-        return runCatching {
-            val normalized = if (url.contains("://")) url else "http://$url"
-            normalized.toUri().host?.lowercase()
-        }.getOrNull()
     }
 
     private fun String.toWebUri(): Uri {

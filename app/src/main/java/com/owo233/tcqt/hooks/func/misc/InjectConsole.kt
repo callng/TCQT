@@ -7,6 +7,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hookBeforeMethod
 import com.tencent.smtt.sdk.WebView
 import com.tencent.smtt.sdk.WebViewClient
@@ -44,13 +45,14 @@ class InjectConsole : IAction {
             val webView = param.args[0] as WebView
             val url = param.args[1] as String
 
-            // 无论如何都要注入 copy-block
-            if (url != "about:blank") {
+            if (url == "about:blank") return@hookBeforeMethod
+
+            if (!PlatformTools.isHostWhitelisted(url)) {
                 blockTextCopy(webView)
-                // 只有功能开启时才注入 console
-                if (enableConsole) {
-                    loadJavaScriptByEruda(webView)
-                }
+            }
+
+            if (enableConsole) {
+                loadJavaScriptByEruda(webView)
             }
         }
     }

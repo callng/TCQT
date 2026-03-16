@@ -9,6 +9,7 @@ import android.content.pm.PackageInfo
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.pm.PackageInfoCompat
+import androidx.core.net.toUri
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
 import com.owo233.tcqt.ext.launchWithCatch
@@ -105,5 +106,18 @@ object PlatformTools {
             }
             context.startService(intent)
         }
+    }
+
+    fun isHostWhitelisted(url: String): Boolean {
+        val host = runCatching {
+            val normalized = if (url.contains("://")) url else "http://$url"
+            normalized.toUri().host?.lowercase()
+        }.getOrNull() ?: return false
+
+        return host.endsWith("qq.com") ||
+                host.endsWith("tenpay.com") ||
+                host.endsWith("tencent.com") ||
+                host.endsWith("cdn-go.cn") ||
+                host.endsWith("wechat.com")
     }
 }
