@@ -24,13 +24,24 @@ val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
-    compileSdk = androidCompileSdkVersion
+    compileSdk {
+        version = release(androidCompileSdkVersion) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
+        applicationId = "com.owo233.tcqt"
         minSdk = androidMinSdkVersion
         targetSdk = androidTargetSdkVersion
         versionCode = appVersionCode
         versionName = appVersionName
+
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters += "arm64-v8a"
+        }
+
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("String", "OPEN_ISSUES", "\"https://github.com/callng/TCQT/issues\"")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
