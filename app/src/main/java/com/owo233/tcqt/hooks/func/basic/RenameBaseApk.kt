@@ -1,20 +1,21 @@
 package com.owo233.tcqt.hooks.func.basic
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Build
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.getObjectField
+import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.getObjectFieldAs
 import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.setObjectField
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
-import java.io.File
 
 @RegisterAction
 @RegisterSetting(
@@ -25,136 +26,141 @@ import java.io.File
 )
 class RenameBaseApk : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
-        removeSuffix()
-        renameGroupUploadApk(ctx)
-        renameFriendUploadApk(ctx)
-    }
-
-    private fun removeSuffix() {
-        FileElement::class.java.hookBeforeMethod("getFileName") {
-            val fileName = it.thisObject.getObjectField("fileName") as String
-            if (fileName.endsWith(".1")) {
-                it.thisObject.setObjectField(
-                    "fileName",
-                    fileName.dropLast(2)
-                )
-            }
-        }
-    }
-
-    private fun renameGroupUploadApk(ctx: Context) {
-        val clz = load("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
-            ?: error("renameGroupUploadApk: 找不到TroopFileTransferMgr类!!!")
-
-        val method = clz.declaredMethods.firstOrNull { m ->
-            val params = m.parameterTypes
-            m.returnType == Void.TYPE && params.any { it.name.contains("Item") } &&
-                    (params.size == 1 || (params.size == 2 && params[0] == Long::class.javaPrimitiveType))
-        } ?: error("renameGroupUploadApk: 没有找到合适的方法!!!")
-
-        method.hookBeforeMethod { param ->
-            val item = param.args.firstOrNull { it?.javaClass?.name?.contains("Item") == true }
-                ?: return@hookBeforeMethod
-
-            val fileName = item.getObjectField("FileName") as? String ?: return@hookBeforeMethod
-            val localFile = item.getObjectField("LocalFile") as? String ?: return@hookBeforeMethod
-
-            if (!fileName.endsWith(".apk")) return@hookBeforeMethod
-
-            if (!File(localFile).exists()) {
-                Log.e("renameGroupUploadApk: File not exists: $localFile")
-                return@hookBeforeMethod
-            }
-
-            val newFileName = getFormattedFileNameByPath(ctx, localFile)
-            item.setObjectField("FileName", newFileName)
-        }
-    }
-
-    private fun renameFriendUploadApk(ctx: Context) {
-        val clz = load("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
-            ?: error("renameFriendUploadApk: 找不到NTFileManageBridger类!!!")
-
-        val method = clz.declaredMethods.firstOrNull { m ->
-            fun Class<*>.isLike(namePart: String) = name.contains(namePart, ignoreCase = false)
-            val args = m.parameterTypes
-            val isFive = args.size == 5 &&
-                    args[0].isLike("NTFileManageBridger") &&
-                    args[1].isLike("FileManagerEntity") &&
-                    args[2] == Runnable::class.java &&
-                    args[3] == String::class.java &&
-                    args[4] == String::class.java
-
-            val isFour = args.size == 4 &&
-                    args[0].isLike("FileManagerEntity") &&
-                    args[1] == Runnable::class.java &&
-                    args[2] == String::class.java &&
-                    args[3] == String::class.java
-
-            m.returnType == Void.TYPE && (isFive || isFour)
-        } ?: error("renameFriendUploadApk: 没有找到合适方法!!!")
-
-        val stringArgIndex = method.parameterTypes.indexOfFirst { it == String::class.java }
-        if (stringArgIndex == -1)
-            error("renameFriendUploadApk: 没有找到FileName参数位置!!!")
-
-        val fileArgIndex = method.parameterTypes.indexOfFirst {it.name.contains("FileManagerEntity")}
-        if (fileArgIndex == -1)
-            error("renameFriendUploadApk: 没有找到FileManagerEntity参数位置!!!")
-
-        method.hookBeforeMethod { param ->
-            val fileManagerEntity = param.args[fileArgIndex]
-            val fileName = fileManagerEntity.getObjectField("fileName") as? String ?: return@hookBeforeMethod
-            val localFile = fileManagerEntity.getObjectField("strFilePath") as? String ?: return@hookBeforeMethod
-
-            if (!fileName.endsWith(".apk")) return@hookBeforeMethod
-
-            File(localFile).also {
-                if (!it.exists()) {
-                    Log.e("renameFriendUploadApk: File not exists: $localFile")
-                    return@hookBeforeMethod
-                }
-            }
-
-            val newFileName = getFormattedFileNameByPath(ctx, localFile)
-            param.args[stringArgIndex] = newFileName
-        }
-    }
-
-    private fun getFormattedFileNameByPath(
-        ctx: Context,
-        apkPath: String,
-        format: String = "%n_%v(%c).APK"
-    ): String {
-        val pm = ctx.packageManager
-
-        val pkgInfo = pm.getPackageArchiveInfo(apkPath, 0)
-            ?: throw IllegalArgumentException("无法解析 APK：$apkPath")
-
-        val appInfo = pkgInfo.applicationInfo
-            ?: throw IllegalStateException("APK 中未包含 ApplicationInfo")
-
-        appInfo.sourceDir = apkPath
-        appInfo.publicSourceDir = apkPath
-
-        val appName = pm.getApplicationLabel(appInfo).toString()
-        val versionName = pkgInfo.versionName ?: "114514.null"
-        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            pkgInfo.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            pkgInfo.versionCode.toLong()
-        }
-
-        return format
-            .replace("%n", appName)
-            .replace("%p", appInfo.packageName)
-            .replace("%v", versionName)
-            .replace("%c", versionCode.toString())
-    }
-
     override val key: String get() = GeneratedSettingList.RENAME_BASE_APK
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+    override fun onRun(ctx: Context, process: ActionProcess) {
+        hookC2C()
+        hookTroop()
+        hookFile()
+    }
+
+    private fun hookC2C() {
+        val clazz = loadOrThrow("com.tencent.mobileqq.filemanager.nt.NTFileManageBridger")
+        val method = clazz.declaredMethods.first { m ->
+            val types = m.parameterTypes
+            m.returnType == Void.TYPE &&
+                    types.any { it.name.contains("FileManagerEntity") } &&
+                    types.any { it == Runnable::class.java } &&
+                    types.any { it == String::class.java }
+        }
+
+        val entityIdx = method.parameterTypes.indexOfFirst { it.name.contains("FileManagerEntity") }
+        val nameIdx = method.parameterTypes.indexOfFirst { it == String::class.java }
+
+        method.hookBeforeMethod { param ->
+            val fileManagerEntity = param.args[entityIdx]
+            val fileName = fileManagerEntity.getObjectFieldAs<String>("fileName")
+            val localPath = fileManagerEntity.getObjectFieldAs<String>("strFilePath")
+            val meetHitConditions = meetHitConditions(fileName, localPath)
+            if (meetHitConditions) {
+                getFormattedFileNameByPath(localPath).also {
+                    fileManagerEntity.setObjectField("fileName", it)
+                    param.args[nameIdx] = it
+                }
+            }
+        }
+    }
+
+    private fun hookTroop() {
+        val clazz = loadOrThrow("com.tencent.mobileqq.troop.filemanager.TroopFileTransferMgr")
+        val method = clazz.declaredMethods.first { m ->
+            m.returnType == Void.TYPE &&
+                    m.parameterTypes.size in 1..2 &&
+                    m.parameterTypes.any { it.name.contains("Item") }
+        }
+
+        method.hookBeforeMethod { param ->
+            val item = param.args.first { it.javaClass.name.contains("Item") }
+            val fileName = item.getObjectFieldAs<String>("FileName")
+            val localPath = item.getObjectFieldAs<String>("LocalFile")
+            if (meetHitConditions(fileName, localPath)) {
+                getFormattedFileNameByPath(localPath).also {
+                    item.setObjectField("FileName", it)
+                }
+            }
+        }
+    }
+
+    private fun hookFile() {
+        FileElement::class.java.hookBeforeMethod("getFileName") { param ->
+            val fileName = param.thisObject.getObjectFieldAs<String>("fileName")
+            if (fileName.endsWith(".1")) {
+                param.thisObject.setObjectField("fileName", fileName.substringBeforeLast(".1"))
+            }
+        }
+    }
+
+    private fun meetHitConditions(fileName: String, filePath: String): Boolean {
+        if (fileName.matches("^base(\\([0-9]+\\))?.apk$".toRegex())) {
+            return true
+        }
+
+        // 后缀匹配命中
+        val index = fileName.lastIndexOf(".")
+        if (index == -1) return false
+
+        val fileExtension = fileName.substring(index)
+        // 不区分大小写的匹配.apk
+        if (fileExtension.equals(".apk", ignoreCase = true)) {
+            // 无后缀文件名 去除.apk 这四个字
+            val fileNameWithoutSuffix = fileName.substring(0, index)
+            val applicationInfo = getAppInfoByFilePath(filePath) ?: return false
+
+            // 包名命中
+            if (fileNameWithoutSuffix == applicationInfo.packageName) return true
+
+            // 应用主app context命中
+            if (fileNameWithoutSuffix == applicationInfo.name) return true
+
+            // 应用名命中
+            if (fileNameWithoutSuffix == applicationInfo.loadLabel(
+                    HookEnv.hostAppContext.packageManager
+            ).toString()) return true
+        }
+
+        return false
+    }
+
+    private fun getAppInfoByFilePath(filePath: String?): ApplicationInfo? {
+        try {
+            val packageManager: PackageManager = HookEnv.hostAppContext.packageManager
+            val packageArchiveInfo = packageManager.getPackageArchiveInfo(
+                filePath!!,
+                1
+            )
+            return packageArchiveInfo!!.applicationInfo
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    private fun getFormattedFileNameByPath(apkPath: String): String {
+        try {
+            val packageManager: PackageManager = HookEnv.hostAppContext.packageManager
+            val packageArchiveInfo =
+                packageManager.getPackageArchiveInfo(apkPath, 1)
+
+            val applicationInfo = packageArchiveInfo!!.applicationInfo
+            applicationInfo!!.sourceDir = apkPath
+            applicationInfo.publicSourceDir = apkPath
+
+            val currentBaseApkFormat = "%n_%v.APK"
+            @Suppress("DEPRECATION")
+            val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageArchiveInfo.longVersionCode.toString()
+            } else {
+                packageArchiveInfo.versionCode.toString()
+            }
+
+            return currentBaseApkFormat.replace(
+                "%n",
+                applicationInfo.loadLabel(packageManager).toString()
+            ).replace("%p", applicationInfo.packageName).replace(
+                "%v",
+                packageArchiveInfo.versionName!!
+            ).replace("%c", vCode)
+        } catch (_: Exception) {
+            return "base.APK"
+        }
+    }
 }
