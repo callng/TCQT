@@ -39,16 +39,19 @@ class DisablePaoPaoIcon : IAction {
                     */
                     val layout = param.thisObject as LinearLayout
                     val icon = layout.findViewWithTag<ImageView>(1016)
-                    val hbId = HookEnv.hostAppContext.resources
-                        .getIdentifier(
-                            "qui_red_envelope_aio_oversized_light_selector",
-                            "drawable",
-                            HookEnv.hostAppPackageName
-                        )
 
-                    icon.tag = 1004
-                    icon.contentDescription = "红包"
-                    icon.setImageResource(hbId)
+                    if (icon != null) {
+                        val hbId = HookEnv.hostAppContext.resources
+                            .getIdentifier(
+                                "qui_red_envelope_aio_oversized_light_selector",
+                                "drawable",
+                                HookEnv.hostAppPackageName
+                            )
+
+                        icon.tag = 1004
+                        icon.contentDescription = "红包"
+                        icon.setImageResource(hbId)
+                    }
                 }
             }
         }
