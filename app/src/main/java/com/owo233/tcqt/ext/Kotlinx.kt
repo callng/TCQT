@@ -25,6 +25,9 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 val EMPTY_BYTE_ARRAY = ByteArray(0)
 
+private val HEX_CHARS_UPPER = "0123456789ABCDEF".toCharArray()
+private val HEX_CHARS_LOWER = "0123456789abcdef".toCharArray()
+
 internal lateinit var globalUi: Handler
 
 internal fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
@@ -72,17 +75,29 @@ fun ByteArray.sliceSafe(off: Int, length: Int = size - off): ByteArray {
 }
 
 @JvmOverloads
-fun ByteArray?.toHexString(uppercase: Boolean = false): String {
+fun ByteArray?.toHexString(uppercase: Boolean = false, limit: Int = Int.MAX_VALUE): String {
     if (this == null || this.isEmpty()) return ""
 
-    val hexChars = if (uppercase) "0123456789ABCDEF" else "0123456789abcdef"
-    return StringBuilder(this.size * 2).apply {
-        for (b in this@toHexString) {
-            val i = b.toInt() and 0xFF
-            append(hexChars[i ushr 4])
-            append(hexChars[i and 0x0F])
-        }
-    }.toString()
+    val originalSize = this.size
+    val isTruncated = originalSize > limit
+    val targetLen = if (isTruncated) limit else originalSize
+
+    val hexChars = if (uppercase) HEX_CHARS_UPPER else HEX_CHARS_LOWER
+    val result = CharArray(targetLen shl 1)
+
+    var i = 0
+    var j = 0
+
+    while (i < targetLen) {
+        val v = this[i].toInt() and 0xFF
+        result[j++] = hexChars[v ushr 4]
+        result[j++] = hexChars[v and 0x0F]
+        i++
+    }
+
+    if (!isTruncated) return String(result)
+
+    return String(result) + "... (truncated, total: $originalSize bytes)"
 }
 
 fun String?.ifNullOrEmpty(defaultValue: () -> String): String {

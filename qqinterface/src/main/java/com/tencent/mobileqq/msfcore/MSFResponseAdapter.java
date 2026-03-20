@@ -41,206 +41,201 @@ public class MSFResponseAdapter {
 
     @NonNull
     public String getCmd() {
-        return this.mCmd;
+        throw new RuntimeException("Stub !");
     }
 
     public int getFailReason() {
-        return this.mFailReason;
+        throw new RuntimeException("Stub !");
     }
 
     public boolean getHasReserveFields() {
-        return this.mHasReserveFields;
+        throw new RuntimeException("Stub !");
     }
 
     public boolean getIsBadNetwork() {
-        return this.mIsBadNetwork;
+        throw new RuntimeException("Stub !");
     }
 
     public boolean getIsRecvFromMainConn() {
-        return this.mIsRecvFromMainConn;
+        throw new RuntimeException("Stub !");
     }
 
     public boolean getIsSecSigCmd() {
-        return this.mIsSecSigCmd;
+        throw new RuntimeException("Stub !");
     }
 
     public boolean getIsUinDyed() {
-        return this.mIsUinDyed;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public byte[] getRecvData() {
-        return this.mRecvData;
+        throw new RuntimeException("Stub !");
     }
 
     public long getRecvTime() {
-        return this.mRecvTime;
+        throw new RuntimeException("Stub !");
     }
 
     public int getRecvWay() {
-        return this.mRecvWay;
+        throw new RuntimeException("Stub !");
     }
 
     public int getSecSignFlag() {
-        return this.mSecSignFlag;
+        throw new RuntimeException("Stub !");
     }
 
     public long getSendTime() {
-        return this.mSendTime;
+        throw new RuntimeException("Stub !");
     }
 
     public int getSeq() {
-        return this.mSeq;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public String getSsoErrTips() {
-        return this.mSsoErrTips;
+        throw new RuntimeException("Stub !");
     }
 
     public int getSsoRet() {
-        return this.mSsoRet;
+        throw new RuntimeException("Stub !");
     }
 
     public int getState() {
-        return this.mState;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public HashMap<String, byte[]> getTransInfo() {
-        return this.mTransInfo;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public byte[] getTrpcErrMsg() {
-        return this.mTrpcErrMsg;
+        throw new RuntimeException("Stub !");
     }
 
     public int getTrpcFuncRetCode() {
-        return this.mTrpcFuncRetCode;
+        throw new RuntimeException("Stub !");
     }
 
     public int getTrpcRetcode() {
-        return this.mTrpcRetcode;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public String getUid() {
-        return this.mUid;
+        throw new RuntimeException("Stub !");
     }
 
     @NonNull
     public String getUin() {
-        return this.mUin;
+        throw new RuntimeException("Stub !");
     }
 
     public int getUinType() {
-        return this.mUinType;
+        throw new RuntimeException("Stub !");
     }
 
     public long getWriteSocketTime() {
-        return this.mWriteSocketTime;
+        throw new RuntimeException("Stub !");
     }
 
-    public void setCmd(@NonNull String str) {
-        this.mCmd = str;
+    public void setCmd(String str) {
+        throw new RuntimeException("Stub !");
     }
 
     public void setFailReason(int i) {
-        this.mFailReason = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setHasReserveFields(boolean z) {
-        this.mHasReserveFields = z;
+        throw new RuntimeException("Stub !");
     }
 
     public void setIsBadNetwork(boolean z) {
-        this.mIsBadNetwork = z;
+        throw new RuntimeException("Stub !");
     }
 
     public void setIsRecvFromMainConn(boolean z) {
-        this.mIsRecvFromMainConn = z;
+        throw new RuntimeException("Stub !");
     }
 
     public void setIsSecSigCmd(boolean z) {
-        this.mIsSecSigCmd = z;
+        throw new RuntimeException("Stub !");
     }
 
     public void setIsUinDyed(boolean z) {
-        this.mIsUinDyed = z;
+        throw new RuntimeException("Stub !");
     }
 
-    public void setRecvData(@NonNull byte[] bArr) {
-        this.mRecvData = bArr;
+    public void setRecvData(byte[] bArr) {
+        throw new RuntimeException("Stub !");
     }
 
     public void setRecvTime(long j) {
-        this.mRecvTime = j;
+        throw new RuntimeException("Stub !");
     }
 
     public void setRecvWay(int i) {
-        this.mRecvWay = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setSecSignFlag(int i) {
-        this.mSecSignFlag = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setSendTime(long j) {
-        this.mSendTime = j;
+        throw new RuntimeException("Stub !");
     }
 
     public void setSeq(int i) {
-        this.mSeq = i;
+        throw new RuntimeException("Stub !");
     }
 
-    public void setSsoErrTips(@NonNull String str) {
-        this.mSsoErrTips = str;
+    public void setSsoErrTips(String str) {
+        throw new RuntimeException("Stub !");
     }
 
     public void setSsoRet(int i) {
-        this.mSsoRet = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setState(int i) {
-        this.mState = i;
+        throw new RuntimeException("Stub !");
     }
 
-    public void setTransInfo(@NonNull HashMap<String, byte[]> hashMap) {
-        this.mTransInfo = hashMap;
+    public void setTransInfo(HashMap<String, byte[]> hashMap) {
+        throw new RuntimeException("Stub !");
     }
 
-    public void setTrpcErrMsg(@NonNull byte[] bArr) {
-        this.mTrpcErrMsg = bArr;
+    public void setTrpcErrMsg(byte[] bArr) {
+        throw new RuntimeException("Stub !");
     }
 
     public void setTrpcFuncRetCode(int i) {
-        this.mTrpcFuncRetCode = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setTrpcRetcode(int i) {
-        this.mTrpcRetcode = i;
+        throw new RuntimeException("Stub !");
     }
 
-    public void setUid(@NonNull String str) {
-        this.mUid = str;
+    public void setUid(String str) {
+        throw new RuntimeException("Stub !");
     }
 
-    public void setUin(@NonNull String str) {
-        this.mUin = str;
+    public void setUin(String str) {
+        throw new RuntimeException("Stub !");
     }
 
     public void setUinType(int i) {
-        this.mUinType = i;
+        throw new RuntimeException("Stub !");
     }
 
     public void setWriteSocketTime(long j) {
-        this.mWriteSocketTime = j;
-    }
-
-    @Override
-    public String toString() {
-        return "MSFResponseAdapter{mState=" + this.mState + ",mSeq=" + this.mSeq + ",mUin=" + this.mUin + ",mUid=" + this.mUid + ",mUinType=" + this.mUinType + ",mCmd=" + this.mCmd + ",mRecvData=" + this.mRecvData + ",mSendTime=" + this.mSendTime + ",mWriteSocketTime=" + this.mWriteSocketTime + ",mRecvTime=" + this.mRecvTime + ",mRecvWay=" + this.mRecvWay + ",mIsBadNetwork=" + this.mIsBadNetwork + ",mTrpcRetcode=" + this.mTrpcRetcode + ",mTrpcFuncRetCode=" + this.mTrpcFuncRetCode + ",mTrpcErrMsg=" + this.mTrpcErrMsg + ",mFailReason=" + this.mFailReason + ",mTransInfo=" + this.mTransInfo + ",mSecSignFlag=" + this.mSecSignFlag + ",mIsSecSigCmd=" + this.mIsSecSigCmd + ",mHasReserveFields=" + this.mHasReserveFields + ",mSsoRet=" + this.mSsoRet + ",mSsoErrTips=" + this.mSsoErrTips + ",mIsUinDyed=" + this.mIsUinDyed + ",mIsRecvFromMainConn=" + this.mIsRecvFromMainConn + ",}";
+        throw new RuntimeException("Stub !");
     }
 
     public MSFResponseAdapter(int i, int i2, @NonNull String str, @NonNull String str2, int i3, @NonNull String str3, @NonNull byte[] bArr, long j, long j2, long j3, int i4, boolean z, int i5, int i6, @NonNull byte[] bArr2, int i7, @NonNull HashMap<String, byte[]> hashMap, int i8, boolean z2, boolean z3, int i9, @NonNull String str4, boolean z4, boolean z5) {
