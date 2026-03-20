@@ -41,10 +41,8 @@ import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
-import com.tencent.mobileqq.app.utils.RouteUtils
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
-import com.tencent.qphone.base.util.BaseApplication
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
@@ -389,18 +387,6 @@ class AddModuleEntrance : AlwaysRunAction() {
         }.show()
     }
 
-    @SuppressLint("IntentWithNullActionLaunch")
-    private fun openBanRecordQuery() {
-        val intent = Intent().apply {
-            putExtra("url", "https://m.q.qq.com/a/s/07befc388911b30c2359bfa383f2d693")
-        }
-
-        val baseApplication = BaseActivity.sTopActivity ?: BaseApplication.getContext()
-            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-
-        RouteUtils.startActivity(baseApplication, intent, "/base/browser")
-    }
-
     private fun openTCQTSettings(ctx: Context? = null) {
         if (ctx != null) {
             ctx.startActivity(Intent(ctx, SettingActivity::class.java))
@@ -541,15 +527,6 @@ class AddModuleEntrance : AlwaysRunAction() {
             groupTag = "TCQT_OtherSettingEntry",
             groupTitle = "TCQT工具",
             onClick = ::showInfoCardDialog
-        ),
-        SettingEntryConfig(
-            id = R.id.check_ban_url,
-            title = "历史冻结记录",
-            iconName = "qui_tuning",
-            extraEntry = true,
-            groupTag = "TCQT_OtherSettingEntry",
-            groupTitle = "TCQT小工具",
-            onClick = { openBanRecordQuery() }
         ),
         SettingEntryConfig(
             id = R.id.account_get_ticket,
