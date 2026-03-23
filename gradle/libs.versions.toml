@@ -22,7 +22,7 @@ kotlinx-serialization = "1.10.0"
 
 # Google / Protobuf
 protobuf-plugin = "0.9.6"
-protobuf-lib = "4.34.0"
+protobuf-lib = "4.34.1"
 
 # Xposed
 xposed = "82"
