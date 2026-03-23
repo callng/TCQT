@@ -1,6 +1,7 @@
 package com.tencent.common.app;
 
 import com.tencent.mobileqq.app.BusinessHandler;
+import com.tencent.qphone.base.remote.FromServiceMsg;
 import com.tencent.qphone.base.remote.ToServiceMsg;
 import com.tencent.qphone.base.util.BaseApplication;
 
@@ -27,5 +28,8 @@ public abstract class AppInterface extends AppRuntime {
     }
 
     public void sendToService(ToServiceMsg toServiceMsg) {
+    }
+
+    public void receiveToService(ToServiceMsg toServiceMsg, FromServiceMsg fromServiceMsg) {
     }
 }

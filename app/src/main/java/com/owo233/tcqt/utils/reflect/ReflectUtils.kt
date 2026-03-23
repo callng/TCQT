@@ -16,16 +16,23 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 import androidx.core.util.size
+import java.lang.reflect.AccessibleObject
 
 private val fieldCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Field>>()
 private val methodCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Method>>()
 private val constructorCache = ConcurrentHashMap<Class<*>, Array<Constructor<*>>>()
 
+private fun AccessibleObject.allowAccess() {
+    if (!this.isAccessible) {
+        runCatching { isAccessible = true }
+    }
+}
+
 private fun Class<*>.allFields(withSuper: Boolean): Array<Field> {
     return fieldCache.getOrPut(this to withSuper) {
         val fields = mutableListOf<Field>()
         var current: Class<*>? = this
-        while (current != null) {
+        while (current != null && current != Any::class.java) {
             fields += current.declaredFields
             current = if (withSuper) current.superclass else null
         }
@@ -37,7 +44,7 @@ private fun Class<*>.allMethods(withSuper: Boolean): Array<Method> {
     return methodCache.getOrPut(this to withSuper) {
         val methods = mutableListOf<Method>()
         var current: Class<*>? = this
-        while (current != null) {
+        while (current != null && current != Any::class.java) {
             methods += current.declaredMethods
             current = if (withSuper) current.superclass else null
         }
@@ -63,12 +70,12 @@ fun Any.getFields(withSuper: Boolean = true): Array<Field> {
 
 fun Any.field(fieldType: Class<*>, withSuper: Boolean = true): Field? {
     return this.getFields(withSuper).firstOrNull { it.type == fieldType }
-        ?.apply { isAccessible = true }
+        ?.apply { allowAccess() }
 }
 
 fun Any.field(fieldName: String, withSuper: Boolean = true): Field? {
     return this.getFields(withSuper).firstOrNull { it.name == fieldName }
-        ?.apply { isAccessible = true }
+        ?.apply { allowAccess() }
 }
 
 fun Any.fieldValue(fieldType: Class<*>, withSuper: Boolean = true): Any? {
@@ -87,35 +94,53 @@ fun <T> Any.fieldValueAs(fieldType: Class<*>, withSuper: Boolean = true): T? =
 fun <T> Any.fieldValueAs(name: String, withSuper: Boolean = true): T? =
     this.fieldValue(name, withSuper) as T?
 
+fun Any.invoke(method: Method, vararg args: Any?): Any {
+    val receiver = if (this is Class<*>) null else this
+    method.allowAccess()
+    return try {
+        method.invoke(receiver, *args)
+    } catch (e: InvocationTargetException) {
+        throw e.cause ?: e
+    } catch (e: Exception) {
+        throw e
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T> Any.invokeAs(method: Method, vararg args: Any?): T {
+    return this.invoke(method, *args) as T
+}
+
 fun <T> Any.invoke(
     name: String,
     returnType: Class<T>,
     vararg args: Any?,
     withSuper: Boolean = true
-): T? {
+): T {
     val clazz = (this as? Class<*>) ?: this::class.java
     clazz.allMethods(withSuper).forEach {
         if (it.name == name
             && it.returnType == returnType
             && parametersMatch(it.parameterTypes, args)
         ) {
-            it.isAccessible = true
+            it.allowAccess()
             @Suppress("UNCHECKED_CAST")
-            return it.invoke(this, *args) as T?
+            return it.invoke(this, *args) as T
         }
     }
-    return null
+
+    throw NoSuchMethodException("No matching method found in $name")
 }
 
 fun Any.invoke(
     name: String,
     vararg args: Any?,
     withSuper: Boolean = true
-): Any? {
+): Any {
     val clazz = (this as? Class<*>) ?: this::class.java
     clazz.allMethods(withSuper).forEach {
         if (it.name == name && parametersMatch(it.parameterTypes, args)) {
-            it.isAccessible = true
+            it.allowAccess()
             return try {
                 it.invoke(this, *args)
             } catch (e: InvocationTargetException) {
@@ -123,7 +148,8 @@ fun Any.invoke(
             }
         }
     }
-    return null
+
+    throw NoSuchMethodException("No matching method found in $name")
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -131,13 +157,13 @@ fun <T> Any.invokeAs(
     name: String,
     vararg args: Any?,
     withSuper: Boolean = true
-): T? = this.invoke(name, *args, withSuper = withSuper) as T?
+): T = this.invoke(name, *args, withSuper = withSuper) as T
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Class<T>.new(vararg args: Any?): T {
     this.allConstructors().forEach { c ->
         if (parametersMatch(c.parameterTypes, args)) {
-            c.isAccessible = true
+            c.allowAccess()
             return c.newInstance(*args) as T
         }
     }
@@ -154,7 +180,7 @@ fun Any.invokeMethod(
     withSuper: Boolean = false,
     vararg args: Any?,
     predicate: Method.() -> Boolean
-): Any? {
+): Any {
     val clazz = (this as? Class<*>) ?: this::class.java
     val receiver = if (this is Class<*>) null else this
 
@@ -162,7 +188,7 @@ fun Any.invokeMethod(
         if (!method.predicate()) return@forEach
         if (!parametersMatch(method.parameterTypes, args)) return@forEach
 
-        method.isAccessible = true
+        method.allowAccess()
         return try {
             method.invoke(receiver, *args)
         } catch (e: InvocationTargetException) {
@@ -370,7 +396,7 @@ private fun reflectObject(
 
             if (field.name.startsWith("this$")) return@forEach
 
-            field.isAccessible = true
+            field.allowAccess()
 
             try {
                 val value = field.get(obj)

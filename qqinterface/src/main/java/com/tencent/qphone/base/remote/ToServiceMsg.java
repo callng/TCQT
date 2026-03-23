@@ -3,31 +3,29 @@ package com.tencent.qphone.base.remote;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.TextUtils;
 import android.util.Log;
-
 import com.tencent.mobileqq.msf.sdk.MsfCommand;
-
 import java.util.HashMap;
 
 public class ToServiceMsg implements Parcelable {
-    public static final Parcelable.Creator<ToServiceMsg> CREATOR = new Parcelable.Creator<ToServiceMsg>() {
-        @Override
+    public static final Creator CREATOR = new Creator() {
         public ToServiceMsg createFromParcel(Parcel parcel) {
             return new ToServiceMsg(parcel);
         }
 
-        @Override
-        public ToServiceMsg[] newArray(int i2) {
-            return new ToServiceMsg[i2];
+        public ToServiceMsg[] newArray(int i) {
+            return new ToServiceMsg[i];
         }
     };
     private static final String KEY_FIRST_PKG_AFTER_CONN_OPEN = "key_first_pkg_after_conn_open";
     private static final String tag = "ToServiceMsg";
     private static final String version = "version";
-    //public IBaseActionListener actionListener;
     private int appId;
     private int appSeq;
     private HashMap<String, Object> attributes;
+
+    @Deprecated
     public Bundle extraData;
     private boolean mIsSupportRetry;
     public boolean mSkipBinderWhenMarshall;
@@ -42,13 +40,37 @@ public class ToServiceMsg implements Parcelable {
     private int ssoSeq;
     private long timeout;
     private byte toVersion;
-    private HashMap<String, byte[]> transInfo;
+    private final HashMap<String, byte[]> transInfo;
     private String uin;
     private byte uinType;
     private byte[] wupBuffer;
 
-    public ToServiceMsg(String service, String uin, String cmd) {
-
+    public ToServiceMsg(String str, String str2, String str3) {
+        this.mSsoVersion = 0;
+        this.sendTimeout = -1L;
+        this.timeout = -1L;
+        this.appSeq = -1;
+        this.wupBuffer = new byte[0];
+        this.needResp = true;
+        this.mIsSupportRetry = false;
+        this.ssoSeq = -1;
+        this.attributes = new HashMap<>(32);
+        this.extraData = new Bundle();
+        this.toVersion = (byte) 1;
+        this.msfCommand = MsfCommand.unknown;
+        this.uinType = (byte) 0;
+        this.quickSendEnable = false;
+        this.quickSendStrategy = -1;
+        this.mSkipBinderWhenMarshall = false;
+        this.transInfo = new HashMap<>();
+        this.serviceName = str;
+        this.uin = str2;
+        this.serviceCmd = str3;
+        try {
+            this.extraData.putByte(version, this.toVersion);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public synchronized Object addAttribute(String str, Object obj) {
@@ -59,14 +81,10 @@ public class ToServiceMsg implements Parcelable {
         return this.transInfo.put(str, bArr);
     }
 
-    @Override // android.os.Parcelable
+    @Override
     public int describeContents() {
         return 0;
     }
-
-    //public IBaseActionListener getActionListener() {
-    //    return this.actionListener;
-    //}
 
     public int getAppId() {
         return this.appId;
@@ -119,30 +137,59 @@ public class ToServiceMsg implements Parcelable {
     public String getShortStringForLog() {
         try {
             StringBuffer stringBuffer = new StringBuffer(256);
-            stringBuffer.append(tag);
-            stringBuffer.append(" ssoSeq:");
-            stringBuffer.append(getRequestSsoSeq());
-            stringBuffer.append(" sCmd:");
+            stringBuffer.append("ToServiceMsg serviceCmd:");
             stringBuffer.append(this.serviceCmd);
-            stringBuffer.append(" appSeq:");
+            stringBuffer.append(", MSFCommand:");
+            stringBuffer.append(this.msfCommand);
+            stringBuffer.append(", ssoSeq:");
+            stringBuffer.append(getRequestSsoSeq());
+            stringBuffer.append(", appSeq:");
             stringBuffer.append(this.appSeq);
-            stringBuffer.append(" t:");
-            stringBuffer.append(this.timeout);
-            stringBuffer.append(" needResp:");
+            stringBuffer.append(", needResp:");
             stringBuffer.append(this.needResp);
-            stringBuffer.append(" needQuickSend:");
-            stringBuffer.append(this.quickSendEnable);
-            stringBuffer.append("IsSupportRetry");
-            stringBuffer.append(this.mIsSupportRetry);
+            if (!TextUtils.isEmpty(getTraceInfo())) {
+                stringBuffer.append(", traceInfo:");
+                stringBuffer.append(getTraceInfo());
+            }
             return stringBuffer.toString();
-        } catch (Exception e2) {
-            e2.printStackTrace();
+        } catch (Exception e) {
             return "fsm getString error";
         }
     }
 
     public String getStringForLog() {
-        return "TSM getString error";
+        try {
+            StringBuffer stringBuffer = new StringBuffer(1024);
+            stringBuffer.append("ToServiceMsg serviceCmd:");
+            stringBuffer.append(this.serviceCmd);
+            stringBuffer.append(", MSFCommand:");
+            stringBuffer.append(this.msfCommand);
+            stringBuffer.append(", ssoSeq:");
+            stringBuffer.append(getRequestSsoSeq());
+            stringBuffer.append(", appSeq:");
+            stringBuffer.append(this.appSeq);
+            stringBuffer.append(", uin:");
+            stringBuffer.append(this.uin);
+            stringBuffer.append(", timeout:");
+            stringBuffer.append(this.timeout);
+            stringBuffer.append(", needResp:");
+            stringBuffer.append(this.needResp);
+            stringBuffer.append(", len:");
+            stringBuffer.append(this.wupBuffer.length);
+            stringBuffer.append(", enableQuickSend:");
+            stringBuffer.append(this.quickSendEnable);
+            stringBuffer.append(", quickSendStrategy:");
+            stringBuffer.append(this.quickSendStrategy);
+            stringBuffer.append(", isSupportRetry:");
+            stringBuffer.append(this.mIsSupportRetry);
+            if (!TextUtils.isEmpty(getTraceInfo())) {
+                stringBuffer.append(", traceInfo:");
+                stringBuffer.append(getTraceInfo());
+            }
+            return stringBuffer.toString();
+        } catch (Throwable th) {
+            return "TSM getString error";
+        }
     }
 
     public long getTimeout() {
@@ -150,6 +197,13 @@ public class ToServiceMsg implements Parcelable {
     }
 
     public String getTraceInfo() {
+        if (!this.attributes.containsKey("tps_telemetry_tracing_info")) {
+            return null;
+        }
+        Object obj = this.attributes.get("tps_telemetry_tracing_info");
+        if (obj instanceof String) {
+            return (String) obj;
+        }
         return null;
     }
 
@@ -182,7 +236,7 @@ public class ToServiceMsg implements Parcelable {
     }
 
     public boolean isNeedRemindSlowNetwork() {
-        return false;
+        return ((Boolean) getAttribute("remind_slown_network", Boolean.FALSE)).booleanValue();
     }
 
     public boolean isQuickSendEnable() {
@@ -208,12 +262,9 @@ public class ToServiceMsg implements Parcelable {
             this.timeout = parcel.readLong();
             this.extraData.clear();
             this.extraData.putAll(parcel.readBundle(Thread.currentThread().getContextClassLoader()));
-            if (!this.mSkipBinderWhenMarshall) {
-                //this.actionListener = IBaseActionListener.Stub.asInterface(parcel.readStrongBinder());
-            }
-            byte b2 = this.extraData.getByte("version");
-            this.toVersion = b2;
-            if (b2 > 0) {
+            byte b = this.extraData.getByte(version);
+            this.toVersion = b;
+            if (b > 0) {
                 this.msfCommand = (MsfCommand) parcel.readSerializable();
                 this.sendTimeout = parcel.readLong();
                 this.needResp = parcel.readByte() != 0;
@@ -229,18 +280,18 @@ public class ToServiceMsg implements Parcelable {
             }
             this.quickSendEnable = parcel.readInt() == 1;
             this.quickSendStrategy = parcel.readInt();
-        } catch (RuntimeException e2) {
-            Log.d(tag, "readFromParcel RuntimeException", e2);
-            throw e2;
+        } catch (RuntimeException e) {
+            Log.d(tag, "readFromParcel RuntimeException", e);
+            throw e;
         }
     }
 
-    public void setAppId(int i2) {
-        this.appId = i2;
+    public void setAppId(int i) {
+        this.appId = i;
     }
 
-    public void setAppSeq(int i2) {
-        this.appSeq = i2;
+    public void setAppSeq(int i) {
+        this.appSeq = i;
     }
 
     public void setAttributes(HashMap<String, Object> hashMap) {
@@ -268,24 +319,24 @@ public class ToServiceMsg implements Parcelable {
     }
 
     public void setNeedRemindSlowNetwork(boolean z) {
-        //addAttribute(BaseConstants.ATTRIBUTE_NEED_REMIND_SLOW_NETWORK, Boolean.valueOf(z));
+        addAttribute("remind_slown_network", Boolean.valueOf(z));
     }
 
-    public void setQuickSend(boolean z, int i2) {
+    public void setQuickSend(boolean z, int i) {
         this.quickSendEnable = z;
-        this.quickSendStrategy = i2;
+        this.quickSendStrategy = i;
     }
 
-    public void setRequestSsoSeq(int i2) {
-        this.ssoSeq = i2;
+    public void setRequestSsoSeq(int i) {
+        this.ssoSeq = i;
     }
 
-    public void setSSOVersion(int i2) {
-        this.mSsoVersion = i2;
+    public void setSSOVersion(int i) {
+        this.mSsoVersion = i;
     }
 
-    public void setSendTimeout(long j2) {
-        this.sendTimeout = j2;
+    public void setSendTimeout(long j) {
+        this.sendTimeout = j;
     }
 
     public void setServiceCmd(String str) {
@@ -296,29 +347,82 @@ public class ToServiceMsg implements Parcelable {
         this.serviceName = str;
     }
 
-    public void setTimeout(long j2) {
-        this.timeout = j2;
+    public void setTimeout(long j) {
+        this.timeout = j;
     }
 
     public void setTraceInfo(String str) {
-        //this.attributes.put(BaseConstants.TPS_TELEMETRY_TRACING_INFO, str);
+        this.attributes.put("tps_telemetry_tracing_info", str);
     }
 
     public void setUin(String str) {
         this.uin = str;
     }
 
-    public void setUinType(byte b2) {
-        this.uinType = b2;
+    public void setUinType(byte b) {
+        this.uinType = b;
     }
 
     public String toString() {
-        return "TSM toString error";
+        try {
+            StringBuffer stringBuffer = new StringBuffer(256);
+            stringBuffer.append("ToServiceMsg msName:");
+            stringBuffer.append(this.msfCommand);
+            stringBuffer.append(" ssoSeq:");
+            stringBuffer.append(getRequestSsoSeq());
+            stringBuffer.append(" appId:");
+            stringBuffer.append(this.appId);
+            stringBuffer.append(" appSeq:");
+            stringBuffer.append(this.appSeq);
+            stringBuffer.append(" sName:");
+            stringBuffer.append(this.serviceName);
+            stringBuffer.append(" uin:");
+            stringBuffer.append(" sCmd:");
+            stringBuffer.append(this.serviceCmd);
+            stringBuffer.append(" t:");
+            stringBuffer.append(this.timeout);
+            stringBuffer.append(" needResp:");
+            stringBuffer.append(this.needResp);
+            stringBuffer.append(" needQuickSend:");
+            stringBuffer.append(this.quickSendEnable);
+            stringBuffer.append(" strategy:");
+            stringBuffer.append(this.quickSendStrategy);
+            stringBuffer.append("IsSupportRetry");
+            stringBuffer.append(this.mIsSupportRetry);
+            return stringBuffer.toString();
+        } catch (Throwable th) {
+            return "TSM toString error";
+        }
     }
 
-    @Override // android.os.Parcelable
-    public void writeToParcel(Parcel parcel, int i2) {
-
+    @Override
+    public void writeToParcel(Parcel parcel, int i) {
+        try {
+            parcel.writeInt(this.appId);
+            parcel.writeInt(this.appSeq);
+            parcel.writeString(this.serviceName);
+            parcel.writeString(this.uin);
+            parcel.writeByte(this.uinType);
+            parcel.writeString(this.serviceCmd);
+            parcel.writeLong(this.timeout);
+            parcel.writeBundle(this.extraData);
+            if (this.toVersion > 0) {
+                parcel.writeSerializable(this.msfCommand);
+                parcel.writeLong(this.sendTimeout);
+                parcel.writeByte(this.needResp ? (byte) 1 : (byte) 0);
+                parcel.writeByte(this.mIsSupportRetry ? (byte) 1 : (byte) 0);
+                parcel.writeInt(this.wupBuffer.length);
+                parcel.writeByteArray(this.wupBuffer);
+                parcel.writeInt(this.ssoSeq);
+                parcel.writeMap(this.attributes);
+                parcel.writeMap(this.transInfo);
+            }
+            parcel.writeInt(this.quickSendEnable ? 1 : 0);
+            parcel.writeInt(this.quickSendStrategy);
+        } catch (RuntimeException e) {
+            Log.d(tag, "writeToParcel RuntimeException", e);
+            throw e;
+        }
     }
 
     public <T> T getAttribute(String str, T t) {
@@ -346,4 +450,3 @@ public class ToServiceMsg implements Parcelable {
         readFromParcel(parcel);
     }
 }
-

@@ -43,7 +43,7 @@ class ChangePreviewTextSize : IAction {
 
         "com.tencent.mobileqq.activity.TextPreviewActivity".toHostClass().findMethod {
             name = "onCreate"
-            paramTypes = arrayOf(Bundle::class.java)
+            paramTypes = arrayOf(bundle)
         }.hookAfterMethod { param ->
             val containerView = FieldUtils.create(param.thisObject)
                 .typed(containerViewClass)
