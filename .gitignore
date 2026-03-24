@@ -1,31 +1,41 @@
-# Built application files
-*.apk
-*.ap_
-app/build/
-app/src/main/gen/
-app/src/main/bin/
-cmake-build-*
-release/
-debug/
+# --- IDE & System ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
 
-# Kotlin sessions
-.kotlin/
-
-# Generated files
+# --- Gradle & Build Output ---
+.gradle/
+build/
+**/build/
 bin/
 gen/
 out/
-app/.cxx/
-# Gradle files
-.gradle/
-build/
 
-# Local configuration file (sdk path, etc)
+# --- Android / App Specific ---
+app/build/
+app/debug/
+app/release/
+*.apk
+*.ap_
+*.dex
+*.class
+
+# --- Signing files (CRITICAL: Never check these in) ---
+*.jks
+*.keystore
+*.p12
 local.properties
 
-# Log Files
-*.log
+# --- Kotlin ---
+.kotlin/
+*.kotlin_module
 
-# IntelliJ
-*.iml
-.idea/
+# --- Temporary / Logs ---
+*.log
+.temp/
+.tmp/
