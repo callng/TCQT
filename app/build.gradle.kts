@@ -93,12 +93,8 @@ extensions.configure<ApplicationExtension> {
 
     packaging {
         resources {
-            excludes += "google/**"
-            excludes += "kotlin/**"
-            excludes += "META-INF/*.version"
-            excludes += "WEB-INF/**"
-            excludes += "DebugProbesKt.bin"
-            excludes += "kotlin-tooling-metadata.json"
+            excludes += "**"
+            merges += "META-INF/xposed/*"
         }
     }
 
@@ -163,6 +159,7 @@ protobuf {
 dependencies {
     compileOnly(libs.androidx.constraintlayout)
     compileOnly(libs.xposed.api)
+    compileOnly(libs.libxposed.api)
     compileOnly(project(":qqinterface"))
 
     ksp(project(":processor"))

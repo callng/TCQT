@@ -14,12 +14,12 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.invokeOriginalMethod
 import com.tencent.mobileqq.activity.VisitorsActivity
 import com.tencent.mobileqq.data.CardProfile
 import com.tencent.mobileqq.profile.vote.VoteHelper
 import com.tencent.mobileqq.profilecard.base.component.AbsProfileHeaderComponent
 import com.tencent.mobileqq.vas.api.IVasSingedApi
-import de.robv.android.xposed.XposedBridge
 
 @RegisterAction
 @RegisterSetting(
@@ -68,7 +68,7 @@ class OneClickLikes : IAction {
                 load("com.tencent.mobileqq.data.Card")
             ) {
                 for (i in 0..<getMaxCount()) {
-                    XposedBridge.invokeOriginalMethod(it.method, it.thisObject, it.args)
+                    it.invokeOriginalMethod()
                 }
 
                 it.result = Unit

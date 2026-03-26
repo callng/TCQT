@@ -2,6 +2,7 @@ package com.owo233.tcqt.utils.log
 
 import android.util.Log
 import com.owo233.tcqt.data.TCQTBuild
+import com.owo233.tcqt.xposed.HookerBridgeManager
 import de.robv.android.xposed.XposedBridge
 
 enum class LogLevel {
@@ -44,8 +45,20 @@ class XposedLogger(private val tag: String) : Logger {
         }
 
         if (level in XPOSED_OUTPUT_LEVELS) {
-            XposedBridge.log("[$levelTag] $tag: $message")
-            throwable?.let { XposedBridge.log(it) }
+            if (HookerBridgeManager.isLibxposed) {
+                // libxposed 环境下通过 bridge 的日志系统输出
+                try {
+                    HookerBridgeManager.bridge.log("[$levelTag] $tag: $message")
+                    throwable?.let { HookerBridgeManager.bridge.log(it) }
+                } catch (_: Exception) {
+                    // fallback 到 Android Log
+                    android.util.Log.e(tag, message, throwable)
+                }
+            } else {
+                // 传统 Xposed 环境
+                XposedBridge.log("[$levelTag] $tag: $message")
+                throwable?.let { XposedBridge.log(it) }
+            }
         }
 
         when (level) {

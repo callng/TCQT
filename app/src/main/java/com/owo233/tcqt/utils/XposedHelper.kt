@@ -5,20 +5,14 @@ package com.owo233.tcqt.utils
 import android.content.res.XResources
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.xposed.HookerBridge
+import com.owo233.tcqt.xposed.HookerBridgeManager
 import dalvik.system.BaseDexClassLoader
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam
 import de.robv.android.xposed.XC_MethodReplacement
-import de.robv.android.xposed.XposedBridge.hookAllConstructors
-import de.robv.android.xposed.XposedBridge.hookAllMethods
-import de.robv.android.xposed.XposedBridge.hookMethod
-import de.robv.android.xposed.XposedBridge.invokeOriginalMethod
 import de.robv.android.xposed.XposedHelpers.callMethod
 import de.robv.android.xposed.XposedHelpers.callStaticMethod
-import de.robv.android.xposed.XposedHelpers.findAndHookConstructor
-import de.robv.android.xposed.XposedHelpers.findAndHookMethod
-import de.robv.android.xposed.XposedHelpers.findClass
-import de.robv.android.xposed.XposedHelpers.findClassIfExists
 import de.robv.android.xposed.XposedHelpers.findField
 import de.robv.android.xposed.XposedHelpers.findFieldIfExists
 import de.robv.android.xposed.XposedHelpers.findFirstFieldByExactType
@@ -47,14 +41,17 @@ typealias MethodHookParam = MethodHookParam
 typealias Replacer = (MethodHookParam) -> Any?
 typealias Hooker = (MethodHookParam) -> Unit
 
-fun Class<*>.hookMethod(method: String?, vararg args: Any?): XC_MethodHook.Unhook = try {
-    findAndHookMethod(this, method, *args)
+/** 统一的 Unhook 类型别名，供上层代码使用 */
+typealias Unhook = HookerBridge.UnhookHandle
+
+fun Class<*>.hookMethod(method: String?, vararg args: Any?): Unhook = try {
+    HookerBridgeManager.Compat.findAndHookMethod(this, method, *args)
 } catch (e: Throwable) {
     throw e
 }
 
-fun Member.hookMethod(callback: XC_MethodHook): XC_MethodHook.Unhook = try {
-    hookMethod(this, callback)
+fun Member.hookMethod(callback: XC_MethodHook): Unhook = try {
+    HookerBridgeManager.Compat.hookMethod(this, callback)
 } catch (e: Throwable) {
     throw e
 }
@@ -152,9 +149,9 @@ inline fun Class<*>.replaceMethod(
     override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
 })
 
-fun Class<*>.hookAllMethods(methodName: String?, hooker: XC_MethodHook): Set<XC_MethodHook.Unhook> =
+fun Class<*>.hookAllMethods(methodName: String?, hooker: XC_MethodHook): Set<Unhook> =
     try {
-        hookAllMethods(this, methodName, hooker)
+        HookerBridgeManager.Compat.hookAllMethods(this, methodName, hooker)
     } catch (e: Throwable) {
         throw e
     }
@@ -174,8 +171,8 @@ inline fun Class<*>.replaceAllMethods(methodName: String?, crossinline replacer:
         override fun replaceHookedMethod(param: MethodHookParam) = param.callReplacer(replacer)
     })
 
-fun Class<*>.hookConstructor(vararg args: Any?): XC_MethodHook.Unhook = try {
-    findAndHookConstructor(this, *args)
+fun Class<*>.hookConstructor(vararg args: Any?): Unhook = try {
+    HookerBridgeManager.Compat.findAndHookConstructor(this, *args)
 } catch (e: Throwable) {
     throw e
 }
@@ -195,8 +192,8 @@ inline fun Class<*>.replaceConstructor(vararg args: Any?, crossinline hooker: Ho
         override fun replaceHookedMethod(param: MethodHookParam) = param.callHooker(hooker)
     })
 
-fun Class<*>.hookAllConstructors(hooker: XC_MethodHook): Set<XC_MethodHook.Unhook> = try {
-    hookAllConstructors(this, hooker)
+fun Class<*>.hookAllConstructors(hooker: XC_MethodHook): Set<Unhook> = try {
+    HookerBridgeManager.Compat.hookAllConstructors(this, hooker)
 } catch (e: Throwable) {
     throw e
 }
@@ -255,11 +252,12 @@ inline fun String.replaceMethod(
     throw e
 }
 
-fun MethodHookParam.invokeOriginalMethod(): Any? = invokeOriginalMethod(method, thisObject, args)
+fun MethodHookParam.invokeOriginalMethod(): Any? =
+    HookerBridgeManager.Compat.invokeOriginalMethod(method as Method, thisObject, args as Array<Any?>)
 
-fun  MethodHookParam.invokeOriginalWithArgs(
+fun MethodHookParam.invokeOriginalWithArgs(
     vararg args: Any?
-): Any? = invokeOriginalMethod(method, thisObject, args)
+): Any? = HookerBridgeManager.Compat.invokeOriginalMethod(method as Method, thisObject, args as Array<Any?>)
 
 inline fun <T, R> T.runCatchingOrNull(func: T.() -> R?) = try {
     func()
@@ -387,15 +385,16 @@ fun Class<*>.callStaticMethodOrNull(
     callStaticMethod(this, methodName, parameterTypes, *args)
 }
 
-fun String.findClass(classLoader: ClassLoader?): Class<*> = findClass(this, classLoader)
+fun String.findClass(classLoader: ClassLoader?): Class<*> =
+    HookerBridgeManager.Compat.findClass(this, classLoader)
 
-infix fun String.on(classLoader: ClassLoader?): Class<*> = findClass(this, classLoader)
+infix fun String.on(classLoader: ClassLoader?): Class<*> = this.findClass(classLoader)
 
 fun String.findClassOrNull(classLoader: ClassLoader?): Class<*>? =
-    findClassIfExists(this, classLoader)
+    HookerBridgeManager.Compat.findClassIfExists(this, classLoader)
 
 infix fun String.from(classLoader: ClassLoader?): Class<*>? =
-    findClassIfExists(this, classLoader)
+    HookerBridgeManager.Compat.findClassIfExists(this, classLoader)
 
 fun Class<*>.new(vararg args: Any?): Any = newInstance(this, *args)
 

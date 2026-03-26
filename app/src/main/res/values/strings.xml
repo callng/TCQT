@@ -1,5 +1,5 @@
 <resources>
     <string name="module_name">TCQT</string>
-    <string name="module_desc">QQ(TIM)辅助增强模块 by callng@github</string>
+    <string name="xposed_desc">QQ(TIM)辅助增强模块 by callng@github</string>
     <string name="module_res_injection">query module resource injection</string>
 </resources>

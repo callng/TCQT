@@ -23,13 +23,29 @@ internal object HookSteps {
     lateinit var hostApp: Application
     val hostInit get() = ::hostApp.isInitialized
 
+    /** 兼容双入口：记录模块 APK 路径 */
+    var moduleApkPath: String = ""
+        private set
+
+    /** 传统 Xposed 入口使用的初始化方法 */
     fun initHandleLoadPackage(loadPackageParam: XC_LoadPackage.LoadPackageParam) {
         HookEnv.setProcessName(loadPackageParam.processName)
         HookEnv.setHostAppPackageName(loadPackageParam.packageName)
     }
 
+    /** libxposed 入口使用的初始化方法 */
+    fun initHandleLoadPackageCompat(processName: String, packageName: String, classLoader: ClassLoader) {
+        HookEnv.setProcessName(processName)
+        HookEnv.setHostAppPackageName(packageName)
+        // libxposed 下需要在此处注入 ClassLoader（传统入口在 initZygote 中获取 modulePath）
+        if (moduleApkPath.isEmpty()) {
+            moduleApkPath = com.owo233.tcqt.xposed.HookerBridgeManager.bridge.modulePath
+        }
+    }
+
     fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
-        HookEnv.setModuleApkPath(startupParam.modulePath)
+        moduleApkPath = startupParam.modulePath
+        HookEnv.setModuleApkPath(moduleApkPath)
     }
 
     fun initLoad() {
@@ -66,6 +82,11 @@ internal object HookSteps {
         HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
         HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
         HookEnv.setHostClassLoader(loader)
+
+        // 在 libxposed 入口时，moduleApkPath 可能尚未设置到 HookEnv
+        if (moduleApkPath.isNotEmpty()) {
+            HookEnv.setModuleApkPath(moduleApkPath)
+        }
 
         ParasiticActivity.initForStubActivity(context)
         ResourcesUtils.injectResourcesToContext(context.resources)

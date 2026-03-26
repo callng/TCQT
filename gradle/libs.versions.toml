@@ -26,8 +26,7 @@ protobuf-lib = "4.34.1"
 
 # Xposed
 xposed = "82"
-
-
+libxposed = "101.0.0"
 
 [libraries]
 # AndroidX
@@ -64,6 +63,7 @@ protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref 
 
 # Xposed
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
+libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }
 
 [plugins]
 # Android

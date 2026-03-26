@@ -1,3 +1,5 @@
+-adaptresourcefilecontents META-INF/xposed/java_init.list
+
 # 保留所有继承自 BaseComposeActivity 的类 不混淆它们的无参构造函数
 -keep class * extends com.owo233.tcqt.activity.BaseComposeActivity { <init>(); }
 
