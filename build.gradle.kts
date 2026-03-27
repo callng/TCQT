@@ -68,7 +68,7 @@ val gitInfoProvider: Provider<GitInfo> =
             GitInfo(
                 commitCount = count,
                 shortHash = hash,
-                versionName = "v3.6.2-$count-$hash"
+                versionName = "v3.6.3-$count-$hash"
             )
         }
 
