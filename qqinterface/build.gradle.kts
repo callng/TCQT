@@ -6,7 +6,7 @@ plugins {
 
 extensions.configure<LibraryExtension> {
     namespace = "com.owo233.qqinterface"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 27
