@@ -31,6 +31,7 @@ xposed = "82"
 
 [libraries]
 # AndroidX
+androidx-annotation = { module = "androidx.annotation:annotation", version = "1.9.1" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidx-documentfile" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "androidx-fragment" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }

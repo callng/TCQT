@@ -26,7 +26,7 @@ extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
     compileSdk {
         version = release(androidCompileSdkVersion) {
-            minorApiLevel = 0
+            minorApiLevel = 1
         }
     }
 
@@ -163,11 +163,9 @@ protobuf {
 dependencies {
     compileOnly(libs.androidx.constraintlayout)
     compileOnly(libs.xposed.api)
-    compileOnly(project(":qqinterface"))
-
-    ksp(project(":processor"))
-
-    implementation(project(":annotations"))
+    compileOnly(project(":libs:qqinterface"))
+    ksp(project(":libs:processor"))
+    implementation(project(":libs:annotations"))
 
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)

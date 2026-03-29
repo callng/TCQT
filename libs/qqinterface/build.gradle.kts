@@ -6,18 +6,20 @@ plugins {
 
 extensions.configure<LibraryExtension> {
     namespace = "com.owo233.qqinterface"
-    compileSdk = 37
+    compileSdk = 36
+
+    sourceSets {
+        val main by getting
+        main.apply {
+            manifest.srcFile("src/main/AndroidManifest.xml")
+            java.directories += "src/main/java"
+        }
+    }
 
     defaultConfig {
         minSdk = 27
-        consumerProguardFiles("consumer-rules.pro")
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles("proguard-rules.pro")
-        }
+        lint.targetSdk = 36
+        buildToolsVersion = "36.1.0"
     }
 
     compileOptions {

@@ -38,6 +38,7 @@ plugins {
 rootProject.name = "TCQT"
 
 include(":app")
-include(":qqinterface")
-include(":annotations")
-include(":processor")
+include(":libs:qqinterface")
+include(":libs:annotations")
+include(":libs:processor")
+include(":libs:libxposed:api")
