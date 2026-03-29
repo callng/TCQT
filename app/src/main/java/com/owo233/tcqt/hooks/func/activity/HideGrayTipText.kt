@@ -10,11 +10,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.callMethodAs
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.isPrivate
-import com.owo233.tcqt.utils.isPublic
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.isPrivate
+import com.owo233.tcqt.utils.hook.isPublic
+import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.callMethod
 
 @RegisterAction
 @RegisterSetting(
@@ -44,8 +44,8 @@ class HideGrayTipText : IAction {
             method.isPrivate && method.returnType == loadOrThrow("com.tencent.qqnt.aio.widget.AIOMsgTextView")
         }
 
-        initMethod.hookAfterMethod { param ->
-            val textView = param.thisObject.callMethodAs<TextView>(textViewMethod.name)
+        initMethod.hookAfter { param ->
+            val textView = param.thisObject.callMethod(textViewMethod.name) as TextView
             val container = textView.parent.parent as ViewGroup
             val shouldHide = configList.any { textView.text.toString().contains(it) }
             if (shouldHide) container.layoutParams = ViewGroup.LayoutParams(0, 0)

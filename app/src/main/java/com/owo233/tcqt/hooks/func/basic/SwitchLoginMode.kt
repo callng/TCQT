@@ -8,8 +8,8 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.paramCount
 import com.tencent.common.config.pad.DeviceType
 
 @RegisterAction
@@ -36,7 +36,7 @@ class SwitchLoginMode : IAction {
             .declaredMethods.first {
                 it.returnType == DeviceType::class.java && it.paramCount == 1
                         && it.parameterTypes[0] == Context::class.java
-            }.hookAfterMethod { param ->
+            }.hookAfter { param ->
                 when (loginType) {
                     1 -> param.result = DeviceType.PHONE
                     2 -> param.result = DeviceType.TABLET

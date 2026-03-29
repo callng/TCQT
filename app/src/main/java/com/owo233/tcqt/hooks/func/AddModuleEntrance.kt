@@ -27,17 +27,17 @@ import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
-import com.owo233.tcqt.utils.FuzzyClassKit
+import com.owo233.tcqt.utils.hook.FuzzyClassKit
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.getIntField
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.isNotStatic
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.reflect.fieldValue
 import com.owo233.tcqt.utils.reflect.getFields
+import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
@@ -98,7 +98,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             )
 
         loadOrThrow("com.tencent.widget.PopupMenuDialog")
-            .hookBeforeMethod(
+            .hookMethodBefore(
                 "conversationPlusBuild",
                 Activity::class.java,
                 List::class.java,
@@ -115,8 +115,8 @@ class AddModuleEntrance : AlwaysRunAction() {
                     method.parameterTypes[0].name.contains("MenuItem")
         } ?: error("plusMenu: 找不到符合的onClickAction方法,无法设置点击执行过程!")
 
-        onClick.hookBeforeMethod { param ->
-            if (param.args[0].getIntField("id") == menuItemId) {
+        onClick.hookBefore { param ->
+            if ((param.args[0]!!.getObject("id") as Int) == menuItemId) {
                 openTCQTSettings()
                 param.result = Unit
             }
@@ -158,12 +158,12 @@ class AddModuleEntrance : AlwaysRunAction() {
             val buildMethod = findBuildMethod(settingConfigProviderClass)
                 ?: return@runCatching Log.e("没有找到 build 方法,无法创建模块设置入口!!!")
 
-            buildMethod.hookMethod(afterHook { param ->
-                val context = param.args.firstOrNull() as? Context ?: return@afterHook
-                val result = param.result as? MutableList<*> ?: return@afterHook
+            buildMethod.hookAfter { param ->
+                val context = param.args.firstOrNull() as? Context ?: return@hookAfter
+                val result = param.result as? MutableList<*> ?: return@hookAfter
 
                 val processorInfo = resolveProcessorInfo(result)
-                    ?: return@afterHook
+                    ?: return@hookAfter
 
                 ResourcesUtils.injectResourcesToContext(context.resources)
 
@@ -186,7 +186,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 for ((_, title, items) in grouped.asReversed()) {
                     insertGroups(result, items, isNewSetting, title)
                 }
-            })
+            }
         }.onFailure { Log.e("模块设置入口创建失败", it) }
     }
 

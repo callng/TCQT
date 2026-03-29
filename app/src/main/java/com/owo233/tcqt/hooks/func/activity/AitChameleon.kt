@@ -24,7 +24,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
-import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.new

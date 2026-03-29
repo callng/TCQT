@@ -20,10 +20,9 @@ import com.owo233.tcqt.hooks.helper.CustomMenu
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookMethod
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.selectmember.ResultRecord
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -71,15 +70,15 @@ class PttForward : IAction, OnMenuBuilder {
 
         methodsToHook.forEach { (methodName, params) ->
             forwardBaseOption.getDeclaredMethod(methodName, *params).apply { isAccessible = true }
-                .hookMethod(beforeHook(51) { param ->
+                .hookBefore { param ->
                     val thisObj = param.thisObject
-                    val data = mExtraDataField.get(thisObj) as? Bundle ?: return@beforeHook
+                    val data = mExtraDataField.get(thisObj) as? Bundle ?: return@hookBefore
 
                     if (data.getString(KEY_PTT_FORWARD) != MAGIC_TOKEN ||
                         (!data.containsKey("isBack2Root") && !data.containsKey("from_dataline_aio")) ||
                         currentPttElement == null
                     ) {
-                        return@beforeHook
+                        return@hookBefore
                     }
 
                     val msgService = QRoute.api(IMsgService::class.java)
@@ -101,7 +100,7 @@ class PttForward : IAction, OnMenuBuilder {
                             currentPttElement = null
                         }
                     }
-                })
+                }
         }
     }
 

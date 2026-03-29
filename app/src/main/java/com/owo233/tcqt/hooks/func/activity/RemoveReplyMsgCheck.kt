@@ -8,7 +8,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil
 import com.tencent.qqnt.kernel.nativeinterface.ReplyMsgMainInfo
 
@@ -24,11 +24,10 @@ class RemoveReplyMsgCheck : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
-            QQNTWrapperUtil.CppProxy::class.java.hookAfterMethod(
-                "findSourceOfReplyMsgFrom",
-                ArrayList::class.java,
-                ReplyMsgMainInfo::class.java
-            ) { param ->
+            QQNTWrapperUtil.CppProxy::class.java.hookMethodAfter({
+                name = "findSourceOfReplyMsgFrom"
+                paramTypes = arrayOf(arrayList, ReplyMsgMainInfo::class.java)
+            }) { param ->
                 val result = param.result as Long
                 if (result == 0L) {
                     param.result = 1L

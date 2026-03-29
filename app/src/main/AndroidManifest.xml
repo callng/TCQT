@@ -3,6 +3,7 @@
 
     <application
         android:icon="@mipmap/ic_launcher"
+        android:description="@string/xposed_desc"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/xposed_name">
         <meta-data
@@ -13,7 +14,7 @@
             android:value="@string/xposed_desc" />
         <meta-data
             android:name="xposedminversion"
-            android:value="82" />
+            android:value="51" />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposed_scope" />

@@ -10,7 +10,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.servlet.MiniSvc
 import com.owo233.tcqt.utils.SyncUtils
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.smtt.sdk.WebView
 import com.tencent.smtt.sdk.WebViewClient
 import java.util.WeakHashMap
@@ -32,7 +32,7 @@ class CardFetcher : IAction {
         get() = setOf(ActionProcess.TOOL)
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        WebViewClient::class.java.hookAfterMethod(
+        WebViewClient::class.java.hookMethodAfter(
             "onPageFinished",
             WebView::class.java,
             String::class.java
@@ -40,8 +40,8 @@ class CardFetcher : IAction {
             val webView = param.args[0] as WebView
             val url = param.args[1] as String
 
-            if (!isTargetUrl(url)) return@hookAfterMethod
-            if (!markTriggered(webView, url)) return@hookAfterMethod
+            if (!isTargetUrl(url)) return@hookMethodAfter
+            if (!markTriggered(webView, url)) return@hookMethodAfter
 
             SyncUtils.postDelayed(1500L) {
                 runCatching {

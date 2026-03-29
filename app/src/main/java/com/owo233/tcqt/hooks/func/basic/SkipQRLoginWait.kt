@@ -10,9 +10,10 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.FuzzyClassKit
-import com.owo233.tcqt.utils.hookBeforeAllConstructors
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.FuzzyClassKit
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.reflect.allConstructors
 
 @RegisterAction
 @RegisterSetting(
@@ -37,16 +38,18 @@ class SkipQRLoginWait : IAction {
                 clz.superclass == CountDownTimer::class.java
             } ?: error("跳过登录等待失败,找不到符合要求的类 -> superclass == CountDownTimer::class.java")
 
-            targetClass.hookBeforeAllConstructors { param ->
-                param.args[1] = 0L
-                param.args[2] = 0L
+            targetClass.allConstructors().forEach {
+                it.hookBefore { param ->
+                    param.args[1] = 0L
+                    param.args[2] = 0L
+                }
             }
         }
 
         // 跳过对话框形式的倒计时等待
         if (process == ActionProcess.OPENSDK) {
             load("com.tencent.mobileqq.utils.DialogUtil")!!
-                .hookBeforeMethod(
+                .hookMethodBefore(
                     "createCountdownDialog",
                     Context::class.java,
                     String::class.java,

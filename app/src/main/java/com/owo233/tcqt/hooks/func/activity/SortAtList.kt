@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.tencent.qqnt.kernel.nativeinterface.MemberInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
@@ -25,8 +25,10 @@ class SortAtList : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         loadOrThrow("com.tencent.mobileqq.aio.input.at.common.SubmitListEvent")
-            .hookAfterMethod("getItemList") { param ->
-                val list = param.result as? List<Any?> ?: return@hookAfterMethod
+            .hookMethodAfter({
+                name = "getItemList"
+            }) { param ->
+                val list = param.result as? List<Any?> ?: return@hookMethodAfter
 
                 param.result = list.sortedWith(compareBy { item ->
                     rank(extractMemberInfo(item))

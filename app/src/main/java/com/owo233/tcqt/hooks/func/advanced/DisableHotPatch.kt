@@ -9,10 +9,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.isPublic
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isPublic
+import com.owo233.tcqt.utils.hook.paramCount
 import com.tencent.mobileqq.earlydownload.xmldata.XmlData
 import com.tencent.mobileqq.pb.PBInt32Field
 import com.tencent.mobileqq.pb.PBRepeatMessageField
@@ -31,7 +32,7 @@ class DisableHotPatch : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
-            ?.hookBeforeMethod {
+            ?.hookBefore {
                 it.result = Unit
             }
 
@@ -42,7 +43,7 @@ class DisableHotPatch : IAction {
                         && it.paramCount == 2
                         && it.parameterTypes[0] == String::class.java
                         && it.parameterTypes[1] == patchConfig
-            }.hookBeforeMethod {
+            }.hookBefore {
                 it.result = Unit
             }
         }
@@ -52,15 +53,15 @@ class DisableHotPatch : IAction {
                 "handlePatchConfig",
                 Int::class.javaPrimitiveType,
                 List::class.java
-            )?.hookBeforeMethod {
+            )?.hookBefore {
                 it.result = Unit
             }
 
         load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
-            ?.hookBeforeMethod("isEnable") {
+            ?.hookMethodBefore("isEnable") {
                 val thisObj = it.thisObject
                 val field = thisObj.javaClass.getDeclaredField("disable").apply { isAccessible = true }
-                if (!(field.get(thisObj) as? Boolean ?: return@hookBeforeMethod)) {
+                if (!(field.get(thisObj) as? Boolean ?: return@hookMethodBefore)) {
                     field.set(thisObj, true)
                 }
             }
@@ -82,13 +83,13 @@ class DisableHotPatch : IAction {
                         args.last() == Boolean::class.javaPrimitiveType &&
                         args.any { it.isArray && it.componentType == Int::class.javaPrimitiveType }
             }.forEach { method ->
-                method.hookBeforeMethod {
-                    val respGetConfig = it.args[1] ?: return@hookBeforeMethod
+                method.hookBefore {
+                    val respGetConfig = it.args[1] ?: return@hookBefore
                     val configList = kRespGetConfigConfigList.get(respGetConfig)
-                            as? PBRepeatMessageField<*> ?: return@hookBeforeMethod
+                            as? PBRepeatMessageField<*> ?: return@hookBefore
                     val arrayList = configList.get() as ArrayList<*>
                     if (arrayList.isEmpty()) {
-                        return@hookBeforeMethod
+                        return@hookBefore
                     }
                     // debug dump type
                     /*arrayList.forEach { config ->
@@ -112,13 +113,13 @@ class DisableHotPatch : IAction {
             kPatchReporter.declaredMethods.filter {
                 it.name.startsWith("report") && it.returnType == Void.TYPE
             }.forEach { m ->
-                m.hookBeforeMethod {
+                m.hookBefore {
                     it.result = Unit
                 }
             }
         }
 
-        XmlData::class.java.hookAfterMethod(
+        XmlData::class.java.hookMethodAfter(
             "updateServerInfo",
             XmlData::class.java
         ) {

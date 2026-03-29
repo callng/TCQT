@@ -8,12 +8,11 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.func.activity.PttForward
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.afterHook
-import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.isAbstract
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.isAbstract
+import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
 class MenuBuilder : AlwaysRunAction() {
@@ -55,8 +54,8 @@ class MenuBuilder : AlwaysRunAction() {
         decoratorMap.keys.forEach { target ->
             load(target)?.declaredMethods
                 ?.firstOrNull { it.name == listMethodName && it.paramCount == 0 }
-                ?.hookMethod(afterHook(48) { param ->
-                    val msg = getMsgMethod.invoke(param.thisObject) ?: return@afterHook
+                ?.hookAfter { param ->
+                    val msg = getMsgMethod.invoke(param.thisObject) ?: return@hookAfter
                     decoratorMap[target]?.forEach { decorator ->
                         runCatching {
                             decorator.onGetMenuNt(msg, target, param)
@@ -64,7 +63,7 @@ class MenuBuilder : AlwaysRunAction() {
                             Log.e("MenuBuilder error in ${decorator.javaClass.simpleName}", e)
                         }
                     }
-                }) ?: error("MenuBuilder Load $target Error")
+                } ?: error("MenuBuilder Load $target Error")
         }
     }
 }

@@ -3,9 +3,9 @@ package com.owo233.tcqt.hooks.helper
 import android.content.Context
 import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.hookBeforeMethod
 
 object GuidHelper {
 
@@ -27,7 +27,7 @@ object GuidHelper {
     }
 
     private fun hookNeedChangeGuid() {
-        clazz.hookAfterMethod(
+        clazz.hookMethodAfter(
             "needChangeGuid",
             Context::class.java
         ) {
@@ -36,7 +36,7 @@ object GuidHelper {
     }
 
     private fun hookGetGuidFromFile(guid: String) {
-        clazz.hookAfterMethod(
+        clazz.hookMethodAfter(
             "getGuidFromFile",
             Context::class.java
         ) {
@@ -45,7 +45,7 @@ object GuidHelper {
     }
 
     private fun hookSaveGuidToFile(guid: String) {
-        clazz.hookBeforeMethod(
+        clazz.hookMethodBefore(
             "saveGuidToFile",
             Context::class.java,
             ByteArray::class.java
@@ -55,7 +55,7 @@ object GuidHelper {
     }
 
     private fun hookGetLastGuid(guid: String) {
-        clazz.hookAfterMethod(
+        clazz.hookMethodAfter(
             "get_last_guid",
             Context::class.java
         ) {
@@ -64,7 +64,7 @@ object GuidHelper {
     }
 
     private fun hookGenerateGuid(guid: String) {
-        clazz.hookAfterMethod(
+        clazz.hookMethodAfter(
             "generateGuid",
             Context::class.java
         ) {
@@ -73,7 +73,7 @@ object GuidHelper {
     }
 
     private fun hookSaveCurGuid(guid: String) {
-        clazz.hookBeforeMethod(
+        clazz.hookMethodBefore(
             "save_cur_guid",
             Context::class.java,
             ByteArray::class.java
@@ -83,7 +83,7 @@ object GuidHelper {
     }
 
     private fun hookSetupBusinessInfo(guid: String) {
-        clazz2.hookBeforeMethod(
+        clazz2.hookMethodBefore(
             "setupBusinessInfo",
             Context::class.java,
             String::class.java,

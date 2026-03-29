@@ -12,9 +12,10 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.getObjectFieldAs
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.setObjectField
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
 
 @RegisterAction
@@ -47,14 +48,14 @@ class RenameBaseApk : IAction {
         val entityIdx = method.parameterTypes.indexOfFirst { it.name.contains("FileManagerEntity") }
         val nameIdx = method.parameterTypes.indexOfFirst { it == String::class.java }
 
-        method.hookBeforeMethod { param ->
-            val fileManagerEntity = param.args[entityIdx]
-            val fileName = fileManagerEntity.getObjectFieldAs<String>("fileName")
-            val localPath = fileManagerEntity.getObjectFieldAs<String>("strFilePath")
+        method.hookBefore { param ->
+            val fileManagerEntity = param.args[entityIdx]!!
+            val fileName = fileManagerEntity.getObject("fileName") as String
+            val localPath = fileManagerEntity.getObject("strFilePath") as String
             val meetHitConditions = meetHitConditions(fileName, localPath)
             if (meetHitConditions) {
                 getFormattedFileNameByPath(localPath).also {
-                    fileManagerEntity.setObjectField("fileName", it)
+                    fileManagerEntity.setObject("fileName", it)
                     param.args[nameIdx] = it
                 }
             }
@@ -69,23 +70,23 @@ class RenameBaseApk : IAction {
                     m.parameterTypes.any { it.name.contains("Item") }
         }
 
-        method.hookBeforeMethod { param ->
-            val item = param.args.first { it.javaClass.name.contains("Item") }
-            val fileName = item.getObjectFieldAs<String>("FileName")
-            val localPath = item.getObjectFieldAs<String>("LocalFile")
+        method.hookBefore { param ->
+            val item = param.args.first { it!!.javaClass.name.contains("Item") }!!
+            val fileName = item.getObject("FileName") as String
+            val localPath = item.getObject("LocalFile") as String
             if (meetHitConditions(fileName, localPath)) {
                 getFormattedFileNameByPath(localPath).also {
-                    item.setObjectField("FileName", it)
+                    item.setObject("FileName", it)
                 }
             }
         }
     }
 
     private fun hookFile() {
-        FileElement::class.java.hookBeforeMethod("getFileName") { param ->
-            val fileName = param.thisObject.getObjectFieldAs<String>("fileName")
+        FileElement::class.java.hookMethodBefore("getFileName") { param ->
+            val fileName = param.thisObject.getObject("fileName") as String
             if (fileName.endsWith(".1")) {
-                param.thisObject.setObjectField("fileName", fileName.substringBeforeLast(".1"))
+                param.thisObject.setObject("fileName", fileName.substringBeforeLast(".1"))
             }
         }
     }

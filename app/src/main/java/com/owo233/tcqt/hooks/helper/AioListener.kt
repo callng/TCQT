@@ -6,7 +6,7 @@ import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
-import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.DelicateCoroutinesApi

@@ -134,7 +134,7 @@ abstract class PluginHook : IAction {
         private val getOrCreateClassLoaderMethod by lazy {
             "com.tencent.mobileqq.pluginsdk.PluginStatic".toHostClass().findMethod {
                 name = "getOrCreateClassLoader"
-                returnType = classLoader
+                returnType = ClassLoader::class.java
                 paramTypes(context, string)
             }.apply { isAccessible = true }
         }

@@ -15,11 +15,11 @@ import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.context.ContextUtils
-import com.owo233.tcqt.utils.getObjectField
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.new
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -43,12 +43,12 @@ class MultiSelectRecall : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         Reflection.init()
 
-        Reflection.createVM.hookAfterMethod { param ->
+        Reflection.createVM.hookAfter { param ->
             multiSelectBarVM = param.result
         }
 
-        Reflection.operationInvoke.hookAfterMethod { param ->
-            val layout = param.result as? LinearLayout ?: return@hookAfterMethod
+        Reflection.operationInvoke.hookAfter { param ->
+            val layout = param.result as? LinearLayout ?: return@hookAfter
             injectRecallButton(layout, param.thisObject)
         }
     }
@@ -59,7 +59,7 @@ class MultiSelectRecall : IAction {
         operationLayout: LinearLayout,
         operationLambda: Any
     ) {
-        val vb = operationLambda.getObjectField($$"this$0") ?: return
+        val vb = operationLambda.getObject($$"this$0")
 
         val recallBtn = Reflection.makeView.invoke(
             null,

@@ -11,11 +11,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.getFields
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.paramCount
-import com.owo233.tcqt.utils.setIntField
+import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.utils.ViewUtils
 
 @RegisterAction
@@ -37,14 +37,14 @@ class RemoveMenuIcon : IAction{
                         && method.parameterTypes[3] == FloatArray::class.java
             }
             .apply {
-                hookBeforeMethod { param ->
+                hookBefore { param ->
                     val newVer = param.thisObject.getFields(false).any { it.name == "m" }
                     val defaultHeight = if (newVer) 76f else 71f
                     val scale = 1.5f
                     val height = ViewUtils.dip2px(defaultHeight / scale)
-                    param.thisObject.setIntField(if (newVer) "m" else "n", height)
+                    param.thisObject.setObject(if (newVer) "m" else "n", height)
                 }
-                hookAfterMethod { param ->
+                hookAfter { param ->
                     val root = param.result as LinearLayout
                     if (root.getChildAt(0) is ImageView) {
                         root.removeViewAt(0)

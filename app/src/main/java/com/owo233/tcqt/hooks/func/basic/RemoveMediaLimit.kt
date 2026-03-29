@@ -8,9 +8,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.emptyParam
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.isPublic
+import com.owo233.tcqt.utils.hook.emptyParam
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.isPublic
 
 @RegisterAction
 @RegisterSetting(
@@ -28,7 +28,7 @@ class RemoveMediaLimit: IAction {
             .declaredMethods
             .single { method ->
                 method.isPublic && method.emptyParam && method.returnType == Boolean::class.java
-            }.hookAfterMethod { param ->
+            }.hookAfter { param ->
                 param.result = true
             }
 
@@ -39,7 +39,7 @@ class RemoveMediaLimit: IAction {
             .filter { method -> // 为什么有两个符合条件的方法!!!，都hook罢!
                 method.isPublic && method.emptyParam && method.returnType == Boolean::class.java
             }.forEach { method ->
-                method.hookAfterMethod { param ->
+                method.hookAfter { param ->
                     param.result = true
                 }
             }
@@ -48,7 +48,7 @@ class RemoveMediaLimit: IAction {
         loadOrThrow(
             "com.tencent.mobileqq.wink.picker.qzone.viewmodel.QZoneSelectedMediaViewModel")
             .getMethod("getCurSelectedSize")
-            .hookAfterMethod { param ->
+            .hookAfter { param ->
                 param.result = 1
             }
 
@@ -60,7 +60,7 @@ class RemoveMediaLimit: IAction {
                 String::class.java,
                 Int::class.javaPrimitiveType
             )
-            .hookAfterMethod { param ->
+            .hookAfter { param ->
                 val key1 = param.args[0] as String
                 val key2 = param.args[1] as String
                 if (key1 == "PublishMood" && key2 == "MoodPhotoMaxNum") {

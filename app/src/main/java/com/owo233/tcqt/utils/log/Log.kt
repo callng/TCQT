@@ -2,7 +2,7 @@ package com.owo233.tcqt.utils.log
 
 import android.util.Log
 import com.owo233.tcqt.data.TCQTBuild
-import de.robv.android.xposed.XposedBridge
+import com.owo233.tcqt.loader.api.HookEngineManager
 
 enum class LogLevel {
     VERBOSE, DEBUG, INFO, WARN, ERROR
@@ -35,17 +35,16 @@ class AndroidLogger(private val tag: String) : Logger {
 class XposedLogger(private val tag: String) : Logger {
 
     override fun log(level: LogLevel, message: String, throwable: Throwable?) {
-        val levelTag = when (level) {
-            LogLevel.VERBOSE -> "VERBOSE"
-            LogLevel.DEBUG -> "DEBUG"
-            LogLevel.INFO -> "INFO"
-            LogLevel.WARN -> "WARN"
-            LogLevel.ERROR -> "ERROR"
+        val priority = when (level) {
+            LogLevel.VERBOSE -> Log.VERBOSE
+            LogLevel.DEBUG -> Log.DEBUG
+            LogLevel.INFO -> Log.INFO
+            LogLevel.WARN -> Log.WARN
+            LogLevel.ERROR -> Log.ERROR
         }
 
         if (level in XPOSED_OUTPUT_LEVELS) {
-            XposedBridge.log("[$levelTag] $tag: $message")
-            throwable?.let { XposedBridge.log(it) }
+            HookEngineManager.engine.log(priority, tag, message, throwable)
         }
 
         when (level) {

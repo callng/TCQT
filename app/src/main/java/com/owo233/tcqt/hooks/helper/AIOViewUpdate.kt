@@ -10,8 +10,8 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.activity.AitChameleon
 import com.owo233.tcqt.hooks.func.activity.ShowMsgInfo
-import com.owo233.tcqt.utils.MethodHookParam
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.MethodHookParam
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -43,20 +43,20 @@ class AIOViewUpdate : AlwaysRunAction() {
             paramTypes(mviStateClass)
         }
 
-        targetMethod.hookAfterMethod { param ->
+        targetMethod.hookAfter { param ->
             runCatching {
-                val host = param.thisObject ?: return@hookAfterMethod
-                val uiState = param.args[0] ?: return@hookAfterMethod
+                val host = param.thisObject
+                val uiState = param.args[0] ?: return@hookAfter
 
                 val rootView = FieldUtils.create(host)
                     .typed<View>()
-                    .getOrNull() as? ViewGroup ?: return@hookAfterMethod
+                    .getOrNull() as? ViewGroup ?: return@hookAfter
 
                 val aioMsgItem = FieldUtils.create(uiState)
                     .typed(AIOMsgItem::class.java.superclass as Class<*>)
-                    .getOrNull() as? AIOMsgItem ?: return@hookAfterMethod
+                    .getOrNull() as? AIOMsgItem ?: return@hookAfter
 
-                if (aioMsgItem is GrayTipsMsgItem) return@hookAfterMethod
+                if (aioMsgItem is GrayTipsMsgItem) return@hookAfter
 
                 activeDecorators.forEach {
                     it.onGetViewNt(rootView, aioMsgItem.msgRecord, param)

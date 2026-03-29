@@ -16,13 +16,13 @@ import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.activity.BaseComposeActivity
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.callMethod
-import com.owo233.tcqt.utils.callStaticMethod
-import com.owo233.tcqt.utils.getObjectField
-import com.owo233.tcqt.utils.getStaticObjectField
 import com.owo233.tcqt.utils.reflect.FieldUtils
+import com.owo233.tcqt.utils.reflect.callMethod
+import com.owo233.tcqt.utils.reflect.callStaticMethod
 import com.owo233.tcqt.utils.reflect.findMethod
-import com.owo233.tcqt.utils.setObjectField
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.getStaticObject
+import com.owo233.tcqt.utils.reflect.setObject
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -74,13 +74,13 @@ object ParasiticActivity {
     }
 
     private fun hookInstrumentation(activityThread: Any) {
-        val base = activityThread.getObjectField("mInstrumentation") as? Instrumentation ?: return
+        val base = activityThread.getObject("mInstrumentation") as? Instrumentation ?: return
         if (base is ProxyInstrumentation) return
-        activityThread.setObjectField("mInstrumentation", ProxyInstrumentation(base))
+        activityThread.setObject("mInstrumentation", ProxyInstrumentation(base))
     }
 
     private fun hookMainHandler(activityThread: Any) {
-        val handler = activityThread.getObjectField("mH") as? Handler ?: return
+        val handler = activityThread.getObject("mH") as? Handler ?: return
 
         val oldCallback = runCatching {
             FieldUtils.create(handler)
@@ -155,7 +155,7 @@ object ParasiticActivity {
     }
 
     private fun hookIPackageManager(ctx: Context, activityThread: Any) {
-        val base = activityThread.getObjectField("sPackageManager") ?: return
+        val base = activityThread.getObject("sPackageManager")
         val interfaceClass = "android.content.pm.IPackageManager".toHostClass()
 
         val proxy = Proxy.newProxyInstance(
@@ -171,9 +171,9 @@ object ParasiticActivity {
             invokeOriginal(base, method, args)
         }
 
-        activityThread.setObjectField("sPackageManager", proxy)
+        activityThread.setObject("sPackageManager", proxy)
         runCatching {
-            ctx.packageManager.setObjectField("mPM", proxy)
+            ctx.packageManager.setObject("mPM", proxy)
         }
     }
 
@@ -194,7 +194,7 @@ object ParasiticActivity {
             isAtLeastQ -> {
                 runCatching {
                     val atmClass = "android.app.ActivityTaskManager".toHostClass()
-                    val singleton = atmClass.getStaticObjectField("IActivityTaskManagerSingleton")
+                    val singleton = atmClass.getStaticObject("IActivityTaskManagerSingleton")
                     "android.util.Singleton".toHostClass()
                         .findMethod { name = "get" }
                         .invoke(singleton)
@@ -206,7 +206,7 @@ object ParasiticActivity {
                 runCatching {
                     "android.app.ActivityManager"
                         .toHostClass()
-                        .getStaticObjectField("IActivityManagerSingleton")
+                        .getStaticObject("IActivityManagerSingleton")
                 }.getOrNull()
             }
 
@@ -214,7 +214,7 @@ object ParasiticActivity {
                 runCatching {
                     "android.app.ActivityManagerNative"
                         .toHostClass()
-                        .getStaticObjectField("gDefault")
+                        .getStaticObject("gDefault")
                 }.getOrNull()
             }
         }
@@ -223,9 +223,9 @@ object ParasiticActivity {
     private fun handleLaunchMessage(recordOrTransaction: Any, what: Int) {
         when (what) {
             MSG_LAUNCH_ACTIVITY -> {
-                val stubIntent = recordOrTransaction.getObjectField("intent") as? Intent ?: return
+                val stubIntent = recordOrTransaction.getObject("intent") as? Intent ?: return
                 val originalIntent = unwrapIntent(stubIntent) ?: return
-                recordOrTransaction.setObjectField("intent", originalIntent)
+                recordOrTransaction.setObject("intent", originalIntent)
             }
 
             MSG_EXECUTE_TRANSACTION -> {
@@ -237,10 +237,10 @@ object ParasiticActivity {
                     if (item == null) continue
                     if (!item.javaClass.name.contains("LaunchActivityItem")) continue
 
-                    val stubIntent = item.getObjectField("mIntent") as? Intent ?: continue
+                    val stubIntent = item.getObject("mIntent") as? Intent ?: continue
                     val originalIntent = unwrapIntent(stubIntent) ?: continue
 
-                    item.setObjectField("mIntent", originalIntent)
+                    item.setObject("mIntent", originalIntent)
 
                     if (isAtLeastS) {
                         fixActivityClientRecordForApi31(recordOrTransaction, originalIntent)
@@ -256,7 +256,7 @@ object ParasiticActivity {
             val token = transaction.callMethod("getActivityToken") as? IBinder ?: return
             val activityThread = currentActivityThread() ?: return
             val record = activityThread.callMethod("getLaunchingActivity", token) ?: return
-            record.setObjectField("intent", originalIntent)
+            record.setObject("intent", originalIntent)
         }
     }
 

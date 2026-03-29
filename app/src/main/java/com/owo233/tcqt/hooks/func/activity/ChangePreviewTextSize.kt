@@ -5,7 +5,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
-import android.os.Bundle
 import android.widget.TextView
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
@@ -14,7 +13,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.invokeMethod
@@ -44,7 +43,7 @@ class ChangePreviewTextSize : IAction {
         "com.tencent.mobileqq.activity.TextPreviewActivity".toHostClass().findMethod {
             name = "onCreate"
             paramTypes = arrayOf(bundle)
-        }.hookAfterMethod { param ->
+        }.hookAfter { param ->
             val containerView = FieldUtils.create(param.thisObject)
                 .typed(containerViewClass)
                 .getValue()

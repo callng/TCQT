@@ -14,7 +14,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hookBeforeAllMethods
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
@@ -52,9 +52,9 @@ class ImageCustomSummary : IAction {
             return
         }
 
-        IKernelMsgService.CppProxy::class.java.hookBeforeAllMethods(
-            "sendMsg" // 只有一个叫 sendMsg 的方法, 直接用 hookBeforeAllMethods
-        ) { param ->
+        IKernelMsgService.CppProxy::class.java.hookMethodBefore({
+            name = "sendMsg"
+        }) { param ->
             val contact = param.args[1] as Contact
             val elements = param.args[2] as ArrayList<*>
 

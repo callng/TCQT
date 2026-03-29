@@ -10,7 +10,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.TIMVersion
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
@@ -26,7 +26,9 @@ class DisableFlashPic : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (PlatformTools.isNt() || requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)) {
-            AIOMsgItem::class.java.hookAfterMethod("getMsgRecord") { param ->
+            AIOMsgItem::class.java.hookMethodAfter({
+                name = "getMsgRecord"
+            }) { param ->
                 val msgRecord = param.result as MsgRecord
                 val subMsgType = msgRecord.subMsgType // 位掩码（Bitmask）
                 // 8192 (闪照标记) + 2 (图片基础类型) = 8194

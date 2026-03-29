@@ -13,7 +13,7 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.mobileqq.activity.VisitorsActivity
 import com.tencent.mobileqq.data.CardProfile
 import com.tencent.mobileqq.profile.vote.VoteHelper
@@ -46,14 +46,14 @@ class OneClickLikes : IAction {
             }
 
             voteHelperField.isAccessible = true
-            VisitorsActivity::class.java.hookBeforeMethod(
+            VisitorsActivity::class.java.hookMethodBefore(
                 "onClick",
                 View::class.java
             ) {
                 val view = it.args[0] as View
                 val tag = view.tag
 
-                if (tag == null || tag !is CardProfile) return@hookBeforeMethod
+                if (tag == null || tag !is CardProfile) return@hookMethodBefore
 
                 val voteHelper = voteHelperField.get(it.thisObject) as VoteHelper
                 for (i in 0..<getMaxCount()) {
@@ -63,7 +63,7 @@ class OneClickLikes : IAction {
                 it.result = Unit
             }
 
-            AbsProfileHeaderComponent::class.java.hookBeforeMethod(
+            AbsProfileHeaderComponent::class.java.hookMethodBefore(
                 "handleVoteBtnClickForGuestProfile",
                 load("com.tencent.mobileqq.data.Card")
             ) {

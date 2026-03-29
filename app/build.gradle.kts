@@ -95,10 +95,14 @@ extensions.configure<ApplicationExtension> {
         resources {
             excludes += "google/**"
             excludes += "kotlin/**"
-            excludes += "META-INF/*.version"
+            excludes += "META-INF/**"
             excludes += "WEB-INF/**"
             excludes += "DebugProbesKt.bin"
             excludes += "kotlin-tooling-metadata.json"
+            pickFirsts += setOf(
+                "META-INF/xposed/**",
+                "META-INF/services/**"
+            )
         }
     }
 
@@ -161,12 +165,14 @@ protobuf {
 }
 
 dependencies {
-    compileOnly(libs.androidx.constraintlayout)
+    compileOnly(libs.libxposed.api)
     compileOnly(libs.xposed.api)
-    compileOnly(project(":libs:qqinterface"))
-    ksp(project(":libs:processor"))
-    implementation(project(":libs:annotations"))
+    compileOnly(libs.androidx.constraintlayout)
+    compileOnly(projects.libs.qqinterface)
 
+    ksp(projects.libs.processor)
+
+    implementation(projects.libs.annotations)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.core)

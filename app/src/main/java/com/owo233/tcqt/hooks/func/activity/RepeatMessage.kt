@@ -14,10 +14,10 @@ import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.callMethod
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.callMethod
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods
 import com.tencent.mobileqq.qroute.QRoute
@@ -76,22 +76,22 @@ class RepeatMessage : IAction {
                 }
                 ?: error("plusOne method not found")
 
-        plusOneMethod.hookAfterMethod { param ->
+        plusOneMethod.hookAfter { param ->
             val hostObject = param.thisObject
 
             val imageView =
                 (imageViewLazyField.get(hostObject)!!
                     .callMethod("getValue") as? ImageView)
-                    ?: return@hookAfterMethod
+                    ?: return@hookAfter
 
             if (imageView.context.javaClass.name.contains("MultiForwardActivity")) {
-                return@hookAfterMethod
+                return@hookAfter
             }
 
-            val msgRecord = MsgRecordHelper.getMsgRecord(param.args[1])
+            val msgRecord = MsgRecordHelper.getMsgRecord(param.args[1]!!)
 
             if (shouldDisableRepeat(msgRecord)) {
-                return@hookAfterMethod
+                return@hookAfter
             }
 
             if (imageView.visibility != View.VISIBLE) {

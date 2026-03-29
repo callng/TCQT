@@ -9,8 +9,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookBeforeMethod
-
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 
 @RegisterAction
 @RegisterSetting(
@@ -23,7 +22,7 @@ import com.owo233.tcqt.utils.hookBeforeMethod
 class FlagSecureBypass : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        Window::class.java.hookBeforeMethod(
+        Window::class.java.hookMethodBefore(
             "setFlags",
             Int::class.javaPrimitiveType,
             Int::class.javaPrimitiveType
@@ -35,7 +34,7 @@ class FlagSecureBypass : IAction {
             }
         }
 
-        Window::class.java.hookBeforeMethod(
+        Window::class.java.hookMethodBefore(
             "addFlags",
             Int::class.javaPrimitiveType
         ) {

@@ -10,8 +10,8 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hookBeforeMethod
 import com.owo233.tcqt.utils.proto2json.ProtoUtils
 import com.owo233.tcqt.utils.proto2json.asUtf8String
 import com.tencent.mobileqq.channel.ChannelProxyExt
@@ -30,7 +30,7 @@ import java.lang.reflect.Proxy
 class TCQTDeBug : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        QQSecuritySign::class.java.hookBeforeMethod(
+        QQSecuritySign::class.java.hookMethodBefore(
             "dispatchEvent",
             String::class.java,
             String::class.java,
@@ -64,7 +64,7 @@ class TCQTDeBug : IAction {
             !HookEnv.isTim() && HookEnv.versionCode >= PlatformTools.QQ_9_2_60_GRAY_ONE_VER
         } ?: "sendMessage"
 
-        ChannelProxyExt::class.java.hookBeforeMethod(
+        ChannelProxyExt::class.java.hookMethodBefore(
             method,
             String::class.java,
             ByteArray::class.java,

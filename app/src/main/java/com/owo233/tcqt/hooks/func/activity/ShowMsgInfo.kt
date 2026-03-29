@@ -25,11 +25,11 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CustomDialog
-import com.owo233.tcqt.utils.MethodHookParam
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.TIMVersion
-import com.owo233.tcqt.utils.new
 import com.owo233.tcqt.utils.reflect.invoke
+import com.owo233.tcqt.utils.reflect.new
 import com.owo233.tcqt.utils.reflect.toJsonString
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import java.text.SimpleDateFormat

@@ -8,8 +8,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.isNotAbstract
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isNotAbstract
 import com.tencent.qqnt.kernel.nativeinterface.CommonTabEmojiInfo
 import com.tencent.qqnt.kernel.nativeinterface.SysEmoji
 
@@ -27,14 +28,18 @@ class ShowHideEmoticon : IAction {
         load("com.tencent.mobileqq.emoticon.QQSysAndEmojiResInfo")
             ?.declaredMethods
             ?.filter { m -> m.returnType == Boolean::class.java && m.isNotAbstract }
-            ?.onEach { it.hookBeforeMethod { p -> p.result = false } }
+            ?.onEach { it.hookBefore { p -> p.result = false } }
 
-        SysEmoji::class.java.hookBeforeMethod("getIsHide") {
+        SysEmoji::class.java.hookMethodBefore({
+            name = "getIsHide"
+        }) {
             val emoji = it.thisObject as SysEmoji
             emoji.isHide = false
         }
 
-        CommonTabEmojiInfo::class.java.hookBeforeMethod("getIsHide") {
+        CommonTabEmojiInfo::class.java.hookMethodBefore({
+            name = "getIsHide"
+        }) {
             val emoji = it.thisObject as CommonTabEmojiInfo
             emoji.isHide = false
         }

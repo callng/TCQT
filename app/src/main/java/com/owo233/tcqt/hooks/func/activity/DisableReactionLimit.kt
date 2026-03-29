@@ -9,12 +9,12 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.isFinal
-import com.owo233.tcqt.utils.isPublic
-import com.owo233.tcqt.utils.isStatic
-import com.owo233.tcqt.utils.paramCount
-import com.owo233.tcqt.utils.replaceMethod
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookMethodReplace
+import com.owo233.tcqt.utils.hook.isFinal
+import com.owo233.tcqt.utils.hook.isPublic
+import com.owo233.tcqt.utils.hook.isStatic
+import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
 @RegisterSetting(
@@ -29,8 +29,12 @@ class DisableReactionLimit : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")?.let {
-                it.replaceMethod("getFilterEmojiData") { null }
-                it.replaceMethod("getFilterSysData") { null }
+                it.hookMethodReplace({
+                    name = "getFilterEmojiData"
+                }) { null }
+                it.hookMethodReplace({
+                    name = "getFilterSysData"
+                }) { null }
             }
 
             // 有意义吗？
@@ -40,7 +44,7 @@ class DisableReactionLimit : IAction {
                     it.returnType == Long::class.javaPrimitiveType &&
                             it.paramCount == 0 && it.isPublic &&
                             it.isStatic && it.isFinal
-                }?.hookAfterMethod { it.result = 0L }
+                }?.hookAfter { it.result = 0L }
         }
     }
 

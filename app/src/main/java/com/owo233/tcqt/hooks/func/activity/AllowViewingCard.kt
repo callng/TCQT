@@ -8,11 +8,11 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.getIntField
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
-import com.owo233.tcqt.utils.setIntField
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.data.Card
 
 @RegisterAction
@@ -44,11 +44,11 @@ class AllowViewingCard : IAction {
             clazz.findMethod {
                 name = "processProfileCard"
                 paramTypes(bundle, "SummaryCard.RespHead".toHostClass(), "SummaryCard.RespSummaryCard".toHostClass())
-            }.hookBeforeMethod { param ->
-                val respHead = param.args.getOrNull(1) ?: return@hookBeforeMethod
-                val result = respHead.getIntField("iResult")
+            }.hookBefore { param ->
+                val respHead = param.args.getOrNull(1) ?: return@hookBefore
+                val result = respHead.getObject("iResult") as Int
                 if (result == 201 || result == 202) {
-                    respHead.setIntField("iResult", 0)
+                    respHead.setObject("iResult", 0)
                 }
             }
         }
@@ -62,8 +62,8 @@ class AllowViewingCard : IAction {
             name = methodName
             paramTypes(*paramTypes)
             returnType = Card::class.java
-        }.hookAfterMethod { param ->
-            val card = param.result as? Card ?: return@hookAfterMethod
+        }.hookAfter { param ->
+            val card = param.result as? Card ?: return@hookAfter
             if (card.forbidCode == 201 || card.forbidCode == 202) {
                 card.isForbidAccount = false
                 card.forbidCode = 0

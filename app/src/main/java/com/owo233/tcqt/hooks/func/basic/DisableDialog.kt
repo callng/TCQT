@@ -12,10 +12,11 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.MethodHookParam
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.isPublic
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.MethodHookParam
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isPublic
+import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.proto2json.GlobalJson
 import com.tencent.qphone.base.remote.FromServiceMsg
 import kotlinx.serialization.Serializable
@@ -42,17 +43,17 @@ class DisableDialog : IAction {
             .declaredMethods.firstOrNull {
                 it.isPublic && it.returnType == Void.TYPE &&
                         it.paramCount == 1 && it.parameterTypes[0] == FromServiceMsg::class.java
-            }?.hookBeforeMethod { it.result = Unit }
+            }?.hookBefore { it.result = Unit }
     }
 
     private fun disableFekitDialog() {
         loadOrThrow("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
-            .hookBeforeMethod(
+            .hookMethodBefore(
                 "onSecDispatchToAppEvent",
                 String::class.java,
                 ByteArray::class.java,
             ) { param ->
-                if (!QQInterfaces.isLogin) return@hookBeforeMethod
+                if (!QQInterfaces.isLogin) return@hookMethodBefore
 
                 val currentUin = QQInterfaces.currentUin
                 val currentIsShow = isShowMap[currentUin] ?: false

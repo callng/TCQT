@@ -8,7 +8,8 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookAfterAllConstructors
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.reflect.allConstructors
 
 @RegisterAction
 @RegisterSetting(
@@ -21,16 +22,18 @@ import com.owo233.tcqt.utils.hookAfterAllConstructors
 class LoginCheckBoxDefault : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        CheckBox::class.java.hookAfterAllConstructors{
-            val context = it.args.getOrNull(0) as? Context ?: return@hookAfterAllConstructors
-            val className = context.javaClass.name
+        CheckBox::class.java.allConstructors().forEach {
+            it.hookAfter {
+                val context = it.args.getOrNull(0) as? Context ?: return@hookAfter
+                val className = context.javaClass.name
 
-            if (!loginContextNames.contains(className)) return@hookAfterAllConstructors
+                if (!loginContextNames.contains(className)) return@hookAfter
 
-            val checkBox = it.thisObject as CheckBox
+                val checkBox = it.thisObject as CheckBox
 
-            if (!checkBox.isChecked) {
-                checkBox.post { checkBox.isChecked = true }
+                if (!checkBox.isChecked) {
+                    checkBox.post { checkBox.isChecked = true }
+                }
             }
         }
     }

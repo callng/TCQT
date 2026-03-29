@@ -8,10 +8,10 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.getObjectField
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.invoke
-import com.owo233.tcqt.utils.setObjectField
+import com.owo233.tcqt.utils.reflect.setObject
 
 @RegisterAction
 @RegisterSetting(
@@ -37,7 +37,7 @@ class ForcedABTest : IAction {
         val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")
         val expEntityClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")
 
-        expEntityClz.hookAfterMethod(
+        expEntityClz.hookMethodAfter(
             "isExpHit",
             String::class.java
         ) { param ->
@@ -47,7 +47,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookAfterMethod("getAssignment") { param ->
+        expEntityClz.hookMethodAfter("getAssignment") { param ->
             val expName = param.thisObject.invoke("getExpName") as String
             if (!expName.isEmpty()) {
                 when (mode) {
@@ -57,7 +57,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookAfterMethod(
+        expEntityClz.hookMethodAfter(
             "isExperiment",
             String::class.java
         ) { param ->
@@ -67,7 +67,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookAfterMethod(
+        expEntityClz.hookMethodAfter(
             "isContrast",
             String::class.java
         ) { param ->
@@ -77,17 +77,17 @@ class ForcedABTest : IAction {
             }
         }
 
-        controllerClz.hookAfterMethod(
+        controllerClz.hookMethodAfter(
             "getExpEntityInner",
             String::class.java,
             String::class.java,
             Boolean::class.java
         ) { param ->
             val entity = param.result
-            val mAssignment = entity.getObjectField("mAssignment") as String
+            val mAssignment = entity!!.getObject("mAssignment") as String
             when (mode) {
-                1 -> entity.setObjectField("mAssignment", "${mAssignment}_A")
-                2 -> entity.setObjectField("mAssignment", "${mAssignment}_B")
+                1 -> entity.setObject("mAssignment", "${mAssignment}_A")
+                2 -> entity.setObject("mAssignment", "${mAssignment}_B")
             }
             param.result = entity
         }

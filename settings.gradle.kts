@@ -1,5 +1,7 @@
 @file:Suppress("UnstableApiUsage")
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         google {
@@ -38,7 +40,6 @@ plugins {
 rootProject.name = "TCQT"
 
 include(":app")
-include(":libs:qqinterface")
 include(":libs:annotations")
+include(":libs:qqinterface")
 include(":libs:processor")
-include(":libs:libxposed:api")

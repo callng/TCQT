@@ -9,9 +9,9 @@ import com.owo233.tcqt.ext.PluginHook
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.QQVersion
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
-import com.owo233.tcqt.utils.setLongField
+import com.owo233.tcqt.utils.reflect.setObject
 
 @RegisterAction
 @RegisterSetting(
@@ -42,8 +42,8 @@ class RemoveFavPreviewLimit : PluginHook() {
         loadOrThrow("com.qqfav.FavoriteService", classLoader).findMethod {
             returnType = loadOrThrow("com.qqfav.data.FavoriteData", classLoader)
             paramTypes(long, boolean)
-        }.hookAfterMethod { param ->
-            param.result.setLongField("mSecurityBeat", 0)
+        }.hookAfter { param ->
+            param.result!!.setObject("mSecurityBeat", 0)
         }
     }
 }

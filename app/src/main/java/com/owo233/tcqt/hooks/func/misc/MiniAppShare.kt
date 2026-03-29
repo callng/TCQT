@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 
 @RegisterAction
 @RegisterSetting(
@@ -28,13 +28,13 @@ class MiniAppShare : IAction {
         get() = setOf(ActionProcess.ALL) // 在MAIN或者MINI3又或者其他进程, 干脆ALL
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        loadOrThrow("eipc.EIPCClient").hookBeforeMethod(
+        loadOrThrow("eipc.EIPCClient").hookMethodBefore(
             "callServer",
             String::class.java, String::class.java,
             Bundle::class.java, loadOrThrow("eipc.EIPCResultCallback")
         ) { param ->
             val module = param.args[0] as String
-            if (module != "MiniMsgIPCServer") return@hookBeforeMethod
+            if (module != "MiniMsgIPCServer") return@hookMethodBefore
 
             // Log.d("MiniAppShare 当前进程处于: ${ProcUtil.currentProcName}")
 
@@ -51,7 +51,7 @@ class MiniAppShare : IAction {
             }
         }
 
-        loadOrThrow("com.tencent.mobileqq.forward.ForwardBaseOption").hookBeforeMethod(
+        loadOrThrow("com.tencent.mobileqq.forward.ForwardBaseOption").hookMethodBefore(
             "endForwardCallback",
             Boolean::class.javaPrimitiveType,
         ) { param ->

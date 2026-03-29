@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.content.Context
-import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -9,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.PicElement
 
@@ -25,13 +24,10 @@ class PicTypeEmoticon : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         load("com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl")!!
-            .hookBeforeMethod(
-                "checkIsFavPicAndShowPreview",
-                AIOMsgItem::class.java,
-                PicElement::class.java,
-                View::class.java,
-                List::class.java
-            ) {
+            .hookMethodBefore({
+                name = "checkIsFavPicAndShowPreview"
+                paramTypes = arrayOf(AIOMsgItem::class.java,PicElement::class.java,view,list)
+            }) {
                 it.result = false
             }
     }

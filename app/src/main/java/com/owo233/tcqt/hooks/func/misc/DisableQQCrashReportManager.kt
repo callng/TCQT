@@ -9,11 +9,11 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.beforeHook
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.hookMethod
-import com.owo233.tcqt.utils.isNotStatic
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.loader.api.HookParam
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isNotStatic
+import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
 @RegisterSetting(
@@ -26,63 +26,49 @@ import com.owo233.tcqt.utils.paramCount
 class DisableQQCrashReportManager : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val hooker = beforeHook { param -> param.result = Unit }
+        val doNothing: (HookParam) -> Unit = { it.result = Unit }
 
         val allArgs = if (HookEnv.isQQ()) {
-            arrayOf(Boolean::class.java, String::class.java, hooker)
+            arrayOf(Boolean::class.java, String::class.java)
         } else {
-            arrayOf(Boolean::class.java, hooker)
+            arrayOf(Boolean::class.java)
         }
 
         load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
             it.declaredMethods.first { method ->
                 method.isNotStatic && method.returnType == Void.TYPE && method.paramCount == 2
-            }.hookBeforeMethod { param ->
+            }.hookBefore { param ->
                 param.result = Unit
             }
         }
 
         load("com.tencent.qqperf.monitor.crash.QQCrashHandleListener")?.let {
-            it.hookMethod("onCrashHandleStart", *allArgs)
+            it.hookMethodBefore("onCrashHandleStart", *allArgs, block = doNothing)
 
-            it.hookMethod("onCrashHandleEnd", Boolean::class.java, hooker)
+            it.hookMethodBefore("onCrashHandleEnd", Boolean::class.java, block = doNothing)
 
-            it.hookMethod(
+            it.hookMethodBefore(
                 "onCrashSaving",
-                Boolean::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                Long::class.javaPrimitiveType,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                hooker
+                Boolean::class.java, String::class.java, String::class.java,
+                String::class.java, String::class.java, Int::class.javaPrimitiveType,
+                Long::class.javaPrimitiveType, String::class.java, String::class.java,
+                String::class.java, String::class.java,
+                block = doNothing
             )
         }
 
         load("com.tencent.mobileqq.msf.MSFCrashHandleListener")?.let {
-            it.hookMethod("onCrashHandleStart", *allArgs)
+            it.hookMethodBefore("onCrashHandleStart", *allArgs, block = doNothing)
 
-            it.hookMethod("onCrashHandleEnd", Boolean::class.java, hooker)
+            it.hookMethodBefore("onCrashHandleEnd", Boolean::class.java, block = doNothing)
 
-            it.hookMethod(
+            it.hookMethodBefore(
                 "onCrashSaving",
-                Boolean::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                Long::class.javaPrimitiveType,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                String::class.java,
-                hooker
+                Boolean::class.java, String::class.java, String::class.java,
+                String::class.java, String::class.java, Int::class.javaPrimitiveType,
+                Long::class.javaPrimitiveType, String::class.java, String::class.java,
+                String::class.java, String::class.java,
+                block = doNothing
             )
         }
     }

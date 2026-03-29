@@ -7,7 +7,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.msfcore.MSFConfig
 import com.tencent.mobileqq.msfcore.MSFKernel
@@ -27,7 +27,7 @@ class DisableLightQuic : IAction {
         MSFKernel::class.java.findMethod {
             name = "setMSFConfig"
             paramTypes(int, MSFConfig::class.java)
-        }.hookBeforeMethod { param ->
+        }.hookBefore { param ->
             val type = param.args[0] as Int
             if (type == 9) { // MSF_CONFIG_TYPE_NETWORK_CONFIGURE
                 val config = param.args[1] as MSFNetworkConfig

@@ -7,11 +7,11 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.invokeOriginalMethod
+import com.owo233.tcqt.utils.hook.hookReplace
+import com.owo233.tcqt.utils.hook.invokeOriginal
 import com.owo233.tcqt.utils.reflect.ClassUtils
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.findMethod
-import com.owo233.tcqt.utils.replaceMethod
 import com.tencent.mobileqq.aio.event.AIOMsgSendEvent
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.mvi.base.route.MsgIntent
@@ -42,10 +42,10 @@ class ReplyNoAt : IAction {
             paramTypes(MsgIntent::class.java)
         }
 
-        handleIntent.replaceMethod { param ->
+        handleIntent.hookReplace { param ->
             val event = param.args.getOrNull(0)
             if (event !is AIOMsgSendEvent.MsgOnClickReplyEvent) {
-                return@replaceMethod param.invokeOriginalMethod()
+                return@hookReplace param.invokeOriginal()
             }
 
             val msgRecord: MsgRecord = runCatching {
@@ -59,12 +59,12 @@ class ReplyNoAt : IAction {
                     .getValue() ?: return@runCatching null
 
                 rec as MsgRecord
-            }.getOrNull() ?: return@replaceMethod param.invokeOriginalMethod()
+            }.getOrNull() ?: return@hookReplace param.invokeOriginal()
 
             val senderUid = msgRecord.senderUid
             try {
                 FieldUtils.create(msgRecord).named("senderUid").setValue("")
-                return@replaceMethod param.invokeOriginalMethod()
+                return@hookReplace param.invokeOriginal()
             } finally {
                 FieldUtils.create(msgRecord).named("senderUid").setValue(senderUid)
             }

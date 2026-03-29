@@ -1,6 +1,7 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
 agp = "9.1.0"
+androidx-annotation = "1.9.1"
 androidx-documentfile = "1.1.0"
 androidx-fragment = "1.8.9"
 androidx-core = "1.18.0"
@@ -25,13 +26,12 @@ protobuf-plugin = "0.9.6"
 protobuf-lib = "4.34.1"
 
 # Xposed
+libxposed = "101.0.0"
 xposed = "82"
-
-
 
 [libraries]
 # AndroidX
-androidx-annotation = { module = "androidx.annotation:annotation", version = "1.9.1" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidx-annotation" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidx-documentfile" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "androidx-fragment" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
@@ -64,6 +64,7 @@ protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version
 protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf-lib" }
 
 # Xposed
+libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
 
 [plugins]

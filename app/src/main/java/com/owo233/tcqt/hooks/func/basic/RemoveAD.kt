@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.basic
 
 import android.content.Context
+import android.os.Message
 import android.view.View
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
@@ -12,13 +13,13 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.ClassCacheUtils
-import com.owo233.tcqt.utils.emptyParam
-import com.owo233.tcqt.utils.hookBeforeAllMethods
-import com.owo233.tcqt.utils.hookBeforeMethod
-import com.owo233.tcqt.utils.isFinal
-import com.owo233.tcqt.utils.isNotStatic
-import com.owo233.tcqt.utils.isPublic
-import com.owo233.tcqt.utils.paramCount
+import com.owo233.tcqt.utils.hook.emptyParam
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.isFinal
+import com.owo233.tcqt.utils.hook.isNotStatic
+import com.owo233.tcqt.utils.hook.isPublic
+import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
 @RegisterSetting(
@@ -44,7 +45,7 @@ class RemoveAD : IAction {
             syntheticIndex(1, 2, 3, 5)
         }?.declaredMethods
             ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
-            ?.onEach { it.hookBeforeMethod { p -> p.result = Unit } }
+            ?.onEach { it.hookBefore { p -> p.result = Unit } }
     }
 
     private fun removeKeywordAD() {
@@ -54,14 +55,17 @@ class RemoveAD : IAction {
             ).declaredMethods.firstOrNull {
                 it.isPublic && it.paramCount > 0 &&
                         it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
-            }?.hookBeforeMethod { param -> param.result = Unit }
+            }?.hookBefore { param -> param.result = Unit }
         }
     }
 
     private fun removePopupAD() {
         load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
-        )?.hookBeforeAllMethods("updateBanner") {
+        )?.hookMethodBefore({
+            name = "updateBanner"
+            paramTypes = arrayOf(null, Message::class.java)
+        }) {
             it.result = Unit
         }
 
@@ -71,7 +75,7 @@ class RemoveAD : IAction {
                 method.returnType == Void.TYPE && method.isPublic &&
                         method.isFinal && method.paramCount == 3 &&
                         method.parameterTypes[0].name == "android.app.Activity"
-            }?.hookBeforeMethod { param -> param.result = Unit }
+            }?.hookBefore { param -> param.result = Unit }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_AD

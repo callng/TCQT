@@ -10,9 +10,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.setObjectField
+import com.owo233.tcqt.utils.reflect.setObject
 
 @RegisterAction
 @RegisterSetting(
@@ -27,8 +27,8 @@ class RemoveShareLimit : IAction {
         loadOrThrow("com.tencent.mobileqq.activity.ForwardRecentActivity")
             .declaredConstructors
             .first()
-            .hookAfterMethod { param ->
-                param.thisObject.setObjectField(
+            .hookAfter { param ->
+                param.thisObject.setObject(
                     "mForwardTargetMap",
                     UnlimitedMap<String, Any>()
                 )

@@ -9,7 +9,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
@@ -45,7 +45,7 @@ class FakePicSize : IAction {
         IKernelMsgService.CppProxy::class.java.findMethod {
             name = "sendMsg"
             paramCount = 5
-        }.hookBeforeMethod { param ->
+        }.hookBefore { param ->
             val contact = param.args[1] as Contact
             val elements = param.args[2] as Iterable<*>
 

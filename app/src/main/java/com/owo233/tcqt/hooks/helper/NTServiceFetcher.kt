@@ -2,7 +2,7 @@ package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.ext.runOnce
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
 import java.util.concurrent.atomic.AtomicBoolean
@@ -24,7 +24,7 @@ object NTServiceFetcher {
     }
 
     fun msgHook() {
-        kernelService.wrapperSession.javaClass.hookBeforeMethod(
+        kernelService.wrapperSession.javaClass.hookMethodBefore(
             "onMsfPush",
             String::class.java,
             ByteArray::class.java,

@@ -12,7 +12,7 @@ import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.findMethod
 import de.robv.android.xposed.IXposedHookZygoteInit
@@ -28,15 +28,24 @@ internal object HookSteps {
         HookEnv.setHostAppPackageName(loadPackageParam.packageName)
     }
 
+    fun initHandleLoadPackage(processName: String, packageName: String) {
+        HookEnv.setProcessName(processName)
+        HookEnv.setHostAppPackageName(packageName)
+    }
+
     fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
         HookEnv.setModuleApkPath(startupParam.modulePath)
+    }
+
+    fun initModulePath(path: String) {
+        HookEnv.setModuleApkPath(path)
     }
 
     fun initLoad() {
         Instrumentation::class.java.findMethod {
             name = "callApplicationOnCreate"
             paramTypes(Application::class.java)
-        }.hookAfterMethod { param ->
+        }.hookAfter { param ->
             val application = param.args[0] as Application
             val context = application.baseContext ?: application
             if (hostInit.not()) {
@@ -98,7 +107,7 @@ internal object HookSteps {
     @SuppressLint("DiscouragedPrivateApi")
     fun injectClassLoader(loader: ClassLoader) {
         runCatching {
-            val self = HookEntry::class.java.classLoader
+            val self = HookEnv::class.java.classLoader
             HybridClassLoader.setHostClassLoader(loader)
             HybridClassLoader.inject(self!!)
         }.onFailure {

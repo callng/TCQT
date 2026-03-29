@@ -8,8 +8,8 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hookAfterMethod
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -34,7 +34,7 @@ class MsgAntiRecall : IAction {
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 
     override fun canRun(): Boolean {
-        KernelServiceImpl::class.java.hookAfterMethod("initService") {
+        KernelServiceImpl::class.java.hookMethodAfter("initService") {
             // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook
             val service = it.thisObject as IKernelService
             NTServiceFetcher.onFetch(service)

@@ -24,7 +24,7 @@ import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
@@ -65,12 +65,12 @@ class ChangeGuid : IAction {
     }
 
     private fun setupLoginUiHook() {
-        loadOrThrow("mqq.app.AppActivity").hookAfterMethod(
+        loadOrThrow("mqq.app.AppActivity").hookMethodAfter(
             "onCreate",
             Bundle::class.java
         ) { param ->
             val activity = param.thisObject as Activity
-            if (!activity.javaClass.name.contains("Login")) return@hookAfterMethod
+            if (!activity.javaClass.name.contains("Login")) return@hookMethodAfter
             activity.window.decorView.rootView.post {
                 findLoginButton(activity.window.decorView.rootView)?.apply {
                     setOnLongClickListener {

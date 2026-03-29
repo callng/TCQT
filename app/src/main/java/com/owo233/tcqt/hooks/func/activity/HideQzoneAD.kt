@@ -11,8 +11,8 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hookAfterMethod
-import com.owo233.tcqt.utils.hookBeforeMethod
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 
@@ -42,7 +42,7 @@ class HideQzoneAD : IAction {
             ).forEach { name ->
                 load(name)
                     ?.getDeclaredConstructor(Context::class.java)
-                    ?.hookAfterMethod { param ->
+                    ?.hookAfter { param ->
                         val view = param.thisObject as View
                         view.visibility = View.GONE
                         view.layoutParams.apply {
@@ -58,10 +58,10 @@ class HideQzoneAD : IAction {
                 return;
             }*/
             load("com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController")
-                ?.hookBeforeMethod(
-                    "initAndRenderData",
-                    AlumBasicData::class.java
-                ) { param ->
+                ?.hookMethodBefore({
+                    name = "initAndRenderData"
+                    paramTypes = arrayOf(AlumBasicData::class.java)
+                }) { param ->
                     val alumBasicData = param.args[0] as AlumBasicData
                     alumBasicData.advimageUrl = ""
                     alumBasicData.videoUrl = ""
@@ -74,10 +74,10 @@ class HideQzoneAD : IAction {
 
         if (HookEnv.isTim()) {
             loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
-                .hookBeforeMethod(
-                    "isShowingRecommendAd",
-                    BusinessFeedData::class.java
-                ) { param ->
+                .hookMethodBefore({
+                    name = "isShowingRecommendAd"
+                    paramTypes = arrayOf(BusinessFeedData::class.java)
+                }) { param ->
                     param.result = true
                 }
         }

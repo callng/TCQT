@@ -52,7 +52,7 @@ private fun Class<*>.allMethods(withSuper: Boolean): Array<Method> {
     }
 }
 
-private fun Class<*>.allConstructors(): Array<Constructor<*>> {
+fun Class<*>.allConstructors(): Array<Constructor<*>> {
     return constructorCache.getOrPut(this) {
         this.declaredConstructors.clone()
     }

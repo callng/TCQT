@@ -12,7 +12,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hookAfterMethod
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
 
 @RegisterAction
@@ -31,7 +31,7 @@ class DisablePaoPaoIcon : IAction {
             "com.tencent.qqnt.aio.shortcutbar.PanelIconLinearLayout".toHostClass().also { clazz ->
                 clazz.findMethod {
                     paramTypes(int, string, null)
-                }.hookAfterMethod { param ->
+                }.hookAfter { param ->
                     /*
                     val layout = param.thisObject as LinearLayout
                     val tags = (0 until layout.childCount).map { idx -> layout.getChildAt(idx).tag }
