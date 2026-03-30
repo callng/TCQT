@@ -5,9 +5,10 @@ import android.content.Context
 import android.os.Process
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.runRetry
+import java.io.File
 
 object ProcUtil {
-    const val UNKNOWN = 0
+    const val UNKNOW = 0
     const val MAIN = 1
     const val MSF = 1 shl 1
     const val PEAK = 1 shl 2
@@ -20,35 +21,46 @@ object ProcUtil {
     const val TROOP = 1 shl 9
     const val UNITY = 1 shl 10
     const val OPENSDK = 1 shl 11
-    const val OTHER = -1 // 其他未知进程
-
-    private const val ILINK_SERVICE = "com.tencent.ilink.ServiceProcess"
+    const val OTHER = 1 shl 31
 
     val mPid: Int by lazy { Process.myPid() }
+
     val procName: String by lazy {
-        val am = HookEnv.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val nameFromFile = getProcessNameFromFile()
+        if (nameFromFile != "unknown") {
+            return@lazy nameFromFile
+        }
+
+        val activityManager = HookEnv.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         runRetry(3) {
-            am.runningAppProcesses.firstOrNull { it.pid == mPid }?.processName
+            activityManager.runningAppProcesses?.forEach {
+                if (it.pid == mPid) {
+                    return@runRetry it.processName
+                }
+            }
+            null
         } ?: "unknown"
     }
-    val currentProcName: String by lazy {
+
+    val procSuffix: String by lazy {
         val parts = procName.split(":")
         if (parts.size == 1) {
             return@lazy "MAIN"
         } else {
-            val tail = parts.last()
-            return@lazy tail.uppercase()
+            return@lazy parts.last().uppercase()
         }
     }
+
     val procType: Int by lazy {
         val parts = procName.split(":")
         if (parts.size == 1) {
-            return@lazy when (procName) {
-                ILINK_SERVICE -> OTHER
-                "unknown" -> UNKNOWN
-                else -> MAIN
-            }
+            if (procName == "com.tencent.ilink.ServiceProcess") {
+                return@lazy OTHER
+            } else if (parts.last() == "unknown") {
+                return@lazy UNKNOW
+            } else return@lazy MAIN
         }
+
         val tail = parts.last()
         return@lazy when {
             tail == "MSF" -> MSF
@@ -66,7 +78,25 @@ object ProcUtil {
         }
     }
 
-    private fun inProcess(flag: Int) = (procType and flag) != 0
+    fun inProcess(flag: Int): Boolean = (procType and flag) != 0
+
+    private fun getProcessNameFromFile(): String {
+        return runCatching {
+            File("/proc/self/cmdline").inputStream().use { input ->
+                val b = ByteArray(256)
+                val len = input.read(b)
+                if (len > 0) {
+                    var end = 0
+                    while (end < len && b[end].toInt() != 0) {
+                        end++
+                    }
+                    String(b, 0, end, Charsets.UTF_8).trim()
+                } else {
+                    "unknown"
+                }
+            }
+        }.getOrElse { "unknown" }
+    }
 
     val isMain get() = inProcess(MAIN)
     val isMsf get() = inProcess(MSF)

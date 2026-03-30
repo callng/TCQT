@@ -1,13 +1,15 @@
 package com.owo233.tcqt.loader.modern
 
 import android.content.pm.ApplicationInfo
-import com.owo233.tcqt.HookSteps
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
+import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.legacy.LegacyHookEngine
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.reflect.FieldUtils
-import com.owo233.tcqt.utils.reflect.invokeAs
+import com.owo233.tcqt.utils.reflect.callMethod
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.setObject
 import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedInterfaceWrapper
 import io.github.libxposed.api.XposedModule
@@ -20,11 +22,7 @@ class ModernHookEntry : XposedModule {
 
     constructor(base: XposedInterface, param: XposedModuleInterface.ModuleLoadedParam) {
         // 相当于调用 super(base, param)
-        FieldUtils.create(this::class.java)
-            .named("mBase")
-            .inParent(XposedInterfaceWrapper::class.java)
-            .setValue(base)
-
+        this.setObject("mBase", base, XposedInterfaceWrapper::class.java)
         processName = param.processName
 
         // 降级为 Legacy API
@@ -37,18 +35,21 @@ class ModernHookEntry : XposedModule {
     override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
         if (isApi100Fallback) {
             val packageName = param.packageName
-            val base = FieldUtils.create(this::class.java)
-                .named("mBase")
-                .inParent(XposedInterfaceWrapper::class.java)
-                .getValue()!!
-            val applicationInfo = base.invokeAs<ApplicationInfo>("getApplicationInfo")
+            val base = this.getObject("mBase", XposedInterfaceWrapper::class.java)
+            val applicationInfo = base.callMethod("getApplicationInfo") as ApplicationInfo
+            val hostClassLoader = param.callMethod("getClassLoader") as ClassLoader
 
             if (HostTypeEnum.contain(packageName) && param.isFirstPackage) {
-                HookSteps.initModulePath(applicationInfo.sourceDir)
-                HookSteps.initHandleLoadPackage(processName, packageName)
-                HookSteps.initLoad()
+                ModuleLoader.initialize(
+                    hostClassLoader,
+                    applicationInfo.sourceDir,
+                    packageName,
+                    processName
+                )
 
-                Log.w("在 API 100 版本中加载模块, 已降级为 Legacy API")
+                if (ProcUtil.isMain) {
+                    Log.i("在 API 100 版本中加载模块, 已降级为 Legacy API")
+                }
             }
         }
     }
@@ -70,9 +71,12 @@ class ModernHookEntry : XposedModule {
         if (HostTypeEnum.contain(packageName) && param.isFirstPackage) {
             HookEngineManager.engine = ModernHookEngine(this)
 
-            HookSteps.initModulePath(moduleApplicationInfo.sourceDir)
-            HookSteps.initHandleLoadPackage(processName, packageName)
-            HookSteps.initLoad()
+            ModuleLoader.initialize(
+                param.classLoader,
+                moduleApplicationInfo.sourceDir,
+                packageName,
+                processName
+            )
         }
     }
 }

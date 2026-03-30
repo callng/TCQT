@@ -8,7 +8,7 @@ enum class LogLevel {
     VERBOSE, DEBUG, INFO, WARN, ERROR
 }
 
-private val XPOSED_OUTPUT_LEVELS = setOf(LogLevel.DEBUG, LogLevel.WARN, LogLevel.ERROR)
+private val XPOSED_OUTPUT_LEVELS = setOf(LogLevel.INFO, LogLevel.DEBUG, LogLevel.WARN, LogLevel.ERROR)
 
 interface Logger {
     fun log(level: LogLevel, message: String, throwable: Throwable? = null)

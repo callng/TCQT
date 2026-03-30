@@ -90,7 +90,7 @@ internal object FileLog {
         return buildString {
             append(LocalDateTime.now().format(logTimeFormatter)).append(" ")
             append("[$level]/[$tag] ")
-            append("[${ProcUtil.currentProcName}]/[${Thread.currentThread().name}]: ")
+            append("[${ProcUtil.procSuffix}]/[${Thread.currentThread().name}]: ")
             append(msg)
             append("\n")
             tr?.let {

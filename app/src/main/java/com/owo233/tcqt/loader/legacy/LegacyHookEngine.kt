@@ -1,5 +1,6 @@
 package com.owo233.tcqt.loader.legacy
 
+import android.util.Log
 import com.owo233.tcqt.loader.api.Chain
 import com.owo233.tcqt.loader.api.HookParam
 import com.owo233.tcqt.loader.api.IHookEngine
@@ -54,10 +55,18 @@ class LegacyHookEngine : IHookEngine {
     }
 
     override fun log(priority: Int, tag: String?, msg: String, t: Throwable?) {
-        val finalMsg = if (tag.isNullOrEmpty()) msg else "$tag $msg"
-        XposedBridge.log(finalMsg)
+        val levelTag = when (priority) {
+            Log.VERBOSE -> "VERBOSE"
+            Log.DEBUG -> "DEBUG"
+            Log.INFO -> "INFO"
+            Log.WARN -> "WARN"
+            Log.ERROR -> "ERROR"
+            else -> "????"
+        }
 
-        if (t != null) {
+        val msg = if (tag.isNullOrEmpty()) "[$levelTag] -> $msg" else "[$tag]:[$levelTag] -> $msg"
+        XposedBridge.log(msg)
+        t?.let {
             XposedBridge.log(t)
         }
     }

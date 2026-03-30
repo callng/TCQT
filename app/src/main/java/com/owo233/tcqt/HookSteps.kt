@@ -2,7 +2,6 @@ package com.owo233.tcqt
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.app.Instrumentation
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
@@ -12,16 +11,10 @@ import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.reflect.findMethod
-import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 internal object HookSteps {
-
-    lateinit var hostApp: Application
-    val hostInit get() = ::hostApp.isInitialized
 
     fun initHandleLoadPackage(loadPackageParam: XC_LoadPackage.LoadPackageParam) {
         HookEnv.setProcessName(loadPackageParam.processName)
@@ -33,54 +26,28 @@ internal object HookSteps {
         HookEnv.setHostAppPackageName(packageName)
     }
 
-    fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
-        HookEnv.setModuleApkPath(startupParam.modulePath)
-    }
-
     fun initModulePath(path: String) {
         HookEnv.setModuleApkPath(path)
     }
 
-    fun initLoad() {
-        Instrumentation::class.java.findMethod {
-            name = "callApplicationOnCreate"
-            paramTypes(Application::class.java)
-        }.hookAfter { param ->
-            val application = param.args[0] as Application
-            val context = application.baseContext ?: application
-            if (hostInit.not()) {
-                hostApp = application
-                injectClassLoader(context.classLoader)
-                initContext(application, context.classLoader)
-                Log.i("pName: ${ProcUtil.procName}, pPid: ${ProcUtil.mPid}")
-                initHooks(application)
-            }
-        }
-    }
+    fun initContext(app: Application) {
 
-    private fun initContext(app: Application, loader: ClassLoader) {
-        val context = app.baseContext ?: run {
-            Log.e("initContext: baseContext is null, using app as fallback")
-            app
-        }
+        val packageManager = app.packageManager
+        val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
+        val appName = packageManager.getApplicationLabel(app.applicationInfo).toString()
 
-        val packageManager = context.packageManager
-        val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-        val appName = packageManager.getApplicationLabel(context.applicationInfo).toString()
-
-        HookEnv.setHostAppContext(context)
+        HookEnv.setHostAppContext(app)
         HookEnv.setApplication(app)
-        HookEnv.setHostApkPath(context.applicationInfo.sourceDir)
+        HookEnv.setHostApkPath(app.applicationInfo.sourceDir)
         HookEnv.setAppName(appName)
         HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
         HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
-        HookEnv.setHostClassLoader(loader)
 
-        ParasiticActivity.initForStubActivity(context)
-        ResourcesUtils.injectResourcesToContext(context.resources)
+        ParasiticActivity.initForStubActivity(app)
+        ResourcesUtils.injectResourcesToContext(app.resources)
     }
 
-    private fun initHooks(app: Application) {
+    fun initHooks(app: Application) {
         if (ProcUtil.isMain) {
             Log.i("""
 
@@ -90,8 +57,9 @@ internal object HookSteps {
 
                 """.trimIndent())
         }
+
         ActionManager.runFirst(
-            app.baseContext ?: app,
+            app,
             when {
                 ProcUtil.isMain -> ActionProcess.MAIN
                 ProcUtil.isMsf -> ActionProcess.MSF
