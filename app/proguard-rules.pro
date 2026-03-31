@@ -1,14 +1,13 @@
 # libxposed
 -adaptresourcefilecontents META-INF/xposed/java_init.list
--keep,allowoptimization,allowobfuscation public class * extends io.github.libxposed.api.XposedModule {
-    public <init>();
+-keep,allowobfuscation,allowoptimization public class * extends io.github.libxposed.api.XposedModule {
+    public <init>(...);
+    public void onPackageLoaded(...);
+    public void onSystemServerLoaded(...);
 }
 
 # 保留所有继承自 BaseComposeActivity 的类 不混淆它们的无参构造函数
 -keep class * extends com.owo233.tcqt.activity.BaseComposeActivity { <init>(); }
-
-# 保留 XposedHelper 中创建的所有 Hook 对象
--keep,allowobfuscation class com.owo233.tcqt.utils.XposedHelper** { *; }
 
 # 保留 IAction 及其实现类的无参构造和 INSTANCE
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
