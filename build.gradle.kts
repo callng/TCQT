@@ -16,6 +16,8 @@ plugins {
     alias(libs.plugins.protobuf) apply false
 }
 
+val appBaseVersionName: String by extra("3.6.3")
+
 abstract class GitCommandValueSource :
     ValueSource<String, GitCommandValueSource.Parameters> {
 
@@ -68,7 +70,7 @@ val gitInfoProvider: Provider<GitInfo> =
             GitInfo(
                 commitCount = count,
                 shortHash = hash,
-                versionName = "v3.6.3-$count-$hash"
+                versionName = "$appBaseVersionName.r$count.$hash"
             )
         }
 
