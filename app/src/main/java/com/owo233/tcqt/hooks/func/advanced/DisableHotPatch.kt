@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isPublic
@@ -32,7 +32,7 @@ class DisableHotPatch : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
-            ?.hookBefore {
+            ?.hookAfter {
                 it.result = Unit
             }
 
@@ -43,7 +43,7 @@ class DisableHotPatch : IAction {
                         && it.paramCount == 2
                         && it.parameterTypes[0] == String::class.java
                         && it.parameterTypes[1] == patchConfig
-            }.hookBefore {
+            }.hookAfter {
                 it.result = Unit
             }
         }
@@ -53,7 +53,7 @@ class DisableHotPatch : IAction {
                 "handlePatchConfig",
                 Int::class.javaPrimitiveType,
                 List::class.java
-            )?.hookBefore {
+            )?.hookAfter {
                 it.result = Unit
             }
 
@@ -83,13 +83,13 @@ class DisableHotPatch : IAction {
                         args.last() == Boolean::class.javaPrimitiveType &&
                         args.any { it.isArray && it.componentType == Int::class.javaPrimitiveType }
             }.forEach { method ->
-                method.hookBefore {
-                    val respGetConfig = it.args[1] ?: return@hookBefore
+                method.hookAfter {
+                    val respGetConfig = it.args[1] ?: return@hookAfter
                     val configList = kRespGetConfigConfigList.get(respGetConfig)
-                            as? PBRepeatMessageField<*> ?: return@hookBefore
+                            as? PBRepeatMessageField<*> ?: return@hookAfter
                     val arrayList = configList.get() as ArrayList<*>
                     if (arrayList.isEmpty()) {
-                        return@hookBefore
+                        return@hookAfter
                     }
                     // debug dump type
                     /*arrayList.forEach { config ->
@@ -113,7 +113,7 @@ class DisableHotPatch : IAction {
             kPatchReporter.declaredMethods.filter {
                 it.name.startsWith("report") && it.returnType == Void.TYPE
             }.forEach { m ->
-                m.hookBefore {
+                m.hookAfter {
                     it.result = Unit
                 }
             }

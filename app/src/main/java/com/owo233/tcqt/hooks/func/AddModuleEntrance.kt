@@ -27,14 +27,13 @@ import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
-import com.owo233.tcqt.utils.hook.FuzzyClassKit
 import com.owo233.tcqt.utils.ResourcesUtils
+import com.owo233.tcqt.utils.hook.FuzzyClassKit
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isNotStatic
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.fieldValue
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getObject
@@ -115,7 +114,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                     method.parameterTypes[0].name.contains("MenuItem")
         } ?: error("plusMenu: 找不到符合的onClickAction方法,无法设置点击执行过程!")
 
-        onClick.hookBefore { param ->
+        onClick.hookAfter { param ->
             if ((param.args[0]!!.getObject("id") as Int) == menuItemId) {
                 openTCQTSettings()
                 param.result = Unit

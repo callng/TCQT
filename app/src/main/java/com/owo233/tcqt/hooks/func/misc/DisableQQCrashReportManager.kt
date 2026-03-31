@@ -10,8 +10,8 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.loader.api.HookParam
-import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.hook.paramCount
 
@@ -37,17 +37,17 @@ class DisableQQCrashReportManager : IAction {
         load("com.tencent.qqperf.monitor.crash.QQCrashReportManager")?.let {
             it.declaredMethods.first { method ->
                 method.isNotStatic && method.returnType == Void.TYPE && method.paramCount == 2
-            }.hookBefore { param ->
+            }.hookAfter { param ->
                 param.result = Unit
             }
         }
 
         load("com.tencent.qqperf.monitor.crash.QQCrashHandleListener")?.let {
-            it.hookMethodBefore("onCrashHandleStart", *allArgs, block = doNothing)
+            it.hookMethodAfter("onCrashHandleStart", *allArgs, block = doNothing)
 
-            it.hookMethodBefore("onCrashHandleEnd", Boolean::class.java, block = doNothing)
+            it.hookMethodAfter("onCrashHandleEnd", Boolean::class.java, block = doNothing)
 
-            it.hookMethodBefore(
+            it.hookMethodAfter(
                 "onCrashSaving",
                 Boolean::class.java, String::class.java, String::class.java,
                 String::class.java, String::class.java, Int::class.javaPrimitiveType,
@@ -58,11 +58,11 @@ class DisableQQCrashReportManager : IAction {
         }
 
         load("com.tencent.mobileqq.msf.MSFCrashHandleListener")?.let {
-            it.hookMethodBefore("onCrashHandleStart", *allArgs, block = doNothing)
+            it.hookMethodAfter("onCrashHandleStart", *allArgs, block = doNothing)
 
-            it.hookMethodBefore("onCrashHandleEnd", Boolean::class.java, block = doNothing)
+            it.hookMethodAfter("onCrashHandleEnd", Boolean::class.java, block = doNothing)
 
-            it.hookMethodBefore(
+            it.hookMethodAfter(
                 "onCrashSaving",
                 Boolean::class.java, String::class.java, String::class.java,
                 String::class.java, String::class.java, Int::class.javaPrimitiveType,

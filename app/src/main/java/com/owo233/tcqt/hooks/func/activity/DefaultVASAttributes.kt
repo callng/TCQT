@@ -10,7 +10,6 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
@@ -73,7 +72,7 @@ class DefaultVASAttributes : IAction {
                 it.findMethod {
                     name = "isQQShowEnableForAIO"
                     paramTypes(long, int, long)
-                }.hookBefore { param ->
+                }.hookAfter { param ->
                     val uin = (param.args[2] as Long).toString()
                     if (uin != QQInterfaces.currentUin) {
                         param.result = false

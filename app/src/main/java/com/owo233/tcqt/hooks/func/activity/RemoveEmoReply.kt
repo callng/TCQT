@@ -8,8 +8,8 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.isPublic
 import com.owo233.tcqt.utils.hook.paramCount
 
@@ -25,7 +25,7 @@ class RemoveEmoReply : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.api.impl.AIOEmoReplyMenuApiImpl")
-            .hookMethodBefore({
+            .hookMethodAfter({
                 name = "getSeparateEmoReplyMenuView"
             }) { param ->
                 param.result = null
@@ -37,7 +37,7 @@ class RemoveEmoReply : IAction {
                         && m.parameterTypes[0] == Int::class.javaPrimitiveType
                         && m.parameterTypes[2] == List::class.java
             }
-            .hookBefore { param -> param.result = null }
+            .hookAfter { param -> param.result = null }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_EMO_REPLY

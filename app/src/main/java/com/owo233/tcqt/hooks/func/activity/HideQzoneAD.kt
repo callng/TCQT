@@ -12,6 +12,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
@@ -74,7 +75,7 @@ class HideQzoneAD : IAction {
 
         if (HookEnv.isTim()) {
             loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
-                .hookMethodBefore({
+                .hookMethodAfter({
                     name = "isShowingRecommendAd"
                     paramTypes = arrayOf(BusinessFeedData::class.java)
                 }) { param ->

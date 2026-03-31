@@ -16,7 +16,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
 import java.util.regex.Pattern
 
@@ -45,12 +45,12 @@ class FxxkQQBrowser : IAction {
             name = "execStartActivity"
             paramTypes(context, IBinder::class.java, IBinder::class.java,
                 Activity::class.java, Intent::class.java, int, bundle
-            )}.hookBefore { param ->
-            val intent = param.args.getOrNull(4) as? Intent ?: return@hookBefore
-            val url = intent.getStringExtra("url") ?: return@hookBefore
+            )}.hookAfter { param ->
+            val intent = param.args.getOrNull(4) as? Intent ?: return@hookAfter
+            val url = intent.getStringExtra("url") ?: return@hookAfter
 
             if (!shouldHijack(intent, url)) {
-                return@hookBefore
+                return@hookAfter
             }
 
             openWithCustomTabs(url)

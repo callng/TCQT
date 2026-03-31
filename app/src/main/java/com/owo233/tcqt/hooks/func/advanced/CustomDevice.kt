@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookMethodReplace
 import com.owo233.tcqt.utils.hook.invokeOriginal
 import com.owo233.tcqt.utils.reflect.getMethods
@@ -48,8 +48,8 @@ class CustomDevice : IAction {
             .getMethods(false)
             .filter { it.name == "get" }
             .forEach { method ->
-                method.hookBefore { param ->
-                    val key = param.args.getOrNull(0) as? String ?: return@hookBefore
+                method.hookAfter { param ->
+                    val key = param.args.getOrNull(0) as? String ?: return@hookAfter
 
                     val replacement = when (key) {
                         DEVICE_KEY -> device

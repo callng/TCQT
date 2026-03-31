@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isNotAbstract
 import com.tencent.qqnt.kernel.nativeinterface.CommonTabEmojiInfo
@@ -28,7 +28,7 @@ class ShowHideEmoticon : IAction {
         load("com.tencent.mobileqq.emoticon.QQSysAndEmojiResInfo")
             ?.declaredMethods
             ?.filter { m -> m.returnType == Boolean::class.java && m.isNotAbstract }
-            ?.onEach { it.hookBefore { p -> p.result = false } }
+            ?.onEach { it.hookAfter { p -> p.result = false } }
 
         SysEmoji::class.java.hookMethodBefore({
             name = "getIsHide"
