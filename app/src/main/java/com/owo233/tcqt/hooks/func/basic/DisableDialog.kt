@@ -1,6 +1,10 @@
 package com.owo233.tcqt.hooks.func.basic
 
+import android.app.Activity
 import android.content.Context
+import android.util.AttributeSet
+import android.view.View
+import android.widget.FrameLayout
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -8,16 +12,20 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hook.MethodHookParam
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.hook.isPublic
 import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.proto2json.GlobalJson
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qphone.base.remote.FromServiceMsg
 import kotlinx.serialization.Serializable
 import mqq.app.Foreground
@@ -28,14 +36,49 @@ import java.util.concurrent.ConcurrentHashMap
     key = "disable_dialog",
     name = "屏蔽烦人弹窗",
     type = SettingType.BOOLEAN,
-    defaultValue = "true",
-    desc = "将一些烦人的弹窗给屏蔽掉，现支持「灰度版本体验」及「社交封禁提醒」弹窗。",
+    desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。",
+)
+@RegisterSetting(
+    key = "disable_dialog.type",
+    name = "可选项",
+    type = SettingType.INT_MULTI,
+    defaultValue = "0",
+    options = "屏蔽灰度版本体验|屏蔽社交封禁提醒|屏蔽版本升级弹窗"
 )
 class DisableDialog : IAction {
 
+    private val options: Int by lazy {
+        GeneratedSettingList.getInt(GeneratedSettingList.DISABLE_DIALOG_TYPE)
+    }
+
     override fun onRun(ctx: Context, process: ActionProcess) {
-        disableGrayCheckDialog()
-        disableFekitDialog()
+        val actionMap = mapOf(
+            0 to ::disableGrayCheckDialog,
+            1 to ::disableFekitDialog,
+            2 to ::disableNewVersionDialog
+        )
+
+        actionMap.forEach { (flag, action) ->
+            if (options.isFlagEnabled(flag)) action()
+        }
+    }
+
+    private fun disableNewVersionDialog() {
+        loadOrThrow("com.tencent.mobileqq.upgrade.ui.dialog.UpgradeActivity").findMethod {
+            name = "doOnCreate"
+            paramTypes = arrayOf(bundle)
+        }.hookReplace { param ->
+            (param.thisObject as Activity).finish()
+            return@hookReplace true
+        }
+
+        loadOrThrow("com.tencent.biz.qui.noticebar.view.VQUINoticeBarLayout")
+            .getDeclaredConstructor(Context::class.java, AttributeSet::class.java)
+            .hookAfter { param ->
+                val view = param.thisObject as FrameLayout
+                view.visibility = View.GONE
+                view.layoutParams = FrameLayout.LayoutParams(0, 0)
+            }
     }
 
     private fun disableGrayCheckDialog() {
