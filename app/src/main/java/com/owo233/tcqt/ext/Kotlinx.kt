@@ -261,3 +261,13 @@ val Any?.shortClassName: String
         is Field -> this.type.name.substringAfterLast('.')
         else -> this.javaClass.name.substringAfterLast('.')
     }
+
+/**
+ * 检查指定索引的位标志是否启用
+ * @param index 索引值，从0开始（0表示第1个选项，对应位值 1 shl 0 = 1）
+ * @return true 该位已启用，false 未启用
+ */
+fun Int.isFlagEnabled(index: Int): Boolean {
+    require(index >= 0) { "Index must be non-negative" }
+    return (this and (1 shl index)) != 0
+}

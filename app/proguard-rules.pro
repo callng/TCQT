@@ -1,9 +1,7 @@
 # libxposed
 -adaptresourcefilecontents META-INF/xposed/java_init.list
--keep,allowobfuscation,allowoptimization public class * extends io.github.libxposed.api.XposedModule {
-    public <init>(...);
-    public void onPackageLoaded(...);
-    public void onSystemServerLoaded(...);
+-keep,allowoptimization,allowobfuscation public class * extends io.github.libxposed.api.XposedModule {
+    public <init>();
 }
 
 # 保留所有继承自 BaseComposeActivity 的类 不混淆它们的无参构造函数

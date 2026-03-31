@@ -6,7 +6,7 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.hooks.base.HybridClassLoader
+import com.owo233.tcqt.loader.HybridClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.utils.PlatformTools

@@ -1,4 +1,4 @@
-package com.owo233.tcqt.hooks.base
+package com.owo233.tcqt.loader
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -21,7 +21,7 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
             val fParent = ClassLoader::class.java.getDeclaredField("parent")
             fParent.isAccessible = true
             fParent.set(self, this)
-            Log.i("Inject success: HybridClassLoader is now the parent of $self")
+            // Log.i("Inject success: HybridClassLoader is now the parent of $self")
         } catch (e: Exception) {
             Log.e("Inject failed", e)
         }

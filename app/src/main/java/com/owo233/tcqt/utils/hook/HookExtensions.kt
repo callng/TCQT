@@ -6,6 +6,7 @@ import com.owo233.tcqt.loader.api.HookParam
 import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.MethodSearcher
+import com.owo233.tcqt.utils.reflect.callOriginal
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.isCompatibleWith
 import java.lang.reflect.Member
@@ -92,11 +93,7 @@ fun Class<*>.hookMethodReplace(
 }
 
 fun Chain.invokeOriginal(args: Array<Any?> = arrayOf()): Any? {
-    val engine = HookEngineManager.engine
-    val method = this.method
-    val thisObject = this.thisObject
-    return if (args.isNotEmpty()) engine.getInvoker(this.method).invokeOrigin(thisObject, *args)
-    else engine.getInvoker(method).invokeOrigin(thisObject, *this.args)
+    return method.callOriginal(thisObject, *args.ifEmpty { this.args })
 }
 
 fun Member.returnConstant(constant: Any?): Unhook {
