@@ -23,13 +23,13 @@ class LoginCheckBoxDefault : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         CheckBox::class.java.allConstructors().forEach {
-            it.hookAfter {
-                val context = it.args.getOrNull(0) as? Context ?: return@hookAfter
+            it.hookAfter { param ->
+                val context = param.args.getOrNull(0) as? Context ?: return@hookAfter
                 val className = context.javaClass.name
 
                 if (!loginContextNames.contains(className)) return@hookAfter
 
-                val checkBox = it.thisObject as CheckBox
+                val checkBox = param.thisObject as CheckBox
 
                 if (!checkBox.isChecked) {
                     checkBox.post { checkBox.isChecked = true }

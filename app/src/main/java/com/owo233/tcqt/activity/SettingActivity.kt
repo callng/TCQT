@@ -7,10 +7,9 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.result.contract.ActivityResultContracts
-import com.owo233.tcqt.utils.ConfigBackupManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -108,6 +107,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.ConfigBackupManager
 import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.log.Log
@@ -143,18 +143,19 @@ class SettingActivity : BaseComposeActivity() {
         performBackupToDirectory(uri)
     }
 
-    private val restoreFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            try {
-                contentResolver.takePersistableUriPermission(uri, takeFlags)
-            } catch (_: Exception) {
-            }
-            performRestore(uri) {
-                onRestoreSuccessCallback?.invoke()
+    private val restoreFilePicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                try {
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (_: Exception) {
+                }
+                performRestore(uri) {
+                    onRestoreSuccessCallback?.invoke()
+                }
             }
         }
-    }
 
     private fun startBackup(forceChooseDirectory: Boolean = false) {
         if (forceChooseDirectory) {
@@ -200,12 +201,15 @@ class SettingActivity : BaseComposeActivity() {
                 Toasts.success("还原成功，已恢复 ${result.count} 项配置")
                 onSuccess()
             }
+
             ConfigBackupManager.RestoreResult.InvalidFile -> {
                 Toasts.error("无效的备份文件")
             }
+
             ConfigBackupManager.RestoreResult.VersionMismatch -> {
                 Toasts.error("备份文件版本不兼容")
             }
+
             is ConfigBackupManager.RestoreResult.Error -> {
                 Toasts.error("还原失败: ${result.exception.message}")
             }
@@ -532,7 +536,8 @@ private fun SettingScreen(
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -596,7 +601,12 @@ private fun SettingScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
             state = lazyListState,
-            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = if (hasPending) 112.dp else 24.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = if (hasPending) 112.dp else 24.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item(key = "header") {
@@ -909,7 +919,10 @@ private fun ControlCard(
                     LazyRow(
                         state = listState,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            8.dp,
+                            Alignment.CenterHorizontally
+                        ),
                         contentPadding = PaddingValues(horizontal = 3.dp)
                     ) {
                         items(tabs, key = { it }) { tab ->
@@ -1070,7 +1083,10 @@ private fun FooterCard(
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+            ),
             modifier = Modifier
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },

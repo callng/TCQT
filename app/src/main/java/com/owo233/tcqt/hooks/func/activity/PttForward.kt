@@ -19,10 +19,10 @@ import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.CustomMenu
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
-import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.ResourcesUtils
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.log.Log
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.selectmember.ResultRecord
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -53,18 +53,24 @@ class PttForward : IAction, OnMenuBuilder {
 
     override val key: String get() = GeneratedSettingList.PTT_FORWARD
 
-    override val targetComponentTypes: Array<String> get() = arrayOf(
-        "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"
-    )
+    override val targetComponentTypes: Array<String>
+        get() = arrayOf(
+            "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"
+        )
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(ctx: Context, process: ActionProcess) {
         val forwardBaseOption = load(CLS_FORWARD_BASE) ?: error("$CLS_FORWARD_BASE not found")
 
-        val mExtraDataField = forwardBaseOption.getDeclaredField("mExtraData").apply { isAccessible = true }
+        val mExtraDataField =
+            forwardBaseOption.getDeclaredField("mExtraData").apply { isAccessible = true }
 
         val methodsToHook = listOf(
-            "isNeedShowToast" to arrayOf(Int::class.javaPrimitiveType, String::class.java, Int::class.javaPrimitiveType),
+            "isNeedShowToast" to arrayOf(
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                Int::class.javaPrimitiveType
+            ),
             "getMultiTargetWithoutDataLine" to emptyArray()
         )
 
@@ -91,7 +97,8 @@ class PttForward : IAction, OnMenuBuilder {
                             }
                             if (data.containsKey("forward_multi_target")) {
                                 @Suppress("DEPRECATION")
-                                val mForwardTargets: ArrayList<ResultRecord>? = data.getParcelableArrayList("forward_multi_target")
+                                val mForwardTargets: ArrayList<ResultRecord>? =
+                                    data.getParcelableArrayList("forward_multi_target")
                                 mForwardTargets?.forEach { t ->
                                     sendPtt(t.uin, t.uinType, msgService)
                                 }
@@ -126,7 +133,7 @@ class PttForward : IAction, OnMenuBuilder {
         val contact = ContactHelper.generateContactByUid(if (uinType == 0) 1 else 2, sendUid)
 
         if (contact is MapleContact.PublicContact) {
-            msgService.sendMsg(contact.inner, arrayListOf(elem)) {result, str ->
+            msgService.sendMsg(contact.inner, arrayListOf(elem)) { result, str ->
                 if (result != 0) {
                     Log.e("PttForward: error -> (result = $result, str = $str)")
                 }

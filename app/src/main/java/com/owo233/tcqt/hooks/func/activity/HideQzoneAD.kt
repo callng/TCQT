@@ -12,7 +12,6 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
@@ -75,7 +74,7 @@ class HideQzoneAD : IAction {
 
         if (HookEnv.isTim()) {
             loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
-                .hookMethodAfter({
+                .hookMethodBefore({
                     name = "isShowingRecommendAd"
                     paramTypes = arrayOf(BusinessFeedData::class.java)
                 }) { param ->
@@ -86,5 +85,9 @@ class HideQzoneAD : IAction {
 
     override val key: String get() = GeneratedSettingList.HIDE_QZONE_AD
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.QZONE)
+    override val processes: Set<ActionProcess>
+        get() = setOf(
+            ActionProcess.MAIN,
+            ActionProcess.QZONE
+        )
 }

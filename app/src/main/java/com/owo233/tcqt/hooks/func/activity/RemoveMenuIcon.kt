@@ -13,8 +13,8 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.utils.ViewUtils
 
@@ -26,7 +26,7 @@ import com.tencent.mobileqq.utils.ViewUtils
     desc = "移除消息气泡菜单中的图标。",
     uiTab = "界面"
 )
-class RemoveMenuIcon : IAction{
+class RemoveMenuIcon : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.menu.ui.QQCustomMenuExpandableLayout")

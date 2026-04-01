@@ -47,7 +47,8 @@ internal object ResourcesUtils {
                 res.addLoaders(resourcesLoader)
                 injectResourcesBelowApi30(res, path)
             } catch (e: IllegalArgumentException) {
-                val expected1 = "Cannot modify resource loaders of ResourcesImpl not registered with ResourcesManager"
+                val expected1 =
+                    "Cannot modify resource loaders of ResourcesImpl not registered with ResourcesManager"
                 if (expected1 == e.message) {
                     Log.e("injectResourcesBelowApi30", e)
                     injectResourcesBelowApi30(res, path)
@@ -62,7 +63,8 @@ internal object ResourcesUtils {
     private fun injectResourcesBelowApi30(res: Resources, path: String) {
         runCatching {
             val assetManager = res.assets
-            val method = AssetManager::class.java.getDeclaredMethod("addAssetPath", String::class.java)
+            val method =
+                AssetManager::class.java.getDeclaredMethod("addAssetPath", String::class.java)
             method.isAccessible = true
             method.invoke(assetManager, path)
         }

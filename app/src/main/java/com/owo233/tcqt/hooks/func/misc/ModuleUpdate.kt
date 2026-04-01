@@ -32,9 +32,9 @@ class ModuleUpdate : IAction {
             addDataScheme("package")
         }
 
-        val updateReceiver = object: BroadcastReceiver() {
+        val updateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                when(intent.action) {
+                when (intent.action) {
                     Intent.ACTION_PACKAGE_ADDED,
                     Intent.ACTION_PACKAGE_REMOVED,
                     Intent.ACTION_PACKAGE_REPLACED -> {

@@ -2,10 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:icon="@mipmap/ic_launcher"
         android:description="@string/xposed_desc"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="@string/xposed_name">
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/xposed_name"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <meta-data
             android:name="xposedmodule"
             android:value="true" />

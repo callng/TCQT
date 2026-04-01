@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonElement
 
 class ProtoByteString(
     val value: ByteString
-): ProtoValue, Iterable<Byte> by value {
+) : ProtoValue, Iterable<Byte> by value {
 
     override fun toJson(): JsonElement {
         return toByteArray().toHexString().json

@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.PicElement
 
@@ -24,9 +24,9 @@ class PicTypeEmoticon : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         load("com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl")!!
-            .hookMethodAfter({
+            .hookMethodBefore({
                 name = "checkIsFavPicAndShowPreview"
-                paramTypes = arrayOf(AIOMsgItem::class.java,PicElement::class.java,view,list)
+                paramTypes = arrayOf(AIOMsgItem::class.java, PicElement::class.java, view, list)
             }) {
                 it.result = false
             }

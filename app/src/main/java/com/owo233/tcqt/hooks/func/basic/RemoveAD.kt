@@ -14,8 +14,8 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.ClassCacheUtils
 import com.owo233.tcqt.utils.hook.emptyParam
-import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isFinal
 import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.hook.isPublic
@@ -45,7 +45,7 @@ class RemoveAD : IAction {
             syntheticIndex(1, 2, 3, 5)
         }?.declaredMethods
             ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
-            ?.onEach { it.hookAfter { p -> p.result = Unit } }
+            ?.onEach { it.hookBefore { p -> p.result = Unit } }
     }
 
     private fun removeKeywordAD() {
@@ -55,14 +55,14 @@ class RemoveAD : IAction {
             ).declaredMethods.firstOrNull {
                 it.isPublic && it.paramCount > 0 &&
                         it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
-            }?.hookAfter { param -> param.result = Unit }
+            }?.hookBefore { param -> param.result = Unit }
         }
     }
 
     private fun removePopupAD() {
         load(
             "com.tencent.mobileqq.activity.recent.bannerprocessor.VasADBannerProcessor"
-        )?.hookMethodAfter({
+        )?.hookMethodBefore({
             name = "updateBanner"
             paramTypes = arrayOf(null, Message::class.java)
         }) {
@@ -75,7 +75,7 @@ class RemoveAD : IAction {
                 method.returnType == Void.TYPE && method.isPublic &&
                         method.isFinal && method.paramCount == 3 &&
                         method.parameterTypes[0].name == "android.app.Activity"
-            }?.hookAfter { param -> param.result = Unit }
+            }?.hookBefore { param -> param.result = Unit }
     }
 
     override val key: String get() = GeneratedSettingList.REMOVE_AD

@@ -50,7 +50,8 @@ object PlatformTools {
 
     fun getHostName(): String = HookEnv.appName
 
-    fun getClientVersion(ctx: Context = HookEnv.hostAppContext): String = "android ${getHostVersion(ctx)}"
+    fun getClientVersion(ctx: Context = HookEnv.hostAppContext): String =
+        "android ${getHostVersion(ctx)}"
 
     fun isMsfProcess(): Boolean {
         return HookEnv.processName.contains("msf", ignoreCase = true)
@@ -99,7 +100,8 @@ object PlatformTools {
     fun restartMsfProcess(context: Context = HookEnv.hostAppContext) {
         killMsfProcess(context)
         GlobalScope.launchWithCatch {
-            val componentName = ComponentName(context.packageName, "com.tencent.mobileqq.msf.service.MsfService")
+            val componentName =
+                ComponentName(context.packageName, "com.tencent.mobileqq.msf.service.MsfService")
             val intent = Intent().apply {
                 component = componentName
                 putExtra("to_SenderProcessName", context.packageName)

@@ -83,7 +83,8 @@ abstract class PluginHook : IAction {
         initPluginProxyIfNeeded()
 
         try {
-            val classLoader = getOrCreateClassLoaderMethod.invoke(null, application, pluginID) as? ClassLoader
+            val classLoader =
+                getOrCreateClassLoaderMethod.invoke(null, application, pluginID) as? ClassLoader
             if (classLoader != null) {
                 startHook(classLoader)
             } else {

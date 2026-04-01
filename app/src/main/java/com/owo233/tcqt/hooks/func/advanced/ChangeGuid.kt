@@ -36,8 +36,18 @@ import com.owo233.tcqt.utils.log.Log
     desc = "启用后在登录页面长按登录按钮即可调出设置窗口。",
     uiTab = "高级"
 )
-@RegisterSetting(key = "change_guid.string.defaultGuid", name = "默认GUID", type = SettingType.STRING, hidden = true)
-@RegisterSetting(key = "change_guid.string.newGuid", name = "新GUID", type = SettingType.STRING, hidden = true)
+@RegisterSetting(
+    key = "change_guid.string.defaultGuid",
+    name = "默认GUID",
+    type = SettingType.STRING,
+    hidden = true
+)
+@RegisterSetting(
+    key = "change_guid.string.newGuid",
+    name = "新GUID",
+    type = SettingType.STRING,
+    hidden = true
+)
 @RegisterSetting(
     key = "change_guid.boolean.isEnabled",
     name = "是否启用更改",
@@ -116,7 +126,8 @@ class ChangeGuid : IAction {
         val container = FrameLayout(context).apply {
             val params = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT )
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
             val margin = (20 * context.resources.displayMetrics.density).toInt()
             setPadding(margin, margin, margin, margin)
             addView(input, params)
@@ -125,7 +136,12 @@ class ChangeGuid : IAction {
         val dialog = AlertDialog.Builder(context)
             .setTitle("设置自定义 GUID")
             .setView(container)
-            .setPositiveButton("保存") { _, _ -> handleSaveGuid(context, input.text.toString().trim()) }
+            .setPositiveButton("保存") { _, _ ->
+                handleSaveGuid(
+                    context,
+                    input.text.toString().trim()
+                )
+            }
             .setNeutralButton("恢复") { _, _ -> handleRestoreGuid(context) }
             .setNegativeButton("取消", null)
             .create()
@@ -142,12 +158,15 @@ class ChangeGuid : IAction {
                 GuidConfig.disable()
                 toastAndRestart(context, "已禁用自定义GUID，立即生效")
             }
+
             !guid.matches(Regex("^[a-fA-F0-9]{32}$")) -> {
                 toast(context, "GUID 格式不正确")
             }
+
             guid.equals(GuidConfig.newGuid, true) && GuidConfig.isEnabled -> {
                 toast(context, "GUID 与当前自定义一致，无需修改")
             }
+
             guid.equals(GuidConfig.defaultGuid, true) -> {
                 if (GuidConfig.isEnabled) {
                     GuidConfig.disable()
@@ -156,6 +175,7 @@ class ChangeGuid : IAction {
                     toast(context, "与系统默认值一致，无需重复设置")
                 }
             }
+
             else -> {
                 GuidConfig.enableWith(guid)
                 toastAndRestart(context, "已保存，立即生效")
@@ -192,15 +212,24 @@ class ChangeGuid : IAction {
 private object GuidConfig {
     var defaultGuid: String
         get() = GeneratedSettingList.getString(GeneratedSettingList.CHANGE_GUID_STRING_DEFAULTGUID)
-        set(value) = GeneratedSettingList.setString(GeneratedSettingList.CHANGE_GUID_STRING_DEFAULTGUID, value)
+        set(value) = GeneratedSettingList.setString(
+            GeneratedSettingList.CHANGE_GUID_STRING_DEFAULTGUID,
+            value
+        )
 
     var newGuid: String
         get() = GeneratedSettingList.getString(GeneratedSettingList.CHANGE_GUID_STRING_NEWGUID)
-        set(value) = GeneratedSettingList.setString(GeneratedSettingList.CHANGE_GUID_STRING_NEWGUID, value)
+        set(value) = GeneratedSettingList.setString(
+            GeneratedSettingList.CHANGE_GUID_STRING_NEWGUID,
+            value
+        )
 
     var isEnabled: Boolean
         get() = GeneratedSettingList.getBoolean(GeneratedSettingList.CHANGE_GUID_BOOLEAN_ISENABLED)
-        set(value) = GeneratedSettingList.setBoolean(GeneratedSettingList.CHANGE_GUID_BOOLEAN_ISENABLED, value)
+        set(value) = GeneratedSettingList.setBoolean(
+            GeneratedSettingList.CHANGE_GUID_BOOLEAN_ISENABLED,
+            value
+        )
 
     fun enableWith(guid: String) {
         newGuid = guid.lowercase()

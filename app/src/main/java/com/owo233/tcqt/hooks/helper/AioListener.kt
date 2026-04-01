@@ -72,6 +72,7 @@ object AioListener {
                             MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> {
                                 extractC2CRecallInfo(msg)?.let { interceptedC2CRecalls.add(it) }
                             }
+
                             else -> keptMessages.add(msg) // 保留其他消息
                         }
                     }
@@ -87,7 +88,8 @@ object AioListener {
 
     private fun processC2CRecallPush(msgPush: MsgPushOuterClass.MsgPush, param: MethodHookParam) {
         val opInfoBytes = msgPush.qqMessage.messageBody.operationInfo.toByteArray()
-        val operationInfo = QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfoBytes)
+        val operationInfo =
+            QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfoBytes)
 
         val operatorUid = operationInfo.info.operatorUid
         if (operatorUid == QQInterfaces.currentUid) return
@@ -108,7 +110,8 @@ object AioListener {
         val headerBytes = fullOpBytes.copyOfRange(0, GROUP_OP_HEADER_SIZE)
         val bodyBytes = fullOpBytes.copyOfRange(GROUP_OP_HEADER_SIZE, fullOpBytes.size)
 
-        val operationInfo = QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(bodyBytes)
+        val operationInfo =
+            QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(bodyBytes)
         if (operationInfo.info.operatorUid == QQInterfaces.currentUid) return
 
         // 使撤回失效
@@ -135,7 +138,11 @@ object AioListener {
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
         GlobalScope.launchWithCatch {
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
-            LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
+            LocalGrayTips.addLocalGrayTip(
+                contact,
+                JsonGrayBusiId.AIO_AV_C2C_NOTICE,
+                LocalGrayTips.Align.CENTER
+            ) {
                 text("对方想撤回一条")
                 msgRef("消息", msgSeq.toLong())
                 text(", 已拦截")
@@ -148,7 +155,11 @@ object AioListener {
         GlobalScope.launchWithCatch {
             list.forEach { (senderUid, msgSeq) ->
                 val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, senderUid)
-                LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
+                LocalGrayTips.addLocalGrayTip(
+                    contact,
+                    JsonGrayBusiId.AIO_AV_C2C_NOTICE,
+                    LocalGrayTips.Align.CENTER
+                ) {
                     text("对方想撤回一条")
                     msgRef("消息", msgSeq)
                     text(", 已拦截")
@@ -170,9 +181,14 @@ object AioListener {
             val targetUin = ContactHelper.getUinByUidAsync(targetUid)
             val operatorUin = ContactHelper.getUinByUidAsync(operatorUid)
 
-            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, groupPeerId.toString())
+            val contact =
+                ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, groupPeerId.toString())
 
-            LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_GROUP_NOTICE, LocalGrayTips.Align.CENTER) {
+            LocalGrayTips.addLocalGrayTip(
+                contact,
+                JsonGrayBusiId.AIO_AV_GROUP_NOTICE,
+                LocalGrayTips.Align.CENTER
+            ) {
                 member(operatorUid, operatorUin, operatorNick, "3")
                 text("尝试撤回")
                 if (targetUid == operatorUid) {
@@ -194,7 +210,11 @@ object AioListener {
             if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
 
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
-            LocalGrayTips.addLocalGrayTip(contact, JsonGrayBusiId.AIO_AV_C2C_NOTICE, LocalGrayTips.Align.CENTER) {
+            LocalGrayTips.addLocalGrayTip(
+                contact,
+                JsonGrayBusiId.AIO_AV_C2C_NOTICE,
+                LocalGrayTips.Align.CENTER
+            ) {
                 text("对方发送了一条闪照")
                 msgRef("消息", msg.messageContentInfo.msgSeqId.toLong())
             }
@@ -213,7 +233,8 @@ object AioListener {
     private fun extractC2CRecallInfo(qqMessage: QQMessageOuterClass.QQMessage): Pair<String, Long>? {
         return runCatching {
             val opInfo = qqMessage.messageBody.operationInfo
-            val c2cRecall = QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfo)
+            val c2cRecall =
+                QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfo)
             qqMessage.messageHead.senderUid to c2cRecall.info.msgSeq.toLong()
         }.getOrNull()
     }

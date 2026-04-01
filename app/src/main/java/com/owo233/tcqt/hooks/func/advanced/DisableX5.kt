@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 
 @RegisterAction
 @RegisterSetting(
@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.hook.hookMethodAfter
 class DisableX5 : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        loadOrThrow("com.tencent.smtt.sdk.QbSdk").hookMethodAfter(
+        loadOrThrow("com.tencent.smtt.sdk.QbSdk").hookMethodBefore(
             "getIsSysWebViewForcedByOuter"
         ) { param ->
             param.result = true

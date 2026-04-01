@@ -8,7 +8,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 
 @RegisterAction
 @RegisterSetting(
@@ -22,10 +22,10 @@ class FakeMultiWindowStatus : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         Activity::class.java.getDeclaredMethod("isInMultiWindowMode")
-            .hookAfter { it.result = false }
+            .hookBefore { it.result = false }
 
         Activity::class.java.getDeclaredMethod("isInPictureInPictureMode")
-            .hookAfter { it.result = false }
+            .hookBefore { it.result = false }
     }
 
     override val key: String get() = GeneratedSettingList.FAKE_MULTI_WINDOW_STATUS

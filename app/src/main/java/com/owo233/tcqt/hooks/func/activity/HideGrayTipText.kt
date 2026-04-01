@@ -34,7 +34,8 @@ import com.owo233.tcqt.utils.reflect.callMethod
 class HideGrayTipText : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val grayTipClass = loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.graptips.common.CommonGrayTipsComponent")
+        val grayTipClass =
+            loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.graptips.common.CommonGrayTipsComponent")
         val initMethod = grayTipClass.declaredMethods.single { method ->
             method.isPublic && method.returnType == Void.TYPE && method.paramCount == 3
                     && method.parameterTypes[0] == Int::class.javaPrimitiveType

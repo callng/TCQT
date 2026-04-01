@@ -9,6 +9,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.setObject
@@ -37,7 +38,7 @@ class ForcedABTest : IAction {
         val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")
         val expEntityClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")
 
-        expEntityClz.hookMethodAfter(
+        expEntityClz.hookMethodBefore(
             "isExpHit",
             String::class.java
         ) { param ->
@@ -47,7 +48,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookMethodAfter("getAssignment") { param ->
+        expEntityClz.hookMethodBefore("getAssignment") { param ->
             val expName = param.thisObject.invoke("getExpName") as String
             if (!expName.isEmpty()) {
                 when (mode) {
@@ -57,7 +58,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookMethodAfter(
+        expEntityClz.hookMethodBefore(
             "isExperiment",
             String::class.java
         ) { param ->
@@ -67,7 +68,7 @@ class ForcedABTest : IAction {
             }
         }
 
-        expEntityClz.hookMethodAfter(
+        expEntityClz.hookMethodBefore(
             "isContrast",
             String::class.java
         ) { param ->

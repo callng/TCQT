@@ -36,7 +36,8 @@ class SkipQRLoginWait : IAction {
                 isSubClass = false
             ) { clz, _ ->
                 clz.superclass == CountDownTimer::class.java
-            } ?: error("跳过登录等待失败,找不到符合要求的类 -> superclass == CountDownTimer::class.java")
+            }
+            ?: error("跳过登录等待失败,找不到符合要求的类 -> superclass == CountDownTimer::class.java")
 
             targetClass.allConstructors().forEach {
                 it.hookBefore { param ->
@@ -71,5 +72,9 @@ class SkipQRLoginWait : IAction {
 
     override val key: String get() = GeneratedSettingList.SKIP_QR_LOGIN_WAIT
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.OPENSDK)
+    override val processes: Set<ActionProcess>
+        get() = setOf(
+            ActionProcess.MAIN,
+            ActionProcess.OPENSDK
+        )
 }

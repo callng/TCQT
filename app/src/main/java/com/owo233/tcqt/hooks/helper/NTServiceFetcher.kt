@@ -32,10 +32,11 @@ object NTServiceFetcher {
         ) {
             val cmd = it.args[0] as String
             val buffer = it.args[1] as ByteArray
-            when(cmd) {
+            when (cmd) {
                 "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
                     AioListener.handleInfoSyncPush(buffer, it)
                 }
+
                 "trpc.msg.olpush.OlPushService.MsgPush" -> {
                     AioListener.handleMsgPush(buffer, it)
                 }

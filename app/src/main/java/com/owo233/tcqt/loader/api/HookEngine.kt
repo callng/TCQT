@@ -19,8 +19,6 @@ interface HookParam {
     var args: Array<Any?>
     var result: Any?
     var throwable: Throwable?
-
-    fun returnEarly(result: Any?)
 }
 
 interface Chain : HookParam {

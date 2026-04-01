@@ -48,16 +48,29 @@ object LocalGrayTips {
             val msgService = QQInterfaces.msgService
             when (contact) {
                 is MapleContact.Contact -> {
-                    val element = JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
-                    msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
+                    val element =
+                        JGE(busiId.toLong(), json.second.toString(), json.first, false, null)
+                    msgService.addLocalJsonGrayTipMsg(
+                        contact.inner,
+                        element,
+                        true,
+                        true
+                    ) { result, _ ->
                         if (result != 0) {
                             Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                         }
                     }
                 }
+
                 is MapleContact.PublicContact -> {
-                    val element = PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
-                    msgService.addLocalJsonGrayTipMsg(contact.inner, element, true, true) { result, _ ->
+                    val element =
+                        PJGE(busiId.toLong(), json.second.toString(), json.first, false, null)
+                    msgService.addLocalJsonGrayTipMsg(
+                        contact.inner,
+                        element,
+                        true,
+                        true
+                    ) { result, _ ->
                         if (result != 0) {
                             Log.e("addLocalJsonGrayTipMsg failed, result: $result")
                         }
@@ -84,22 +97,26 @@ object LocalGrayTips {
         }
 
         fun msgRef(text: String, seq: Long, col: String = "3") = apply {
-            items.add(Url(
-                text = text,
-                jp = 58,
-                param = mapOf("seq" to seq).json.asJsonObject,
-                col = col
-            ))
+            items.add(
+                Url(
+                    text = text,
+                    jp = 58,
+                    param = mapOf("seq" to seq).json.asJsonObject,
+                    col = col
+                )
+            )
         }
 
         fun imageJump(url: String, alt: String, jumpUrl: String = url, col: String = "3") = apply {
-            items.add(Image(
-                src = url,
-                alt = alt,
-                jp = 58,
-                param = mapOf("url" to jumpUrl).json.asJsonObject,
-                col = col
-            ))
+            items.add(
+                Image(
+                    src = url,
+                    alt = alt,
+                    jp = 58,
+                    param = mapOf("url" to jumpUrl).json.asJsonObject,
+                    col = col
+                )
+            )
             showText.append(alt)
         }
 
@@ -109,7 +126,12 @@ object LocalGrayTips {
         }
 
         fun build(align: Align = Align.CENTER): Pair<String, JsonObject> {
-            return showText.toString() to format.encodeToJsonElement(GrayTip(align, items)).asJsonObject
+            return showText.toString() to format.encodeToJsonElement(
+                GrayTip(
+                    align,
+                    items
+                )
+            ).asJsonObject
         }
     }
 
@@ -161,10 +183,15 @@ object LocalGrayTips {
 
     @Serializable
     enum class Align {
-        @SerialName("left") LEFT,
-        @SerialName("center") CENTER,
-        @SerialName("right") RIGHT,
-        @SerialName("top") TOP,
-        @SerialName("bottom") BOTTOM
+        @SerialName("left")
+        LEFT,
+        @SerialName("center")
+        CENTER,
+        @SerialName("right")
+        RIGHT,
+        @SerialName("top")
+        TOP,
+        @SerialName("bottom")
+        BOTTOM
     }
 }

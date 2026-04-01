@@ -6,10 +6,10 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.ConcurrentHashMap
 
@@ -38,15 +38,15 @@ class MMKVConfigHook : IAction {
             isAccessible = true
         }
 
-        clazz.hookMethodAfter(
+        clazz.hookMethodBefore(
             "getBoolean",
             String::class.java,
             Boolean::class.java,
             Boolean::class.java
         ) { param ->
             val thisObj = param.thisObject
-            val mmapId= mmapIdField.get(thisObj) as? String ?: return@hookMethodAfter
-            if (mmapId != "common_mmkv_configurations") return@hookMethodAfter
+            val mmapId = mmapIdField.get(thisObj) as? String ?: return@hookMethodBefore
+            if (mmapId != "common_mmkv_configurations") return@hookMethodBefore
 
             val key = param.args[0] as String
             configMap[key]?.let { value ->

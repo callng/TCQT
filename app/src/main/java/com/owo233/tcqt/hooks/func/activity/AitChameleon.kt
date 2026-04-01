@@ -144,7 +144,13 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         return currentMentions + referencedMentions
     }
 
-    private fun onRealMentionClick(view: View, peerId: String, uid: Long, ntUid: String, display: String) {
+    private fun onRealMentionClick(
+        view: View,
+        peerId: String,
+        uid: Long,
+        ntUid: String,
+        display: String
+    ) {
         val context = view.context
 
         runCatching {

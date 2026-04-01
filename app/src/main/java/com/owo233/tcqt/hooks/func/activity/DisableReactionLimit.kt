@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodReplace
 import com.owo233.tcqt.utils.hook.isFinal
 import com.owo233.tcqt.utils.hook.isPublic
@@ -44,7 +44,7 @@ class DisableReactionLimit : IAction {
                     it.returnType == Long::class.javaPrimitiveType &&
                             it.paramCount == 0 && it.isPublic &&
                             it.isStatic && it.isFinal
-                }?.hookAfter { it.result = 0L }
+                }?.hookBefore { it.result = 0L }
         }
     }
 

@@ -78,10 +78,12 @@ internal object FileLog {
             } finally {
                 try {
                     lock?.release()
-                } catch (_: IOException) {}
+                } catch (_: IOException) {
+                }
                 try {
                     fos?.close()
-                } catch (_: IOException) {}
+                } catch (_: IOException) {
+                }
             }
         }
     }
@@ -161,7 +163,10 @@ internal object FileLog {
                             if (file.delete()) {
                                 Log.d(TCQTBuild.HOOK_TAG, "Deleted old log file: ${file.name}")
                             } else {
-                                Log.w(TCQTBuild.HOOK_TAG, "Failed to delete old log file: ${file.name}")
+                                Log.w(
+                                    TCQTBuild.HOOK_TAG,
+                                    "Failed to delete old log file: ${file.name}"
+                                )
                             }
                         }
                     } catch (e: Exception) {

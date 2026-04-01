@@ -8,7 +8,7 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toUtf8ByteArray
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.ConcurrentHashMap
 
@@ -36,13 +36,13 @@ class UnitedConfigHook : IAction {
     }
 
     private fun setupUnitedConfigHook() {
-        configClass.hookMethodAfter(
+        configClass.hookMethodBefore(
             "isSwitchOn",
             String::class.java,
             String::class.java,
             Boolean::class.java
         ) { param ->
-            val key = param.args[1] as? String ?: return@hookMethodAfter
+            val key = param.args[1] as? String ?: return@hookMethodBefore
             configMap["b" to key]?.let { value ->
                 safeParseBoolean(key, value)?.let { parsed ->
                     param.result = parsed
@@ -50,13 +50,13 @@ class UnitedConfigHook : IAction {
             }
         }
 
-        configClass.hookMethodAfter(
+        configClass.hookMethodBefore(
             "loadRawConfig",
             String::class.java,
             String::class.java,
             ByteArray::class.java
         ) { param ->
-            val key = param.args[1] as? String ?: return@hookMethodAfter
+            val key = param.args[1] as? String ?: return@hookMethodBefore
             configMap["s" to key]?.let { value ->
                 param.result = value.toUtf8ByteArray()
             }

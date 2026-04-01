@@ -1,8 +1,8 @@
 package com.owo233.tcqt.internals.helper
 
 import com.owo233.tcqt.ext.toHexString
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.log.Log
 import com.tencent.guild.api.util.IGuildUtilApi
 import com.tencent.mobileqq.msf.sdk.MSFSharedPreUtils
 import com.tencent.mobileqq.qroute.QRoute

@@ -26,38 +26,48 @@ import com.tencent.mobileqq.data.Card
 class AllowViewingCard : IAction {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        "com.tencent.mobileqq.profilecard.api.impl.ProfileDataServiceImpl".toHostClass().also { clazz ->
-            hookProfileCardMethod(
-                clazz,
-                "getProfileCard",
-                String::class.java,
-                Boolean::class.javaPrimitiveType!!
-            )
-            hookProfileCardMethod(
-                clazz,
-                "getProfileCardFromCache",
-                String::class.java
-            )
-        }
+        "com.tencent.mobileqq.profilecard.api.impl.ProfileDataServiceImpl".toHostClass()
+            .also { clazz ->
+                hookProfileCardMethod(
+                    clazz,
+                    "getProfileCard",
+                    String::class.java,
+                    Boolean::class.javaPrimitiveType!!
+                )
+                hookProfileCardMethod(
+                    clazz,
+                    "getProfileCardFromCache",
+                    String::class.java
+                )
+            }
 
-        "com.tencent.mobileqq.profilecard.processor.ProfileSecureProcessor".toHostClass().also { clazz ->
-            clazz.findMethod {
-                name = "processProfileCard"
-                paramTypes(bundle, "SummaryCard.RespHead".toHostClass(), "SummaryCard.RespSummaryCard".toHostClass())
-            }.hookBefore { param ->
-                val respHead = param.args.getOrNull(1) ?: return@hookBefore
-                val result = respHead.getObject("iResult") as Int
-                if (result == 201 || result == 202) {
-                    respHead.setObject("iResult", 0)
+        "com.tencent.mobileqq.profilecard.processor.ProfileSecureProcessor".toHostClass()
+            .also { clazz ->
+                clazz.findMethod {
+                    name = "processProfileCard"
+                    paramTypes(
+                        bundle,
+                        "SummaryCard.RespHead".toHostClass(),
+                        "SummaryCard.RespSummaryCard".toHostClass()
+                    )
+                }.hookBefore { param ->
+                    val respHead = param.args.getOrNull(1) ?: return@hookBefore
+                    val result = respHead.getObject("iResult") as Int
+                    if (result == 201 || result == 202) {
+                        respHead.setObject("iResult", 0)
+                    }
                 }
             }
-        }
     }
 
     override val key: String
         get() = GeneratedSettingList.ALLOW_VIEWING_CARD
 
-    private fun hookProfileCardMethod(clazz: Class<*>, methodName: String, vararg paramTypes: Class<*>) {
+    private fun hookProfileCardMethod(
+        clazz: Class<*>,
+        methodName: String,
+        vararg paramTypes: Class<*>
+    ) {
         clazz.findMethod {
             name = methodName
             paramTypes(*paramTypes)

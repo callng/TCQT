@@ -15,8 +15,8 @@ import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.callMethod
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods

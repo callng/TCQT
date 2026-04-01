@@ -34,8 +34,8 @@ class RemoveFavPreviewLimit : PluginHook() {
 
     override fun canRun(): Boolean {
         return GeneratedSettingList.getBoolean(key) &&
-            HookEnv.isQQ() &&
-            HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
+                HookEnv.isQQ() &&
+                HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
     }
 
     override fun startHook(classLoader: ClassLoader) {

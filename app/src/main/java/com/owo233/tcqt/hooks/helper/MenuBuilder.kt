@@ -7,12 +7,12 @@ import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.func.activity.PttForward
-import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.isAbstract
 import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
 class MenuBuilder : AlwaysRunAction() {
@@ -37,8 +37,8 @@ class MenuBuilder : AlwaysRunAction() {
             "com.tencent.mobileqq.aio.msg.AIOMsgItem"
         ) ?: error("MenuBuilder Load AIOMsgItem Error")
         val baseCompClass = load(
-                "com.tencent.mobileqq.aio.msglist.holder.component.BaseContentComponent"
-            ) ?: error("MenuBuilder Load BaseContentComponent Error")
+            "com.tencent.mobileqq.aio.msglist.holder.component.BaseContentComponent"
+        ) ?: error("MenuBuilder Load BaseContentComponent Error")
 
         val getMsgMethod = baseCompClass.declaredMethods.firstOrNull {
             it.returnType == msgClass && it.paramCount == 0

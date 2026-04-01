@@ -20,12 +20,12 @@ class ModernHookParam(val chain: XposedInterface.Chain) : HookParam {
         private set
 
     override var result: Any? = null
-    override var throwable: Throwable? = null
+        set(value) {
+            field = value
+            isReturnEarly = true
+        }
 
-    override fun returnEarly(result: Any?) {
-        this.result = result
-        this.isReturnEarly = true
-    }
+    override var throwable: Throwable? = null
 }
 
 class ModernChain(private val modernParam: ModernHookParam) : Chain, HookParam by modernParam {
@@ -51,7 +51,11 @@ class ModernInvoker(
         }
     }
 
-    override fun invokeWithMaxPriority(maxPriority: Int, thisObject: Any?, vararg args: Any?): Any? {
+    override fun invokeWithMaxPriority(
+        maxPriority: Int,
+        thisObject: Any?,
+        vararg args: Any?
+    ): Any? {
         val invokeType = XposedInterface.Invoker.Type.Chain(maxPriority)
 
         return when (val m = method) {

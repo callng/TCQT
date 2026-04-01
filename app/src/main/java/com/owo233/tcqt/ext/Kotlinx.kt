@@ -8,8 +8,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.hooks.base.Toasts
+import com.owo233.tcqt.utils.log.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +37,7 @@ internal fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
     globalUi.post { Toast.makeText(this, msg, flag).show() }
 }
 
-class Nullable<T: Any>(
+class Nullable<T : Any>(
     private var value: T?
 ) {
     fun get(): T {
@@ -61,7 +61,7 @@ class Nullable<T: Any>(
     }
 }
 
-fun <T: Any> nullableOf(data: T? = null): Nullable<T> {
+fun <T : Any> nullableOf(data: T? = null): Nullable<T> {
     return Nullable(data)
 }
 
@@ -164,7 +164,7 @@ fun <T> runRetry(
         lastException = null
 
         try {
-            val  result = block()
+            val result = block()
             if (result != null) {
                 return result
             }

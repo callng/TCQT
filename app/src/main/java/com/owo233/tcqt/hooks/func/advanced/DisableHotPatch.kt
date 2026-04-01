@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isPublic
@@ -32,7 +32,7 @@ class DisableHotPatch : IAction {
     override fun onRun(ctx: Context, process: ActionProcess) {
         load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
-            ?.hookAfter {
+            ?.hookBefore {
                 it.result = Unit
             }
 
@@ -43,7 +43,7 @@ class DisableHotPatch : IAction {
                         && it.paramCount == 2
                         && it.parameterTypes[0] == String::class.java
                         && it.parameterTypes[1] == patchConfig
-            }.hookAfter {
+            }.hookBefore {
                 it.result = Unit
             }
         }
@@ -53,24 +53,27 @@ class DisableHotPatch : IAction {
                 "handlePatchConfig",
                 Int::class.javaPrimitiveType,
                 List::class.java
-            )?.hookAfter {
+            )?.hookBefore {
                 it.result = Unit
             }
 
         load("com.tencent.mobileqq.msf.core.net.patch.RFixExtraConfig")
             ?.hookMethodBefore("isEnable") {
                 val thisObj = it.thisObject
-                val field = thisObj.javaClass.getDeclaredField("disable").apply { isAccessible = true }
+                val field =
+                    thisObj.javaClass.getDeclaredField("disable").apply { isAccessible = true }
                 if (!(field.get(thisObj) as? Boolean ?: return@hookMethodBefore)) {
                     field.set(thisObj, true)
                 }
             }
 
         load("com.tencent.mobileqq.config.splashlogo.ConfigServlet")?.let { kConfigServlet ->
-            val kRespGetConfig = load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$RespGetConfig")!!
+            val kRespGetConfig =
+                load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$RespGetConfig")!!
             val kRespGetConfigConfigList = kRespGetConfig.getDeclaredField("config_list")
 
-            val kConfig = load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$Config")!!
+            val kConfig =
+                load($$"com.tencent.mobileqq.config.struct.splashproto.ConfigurationService$Config")!!
             val kConfigType = kConfig.getDeclaredField("type")
 
             kConfigServlet.declaredMethods.filter { m ->
@@ -83,13 +86,13 @@ class DisableHotPatch : IAction {
                         args.last() == Boolean::class.javaPrimitiveType &&
                         args.any { it.isArray && it.componentType == Int::class.javaPrimitiveType }
             }.forEach { method ->
-                method.hookAfter {
-                    val respGetConfig = it.args[1] ?: return@hookAfter
+                method.hookBefore {
+                    val respGetConfig = it.args[1] ?: return@hookBefore
                     val configList = kRespGetConfigConfigList.get(respGetConfig)
-                            as? PBRepeatMessageField<*> ?: return@hookAfter
+                            as? PBRepeatMessageField<*> ?: return@hookBefore
                     val arrayList = configList.get() as ArrayList<*>
                     if (arrayList.isEmpty()) {
-                        return@hookAfter
+                        return@hookBefore
                     }
                     // debug dump type
                     /*arrayList.forEach { config ->
@@ -113,7 +116,7 @@ class DisableHotPatch : IAction {
             kPatchReporter.declaredMethods.filter {
                 it.name.startsWith("report") && it.returnType == Void.TYPE
             }.forEach { m ->
-                m.hookAfter {
+                m.hookBefore {
                     it.result = Unit
                 }
             }

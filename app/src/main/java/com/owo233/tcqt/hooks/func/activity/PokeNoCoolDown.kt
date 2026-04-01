@@ -8,7 +8,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 
 @RegisterAction
@@ -27,7 +27,7 @@ class PokeNoCoolDown : IAction {
             visibility = private
             paramTypes = arrayOf(string)
             paramCount = 1
-        }.hookAfter { param -> param.result = true }
+        }.hookBefore { param -> param.result = true }
     }
 
     override val key: String get() = GeneratedSettingList.POKE_NO_COOL_DOWN

@@ -10,7 +10,6 @@ import android.view.LayoutInflater
 import androidx.appcompat.app.AppCompatActivity
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 class CommonContextWrapper @JvmOverloads constructor(
     base: Context,

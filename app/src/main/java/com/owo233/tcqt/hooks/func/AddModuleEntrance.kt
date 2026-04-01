@@ -30,6 +30,7 @@ import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.hook.FuzzyClassKit
 import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.hook.paramCount
@@ -114,7 +115,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                     method.parameterTypes[0].name.contains("MenuItem")
         } ?: error("plusMenu: 找不到符合的onClickAction方法,无法设置点击执行过程!")
 
-        onClick.hookAfter { param ->
+        onClick.hookBefore { param ->
             if ((param.args[0]!!.getObject("id") as Int) == menuItemId) {
                 openTCQTSettings()
                 param.result = Unit
@@ -252,7 +253,8 @@ class AddModuleEntrance : AlwaysRunAction() {
         config: SettingEntryConfig,
         info: ProcessorInfo
     ): Any {
-        val resId = context.resources.getIdentifier(config.iconName, "drawable", context.packageName)
+        val resId =
+            context.resources.getIdentifier(config.iconName, "drawable", context.packageName)
         val args = arrayOf(
             context,
             config.id,
@@ -343,9 +345,10 @@ class AddModuleEntrance : AlwaysRunAction() {
                     val ticket = TicketManager.getA2AndD2()
                     val superKey = TicketManager.getSuperKey()
                     val stWeb = TicketManager.getStweb()
-                    val (superToken, authToken) = CalculationUtils.getSuperToken(superKey).let { st ->
-                        st to CalculationUtils.getAuthToken(st)
-                    }
+                    val (superToken, authToken) = CalculationUtils.getSuperToken(superKey)
+                        .let { st ->
+                            st to CalculationUtils.getAuthToken(st)
+                        }
 
                     val info = """
                         这是账号票据信息
@@ -390,7 +393,12 @@ class AddModuleEntrance : AlwaysRunAction() {
         if (ctx != null) {
             ctx.startActivity(Intent(ctx, SettingActivity::class.java))
         } else {
-            BaseActivity.sTopActivity.startActivity(Intent(BaseActivity.sTopActivity, SettingActivity::class.java))
+            BaseActivity.sTopActivity.startActivity(
+                Intent(
+                    BaseActivity.sTopActivity,
+                    SettingActivity::class.java
+                )
+            )
         }
     }
 
@@ -463,7 +471,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
         val mActivity = if (HookEnv.isQQ())
             "com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity" else
-                "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity"
+            "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity"
         if (load(mActivity) == null) {
             Toasts.error("接口异常")
             return

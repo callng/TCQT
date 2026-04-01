@@ -26,7 +26,8 @@ private fun Class<*>.findMethodAndCall(
         name = methodName
         paramCount = args.size
         paramTypes = argTypes
-    } ?: throw NoSuchMethodException("Method $methodName not found in $name with args: ${args.map { it?.javaClass?.simpleName ?: "null" }}")
+    }
+        ?: throw NoSuchMethodException("Method $methodName not found in $name with args: ${args.map { it?.javaClass?.simpleName ?: "null" }}")
 
     return try {
         method.invoke(obj, *args)

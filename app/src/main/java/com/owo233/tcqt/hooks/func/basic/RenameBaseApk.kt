@@ -92,6 +92,7 @@ class RenameBaseApk : IAction, OnAIOSendMsgBefore {
             applicationInfo.publicSourceDir = apkPath
 
             val currentBaseApkFormat = "%n_%v.APK"
+
             @Suppress("DEPRECATION")
             val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 packageArchiveInfo.longVersionCode.toString()

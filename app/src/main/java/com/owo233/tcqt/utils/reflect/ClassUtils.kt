@@ -20,6 +20,7 @@ object ClassUtils {
     enum class ScanMode {
         /** 只扫 prefix + join + token */
         DIRECT,
+
         /** 先扫 outer（prefix.join.outerToken），每个 outer 再扫 inner（$innerToken） */
         OUTER_THEN_INNER
     }
@@ -83,7 +84,8 @@ object ClassUtils {
          * 方法级别判定：
          * - 扫描 class 时遍历 declaredMethods，只要有一个 method 满足即命中该 class（或返回该 method）
          */
-        fun whereMethod(check: (Class<*>, Method) -> Boolean) = apply { this.methodPredicate = check }
+        fun whereMethod(check: (Class<*>, Method) -> Boolean) =
+            apply { this.methodPredicate = check }
 
         /** 找第一个匹配的 Class */
         fun findFirstClass(): Class<*>? {
@@ -162,6 +164,7 @@ object ClassUtils {
                 ScanMode.DIRECT -> {
                     for (t in dic) yield(joinName(prefix, t, joinStyle))
                 }
+
                 ScanMode.OUTER_THEN_INNER -> {
                     for (outer in dic) {
                         val outerName = "$prefix.$outer"

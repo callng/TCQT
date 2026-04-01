@@ -18,7 +18,8 @@ import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookMethodAfter
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.hook.isPublic
 import com.owo233.tcqt.utils.hook.paramCount
@@ -68,7 +69,7 @@ class DisableDialog : IAction {
             paramTypes = arrayOf(bundle)
         }.hookReplace { param ->
             (param.thisObject as Activity).finish()
-            return@hookReplace true
+            true
         }
 
         loadOrThrow("com.tencent.biz.qui.noticebar.view.VQUINoticeBarLayout")
@@ -85,17 +86,17 @@ class DisableDialog : IAction {
             .declaredMethods.firstOrNull {
                 it.isPublic && it.returnType == Void.TYPE &&
                         it.paramCount == 1 && it.parameterTypes[0] == FromServiceMsg::class.java
-            }?.hookAfter { it.result = Unit }
+            }?.hookBefore { it.result = Unit }
     }
 
     private fun disableFekitDialog() {
         loadOrThrow("com.tencent.mobileqq.dt.api.impl.DTAPIImpl")
-            .hookMethodAfter(
+            .hookMethodBefore(
                 "onSecDispatchToAppEvent",
                 String::class.java,
                 ByteArray::class.java,
             ) { param ->
-                if (!QQInterfaces.isLogin) return@hookMethodAfter
+                if (!QQInterfaces.isLogin) return@hookMethodBefore
 
                 val currentUin = QQInterfaces.currentUin
                 val currentIsShow = isShowMap[currentUin] ?: false
@@ -141,7 +142,8 @@ class DisableDialog : IAction {
     }
 
     private fun updateWordingAndGenerateNewJson(jsonString: String): String {
-        val appendText = "${TCQTBuild.APP_NAME}模块提醒您，此弹窗在重新启动${HookEnv.appName}前只会展示一次。"
+        val appendText =
+            "${TCQTBuild.APP_NAME}模块提醒您，此弹窗在重新启动${HookEnv.appName}前只会展示一次。"
 
         val originalReminder: SafetyReminder = try {
             GlobalJson.decodeFromString(SafetyReminder.serializer(), jsonString)

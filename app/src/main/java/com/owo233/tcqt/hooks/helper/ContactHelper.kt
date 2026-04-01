@@ -19,7 +19,7 @@ internal object ContactHelper {
             sessionService.uixConvertService.getUin(hashSetOf(uid)) {
                 continuation.resume(it)
             }
-        } [uid]?.toString() ?: "0"
+        }[uid]?.toString() ?: "0"
     }
 
     suspend fun getUidByUinAsync(peerId: Long): String {
@@ -34,9 +34,10 @@ internal object ContactHelper {
     }
 
     suspend fun generateContact(chatType: Int, id: String, subId: String = ""): MapleContact {
-        val peerId = if (MsgConstant.KCHATTYPEC2C == chatType || MsgConstant.KCHATTYPETEMPC2CFROMGROUP == chatType) {
-            if (id.startsWith("u_")) id else getUidByUinAsync(id.toLong())
-        } else id
+        val peerId =
+            if (MsgConstant.KCHATTYPEC2C == chatType || MsgConstant.KCHATTYPETEMPC2CFROMGROUP == chatType) {
+                if (id.startsWith("u_")) id else getUidByUinAsync(id.toLong())
+            } else id
 
         return generateContactByUid(chatType, peerId, subId)
     }

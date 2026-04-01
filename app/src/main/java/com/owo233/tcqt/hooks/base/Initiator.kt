@@ -1,4 +1,5 @@
 @file:JvmName("Initiator")
+
 package com.owo233.tcqt.hooks.base
 
 import com.owo233.tcqt.HookEnv
@@ -50,6 +51,7 @@ fun <T> loadAs(
 @JvmOverloads
 fun loadOrThrow(
     className: String,
-    classLoader: ClassLoader = HookEnv.hostClassLoader): Class<*> {
+    classLoader: ClassLoader = HookEnv.hostClassLoader
+): Class<*> {
     return load(className, classLoader) ?: throw ClassNotFoundException(className)
 }

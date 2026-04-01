@@ -6,9 +6,9 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.loader.HybridClassLoader
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
+import com.owo233.tcqt.loader.HybridClassLoader
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.log.Log
@@ -49,13 +49,15 @@ internal object HookSteps {
 
     fun initHooks(app: Application) {
         if (ProcUtil.isMain) {
-            Log.i("""
+            Log.i(
+                """
 
                     android version: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
-                    module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${ if (TCQTBuild.DEBUG) "Debug" else "Release" }
+                    module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${if (TCQTBuild.DEBUG) "Debug" else "Release"}
                     host version: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
 
-                """.trimIndent())
+                """.trimIndent()
+            )
         }
 
         ActionManager.runFirst(

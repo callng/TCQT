@@ -184,7 +184,8 @@ object ConfigBackupManager {
 
                 if (type != setting.type &&
                     !(type == TCQTSetting.SettingType.INT && setting.type == TCQTSetting.SettingType.INT_MULTI) &&
-                    !(type == TCQTSetting.SettingType.INT_MULTI && setting.type == TCQTSetting.SettingType.INT)) {
+                    !(type == TCQTSetting.SettingType.INT_MULTI && setting.type == TCQTSetting.SettingType.INT)
+                ) {
                     continue
                 }
 
@@ -204,12 +205,19 @@ object ConfigBackupManager {
     private fun getValueAsString(config: MMKV, setting: TCQTSetting.Setting<out Any>): String {
         return when (setting.type) {
             TCQTSetting.SettingType.BOOLEAN -> setting.getValue(config).toString()
-            TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> setting.getValue(config).toString()
+            TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> setting.getValue(
+                config
+            ).toString()
+
             TCQTSetting.SettingType.STRING -> setting.getValue(config).toString()
         }
     }
 
-    private fun setValueFromString(config: MMKV, setting: TCQTSetting.Setting<out Any>, value: String): Boolean {
+    private fun setValueFromString(
+        config: MMKV,
+        setting: TCQTSetting.Setting<out Any>,
+        value: String
+    ): Boolean {
         return try {
             when (setting.type) {
                 TCQTSetting.SettingType.BOOLEAN -> {
@@ -217,11 +225,13 @@ object ConfigBackupManager {
                     @Suppress("UNCHECKED_CAST")
                     (setting as TCQTSetting.Setting<Boolean>).setValue(config, boolValue)
                 }
+
                 TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> {
                     val intValue = value.toInt()
                     @Suppress("UNCHECKED_CAST")
                     (setting as TCQTSetting.Setting<Int>).setValue(config, intValue)
                 }
+
                 TCQTSetting.SettingType.STRING -> {
                     @Suppress("UNCHECKED_CAST")
                     (setting as TCQTSetting.Setting<String>).setValue(config, value)

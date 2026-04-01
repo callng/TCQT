@@ -5,9 +5,9 @@ import kotlinx.serialization.json.JsonElement
 
 class ProtoList(
     val value: ArrayList<ProtoValue>
-): ProtoValue {
+) : ProtoValue {
 
-    constructor(): this(arrayListOf())
+    constructor() : this(arrayListOf())
 
     override fun toJson(): JsonElement {
         val array = arrayListOf<JsonElement>()

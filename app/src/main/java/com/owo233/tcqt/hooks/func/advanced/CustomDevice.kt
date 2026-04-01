@@ -9,7 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodReplace
 import com.owo233.tcqt.utils.hook.invokeOriginal
 import com.owo233.tcqt.utils.reflect.getMethods
@@ -48,8 +48,8 @@ class CustomDevice : IAction {
             .getMethods(false)
             .filter { it.name == "get" }
             .forEach { method ->
-                method.hookAfter { param ->
-                    val key = param.args.getOrNull(0) as? String ?: return@hookAfter
+                method.hookBefore { param ->
+                    val key = param.args.getOrNull(0) as? String ?: return@hookBefore
 
                     val replacement = when (key) {
                         DEVICE_KEY -> device
@@ -82,17 +82,20 @@ class CustomDevice : IAction {
             if (device.isBlank()) {
                 GeneratedSettingList.setString(
                     GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE,
-                    Build.DEVICE)
+                    Build.DEVICE
+                )
             }
             if (model.isBlank()) {
                 GeneratedSettingList.setString(
                     GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL,
-                    Build.MODEL)
+                    Build.MODEL
+                )
             }
             if (manufacturer.isBlank()) {
                 GeneratedSettingList.setString(
                     GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER,
-                    Build.MANUFACTURER)
+                    Build.MANUFACTURER
+                )
             }
         }
 
@@ -104,14 +107,20 @@ class CustomDevice : IAction {
         const val MODEL_KEY = "ro.product.model"
         const val MANUFACTURER_KEY = "ro.product.manufacturer"
 
-        val device by lazy { GeneratedSettingList.getString(
-            GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE)
+        val device by lazy {
+            GeneratedSettingList.getString(
+                GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE
+            )
         }
-        val model by lazy { GeneratedSettingList.getString(
-            GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL)
+        val model by lazy {
+            GeneratedSettingList.getString(
+                GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL
+            )
         }
-        val manufacturer by lazy { GeneratedSettingList.getString(
-            GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER)
+        val manufacturer by lazy {
+            GeneratedSettingList.getString(
+                GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER
+            )
         }
     }
 }

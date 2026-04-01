@@ -6,7 +6,7 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.Contact as PC
 
 sealed class MapleContact(
     override val maple: Maple
-): IMaple {
+) : IMaple {
     companion object {
         fun from(instance: Any): MapleContact {
             return when (instance.javaClass.name) {
@@ -39,13 +39,13 @@ sealed class MapleContact(
 
     class PublicContact(
         instance: Any
-    ): MapleContact(Maple.PublicKernel) {
+    ) : MapleContact(Maple.PublicKernel) {
         val inner: PC = instance as PC
     }
 
     class Contact(
         instance: Any
-    ): MapleContact(Maple.Kernel) {
+    ) : MapleContact(Maple.Kernel) {
         val inner: C = instance as C
     }
 }

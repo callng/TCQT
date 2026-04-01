@@ -46,7 +46,8 @@ internal object MMKVUtils {
             // 传入 null 作为 rootPath，意味着使用 MMKV 默认路径
             val handle = getMMKVWithIDMethod.invoke(
                 null,
-                id, mode, null, null, 0L) as Long
+                id, mode, null, null, 0L
+            ) as Long
 
             require(handle != 0L) { "Failed to get MMKV handle for [$id]" }
 

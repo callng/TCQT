@@ -56,14 +56,16 @@ object FieldUtils {
         fun preferInstance(enable: Boolean = true) = apply { this.preferInstance = enable }
 
         /** 是否启用“类型按类名匹配”的兜底 */
-        fun sameNameTypeMatch(enable: Boolean = true) = apply { this.matchTypeByNameFallback = enable }
+        fun sameNameTypeMatch(enable: Boolean = true) =
+            apply { this.matchTypeByNameFallback = enable }
 
         fun getValue(): Any? = findField()?.let { get(it) }
 
         fun getOrNull(): Any? = runCatching { getValue() }.getOrNull()
 
         fun getOrThrow(): Any =
-            getValue() ?: error("Field not found. name=$fieldName type=${fieldType?.name} target=${target.targetClass().name}")
+            getValue()
+                ?: error("Field not found. name=$fieldName type=${fieldType?.name} target=${target.targetClass().name}")
 
         fun setValue(value: Any?) {
             findField()?.let { set(it, value) }
@@ -110,6 +112,7 @@ object FieldUtils {
                         val f = findByName(clazz, fieldName!!, fieldType)
                         if (f != null) addField(f)
                     }
+
                     else -> {
                         val type = fieldType ?: return
                         val instanceFields = ArrayList<Field>()
@@ -117,7 +120,9 @@ object FieldUtils {
 
                         for (f in clazz.declaredFields) {
                             if (!isTypeMatch(type, f.type)) continue
-                            if (Modifier.isStatic(f.modifiers)) staticFields.add(f) else instanceFields.add(f)
+                            if (Modifier.isStatic(f.modifiers)) staticFields.add(f) else instanceFields.add(
+                                f
+                            )
                         }
 
                         val ordered = if (preferInstance) {

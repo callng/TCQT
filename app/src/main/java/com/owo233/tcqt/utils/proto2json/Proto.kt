@@ -13,6 +13,7 @@ fun <K, V> protobufOf(vararg pairs: Pair<K, V>): ProtoMap {
                 val tags = walkPairTags(k)
                 map.set(*tags.toIntArray(), v = ProtoUtils.any2proto(v!!))
             }
+
             else -> error("Not support type for tag: ${k.toString()}")
         }
     }

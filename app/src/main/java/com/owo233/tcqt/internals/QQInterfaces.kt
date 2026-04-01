@@ -30,9 +30,10 @@ open class QQInterfaces {
             if (usePublic) Maple.PublicKernel else Maple.Kernel
         }
 
-        val msgService: IKernelMsgService inline get() = NTServiceFetcher.kernelService
-            .wrapperSession
-            .msgService
+        val msgService: IKernelMsgService
+            inline get() = NTServiceFetcher.kernelService
+                .wrapperSession
+                .msgService
 
         fun getServiceTime(): Long = runCatching {
             loadOrThrow("com.tencent.mobileqq.msf.core.NetConnInfoCenter")

@@ -15,19 +15,21 @@ class LegacyHookParam(val param: XC_MethodHook.MethodHookParam) : HookParam {
 
     override var args: Array<Any?>
         get() = param.args
-        set(value) { param.args = value }
+        set(value) {
+            param.args = value
+        }
 
     override var result: Any?
         get() = param.result
-        set(value) { param.result = value }
+        set(value) {
+            param.result = value
+        }
 
     override var throwable: Throwable?
         get() = param.throwable
-        set(value) { param.throwable = value }
-
-    override fun returnEarly(result: Any?) {
-        param.result = result
-    }
+        set(value) {
+            param.throwable = value
+        }
 }
 
 class LegacyChain(private val legacyParam: LegacyHookParam) : Chain, HookParam by legacyParam {
@@ -43,7 +45,11 @@ class LegacyInvoker(private val method: Member) : Invoker {
         return XposedBridge.invokeOriginalMethod(method, thisObject, arrayOf(*args))
     }
 
-    override fun invokeWithMaxPriority(maxPriority: Int, thisObject: Any?, vararg args: Any?): Any? {
+    override fun invokeWithMaxPriority(
+        maxPriority: Int,
+        thisObject: Any?,
+        vararg args: Any?
+    ): Any? {
         // Legacy API 不支持 maxPriority，直接降级
         return invokeOrigin(thisObject, *args)
     }

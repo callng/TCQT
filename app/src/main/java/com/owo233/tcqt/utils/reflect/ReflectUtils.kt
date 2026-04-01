@@ -2,6 +2,7 @@ package com.owo233.tcqt.utils.reflect
 
 import android.os.Bundle
 import android.util.SparseArray
+import androidx.core.util.size
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -9,14 +10,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import java.lang.ref.WeakReference
+import java.lang.reflect.AccessibleObject
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
-import androidx.core.util.size
-import java.lang.reflect.AccessibleObject
 
 private val fieldCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Field>>()
 private val methodCache = ConcurrentHashMap<Pair<Class<*>, Boolean>, Array<Method>>()
@@ -259,10 +259,17 @@ private fun isWideningPrimitive(param: Class<*>, argClass: Class<*>): Boolean {
             java.lang.Short.TYPE, Integer.TYPE, java.lang.Long.TYPE,
             java.lang.Float.TYPE, java.lang.Double.TYPE
         )
+
         java.lang.Short.TYPE, Character.TYPE -> param in arrayOf(
             Integer.TYPE, java.lang.Long.TYPE, java.lang.Float.TYPE, java.lang.Double.TYPE
         )
-        Integer.TYPE -> param in arrayOf(java.lang.Long.TYPE, java.lang.Float.TYPE, java.lang.Double.TYPE)
+
+        Integer.TYPE -> param in arrayOf(
+            java.lang.Long.TYPE,
+            java.lang.Float.TYPE,
+            java.lang.Double.TYPE
+        )
+
         java.lang.Long.TYPE -> param in arrayOf(java.lang.Float.TYPE, java.lang.Double.TYPE)
         java.lang.Float.TYPE -> param == java.lang.Double.TYPE
         else -> false
@@ -313,7 +320,8 @@ private fun Any?.toJsonElement(
                     )
                 }
             }
-            is  ByteArray, is ShortArray, is IntArray, is LongArray,
+
+            is ByteArray, is ShortArray, is IntArray, is LongArray,
             is FloatArray, is DoubleArray, is BooleanArray, is CharArray -> buildJsonArray {
                 val length = java.lang.reflect.Array.getLength(this@toJsonElement)
                 for (i in 0 until length) {
@@ -323,6 +331,7 @@ private fun Any?.toJsonElement(
                     )
                 }
             }
+
             is Iterable<*> -> buildJsonArray {
                 this@toJsonElement.forEach {
                     add(
@@ -334,11 +343,13 @@ private fun Any?.toJsonElement(
                     )
                 }
             }
+
             is Map<*, *> -> buildJsonObject {
                 this@toJsonElement.forEach { (k, v) ->
                     put(k.toString(), v.toJsonElement(maxDepth - 1, withSuper, visited))
                 }
             }
+
             is Bundle -> buildJsonObject {
                 put("_type", JsonPrimitive("android.os.Bundle"))
                 for (key in this@toJsonElement.keySet()) {
@@ -349,6 +360,7 @@ private fun Any?.toJsonElement(
                     )
                 }
             }
+
             is SparseArray<*> -> buildJsonObject {
                 put("_type", JsonPrimitive("android.util.SparseArray"))
                 for (i in 0 until this@toJsonElement.size) {
@@ -357,10 +369,13 @@ private fun Any?.toJsonElement(
                     put(key.toString(), value.toJsonElement(maxDepth - 1, withSuper, visited))
                 }
             }
+
             is WeakReference<*> -> {
                 val target = this.get()
-                target?.toJsonElement(maxDepth - 1, withSuper, visited) ?: JsonPrimitive("<cleared>")
+                target?.toJsonElement(maxDepth - 1, withSuper, visited)
+                    ?: JsonPrimitive("<cleared>")
             }
+
             else -> reflectObject(this, maxDepth, withSuper, visited)
         }
     } catch (e: Exception) {

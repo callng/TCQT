@@ -16,8 +16,8 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.context.ContextUtils
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
@@ -25,6 +25,7 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import java.lang.Thread.sleep
 import java.lang.reflect.Method
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -100,7 +101,7 @@ class MultiSelectRecall : IAction {
         val record = msg.msgRecord
         val contact = Contact(record.chatType, record.peerUid, record.guildId)
 
-        recallWithRetry(contact, record.msgId, retry = 1)
+        recallWithRetry(contact, record.msgId, retry = 3)
     }
 
     private fun recallWithRetry(
@@ -112,6 +113,7 @@ class MultiSelectRecall : IAction {
             if (code == 0) return@recallMsg
 
             if (retry > 0) {
+                sleep(200L)
                 recallWithRetry(contact, msgId, retry - 1)
             } else {
                 Log.e("尝试撤回消息ID为 $msgId 时失败, errCode:$code, errStr:$err")
@@ -137,7 +139,8 @@ class MultiSelectRecall : IAction {
 
             val operationLambda = $$"$${barVB.name}$mOperationLayout$2".toHostClass()
 
-            multiForwardClass = "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toHostClass()
+            multiForwardClass =
+                "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toHostClass()
 
             getMsgList = multiForwardClass.declaredMethods.single { method ->
                 method.returnType == List::class.java && method.paramCount == 1

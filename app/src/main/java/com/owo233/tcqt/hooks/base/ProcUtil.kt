@@ -31,7 +31,8 @@ object ProcUtil {
             return@lazy nameFromFile
         }
 
-        val activityManager = HookEnv.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val activityManager =
+            HookEnv.application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         runRetry(3) {
             activityManager.runningAppProcesses?.forEach {
                 if (it.pid == mPid) {

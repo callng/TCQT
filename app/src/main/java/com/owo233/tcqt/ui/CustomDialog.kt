@@ -48,21 +48,25 @@ class CustomDialog {
         setPositiveButton(android.R.string.ok, null)
     }
 
-    fun setPositiveButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog = apply {
-        mBuilder.setPositiveButton(text, listener)
-    }
+    fun setPositiveButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog =
+        apply {
+            mBuilder.setPositiveButton(text, listener)
+        }
 
-    fun setNeutralButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog = apply {
-        mBuilder.setNeutralButton(text, listener)
-    }
+    fun setNeutralButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog =
+        apply {
+            mBuilder.setNeutralButton(text, listener)
+        }
 
-    fun setNeutralButton(textId: Int, listener: DialogInterface.OnClickListener?): CustomDialog = apply {
-        mBuilder.setNeutralButton(textId, listener)
-    }
+    fun setNeutralButton(textId: Int, listener: DialogInterface.OnClickListener?): CustomDialog =
+        apply {
+            mBuilder.setNeutralButton(textId, listener)
+        }
 
-    fun setNegativeButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog = apply {
-        mBuilder.setNegativeButton(text, listener)
-    }
+    fun setNegativeButton(text: String, listener: DialogInterface.OnClickListener?): CustomDialog =
+        apply {
+            mBuilder.setNegativeButton(text, listener)
+        }
 
     fun create(): AlertDialog {
         if (mFailsafeDialog == null) {

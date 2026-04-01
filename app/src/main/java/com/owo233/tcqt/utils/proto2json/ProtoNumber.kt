@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonElement
 
 class ProtoNumber(
     val value: Number
-): ProtoValue {
+) : ProtoValue {
 
     override fun toJson(): JsonElement {
         return value.json

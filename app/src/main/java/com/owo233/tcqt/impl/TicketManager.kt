@@ -3,8 +3,8 @@ package com.owo233.tcqt.impl
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods
 import mqq.manager.MainTicketCallback
@@ -51,7 +51,10 @@ internal object TicketManager {
                 }
                 val callbackClass = getSuperKeyMethod.parameterTypes.last()
 
-                val callback = Proxy.newProxyInstance(HookEnv.hostClassLoader, arrayOf(callbackClass)) { _, method, args ->
+                val callback = Proxy.newProxyInstance(
+                    HookEnv.hostClassLoader,
+                    arrayOf(callbackClass)
+                ) { _, method, args ->
                     runCatching {
                         if (args.size == 2) {
                             Log.e("getSuperKey fail, code: ${args[0]}, msg: ${args[1]}")
@@ -59,7 +62,8 @@ internal object TicketManager {
                             val thirdSigInfo = args[0]
                             val fields = thirdSigInfo.getFields(false)
                                 .filter { it.type == ByteArray::class.java }
-                            val sigField = fields.minByOrNull { it.name }!!.apply { isAccessible = true}
+                            val sigField =
+                                fields.minByOrNull { it.name }!!.apply { isAccessible = true }
                             val sig = sigField.get(thirdSigInfo)
                             superKey = String(sig as ByteArray)
                         }
@@ -70,7 +74,8 @@ internal object TicketManager {
                 }
                 getSuperKeyMethod.invoke(service, uin.toLong(), 16, callback)
                 countDownLatch.await(15000L, TimeUnit.MILLISECONDS)
-            } catch (_: InterruptedException) {}
+            } catch (_: InterruptedException) {
+            }
 
             return superKey ?: run {
                 Log.e("getSuperKey fail, superKey is null")

@@ -3,7 +3,6 @@ package com.owo233.tcqt.hooks.helper
 import android.content.Context
 import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
 
@@ -27,7 +26,7 @@ object GuidHelper {
     }
 
     private fun hookNeedChangeGuid() {
-        clazz.hookMethodAfter(
+        clazz.hookMethodBefore(
             "needChangeGuid",
             Context::class.java
         ) {
@@ -36,7 +35,7 @@ object GuidHelper {
     }
 
     private fun hookGetGuidFromFile(guid: String) {
-        clazz.hookMethodAfter(
+        clazz.hookMethodBefore(
             "getGuidFromFile",
             Context::class.java
         ) {
@@ -55,7 +54,7 @@ object GuidHelper {
     }
 
     private fun hookGetLastGuid(guid: String) {
-        clazz.hookMethodAfter(
+        clazz.hookMethodBefore(
             "get_last_guid",
             Context::class.java
         ) {
@@ -64,7 +63,7 @@ object GuidHelper {
     }
 
     private fun hookGenerateGuid(guid: String) {
-        clazz.hookMethodAfter(
+        clazz.hookMethodBefore(
             "generateGuid",
             Context::class.java
         ) {

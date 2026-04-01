@@ -38,7 +38,8 @@ class ChangePreviewTextSize : IAction {
         get() = GeneratedSettingList.CHANGE_PREVIEW_TEXT_SIZE
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val containerViewClass = "com.tencent.qqnt.textpreview.PreviewTextContainerView".toHostClass()
+        val containerViewClass =
+            "com.tencent.qqnt.textpreview.PreviewTextContainerView".toHostClass()
 
         "com.tencent.mobileqq.activity.TextPreviewActivity".toHostClass().findMethod {
             name = "onCreate"
