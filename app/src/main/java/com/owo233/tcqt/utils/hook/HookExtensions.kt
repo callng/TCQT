@@ -92,8 +92,8 @@ fun Class<*>.hookMethodReplace(
     return method.hookReplace(block)
 }
 
-fun Chain.invokeOriginal(args: Array<Any?> = arrayOf()): Any? {
-    return method.callOriginal(thisObject, *args.ifEmpty { this.args })
+fun Chain.invokeOriginal(args: Array<Any?> = this.args): Any? {
+    return method.callOriginal(thisObject, *args)
 }
 
 fun Member.returnConstant(constant: Any?): Unhook {

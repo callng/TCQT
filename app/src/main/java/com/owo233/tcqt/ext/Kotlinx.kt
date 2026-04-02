@@ -5,8 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.widget.Toast
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.log.Log
@@ -28,13 +26,10 @@ val EMPTY_BYTE_ARRAY = ByteArray(0)
 private val HEX_CHARS_UPPER = "0123456789ABCDEF".toCharArray()
 private val HEX_CHARS_LOWER = "0123456789abcdef".toCharArray()
 
-internal lateinit var globalUi: Handler
-
 internal fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
-    if (!::globalUi.isInitialized) {
-        globalUi = Handler(Looper.getMainLooper())
+    ModuleScope.launchMain {
+        Toast.makeText(this@toast, msg, flag).show()
     }
-    globalUi.post { Toast.makeText(this, msg, flag).show() }
 }
 
 class Nullable<T : Any>(

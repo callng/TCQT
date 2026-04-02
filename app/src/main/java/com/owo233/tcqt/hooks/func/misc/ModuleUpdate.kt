@@ -19,6 +19,7 @@ import mqq.app.MobileQQ
     key = "module_update",
     name = "模块更新干掉宿主",
     type = SettingType.BOOLEAN,
+    defaultValue = "true",
     desc = "每次本模块更新后将自动重启（杀死）宿主进程。",
     uiTab = "杂项"
 )

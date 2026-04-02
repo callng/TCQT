@@ -34,7 +34,11 @@ internal object ActionManager {
         }
     }
 
-    fun runFirst(ctx: Context, proc: ActionProcess) {
+    fun runFirst(
+        ctx: Context,
+        proc: ActionProcess,
+        targetClass: Class<out IAction>? = null
+    ) {
         val baseProcs = setOf(
             ActionProcess.MSF,
             ActionProcess.MAIN,
@@ -45,6 +49,15 @@ internal object ActionManager {
         )
 
         FIRST_ACTION.forEach { actionClass ->
+            if (targetClass != null) {
+                if (actionClass == targetClass) {
+                    val action = instanceOf(actionClass)
+                    action?.let { it(ctx, proc) }
+                    return
+                }
+                return@forEach
+            }
+
             runCatching {
                 val action = instanceOf(actionClass) ?: return@forEach
 

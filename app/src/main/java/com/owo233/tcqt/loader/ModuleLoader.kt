@@ -5,7 +5,10 @@ import android.content.Context
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
+import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.loader.api.Unhook
+import com.owo233.tcqt.utils.dexkit.DexKitCache
+import com.owo233.tcqt.utils.dexkit.DexKitFinder
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.log.Log
@@ -98,7 +101,13 @@ internal object ModuleLoader {
                 if (isInit.compareAndSet(false, true)) {
                     val app = param.thisObject as Application
                     HookSteps.initContext(app)
-                    HookSteps.initHooks(app)
+
+                    if (DexKitCache.initCache()) {
+                        HookSteps.initHooks(app)
+                    } else {
+                        HookSteps.initHooks(app, ModuleCommand::class.java)
+                        DexKitFinder.doFind()
+                    }
                 }
             }
         } catch (th: Throwable) {

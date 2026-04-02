@@ -45,7 +45,8 @@ internal object HookEnv {
     lateinit var hostClassLoader: ClassLoader
         private set
 
-    private var targetSdkVersion: Int = 0
+    lateinit var moduleDataPath: String
+        private set
 
     fun setApplication(app: Application) {
         application = app
@@ -87,6 +88,10 @@ internal object HookEnv {
         appName = name
     }
 
+    fun setModuleDataPath(path: String) {
+        moduleDataPath = path
+    }
+
     fun isTim() = hostAppPackageName == TIM_PACKAGE
 
     fun isQQ() = hostAppPackageName == QQ_PACKAGE
@@ -118,18 +123,5 @@ internal object HookEnv {
         } else {
             false
         }
-    }
-
-    fun getTargetSdkVersion(): Int {
-        if (targetSdkVersion > 0) {
-            return targetSdkVersion
-        }
-        targetSdkVersion = 31
-        try {
-            targetSdkVersion = hostAppContext.applicationInfo.targetSdkVersion
-        } catch (e: Exception) {
-            Log.e("getTargetSdkVersion error", e)
-        }
-        return targetSdkVersion
     }
 }

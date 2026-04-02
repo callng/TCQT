@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.loader.HybridClassLoader
@@ -36,6 +37,11 @@ internal object HookSteps {
         val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
         val appName = packageManager.getApplicationLabel(app.applicationInfo).toString()
 
+        val dirPath = app.getExternalFilesDir(null)?.parentFile?.let {
+            "${it.absolutePath}/${TCQTBuild.APP_NAME}/"
+        } ?: "/storage/emulated/0/Android/data/${app.packageName}/${TCQTBuild.APP_NAME}/"
+
+        HookEnv.setModuleDataPath(dirPath)
         HookEnv.setHostAppContext(app)
         HookEnv.setApplication(app)
         HookEnv.setHostApkPath(app.applicationInfo.sourceDir)
@@ -47,7 +53,7 @@ internal object HookSteps {
         ResourcesUtils.injectResourcesToContext(app.resources)
     }
 
-    fun initHooks(app: Application) {
+    fun initHooks(app: Application, targetClass: Class<out IAction>? = null) {
         if (ProcUtil.isMain) {
             Log.i(
                 """
@@ -70,7 +76,8 @@ internal object HookSteps {
                 ProcUtil.isQzone -> ActionProcess.QZONE
                 ProcUtil.isQQFav -> ActionProcess.QQFAV
                 else -> ActionProcess.OTHER
-            }
+            },
+            targetClass
         )
     }
 

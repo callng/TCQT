@@ -7,69 +7,56 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.hook.invokeOriginal
-import com.owo233.tcqt.utils.reflect.ClassUtils
-import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.findMethod
+import com.owo233.tcqt.utils.reflect.getObjectByTypeOrNull
 import com.tencent.mobileqq.aio.event.AIOMsgSendEvent
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.mvi.base.route.MsgIntent
-import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
 @RegisterSetting(
     key = "reply_no_at",
-    name = "回复信息不带@",
+    name = "移除引用消息自动艾特",
     type = SettingType.BOOLEAN,
-    desc = "回复消息时不添加 @ 对方。",
+    desc = "引用消息时不添加艾特文本。",
     uiTab = "界面"
 )
-class ReplyNoAt : IAction {
+class ReplyNoAt : IAction, DexKitTask {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        val targetClass = ClassUtils.create("com.tencent.mobileqq.aio.input.reply")
-            .join(ClassUtils.JoinStyle.DOT)
-            .whereClass { c ->
-                val methods = c.declaredMethods
-                methods.any { it.name == "onDestroy" } &&
-                        methods.any { it.returnType == Set::class.java }
-            }
-            .findFirstClass() ?: error("回复信息不带@: 找不到符合hook条件的类.")
-
-        val handleIntent = targetClass.findMethod {
+        requireClass("reply_no_at").findMethod {
             returnType = void
-            paramTypes(MsgIntent::class.java)
-        }
-
-        handleIntent.hookReplace { param ->
-            val event = param.args.getOrNull(0)
-            if (event !is AIOMsgSendEvent.MsgOnClickReplyEvent) {
+            paramTypes = arrayOf(MsgIntent::class.java)
+        }.hookReplace { param ->
+            if (param.args[0] !is AIOMsgSendEvent.MsgOnClickReplyEvent)
                 return@hookReplace param.invokeOriginal()
-            }
 
-            val msgRecord: MsgRecord = runCatching {
-                val aioMsgItem = FieldUtils.create(event)
-                    .typed(AIOMsgItem::class.java)
-                    .getValue() ?: return@runCatching null
+            val aioMsgItem = param.args[0]?.getObjectByTypeOrNull<AIOMsgItem>()
+                ?: return@hookReplace param.invokeOriginal()
+            val senderUid = aioMsgItem.msgRecord.senderUid
 
-                val rec = FieldUtils.create(aioMsgItem)
-                    .typed(MsgRecord::class.java)
-                    .inParent(AIOMsgItem::class.java)
-                    .getValue() ?: return@runCatching null
-
-                rec as MsgRecord
-            }.getOrNull() ?: return@hookReplace param.invokeOriginal()
-
-            val senderUid = msgRecord.senderUid
-            try {
-                FieldUtils.create(msgRecord).named("senderUid").setValue("")
-                return@hookReplace param.invokeOriginal()
-            } finally {
-                FieldUtils.create(msgRecord).named("senderUid").setValue(senderUid)
-            }
+            aioMsgItem.msgRecord.senderUid = ""
+            param.invokeOriginal()
+            aioMsgItem.msgRecord.senderUid = senderUid
         }
     }
 
     override val key: String get() = GeneratedSettingList.REPLY_NO_AT
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "reply_no_at" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.input.reply")
+            matcher {
+                methods {
+                    add { name("onDestroy") }
+                    add { returnType(Set::class.java)}
+                }
+            }
+        }
+    )
 }

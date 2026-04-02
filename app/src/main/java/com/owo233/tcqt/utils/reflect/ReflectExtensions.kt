@@ -3,6 +3,9 @@ package com.owo233.tcqt.utils.reflect
 import com.owo233.tcqt.loader.api.HookEngineManager
 import java.lang.reflect.Member
 
+val Any.TAG: String
+    get() = this.javaClass.simpleName
+
 fun Member.callOriginal(obj: Any?, vararg args: Any?): Any? {
     return HookEngineManager.engine.getInvoker(this).invokeOrigin(obj, *args)
 }
@@ -33,7 +36,7 @@ private fun Class<*>.findMethodAndCall(
         method.invoke(obj, *args)
     } catch (e: Exception) {
         try {
-            HookEngineManager.engine.getInvoker(method).invokeOrigin(obj, args)
+            HookEngineManager.engine.getInvoker(method).invokeOrigin(obj, *args)
         } catch (_: Exception) {
             throw e
         }
