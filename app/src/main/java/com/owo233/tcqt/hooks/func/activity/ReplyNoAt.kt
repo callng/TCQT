@@ -64,7 +64,7 @@ class ReplyNoAt : IAction {
             val senderUid = msgRecord.senderUid
             try {
                 FieldUtils.create(msgRecord).named("senderUid").setValue("")
-                return@hookReplace param.invokeOriginal()
+                return@hookReplace param.proceed()
             } finally {
                 FieldUtils.create(msgRecord).named("senderUid").setValue(senderUid)
             }
