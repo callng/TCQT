@@ -110,6 +110,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.ConfigBackupManager
 import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.log.Log
 import kotlinx.coroutines.launch
 
@@ -1688,6 +1689,7 @@ class SettingViewModel : ViewModel() {
 
     fun clearAllSettings() {
         MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).clearAll()
+        DexKitCache.clearCache()
 
         pendingBooleans.clear()
         pendingInts.clear()

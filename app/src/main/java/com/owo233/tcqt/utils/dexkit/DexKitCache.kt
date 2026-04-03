@@ -80,4 +80,13 @@ internal object DexKitCache {
     private fun getModuleBuildType(): String {
         return if (TCQTBuild.DEBUG) "d" else "r"
     }
+
+    fun clearCache(): Boolean {
+        val dir = cacheFile.parentFile ?: return false
+        if (!dir.exists()) return true
+        return runCatching {
+            dir.listFiles()?.forEach { it.delete() }
+            true
+        }.getOrElse { false }
+    }
 }
