@@ -11,19 +11,18 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.launchWithCatch
+import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.context.ContextUtils
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import java.lang.Thread.sleep
 import java.lang.reflect.Method
@@ -84,7 +83,7 @@ class MultiSelectRecall : IAction {
 
         if (msgList.isEmpty()) return
 
-        GlobalScope.launchWithCatch {
+        ModuleScope.launchIO {
             val list = CopyOnWriteArrayList(msgList)
             list.forEachIndexed { index, item ->
                 recallSingleItem(item)
@@ -142,30 +141,29 @@ class MultiSelectRecall : IAction {
             multiForwardClass =
                 "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toHostClass()
 
-            getMsgList = multiForwardClass.declaredMethods.single { method ->
-                method.returnType == List::class.java && method.paramCount == 1
+            getMsgList = multiForwardClass.findMethod {
+                returnType = List::class.java
+                paramCount = 1
             }
 
-            getContext = "com.tencent.mvi.mvvm.framework.FrameworkVM".toHostClass()
-                .declaredMethods
-                .first { method ->
-                    method.returnType == getMsgList.parameterTypes[0].superclass && method.paramCount == 0
-                }
-
-            makeView = barVB.declaredMethods.single { method ->
-                val parameter = method.parameterTypes
-                method.returnType == View::class.java && method.paramCount == 4
-                        && parameter[0] == barVB && parameter[1] == Int::class.javaPrimitiveType
-                        && parameter[2] == Int::class.javaPrimitiveType
-                        && parameter[3] == View.OnClickListener::class.java
+            getContext = "com.tencent.mvi.mvvm.framework.FrameworkVM".toHostClass().findMethod {
+                returnType = getMsgList.parameterTypes[0].superclass
+                paramCount = 0
             }
 
-            createVM = barVB.declaredMethods.single { method ->
-                method.returnType == "com.tencent.mvi.mvvm.BaseVM".toHostClass() && method.paramCount == 0
+            makeView = barVB.findMethod {
+                returnType = view
+                paramCount = 4
+                paramTypes = arrayOf(barVB, int, int, View.OnClickListener::class.java)
             }
 
-            operationInvoke = operationLambda.declaredMethods.first { method ->
-                method.name == "invoke"
+            createVM = barVB.findMethod {
+                returnType = "com.tencent.mvi.mvvm.BaseVM".toHostClass()
+                paramCount = 0
+            }
+
+            operationInvoke = operationLambda.findMethod {
+                name = "invoke"
             }
         }
     }
