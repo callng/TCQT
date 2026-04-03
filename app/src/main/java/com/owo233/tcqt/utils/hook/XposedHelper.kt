@@ -1,62 +1,11 @@
 package com.owo233.tcqt.utils.hook
 
-import com.owo233.tcqt.hooks.base.load
 import java.lang.reflect.Constructor
 import java.lang.reflect.Member
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 typealias MethodHookParam = com.owo233.tcqt.loader.api.HookParam
-
-object FuzzyClassKit {
-    private val dic = arrayOf(
-        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
-        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
-        "u", "v", "w", "x", "y", "z"
-    )
-
-    fun findMethodByClassPrefix(
-        prefix: String,
-        isSubClass: Boolean = false,
-        check: (Class<*>, Method) -> Boolean
-    ): Method? {
-        dic.forEach { className ->
-            val clz = load("$prefix${if (isSubClass) "$" else "."}$className")
-            clz?.declaredMethods?.forEach {
-                if (check(clz, it)) return it
-            }
-        }
-        return null
-    }
-
-    fun findMethodByClassName(prefix: String, check: (Class<*>, Method) -> Boolean): Method? {
-        return dic.firstNotNullOfOrNull { outerClass ->
-            val mainName = "$prefix.$outerClass"
-            val mainClz = load(mainName) ?: return@firstNotNullOfOrNull null
-
-            mainClz.declaredMethods.firstOrNull { check(mainClz, it) }
-                ?: dic.firstNotNullOfOrNull { innerClass ->
-                    val innerName = "$mainName$$innerClass"
-                    val innerClz = load(innerName) ?: return@firstNotNullOfOrNull null
-                    innerClz.declaredMethods.firstOrNull { check(innerClz, it) }
-                }
-        }
-    }
-
-    fun findClassByMethod(
-        prefix: String,
-        isSubClass: Boolean = false,
-        check: (Class<*>, Method) -> Boolean
-    ): Class<*>? {
-        dic.forEach { name ->
-            val clz = load("$prefix${if (isSubClass) "$" else "."}$name")
-            clz?.declaredMethods?.forEach {
-                if (check(clz, it)) return clz
-            }
-        }
-        return null
-    }
-}
 
 val Member.isStatic: Boolean
     inline get() = Modifier.isStatic(modifiers)

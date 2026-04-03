@@ -27,7 +27,7 @@ internal object DexKitCache {
     private val cacheFile by lazy {
         File(
             "${HookEnv.moduleDataPath}/global/dexkit",
-            "CacheMap_${HookEnv.versionCode}_${TCQTBuild.VER_CODE}"
+            "CacheMap_${getModuleBuildType()}_${HookEnv.versionCode}_${TCQTBuild.VER_CODE}"
         )
     }
 
@@ -75,5 +75,9 @@ internal object DexKitCache {
 
     private fun ensureDir(dir: File): Boolean {
         return if (!dir.exists()) dir.mkdirs() else dir.isDirectory
+    }
+
+    private fun getModuleBuildType(): String {
+        return if (TCQTBuild.DEBUG) "d" else "r"
     }
 }

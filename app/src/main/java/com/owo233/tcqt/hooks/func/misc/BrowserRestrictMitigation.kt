@@ -8,9 +8,12 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.hook.FuzzyClassKit
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.hook.paramCount
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
+import java.lang.reflect.Modifier
 
 @RegisterAction
 @RegisterSetting(
@@ -20,15 +23,10 @@ import com.owo233.tcqt.utils.hook.paramCount
     desc = "允许在内置浏览器中访问非官方认可的网页。",
     uiTab = "杂项"
 )
-class BrowserRestrictMitigation : IAction {
+class BrowserRestrictMitigation : IAction, DexKitTask {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
-        (FuzzyClassKit.findMethodByClassPrefix(
-            prefix = "com.tencent.mobileqq.webview.WebSecurityPluginV2",
-            isSubClass = true
-        ) { _, method ->
-            method.paramCount == 1 && method.parameterTypes[0] == Bundle::class.java
-        } ?: error("BrowserRestrictMitigation: 找不到目标方法..")).hookBefore {
+        requireMethod("browser_restrict_mitigation").hookBefore {
             val bundle = it.args[0] as Bundle
             if (bundle.getInt("jumpResult", 0) != 0) {
                 bundle.putInt("jumpResult", 0)
@@ -40,4 +38,19 @@ class BrowserRestrictMitigation : IAction {
     override val key: String get() = GeneratedSettingList.BROWSER_RESTRICT_MITIGATION
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "browser_restrict_mitigation" to FindMethod().apply {
+            searchPackages("com.tencent.mobileqq.webview")
+            matcher {
+                declaredClass(
+                    "com.tencent.mobileqq.webview.WebSecurityPluginV2",
+                    StringMatchType.StartsWith
+                )
+                name = "callback"
+                paramTypes = listOf("android.os.Bundle")
+                modifiers = Modifier.PUBLIC
+            }
+        }
+    )
 }

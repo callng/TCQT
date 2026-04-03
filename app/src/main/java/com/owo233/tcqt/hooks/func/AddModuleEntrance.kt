@@ -28,7 +28,7 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.hook.FuzzyClassKit
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
@@ -43,6 +43,8 @@ import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
@@ -55,7 +57,7 @@ import java.lang.reflect.Proxy
     desc = "在宿主设置页面额外显示模块附加工具入口",
     uiTab = "高级"
 )
-class AddModuleEntrance : AlwaysRunAction() {
+class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
 
     override fun onRun(ctx: Context, process: ActionProcess) {
         // 设置页入口
@@ -108,14 +110,7 @@ class AddModuleEntrance : AlwaysRunAction() {
                 param.args[1] = listOf(entryMenuItem) + param.args[1] as List<*>
             }
 
-        val onClick = FuzzyClassKit.findMethodByClassName(
-            "com.tencent.mobileqq.activity.recent"
-        ) { _, method ->
-            method.name == "onClickAction" && method.paramCount == 1 &&
-                    method.parameterTypes[0].name.contains("MenuItem")
-        } ?: error("plusMenu: 找不到符合的onClickAction方法,无法设置点击执行过程!")
-
-        onClick.hookBefore { param ->
+        requireMethod("recent_adapter_onclick").hookBefore { param ->
             if ((param.args[0]!!.getObject("id") as Int) == menuItemId) {
                 openTCQTSettings()
                 param.result = Unit
@@ -544,6 +539,19 @@ class AddModuleEntrance : AlwaysRunAction() {
             groupTitle = "TCQT工具",
             onClick = ::copyTicket
         )
+    )
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "recent_adapter_onclick" to FindMethod().apply {
+            searchPackages("com.tencent.mobileqq.activity.recent")
+            matcher {
+                name = "onClickAction"
+                paramTypes($$"com.tencent.widget.PopupMenuDialog$MenuItem")
+                declaredClass {
+                    addInterface($$"com.tencent.widget.PopupMenuDialog$OnClickActionListener")
+                }
+            }
+        }
     )
 
     private data class SettingEntryConfig(
