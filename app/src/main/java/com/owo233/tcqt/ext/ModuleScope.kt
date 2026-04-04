@@ -17,8 +17,8 @@ internal object ModuleScope : CoroutineScope {
         Log.e("ModuleScope", throwable)
     }
 
-    override val coroutineContext: CoroutineContext
-        get() = SupervisorJob() + Dispatchers.Default + exceptionHandler
+    override val coroutineContext: CoroutineContext =
+        SupervisorJob() + Dispatchers.Default + exceptionHandler
 
     fun launchIO(tag: String = "IO", block: suspend CoroutineScope.() -> Unit) =
         launch(
@@ -35,13 +35,13 @@ internal object ModuleScope : CoroutineScope {
     }
 
     fun launchMainDelayed(delayMillis: Long, block: suspend CoroutineScope.() -> Unit) =
-        launch(Dispatchers.Main) {
+        launch(Dispatchers.Main.immediate) {
             delay(delayMillis)
             block()
         }
 
     suspend fun <T> onMain(block: suspend CoroutineScope.() -> T): T =
-        withContext(Dispatchers.Main, block)
+        withContext(Dispatchers.Main.immediate, block)
 
     suspend fun <T> onIO(block: suspend CoroutineScope.() -> T): T =
         withContext(Dispatchers.IO, block)

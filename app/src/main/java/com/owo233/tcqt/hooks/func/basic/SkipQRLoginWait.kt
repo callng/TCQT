@@ -69,7 +69,12 @@ class SkipQRLoginWait : IAction, DexKitTask {
         "skip_qr_login_wait" to FindClass().apply {
             searchPackages("com.tencent.biz.qrcode.activity")
             matcher {
-                superClass = "android.os.CountDownTimer"
+                superClass("android.os.CountDownTimer")
+                addFieldForType("com.tencent.biz.qrcode.activity.QRLoginAuthActivity")
+                methods {
+                    add { name("onFinish") }
+                    add { name("onTick") }
+                }
             }
         }
     )
