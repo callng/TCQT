@@ -5,7 +5,6 @@ import android.content.Context
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
-import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
@@ -105,7 +104,7 @@ internal object ModuleLoader {
                     if (DexKitCache.initCache()) {
                         HookSteps.initHooks(app)
                     } else {
-                        HookSteps.initHooks(app, ModuleCommand::class.java)
+                        HookSteps.initHooks(app, excludeDexKitTask = true)
                         DexKitFinder.doFind()
                     }
                 }

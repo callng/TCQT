@@ -1,12 +1,16 @@
 package com.owo233.tcqt
 
 import android.app.Application
+import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.new
 
 internal object ActionManager {
 
@@ -22,9 +26,9 @@ internal object ActionManager {
         return runCatching {
             instanceMap.getOrPut(cls) {
                 try {
-                    cls.getField("INSTANCE").get(null) as IAction
+                    cls.getObject("INSTANCE") as IAction
                 } catch (_: NoSuchFieldException) {
-                    cls.getDeclaredConstructor().newInstance()
+                    cls.new()
                 }
             }
         }.getOrElse { e ->
@@ -37,7 +41,7 @@ internal object ActionManager {
     fun runFirst(
         app: Application,
         proc: ActionProcess,
-        targetClass: Class<out IAction>? = null
+        excludeDexKitTask: Boolean = false
     ) {
         val baseProcs = setOf(
             ActionProcess.MSF,
@@ -49,17 +53,17 @@ internal object ActionManager {
         )
 
         FIRST_ACTION.forEach { actionClass ->
-            if (targetClass != null) {
-                if (actionClass == targetClass) {
-                    val action = instanceOf(actionClass)
-                    action?.let { it(app, proc) }
-                    return
-                }
+            if (excludeDexKitTask && DexKitTask::class.java.isAssignableFrom(actionClass)) {
                 return@forEach
             }
 
             runCatching {
-                val action = instanceOf(actionClass) ?: return@forEach
+                val action = instanceOf(actionClass) ?: run {
+                    if (TCQTBuild.DEBUG) {
+                        Log.e("instanceOf [${actionClass.simpleName}] failed")
+                    }
+                    return@forEach
+                }
 
                 val shouldRun =
                     ActionProcess.ALL in action.processes ||

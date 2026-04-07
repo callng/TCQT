@@ -6,7 +6,6 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
-import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.loader.HybridClassLoader
@@ -53,7 +52,7 @@ internal object HookSteps {
         ResourcesUtils.injectResourcesToContext(app.resources)
     }
 
-    fun initHooks(app: Application, targetClass: Class<out IAction>? = null) {
+    fun initHooks(app: Application, excludeDexKitTask: Boolean = false) {
         if (ProcUtil.isMain) {
             Log.i(
                 """
@@ -77,7 +76,7 @@ internal object HookSteps {
                 ProcUtil.isQQFav -> ActionProcess.QQFAV
                 else -> ActionProcess.OTHER
             },
-            targetClass
+            excludeDexKitTask
         )
     }
 
