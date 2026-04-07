@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.helper
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
@@ -21,7 +21,7 @@ class MenuBuilder : AlwaysRunAction() {
         PttForward()
     )
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (!PlatformTools.isNt()) {
             Log.e("The current host is not an NT architecture!")
             return

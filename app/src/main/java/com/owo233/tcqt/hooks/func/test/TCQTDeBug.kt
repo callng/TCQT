@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.test
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -29,7 +29,7 @@ import java.lang.reflect.Proxy
 )
 class TCQTDeBug : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         QQSecuritySign::class.java.hookMethodBefore(
             "dispatchEvent",
             String::class.java,

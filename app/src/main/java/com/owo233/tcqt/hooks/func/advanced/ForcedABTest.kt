@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -32,7 +32,7 @@ import com.owo233.tcqt.utils.reflect.setObject
 )
 class ForcedABTest : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val mode = GeneratedSettingList.getInt(GeneratedSettingList.FORCED_TO_AB_MODE)
 
         val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")

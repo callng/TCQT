@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
 import com.owo233.tcqt.HookEnv
@@ -41,7 +41,7 @@ class RenameBaseApk : IAction, OnAIOSendMsgBefore {
 
     override val key: String get() = GeneratedSettingList.RENAME_BASE_APK
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         hookFile()
     }
 

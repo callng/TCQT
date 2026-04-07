@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -32,7 +32,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 )
 class DefaultVASAttributes : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val options = GeneratedSettingList.getInt(GeneratedSettingList.DEFAULT_VAS_ATTRS_TYPE)
 
         AIOMsgItem::class.java.findMethod {

@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -50,7 +51,7 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     }
 
-    override fun onRun(ctx: Context, process: ActionProcess) = Unit
+    override fun onRun(app: Application, process: ActionProcess) = Unit
 
     override val key: String get() = GeneratedSettingList.SHOW_MSG_INFO
 

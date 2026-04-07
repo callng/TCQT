@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
+import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -29,7 +30,7 @@ import com.tencent.common.config.pad.DeviceType
 )
 class SwitchLoginMode : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val loginType = GeneratedSettingList.getInt(GeneratedSettingList.SWITCH_LOGIN_MODE_TYPE)
 
         loadOrThrow("com.tencent.common.config.pad.PadUtil")

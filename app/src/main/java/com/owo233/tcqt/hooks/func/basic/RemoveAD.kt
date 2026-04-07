@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import android.os.Message
 import android.view.View
 import com.owo233.tcqt.HookEnv
@@ -30,7 +30,7 @@ import com.owo233.tcqt.utils.hook.paramCount
 )
 class RemoveAD : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         removeImmersionBannerAD()
         removeKeywordAD()
         removePopupAD()

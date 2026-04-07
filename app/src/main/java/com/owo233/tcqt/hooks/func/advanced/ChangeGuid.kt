@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import android.text.InputFilter
@@ -56,7 +57,7 @@ import com.owo233.tcqt.utils.log.Log
 )
 class ChangeGuid : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         when {
             PlatformTools.isMsfProcess() -> setupMsfHook()
             PlatformTools.isMainProcess() -> setupLoginUiHook()

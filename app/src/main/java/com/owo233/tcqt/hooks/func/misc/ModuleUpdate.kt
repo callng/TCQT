@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
+import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,7 +13,6 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.func.ModuleCommand
-import mqq.app.MobileQQ
 
 @RegisterAction
 @RegisterSetting(
@@ -25,15 +25,15 @@ import mqq.app.MobileQQ
 )
 class ModuleUpdate : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
-        val intentFilter = IntentFilter().apply {
+    override fun onRun(app: Application, process: ActionProcess) {
+        val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
 
-        val updateReceiver = object : BroadcastReceiver() {
+        val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
                     Intent.ACTION_PACKAGE_ADDED,
@@ -41,14 +41,14 @@ class ModuleUpdate : IAction {
                     Intent.ACTION_PACKAGE_REPLACED -> {
                         val packageName = intent.data?.schemeSpecificPart
                         if (packageName == TCQTBuild.APP_ID) {
-                            ModuleCommand.sendCommand(ctx, "exitApp")
+                            ModuleCommand.sendCommand(app, "exitApp")
                         }
                     }
                 }
             }
         }
 
-        MobileQQ.getMobileQQ().registerReceiver(updateReceiver, intentFilter)
+        app.registerReceiver(receiver, filter)
     }
 
     override val key: String get() = GeneratedSettingList.MODULE_UPDATE

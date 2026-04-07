@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
@@ -45,7 +45,7 @@ import java.lang.reflect.Method
 )
 class RepeatMessage : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val options = GeneratedSettingList.getInt(GeneratedSettingList.REPEAT_MESSAGE_TYPE)
 
         val componentClz =

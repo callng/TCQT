@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.func
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -59,7 +60,7 @@ import java.lang.reflect.Proxy
 )
 class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         // 设置页入口
         runCatching {
             val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")

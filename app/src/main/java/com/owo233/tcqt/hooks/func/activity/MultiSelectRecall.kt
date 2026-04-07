@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.view.View
 import android.widget.LinearLayout
 import com.owo233.tcqt.HookEnv
@@ -40,7 +40,7 @@ class MultiSelectRecall : IAction {
 
     private var multiSelectBarVM: Any? = null
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         Reflection.init()
 
         Reflection.createVM.hookAfter { param ->

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.view.ViewGroup
 import android.widget.TextView
 import com.owo233.tcqt.annotations.RegisterAction
@@ -33,7 +33,7 @@ import com.owo233.tcqt.utils.reflect.callMethod
 )
 class HideGrayTipText : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val grayTipClass =
             loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.graptips.common.CommonGrayTipsComponent")
         val initMethod = grayTipClass.declaredMethods.single { method ->

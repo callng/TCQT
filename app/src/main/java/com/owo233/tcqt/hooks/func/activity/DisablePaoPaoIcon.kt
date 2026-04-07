@@ -1,7 +1,7 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.annotation.SuppressLint
-import android.content.Context
+import android.app.Application
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.owo233.tcqt.HookEnv
@@ -26,7 +26,7 @@ import com.owo233.tcqt.utils.reflect.findMethod
 class DisablePaoPaoIcon : IAction {
 
     @SuppressLint("DiscouragedApi")
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             "com.tencent.qqnt.aio.shortcutbar.PanelIconLinearLayout".toHostClass().also { clazz ->
                 clazz.findMethod {

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -23,7 +23,7 @@ import com.tencent.mobileqq.msfcore.MSFNetworkConfig
 )
 class DisableLightQuic : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         MSFKernel::class.java.findMethod {
             name = "setMSFConfig"
             paramTypes(int, MSFConfig::class.java)

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.hook.paramCount
 )
 class RemoveQRLoginCheck : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val clazz = load("com.tencent.open.agent.QrAgentLoginManager")!!
         val methods = clazz.declaredMethods
 

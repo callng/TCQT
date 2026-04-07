@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
@@ -31,7 +31,7 @@ class UnitedConfigHook : IAction {
 
     private val configClass by lazy { load("com.tencent.freesia.UnitedConfig")!! }
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         setupUnitedConfigHook()
     }
 

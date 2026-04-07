@@ -19,11 +19,11 @@ public abstract class MobileQQ extends BaseApplication {
         throw new RuntimeException("Stub!");
     }
 
-    public void otherProcessExit(boolean keepMsfRegistered) {
+    public void otherProcessExit(boolean isCrashed) {
         throw new RuntimeException("Stub!");
     }
 
-    public void qqProcessExit(boolean stopMsfService) {
+    public void qqProcessExit(boolean stopMSF) {
         throw new RuntimeException("Stub!");
     }
 

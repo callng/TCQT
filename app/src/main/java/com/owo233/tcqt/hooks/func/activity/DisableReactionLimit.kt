@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -26,7 +26,7 @@ import com.owo233.tcqt.utils.hook.paramCount
 )
 class DisableReactionLimit : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             load("com.tencent.mobileqq.guild.emoj.api.impl.QQGuildEmojiApiImpl")?.let {
                 it.hookMethodReplace({

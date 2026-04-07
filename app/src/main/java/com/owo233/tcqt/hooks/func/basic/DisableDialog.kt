@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
@@ -51,7 +52,7 @@ class DisableDialog : IAction {
         GeneratedSettingList.getInt(GeneratedSettingList.DISABLE_DIALOG_TYPE)
     }
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val actionMap = mapOf(
             0 to ::disableGrayCheckDialog,
             1 to ::disableFekitDialog,

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.content.Context
+import android.app.Application
 import android.content.Intent
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -29,7 +29,7 @@ import mqq.app.AppRuntime
 )
 class DisableHotPatch : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         load("com.tencent.rfix.lib.download.PatchDownloadTask")
             ?.getDeclaredMethod("run")
             ?.hookBefore {

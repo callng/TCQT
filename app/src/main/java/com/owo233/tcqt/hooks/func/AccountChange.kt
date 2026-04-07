@@ -1,21 +1,22 @@
 package com.owo233.tcqt.hooks.func
 
+import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.utils.log.Log
-import mqq.app.MobileQQ
 
 @RegisterAction
 class AccountChange : AlwaysRunAction() {
 
     override val processes: Set<ActionProcess> = setOf(ActionProcess.MSF)
 
-    private val accountReceiver = object : BroadcastReceiver() {
+    private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return
             if (getActions().contains(action)) {
@@ -24,12 +25,16 @@ class AccountChange : AlwaysRunAction() {
         }
     }
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
-        val intentFilter = IntentFilter().apply {
+    override fun onRun(app: Application, process: ActionProcess) {
+        val filter = IntentFilter().apply {
             getActions().forEach(::addAction)
         }
 
-        MobileQQ.getMobileQQ().registerReceiver(accountReceiver, intentFilter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            app.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            app.registerReceiver(receiver, filter)
+        }
     }
 
     private fun handleAction(action: String, intent: Intent) {

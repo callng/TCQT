@@ -1,6 +1,6 @@
 package com.owo233.tcqt.ext
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.HookEnv.application
 import com.owo233.tcqt.HookEnv.isQQ
@@ -24,18 +24,18 @@ interface IAction {
 
     val processes: Set<ActionProcess> get() = DEFAULT_PROCESSES
 
-    operator fun invoke(ctx: Context, process: ActionProcess) {
+    operator fun invoke(app: Application, process: ActionProcess) {
         runCatching {
             if (!canRun()) return@runCatching
             if (!initOnce()) return@runCatching
 
-            onRun(ctx, process)
+            onRun(app, process)
         }.onFailure {
             Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
         }
     }
 
-    fun onRun(ctx: Context, process: ActionProcess)
+    fun onRun(app: Application, process: ActionProcess)
 
     fun canRun(): Boolean = runCatching {
         GeneratedSettingList.getBoolean(key)
@@ -70,7 +70,7 @@ abstract class PluginHook : IAction {
     @Throws(Throwable::class)
     abstract fun startHook(classLoader: ClassLoader)
 
-    override fun onRun(ctx: Context, process: ActionProcess) = Unit
+    override fun onRun(app: Application, process: ActionProcess) = Unit
 
     override fun initOnce(): Boolean {
         if (disablePluginHook) {

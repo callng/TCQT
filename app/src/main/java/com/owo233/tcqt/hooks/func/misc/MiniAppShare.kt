@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.content.Context
+import android.app.Application
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -27,7 +27,7 @@ class MiniAppShare : IAction {
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.ALL) // 在MAIN或者MINI3又或者其他进程, 干脆ALL
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("eipc.EIPCClient").hookMethodBefore(
             "callServer",
             String::class.java, String::class.java,

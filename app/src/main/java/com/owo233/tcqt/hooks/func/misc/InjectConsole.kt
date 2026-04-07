@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -26,7 +26,7 @@ class InjectConsole : IAction {
         private var enableConsole = false
     }
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         // 不需要任何代码
     }
 

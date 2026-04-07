@@ -4,7 +4,7 @@
  */
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.widget.TextView
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
@@ -37,7 +37,7 @@ class ChangePreviewTextSize : IAction {
     override val key: String
         get() = GeneratedSettingList.CHANGE_PREVIEW_TEXT_SIZE
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val containerViewClass =
             "com.tencent.qqnt.textpreview.PreviewTextContainerView".toHostClass()
 

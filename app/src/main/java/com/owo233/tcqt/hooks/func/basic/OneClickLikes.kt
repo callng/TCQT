@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
@@ -33,7 +33,7 @@ import com.tencent.mobileqq.vas.api.IVasSingedApi
 )
 class OneClickLikes : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         // TIM不支持点赞行为
         if (PlatformTools.isMqq()) {
             val vote = VoteHelper::class.java.findMethod {

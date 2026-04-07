@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
+import android.app.Application
 import android.content.Context
 import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
@@ -25,7 +26,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 )
 class SkipQRLoginWait : IAction, DexKitTask {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (process == ActionProcess.MAIN) {
             requireClass("skip_qr_login_wait").allConstructors().forEach {
                 it.hookBefore { param ->
@@ -49,7 +50,7 @@ class SkipQRLoginWait : IAction, DexKitTask {
                 Int::class.javaPrimitiveType,
                 View.OnClickListener::class.java,
                 View.OnClickListener::class.java
-                ) { param ->
+            ) { param ->
                 if (param.args.size == 10 && param.args[6] is Int) {
                     param.args[6] = 0
                 }

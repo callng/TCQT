@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
@@ -23,7 +23,7 @@ import com.owo233.tcqt.utils.reflect.setObject
 )
 class RemoveShareLimit : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.mobileqq.activity.ForwardRecentActivity")
             .declaredConstructors
             .first()

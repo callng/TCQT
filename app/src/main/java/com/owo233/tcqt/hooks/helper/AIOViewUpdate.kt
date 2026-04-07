@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.helper
 
-import android.content.Context
+import android.app.Application
 import android.view.View
 import android.view.ViewGroup
 import com.owo233.tcqt.HookEnv.toHostClass
@@ -30,7 +30,7 @@ class AIOViewUpdate : AlwaysRunAction() {
         AitChameleon()
     )
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val activeDecorators = decorators
             .filterIsInstance<IAction>()
             .filter { it.canRun() }

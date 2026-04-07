@@ -1,8 +1,6 @@
 package com.tencent.qphone.base.util;
 
-import com.tencent.mobileqq.qfix.ApplicationDelegate;
-
-public abstract class BaseApplication extends ApplicationDelegate {
+public abstract class BaseApplication {
 
     public static BaseApplication getContext() {
         throw new RuntimeException("Stub!");

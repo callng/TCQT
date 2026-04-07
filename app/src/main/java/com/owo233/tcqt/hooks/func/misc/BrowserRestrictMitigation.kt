@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.content.Context
+import android.app.Application
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -25,7 +25,7 @@ import java.lang.reflect.Modifier
 )
 class BrowserRestrictMitigation : IAction, DexKitTask {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         requireMethod("browser_restrict_mitigation").hookBefore {
             val bundle = it.args[0] as Bundle
             if (bundle.getInt("jumpResult", 0) != 0) {

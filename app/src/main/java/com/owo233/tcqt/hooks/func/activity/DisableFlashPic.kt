@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv.requireMinTimVersion
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -24,7 +24,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 )
 class DisableFlashPic : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (PlatformTools.isNt() || requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)) {
             AIOMsgItem::class.java.hookMethodAfter({
                 name = "getMsgRecord"

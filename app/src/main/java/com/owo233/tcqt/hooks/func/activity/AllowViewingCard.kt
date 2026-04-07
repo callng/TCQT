@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -25,7 +25,7 @@ import com.tencent.mobileqq.data.Card
 )
 class AllowViewingCard : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         "com.tencent.mobileqq.profilecard.api.impl.ProfileDataServiceImpl".toHostClass()
             .also { clazz ->
                 hookProfileCardMethod(

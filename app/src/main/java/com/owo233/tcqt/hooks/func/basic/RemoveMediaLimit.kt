@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.hook.isPublic
 )
 class RemoveMediaLimit : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         // 群聊私聊
         loadOrThrow(
             "com.tencent.qqnt.qbasealbum.select.viewmodel.SelectedMediaViewModel"

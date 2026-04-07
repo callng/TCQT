@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.advanced
 
-import android.content.Context
+import android.app.Application
 import android.view.Window
 import android.view.WindowManager
 import com.owo233.tcqt.annotations.RegisterAction
@@ -21,7 +21,7 @@ import com.owo233.tcqt.utils.hook.hookMethodBefore
 )
 class FlagSecureBypass : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         Window::class.java.hookMethodBefore(
             "setFlags",
             Int::class.javaPrimitiveType,

@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -22,7 +22,7 @@ import com.tencent.qqnt.kernel.nativeinterface.ReplyMsgMainInfo
 )
 class RemoveReplyMsgCheck : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             QQNTWrapperUtil.CppProxy::class.java.hookMethodAfter({
                 name = "findSourceOfReplyMsgFrom"

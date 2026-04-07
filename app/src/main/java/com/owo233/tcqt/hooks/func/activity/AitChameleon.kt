@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -57,7 +57,7 @@ class AitChameleon : IAction, OnAIOViewUpdate {
 
     override val key: String get() = GeneratedSettingList.AIT_CHAMELEON
 
-    override fun onRun(ctx: Context, process: ActionProcess) = Unit
+    override fun onRun(app: Application, process: ActionProcess) = Unit
 
     override fun onGetViewNt(rootView: ViewGroup, chatMessage: MsgRecord, param: MethodHookParam) {
         rootView.allChildViews

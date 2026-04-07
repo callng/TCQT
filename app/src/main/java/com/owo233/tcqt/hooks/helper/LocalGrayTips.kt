@@ -185,12 +185,16 @@ object LocalGrayTips {
     enum class Align {
         @SerialName("left")
         LEFT,
+
         @SerialName("center")
         CENTER,
+
         @SerialName("right")
         RIGHT,
+
         @SerialName("top")
         TOP,
+
         @SerialName("bottom")
         BOTTOM
     }

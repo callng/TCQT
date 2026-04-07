@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
+import android.app.Application
 import android.content.Context
 import android.view.View
 import com.owo233.tcqt.HookEnv
@@ -26,7 +27,7 @@ import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 )
 class HideQzoneAD : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             listOf(
                 "com.qzone.reborn.feedpro.widget.comment.QZoneFeedProDetailBottomAdBlockView", // 说说详情页广告

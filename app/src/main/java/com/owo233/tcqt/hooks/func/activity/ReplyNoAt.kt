@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -28,7 +28,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 )
 class ReplyNoAt : IAction, DexKitTask {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         requireClass("reply_no_at").findMethod {
             returnType = void
             paramTypes = arrayOf(MsgIntent::class.java)
@@ -54,7 +54,7 @@ class ReplyNoAt : IAction, DexKitTask {
             matcher {
                 methods {
                     add { name("onDestroy") }
-                    add { returnType(Set::class.java)}
+                    add { returnType(Set::class.java) }
                 }
             }
         }

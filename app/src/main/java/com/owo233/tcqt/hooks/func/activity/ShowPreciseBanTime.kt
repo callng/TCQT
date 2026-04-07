@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.hook.hookMethodBefore
 )
 class ShowPreciseBanTime : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
             .hookMethodBefore({
                 name = "remainingTimeToStringCountDown"

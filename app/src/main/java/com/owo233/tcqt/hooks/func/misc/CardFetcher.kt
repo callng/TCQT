@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -31,7 +31,7 @@ class CardFetcher : IAction {
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.TOOL)
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         WebViewClient::class.java.hookMethodAfter(
             "onPageFinished",
             WebView::class.java,

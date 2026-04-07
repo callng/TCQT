@@ -1,7 +1,7 @@
 package com.owo233.tcqt.hooks.func.misc
 
 import android.app.Activity
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.hook.hookBefore
 )
 class FakeMultiWindowStatus : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         Activity::class.java.getDeclaredMethod("isInMultiWindowMode")
             .hookBefore { it.result = false }
 

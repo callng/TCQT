@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
-import android.content.Context
+import android.app.Application
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -28,7 +28,7 @@ import com.tencent.mobileqq.utils.ViewUtils
 )
 class RemoveMenuIcon : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.menu.ui.QQCustomMenuExpandableLayout")
             .declaredMethods.first { method ->
                 method.returnType == View::class.java && method.paramCount == 4

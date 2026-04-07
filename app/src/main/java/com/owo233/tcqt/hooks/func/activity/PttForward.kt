@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -59,7 +60,7 @@ class PttForward : IAction, OnMenuBuilder {
         )
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         val forwardBaseOption = load(CLS_FORWARD_BASE) ?: error("$CLS_FORWARD_BASE not found")
 
         val mExtraDataField =

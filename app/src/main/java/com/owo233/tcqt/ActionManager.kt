@@ -1,6 +1,6 @@
 package com.owo233.tcqt
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedActionList
@@ -35,7 +35,7 @@ internal object ActionManager {
     }
 
     fun runFirst(
-        ctx: Context,
+        app: Application,
         proc: ActionProcess,
         targetClass: Class<out IAction>? = null
     ) {
@@ -52,7 +52,7 @@ internal object ActionManager {
             if (targetClass != null) {
                 if (actionClass == targetClass) {
                     val action = instanceOf(actionClass)
-                    action?.let { it(ctx, proc) }
+                    action?.let { it(app, proc) }
                     return
                 }
                 return@forEach
@@ -67,7 +67,7 @@ internal object ActionManager {
                             (ActionProcess.OTHER in action.processes && proc !in baseProcs)
 
                 if (shouldRun) {
-                    action(ctx, proc)
+                    action(app, proc)
                 }
             }.onFailure { e ->
                 throw RuntimeException(e)

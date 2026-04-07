@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -25,7 +25,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 class MsgAntiRecall : IAction {
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         Log.d("Oh baby baby tell me why")
     }
 

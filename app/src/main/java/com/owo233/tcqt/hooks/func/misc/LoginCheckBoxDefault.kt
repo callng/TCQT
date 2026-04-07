@@ -1,5 +1,6 @@
 package com.owo233.tcqt.hooks.func.misc
 
+import android.app.Application
 import android.content.Context
 import android.widget.CheckBox
 import com.owo233.tcqt.annotations.RegisterAction
@@ -21,7 +22,7 @@ import com.owo233.tcqt.utils.reflect.allConstructors
 )
 class LoginCheckBoxDefault : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         CheckBox::class.java.allConstructors().forEach {
             it.hookAfter { param ->
                 val context = param.args.getOrNull(0) as? Context ?: return@hookAfter

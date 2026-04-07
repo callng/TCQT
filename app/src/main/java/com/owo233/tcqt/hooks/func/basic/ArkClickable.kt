@@ -1,6 +1,6 @@
 package com.owo233.tcqt.hooks.func.basic
 
-import android.content.Context
+import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
@@ -20,7 +20,7 @@ import com.owo233.tcqt.utils.hook.hookMethodBefore
 )
 class ArkClickable : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isTim()) {
             load("com.tencent.mobileqq.aio.msglist.holder.component.ark.d")
                 ?.hookMethodBefore("a", String::class.java, String::class.java) {

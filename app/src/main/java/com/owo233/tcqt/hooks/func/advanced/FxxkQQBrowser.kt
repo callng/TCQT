@@ -1,8 +1,8 @@
 package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Activity
+import android.app.Application
 import android.app.Instrumentation
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
@@ -30,7 +30,7 @@ import java.util.regex.Pattern
 )
 class FxxkQQBrowser : IAction {
 
-    override fun onRun(ctx: Context, process: ActionProcess) {
+    override fun onRun(app: Application, process: ActionProcess) {
         hookExecStartActivity()
     }
 
