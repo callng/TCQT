@@ -3,10 +3,20 @@ package com.tencent.mobileqq.selectmember;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
-
 import com.tencent.mobileqq.data.troop.TroopMemberNickInfo;
 
 public class ResultRecord implements Parcelable {
+    public static final Creator<ResultRecord> CREATOR = new Creator<>() {
+        @Override
+        public ResultRecord createFromParcel(Parcel in) {
+            return new ResultRecord(in);
+        }
+
+        @Override
+        public ResultRecord[] newArray(int size) {
+            return new ResultRecord[size];
+        }
+    };
     public String gameLevelIcon;
     public String groupUin;
     public String guildAvatarUrl;
@@ -29,18 +39,6 @@ public class ResultRecord implements Parcelable {
         this.needCheckBoxCheckAnimation = false;
         this.source = 2;
     }
-
-    public static final Creator<ResultRecord> CREATOR = new Creator<>() {
-        @Override
-        public ResultRecord createFromParcel(Parcel in) {
-            return new ResultRecord(in);
-        }
-
-        @Override
-        public ResultRecord[] newArray(int size) {
-            return new ResultRecord[size];
-        }
-    };
 
     public static ResultRecord copyResultRecord(ResultRecord resultRecord) {
         if (resultRecord != null) {

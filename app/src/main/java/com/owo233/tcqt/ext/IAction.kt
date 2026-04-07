@@ -26,10 +26,7 @@ interface IAction {
 
     operator fun invoke(app: Application, process: ActionProcess) {
         runCatching {
-            if (!canRun()) return@runCatching
-            if (!initOnce()) return@runCatching
-
-            onRun(app, process)
+            if (canRun() && onInit()) onRun(app, process) else return@runCatching
         }.onFailure {
             Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
         }
@@ -48,7 +45,7 @@ interface IAction {
      * 初始化逻辑
      * @return true 表示继续执行后续函数，false 则拦截
      */
-    fun initOnce(): Boolean = true
+    fun onInit(): Boolean = true
 
     companion object {
         val DEFAULT_PROCESSES = setOf(ActionProcess.MAIN)
@@ -72,7 +69,7 @@ abstract class PluginHook : IAction {
 
     override fun onRun(app: Application, process: ActionProcess) = Unit
 
-    override fun initOnce(): Boolean {
+    override fun onInit(): Boolean {
         if (disablePluginHook) {
             Log.e("pluginHook Unsupported versions")
             return false

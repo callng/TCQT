@@ -1,18 +1,24 @@
 package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
-import android.content.Intent
-import android.os.Bundle
+import com.owo233.tcqt.HookEnv.requireMinQQVersion
+import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.QQVersion
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.reflect.setObject
+import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.allConstructors
+import com.owo233.tcqt.utils.reflect.setObjectByType
+import com.tencent.mobileqq.selectmember.ResultRecord
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
 @RegisterSetting(
@@ -21,87 +27,69 @@ import com.owo233.tcqt.utils.reflect.setObject
     type = SettingType.BOOLEAN,
     desc = "移除转发消息时最多选择9名联系人的限制。",
 )
-class RemoveShareLimit : IAction {
+class RemoveShareLimit : IAction, DexKitTask {
 
-    override fun onRun(app: Application, process: ActionProcess) {
-        loadOrThrow("com.tencent.mobileqq.activity.ForwardRecentActivity")
-            .declaredConstructors
-            .first()
-            .hookAfter { param ->
-                param.thisObject.setObject(
-                    "mForwardTargetMap",
-                    UnlimitedMap<String, Any>()
-                )
-            }
-
-        // 测试部分
-        /*Activity::class.java.hookBeforeMethod(
-            "onCreate",
-            Bundle::class.java
-        ) { param ->
-            val activity = param.thisObject as Activity
-            val intent = activity.intent
-            Log.d("Activity 启动: ${activity.javaClass.name}")
-            dumpIntent(intent)
-        }*/
+    private val isKuiklyUISupported: Boolean by lazy {
+        requireMinQQVersion(QQVersion.QQ_9_2_25)
     }
+
+    private lateinit var friendListActivityCls: Class<*>
+    private lateinit var recentActivityCls: Class<*>
+    private lateinit var troopListFragmentCls: Class<*>
+    private lateinit var selectTroopListFragmentCls: Class<*>
 
     override val key: String get() = GeneratedSettingList.REMOVE_SHARE_LIMIT
 
-    fun dumpIntent(intent: Intent?) {
-        if (intent == null) {
-            Log.d("Intent = null")
-            return
+    override fun onRun(app: Application, process: ActionProcess) {
+        if (isKuiklyUISupported) {
+            requireClass("remove_share_limit")
+                .allConstructors()
+                .filter { it.paramCount >= 3 }
+                .forEach {
+                    it.hookBefore { param ->
+                        param.args[2] = Int.MAX_VALUE
+                    }
+                }
         }
 
-        Log.d("Intent Data = ${intent.data}")
-        Log.d("Intent Flags = ${intent.flags}")
-
-        val extras = intent.extras ?: run {
-            Log.d("Intent Extras: <empty>")
-            return
-        }
-
-        Log.d("Intent Extras:")
-
-        for (key in extras.keySet()) {
-            @Suppress("DEPRECATION")
-            val value = extras.get(key)
-            val type = value?.javaClass?.name ?: "null"
-
-            Log.d("  • $key = $value  (type = $type)")
-
-            if (value is Bundle) {
-                dumpBundle(value, "    ")
+        listOf(
+            friendListActivityCls,
+            recentActivityCls,
+            troopListFragmentCls,
+            selectTroopListFragmentCls
+        ).forEach { cls ->
+            cls.allConstructors().first().hookAfter { param ->
+                param.thisObject.setObjectByType<Map<String, ResultRecord>>(UnlimitedMap())
             }
         }
     }
 
-    private fun dumpBundle(bundle: Bundle?, indent: String = "") {
-        if (bundle == null) {
-            Log.d("${indent}<null bundle>")
-            return
-        }
+    override fun onInit(): Boolean {
+        friendListActivityCls =
+            "com.tencent.mobileqq.activity.ForwardFriendListActivity".toHostClass()
+        recentActivityCls =
+            "com.tencent.mobileqq.activity.ForwardRecentActivity".toHostClass()
+        troopListFragmentCls =
+            "com.tencent.mobileqq.activity.ForwardTroopListFragment".toHostClass()
+        selectTroopListFragmentCls =
+            "com.tencent.mobileqq.selectmember.troop.SelectTroopListFragment".toHostClass()
 
-        Log.d("${indent}Bundle {")
-
-        for (key in bundle.keySet()) {
-            @Suppress("DEPRECATION")
-            val value = bundle.get(key)
-            val type = value?.javaClass?.name ?: "null"
-
-            Log.d("$indent  - $key = $value (type = $type)")
-
-            // 递归
-            if (value is Bundle) {
-                dumpBundle(value, "$indent    ")
-            }
-        }
-
-        Log.d("$indent}")
+        return super.onInit()
     }
 
-    class UnlimitedMap<K, V> : LinkedHashMap<K, V>() {
+    override fun getQueryMap(): Map<String, BaseMatcher> = if (isKuiklyUISupported) {
+        mapOf(
+            "remove_share_limit" to FindClass().apply {
+                matcher {
+                    usingStrings("ChatSelectorConfig(")
+                }
+            }
+        )
+    } else {
+        emptyMap()
+    }
+
+    private class UnlimitedMap<K, V> : LinkedHashMap<K, V>() {
         override val size: Int
             get() {
                 val s = super.size
