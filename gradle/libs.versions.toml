@@ -29,7 +29,7 @@ libxposed = "101.0.1"
 xposed = "82"
 
 # dexkit
-dexkit = "2.1.0"
+dexkit = "2.2.0"
 
 [libraries]
 # AndroidX
