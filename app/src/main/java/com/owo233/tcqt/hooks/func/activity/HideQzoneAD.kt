@@ -30,16 +30,17 @@ class HideQzoneAD : IAction {
     override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
             listOf(
+                // super class
+                "com.qzone.reborn.feedpro.itemview.ad.QZoneAdBaseMediaFeedProItemView",
+                "com.qzone.reborn.feedx.itemview.ad.QZoneAdBaseFeedItemView",
+
+                // FeedPro
+                "com.qzone.reborn.feedpro.itemview.QzoneFeedProGeneralBigCardItemView",
+                "com.qzone.reborn.feedpro.itemview.QZoneAdFeedProForwardMixPicVideoItemView",
                 "com.qzone.reborn.feedpro.widget.comment.QZoneFeedProDetailBottomAdBlockView", // 说说详情页广告
-                "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardAdFeedProItemView",
-                "com.qzone.reborn.feedpro.itemview.ad.card.QZoneCardMultiPicAdFeedProItemView",
-                "com.qzone.reborn.feedpro.itemview.ad.carousel.QZoneCarouselCardVideoAdFeedProItemView",
-                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractCardAdFeedProItemView",
-                "com.qzone.reborn.feedpro.itemview.ad.contract.QZoneContractFullFrameAdFeedProItemView",
-                "com.qzone.reborn.feedx.itemview.ad.QZoneAdVideoFeedItemView", // 9.2.5 样式(好友动态)
+
+                // FeedX
                 "com.qzone.reborn.feedx.itemview.ad.QZoneAdRewardFeedItemView",
-                "com.qzone.reborn.feedx.itemview.ad.QZoneAdPictureFeedItemView",
-                "com.qzone.reborn.feedx.itemview.ad.QZoneAdMDPAFeedItemView"
             ).forEach { name ->
                 load(name)
                     ?.getDeclaredConstructor(Context::class.java)
@@ -53,11 +54,6 @@ class HideQzoneAD : IAction {
                     }
             }
 
-            // 干掉"我的更多相册"页广告
-            /*if (TextUtils.isEmpty(alumBasicData.advimageUrl)) {
-                hideAdView();
-                return;
-            }*/
             load("com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController")
                 ?.hookMethodBefore({
                     name = "initAndRenderData"
