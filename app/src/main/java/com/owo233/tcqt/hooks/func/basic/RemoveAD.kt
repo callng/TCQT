@@ -50,12 +50,18 @@ class RemoveAD : IAction {
 
     private fun removeKeywordAD() {
         if (HookEnv.isQQ()) {
-            loadOrThrow(
-                "com.tencent.mobileqq.springhb.interactive.ui.InteractivePopManager"
-            ).declaredMethods.firstOrNull {
-                it.isPublic && it.paramCount > 0 &&
-                        it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
-            }?.hookBefore { param -> param.result = Unit }
+            loadOrThrow("com.tencent.mobileqq.springhb.interactive.ui.InteractivePopManager")
+                .declaredMethods
+                .firstOrNull {
+                    it.isPublic && it.paramCount > 0 &&
+                            it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
+                }?.hookBefore { param -> param.result = Unit }
+            load("com.tencent.mobileqq.aio.animation.pag.PagEasterEggPopManager")
+                ?.declaredMethods
+                ?.firstOrNull {
+                    it.isPublic && it.paramCount > 0 &&
+                            it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
+                }?.hookBefore { param -> param.result = Unit }
         }
     }
 
