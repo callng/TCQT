@@ -18,6 +18,7 @@ import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
+import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
@@ -386,15 +387,16 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
     }
 
     private fun openTCQTSettings(ctx: Context? = null) {
-        if (ctx != null) {
-            ctx.startActivity(Intent(ctx, SettingActivity::class.java))
-        } else {
-            BaseActivity.sTopActivity.startActivity(
-                Intent(
-                    BaseActivity.sTopActivity,
-                    SettingActivity::class.java
-                )
-            )
+        runCatching {
+            val activity = ctx ?: BaseActivity.sTopActivity
+
+            ModuleScope.launchMain {
+                activity.apply {
+                    startActivity(Intent(this, SettingActivity::class.java))
+                }
+            }
+        }.onFailure {
+            Toasts.error("需要重新启动${HookEnv.appName}")
         }
     }
 

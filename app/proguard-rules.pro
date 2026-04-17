@@ -5,7 +5,9 @@
 }
 
 # 保留所有继承自 BaseComposeActivity 的类 不混淆它们的无参构造函数
--keep class * extends com.owo233.tcqt.activity.BaseComposeActivity { <init>(); }
+-keep class * extends com.owo233.tcqt.activity.BaseComposeActivity {
+    <init>();
+}
 
 # 保留 IAction 及其实现类的无参构造和 INSTANCE
 -keepclassmembers class * implements com.owo233.tcqt.ext.IAction {
