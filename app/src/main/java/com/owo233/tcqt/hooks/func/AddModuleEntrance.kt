@@ -122,8 +122,8 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
 
     private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {
         val candidates = listOf(
+            "com.tencent.mobileqq.setting.main.MainSettingConfigProvider",
             "com.tencent.mobileqq.setting.main.NewSettingConfigProvider",
-            "com.tencent.mobileqq.setting.main.MainSettingConfigProvider"
         )
 
         val entryClass = candidates
@@ -131,7 +131,7 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
             ?: inferProviderFromField(mainFragmentClass)
             ?: error("未找到MainSettingFragment类中被混淆的Provider,无法创建模块设置入口!")
 
-        val isNewProvider = entryClass.name != candidates.last()
+        val isNewProvider = entryClass.name == candidates.last()
         return entryClass to isNewProvider
     }
 
