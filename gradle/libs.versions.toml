@@ -1,6 +1,6 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
-agp = "9.1.0"
+agp = "9.1.1"
 androidx-documentfile = "1.1.0"
 androidx-fragment = "1.8.9"
 androidx-core = "1.18.0"
@@ -62,7 +62,6 @@ kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotl
 # Google / Protobuf
 ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-lib" }
-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf-lib" }
 
 # Xposed
 libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }

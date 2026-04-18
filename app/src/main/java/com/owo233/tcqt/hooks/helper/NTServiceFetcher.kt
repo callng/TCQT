@@ -5,6 +5,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
+import top.artmoe.inao.item.NewPreventRetractingMessageCore
 import java.util.concurrent.atomic.AtomicBoolean
 
 object NTServiceFetcher {
@@ -34,11 +35,11 @@ object NTServiceFetcher {
             val buffer = it.args[1] as ByteArray
             when (cmd) {
                 "trpc.msg.register_proxy.RegisterProxy.InfoSyncPush" -> {
-                    AioListener.handleInfoSyncPush(buffer, it)
+                    NewPreventRetractingMessageCore.handleInfoSyncPush(buffer, it)
                 }
 
                 "trpc.msg.olpush.OlPushService.MsgPush" -> {
-                    AioListener.handleMsgPush(buffer, it)
+                    NewPreventRetractingMessageCore.handleMsgPush(buffer, it)
                 }
             }
         }
