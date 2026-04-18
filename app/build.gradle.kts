@@ -73,7 +73,8 @@ extensions.configure<ApplicationExtension> {
     buildTypes {
         debug {
             signingConfig =
-                if (keystorePath.isNullOrBlank()) null else signingConfigs.getByName("ci")
+                if (keystorePath.isNullOrBlank()) signingConfigs.getByName("debug")
+                else signingConfigs.getByName("ci")
         }
         release {
             isMinifyEnabled = true
