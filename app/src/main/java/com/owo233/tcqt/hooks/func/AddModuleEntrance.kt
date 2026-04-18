@@ -131,7 +131,8 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
             ?: inferProviderFromField(mainFragmentClass)
             ?: error("未找到MainSettingFragment类中被混淆的Provider,无法创建模块设置入口!")
 
-        val isNewProvider = entryClass.name == candidates.last()
+        val isNewProvider = entryClass.name == candidates.last() || entryClass.name !in candidates
+
         return entryClass to isNewProvider
     }
 
