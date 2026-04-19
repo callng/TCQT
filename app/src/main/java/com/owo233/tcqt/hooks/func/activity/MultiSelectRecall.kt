@@ -93,7 +93,7 @@ class MultiSelectRecall : IAction {
             }
         }
 
-        ContextUtils.getCurrentActivity()?.onBackPressed()
+        ContextUtils.getCurrentActivity().onBackPressed()
     }
 
     private fun recallSingleItem(msg: AIOMsgItem) {
