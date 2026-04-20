@@ -32,6 +32,11 @@
     volatile <fields>;
 }
 
+# protobuf 保留字段名和类型
+-keepclassmembers class top.artmoe.inao.entries.** {
+    <fields>;
+}
+
 # 忽略 kotlin.jvm.internal.Intrinsics 的检查
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
     public static void check*(...);

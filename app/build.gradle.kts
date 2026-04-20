@@ -1,11 +1,13 @@
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.variant.impl.VariantOutputImpl
+import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.protobuf)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
@@ -107,6 +109,14 @@ extensions.configure<ApplicationExtension> {
         }
     }
 
+    sourceSets {
+        named("main") {
+            proto {
+                srcDirs("src/main/proto")
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = androidSourceCompatibility
         targetCompatibility = androidTargetCompatibility
@@ -138,6 +148,22 @@ extensions.configure(KotlinAndroidProjectExtension::class.java) {
 
     sourceSets.configureEach {
         kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin"))
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = libs.protobuf.protoc.get().toString()
+    }
+
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+        }
     }
 }
 

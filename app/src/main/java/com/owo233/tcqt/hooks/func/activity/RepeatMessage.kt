@@ -8,6 +8,7 @@ import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.loadOrThrow
@@ -45,9 +46,11 @@ import java.lang.reflect.Method
 )
 class RepeatMessage : IAction {
 
-    override fun onRun(app: Application, process: ActionProcess) {
-        val options = GeneratedSettingList.getInt(GeneratedSettingList.REPEAT_MESSAGE_TYPE)
+    private val options: Int by lazy {
+        GeneratedSettingList.getInt(GeneratedSettingList.REPEAT_MESSAGE_TYPE)
+    }
 
+    override fun onRun(app: Application, process: ActionProcess) {
         val componentClz =
             loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent")
 
@@ -99,7 +102,7 @@ class RepeatMessage : IAction {
             }
 
             imageView.setDoubleClickListener(
-                (options and (1 shl 0)) != 0,
+                options.isFlagEnabled(0),
                 200L
             ) {
                 performRepeatMessage(msgRecord)

@@ -21,7 +21,7 @@ kotlinx-io = "0.1.16"
 kotlinx-serialization = "1.11.0"
 
 # Google / Protobuf
-protobuf-plugin = "0.9.6"
+protobuf-plugin = "0.10.0"
 protobuf-lib = "4.34.1"
 
 # Xposed
@@ -62,6 +62,7 @@ kotlinx-serialization-protobuf = { group = "org.jetbrains.kotlinx", name = "kotl
 # Google / Protobuf
 ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf-lib" }
+protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf-lib" }
 
 # Xposed
 libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }

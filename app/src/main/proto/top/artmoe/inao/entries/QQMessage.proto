@@ -1,0 +1,88 @@
+syntax = "proto3";
+package top.artmoe.inao.entries;
+option java_package = "top.artmoe.inao.entries";
+
+message QQMessage {
+  MessageHead message_head = 1;
+  MessageContentInfo message_content_info = 2;
+  MessageBody message_body = 3;
+
+  message MessageHead {
+    int64 sender_peer_id = 1;
+    string sender_uid = 2;
+    int64 receiver_peer_id = 5;
+    string receiver_uid = 6;
+    SenderInfo sender_info = 8;
+
+    message SenderInfo {
+      int64 peer_id = 1;
+      int32 msg_sub_type = 2;
+      string nick_name = 4;
+    }
+  }
+
+  message MessageContentInfo {
+    int32 msg_type = 1;
+    int32 msg_sub_type = 2;
+    int32 sub_seq = 3;
+    int32 msg_seq = 5;
+    int64 msg_time = 6;
+    int32 msg_seq_id = 11;
+  }
+
+  message MessageBody {
+    RichMsg rich_msg = 1;
+    bytes operation_info = 2;
+
+    message RichMsg {
+      repeated MsgContent msg_content = 2;
+
+      message MsgContent {
+        TextMsg text_msg = 1;
+        MsgSender msg_sender = 16;
+        Mt my_custom_field = 53; // 不知道字段含义
+
+        message TextMsg {
+          string text = 1;
+        }
+
+        message MsgSender {
+          string nick_name = 1;
+        }
+
+        message Mt {
+          int32 mt_type = 1; // 随便取个名吧
+        }
+      }
+    }
+
+    message GroupRecallOperationInfo {
+      int64 peer_id = 4;
+      Info info = 11;
+      int32 msg_seq = 37;
+
+      message Info {
+        string operator_uid = 1;
+        MsgInfo msg_info = 3;
+
+        message MsgInfo {
+          int32 msg_seq = 1;
+          int64 msg_time = 2;
+          string sender_uid = 6;
+        }
+      }
+    }
+
+    message C2CRecallOperationInfo {
+      Info info = 1;
+
+      message Info {
+        string operator_uid = 1;
+        string receiver_uid = 2;
+        int64 msg_time = 5;
+        int64 msg_random = 6;
+        int32 msg_seq = 20;
+      }
+    }
+  }
+}

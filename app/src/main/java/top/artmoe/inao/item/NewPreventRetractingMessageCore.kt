@@ -13,6 +13,7 @@ import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.LocalGrayTips
+import com.owo233.tcqt.hooks.helper.MessageHandler
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -56,14 +57,14 @@ data class GroupChatMessageRecall(
  * by 叶叶,suzhelan
  */
 @OptIn(ExperimentalSerializationApi::class, DelicateCoroutinesApi::class)
-object NewPreventRetractingMessageCore {
+object NewPreventRetractingMessageCore : MessageHandler {
 
     private data class ProtoVarInt(
         val value: Int,
         val nextIndex: Int,
     )
 
-    fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
+    override fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
         val infoSyncPush = ProtoBuf.decodeFromByteArray<NewSyncPush>(buffer)
         val syncRecallContent = infoSyncPush.syncRecallContent ?: return
         val syncInfoBody = syncRecallContent.syncInfoBody ?: return
@@ -265,7 +266,7 @@ object NewPreventRetractingMessageCore {
         return null
     }
 
-    fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
+    override fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
         val msgPush = ProtoBuf.decodeFromByteArray<MsgPush>(buffer)
         //检查messageBody是否为空
         if (msgPush.qqMessage.messageBody == null) {

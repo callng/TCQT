@@ -21,6 +21,13 @@ import kotlinx.coroutines.DelicateCoroutinesApi
     desc = "防止消息被撤回，添加灰条提示。",
     uiOrder = 1
 )
+@RegisterSetting(
+    key = "msg_anti_recall.type",
+    name = "选择解析方式",
+    type = SettingType.INT_MULTI,
+    defaultValue = "0",
+    options = "使用新版解析方式"
+)
 class MsgAntiRecall : IAction {
 
     @OptIn(DelicateCoroutinesApi::class)
