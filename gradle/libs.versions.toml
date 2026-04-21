@@ -1,6 +1,6 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
-agp = "9.1.1"
+agp = "9.2.0"
 androidx-documentfile = "1.1.0"
 androidx-fragment = "1.8.9"
 androidx-core = "1.18.0"

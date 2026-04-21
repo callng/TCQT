@@ -30,10 +30,9 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import top.artmoe.inao.entries.MsgPush
 import top.artmoe.inao.entries.NewSyncPush
 import top.artmoe.inao.entries.QQMessage
-import java.io.ByteArrayOutputStream
 
 @Serializable
-data class FriendChatMessageRecall(
+private data class FriendChatMessageRecall(
     @SerialName("peerUid")
     val peerUid: String,
     @SerialName("msgSeq")
@@ -41,7 +40,7 @@ data class FriendChatMessageRecall(
 )
 
 @Serializable
-data class GroupChatMessageRecall(
+private data class GroupChatMessageRecall(
     @SerialName("groupUin")
     val groupUin: String,
     @SerialName("operatorUid")
@@ -63,6 +62,35 @@ object NewPreventRetractingMessageCore : MessageHandler {
         val value: Int,
         val nextIndex: Int,
     )
+
+    private data class ProtoField(
+        val fieldNumber: Int,
+        val wireType: Int,
+        val rawBytes: ByteArray,
+        val payload: ByteArray,
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as ProtoField
+
+            if (fieldNumber != other.fieldNumber) return false
+            if (wireType != other.wireType) return false
+            if (!rawBytes.contentEquals(other.rawBytes)) return false
+            if (!payload.contentEquals(other.payload)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = fieldNumber
+            result = 31 * result + wireType
+            result = 31 * result + rawBytes.contentHashCode()
+            result = 31 * result + payload.contentHashCode()
+            return result
+        }
+    }
 
     override fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
         val infoSyncPush = ProtoBuf.decodeFromByteArray<NewSyncPush>(buffer)
@@ -86,184 +114,7 @@ object NewPreventRetractingMessageCore : MessageHandler {
         )
         param.args[1] = ProtoBuf.encodeToByteArray(newInfoSyncPush)
         showInterceptedC2CTips(friendList)
-        showInterceptedGroupRecalls(troopList)
-    }
-
-    private fun showInterceptedC2CTips(list: List<FriendChatMessageRecall>) {
-        if (list.isEmpty()) return
-        GlobalScope.launchWithCatch {
-            list.forEach { recall ->
-                val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, recall.peerUid)
-                LocalGrayTips.addLocalGrayTip(
-                    contact,
-                    JsonGrayBusiId.AIO_AV_C2C_NOTICE,
-                    LocalGrayTips.Align.CENTER
-                ) {
-                    text("对方想撤回一条")
-                    msgRef("消息", recall.msgSeq.toLong())
-                    text("(seq=${recall.msgSeq}), 已拦截")
-                }
-            }
-        }
-    }
-
-    private fun showInterceptedGroupRecalls(list: List<GroupChatMessageRecall>) {
-        if (list.isEmpty()) return
-        GlobalScope.launchWithCatch {
-            list.forEach { recall ->
-                val groupPeerId = recall.groupUin.toLong()
-                val operatorUid = recall.operatorUid
-                val targetUid = recall.senderUid
-
-                val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
-                val targetNick = getMemberDisplayName(groupPeerId, targetUid)
-
-                val operatorUin = ContactHelper.getUinByUidAsync(operatorUid)
-                val targetUin = ContactHelper.getUinByUidAsync(targetUid)
-
-                val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, recall.groupUin)
-
-                LocalGrayTips.addLocalGrayTip(
-                    contact,
-                    JsonGrayBusiId.AIO_AV_GROUP_NOTICE,
-                    LocalGrayTips.Align.CENTER
-                ) {
-                    member(operatorUid, operatorUin, operatorNick, "3")
-                    text("尝试撤回")
-                    if (targetUid == operatorUid) {
-                        text("TA自己")
-                    } else {
-                        member(targetUid, targetUin, targetNick, "3")
-                    }
-                    text("的")
-                    msgRef("消息", recall.msgSeq.toLong())
-                    text("(seq=${recall.msgSeq}), 已拦截")
-                }
-            }
-        }
-    }
-
-    private fun rewriteSyncInfoBody(
-        syncInfoBodyBytes: ByteArray,
-        friendList: MutableList<FriendChatMessageRecall>,
-        troopList: MutableList<GroupChatMessageRecall>,
-    ): ByteArray {
-        val output = ByteArrayOutputStream(syncInfoBodyBytes.size)
-        var index = 0
-        var changed = false
-
-        while (index < syncInfoBodyBytes.size) {
-            val fieldStart = index
-            val key = readVarInt(syncInfoBodyBytes, index) ?: return syncInfoBodyBytes
-            index = key.nextIndex
-            val fieldNumber = key.value ushr 3
-            val wireType = key.value and 0x07
-
-            val fieldEnd = when (wireType) {
-                0 -> readVarInt(syncInfoBodyBytes, index)?.nextIndex ?: return syncInfoBodyBytes
-                1 -> (index + 8).takeIf { it <= syncInfoBodyBytes.size } ?: return syncInfoBodyBytes
-                2 -> {
-                    val length = readVarInt(syncInfoBodyBytes, index) ?: return syncInfoBodyBytes
-                    val payloadEnd = length.nextIndex + length.value
-                    payloadEnd.takeIf { it <= syncInfoBodyBytes.size } ?: return syncInfoBodyBytes
-                }
-
-                5 -> (index + 4).takeIf { it <= syncInfoBodyBytes.size } ?: return syncInfoBodyBytes
-                else -> return syncInfoBodyBytes
-            }
-
-            if (fieldNumber == 8 && wireType == 2) {
-                val length = readVarInt(syncInfoBodyBytes, index) ?: return syncInfoBodyBytes
-                val payloadStart = length.nextIndex
-                val payloadEnd = payloadStart + length.value
-                val msgBytes = syncInfoBodyBytes.copyOfRange(payloadStart, payloadEnd)
-                if (shouldRemoveRecallMessage(msgBytes, friendList, troopList)) {
-                    changed = true
-                } else {
-                    output.write(syncInfoBodyBytes, fieldStart, fieldEnd - fieldStart)
-                }
-            } else {
-                output.write(syncInfoBodyBytes, fieldStart, fieldEnd - fieldStart)
-            }
-            index = fieldEnd
-        }
-
-        return if (changed) output.toByteArray() else syncInfoBodyBytes
-    }
-
-    private fun shouldRemoveRecallMessage(
-        msgBytes: ByteArray,
-        friendList: MutableList<FriendChatMessageRecall>,
-        troopList: MutableList<GroupChatMessageRecall>,
-    ): Boolean {
-        val qqMessage = runCatching {
-            ProtoBuf.decodeFromByteArray<QQMessage>(msgBytes)
-        }.getOrNull() ?: return false
-        val messageBody = qqMessage.messageBody ?: return false
-        val msgType = qqMessage.messageContentInfo.msgType
-        val msgSubType = qqMessage.messageContentInfo.msgSubType
-
-        return when (msgType) {
-            528 if msgSubType == 138 -> {
-                val c2cRecall = runCatching {
-                    ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.C2CRecallOperationInfo>(
-                        messageBody.operationInfo
-                    )
-                }.getOrNull() ?: return false
-                friendList.add(
-                    FriendChatMessageRecall(
-                        qqMessage.messageHead.senderUid,
-                        c2cRecall.info.msgSeq
-                    )
-                )
-                true
-            }
-
-            732 if msgSubType == 17 -> {
-                if (messageBody.operationInfo.size <= 7) {
-                    return false
-                }
-                val groupRecall = runCatching {
-                    ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.GroupRecallOperationInfo>(
-                        messageBody.operationInfo.copyOfRange(7, messageBody.operationInfo.size)
-                    )
-                }.getOrNull() ?: return false
-
-                // 当前账号的操作（可能在其他设备上），不拦截
-                if (groupRecall.info.operatorUid == QQInterfaces.currentUid) {
-                    return false
-                }
-
-                troopList.add(
-                    GroupChatMessageRecall(
-                        groupUin = groupRecall.peerId.toString(),
-                        operatorUid = groupRecall.info.operatorUid,
-                        senderUid = groupRecall.info.msgInfo.senderUid,
-                        msgSeq = groupRecall.info.msgInfo.msgSeq
-                    )
-                )
-                true
-            }
-
-            else -> false
-        }
-    }
-
-    private fun readVarInt(bytes: ByteArray, startIndex: Int): ProtoVarInt? {
-        var result = 0
-        var shift = 0
-        var index = startIndex
-
-        while (index < bytes.size && shift < Int.SIZE_BITS) {
-            val byte = bytes[index].toInt() and 0xFF
-            result = result or ((byte and 0x7F) shl shift)
-            index++
-            if ((byte and 0x80) == 0) {
-                return ProtoVarInt(result, index)
-            }
-            shift += 7
-        }
-        return null
+        // showInterceptedGroupRecalls(troopList)
     }
 
     override fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
@@ -282,6 +133,10 @@ object NewPreventRetractingMessageCore : MessageHandler {
             732 -> if (subType == 17) onGroupRecallByMsgPush(operationInfoByteArray, msgPush, param)
         }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // MsgPush 撤回拦截
+    // ═══════════════════════════════════════════════════════════
 
     private fun onC2CRecallByMsgPush(
         operationInfoByteArray: ByteArray,
@@ -330,7 +185,6 @@ object NewPreventRetractingMessageCore : MessageHandler {
         val operationInfo =
             ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.GroupRecallOperationInfo>(secondPart)
 
-        // 当前账号的操作（可能在其他设备上），不拦截
         if (operationInfo.info.operatorUid == QQInterfaces.currentUid) {
             return
         }
@@ -356,55 +210,88 @@ object NewPreventRetractingMessageCore : MessageHandler {
         showGroupRecallTip(operationInfo)
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // C2C 撤回提示
+    // ═══════════════════════════════════════════════════════════
+
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
-        if (operatorUid == QQInterfaces.currentUid) return
         GlobalScope.launchWithCatch {
-            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
-            LocalGrayTips.addLocalGrayTip(
-                contact,
-                JsonGrayBusiId.AIO_AV_C2C_NOTICE,
-                LocalGrayTips.Align.CENTER
-            ) {
-                text("对方想撤回一条")
-                msgRef("消息", msgSeq.toLong())
-                text("(seq=$msgSeq), 已拦截")
-            }
+            showC2CRecallTipInternal(operatorUid, msgSeq)
         }
     }
 
-    private fun showGroupRecallTip(operationInfo: QQMessage.MessageBody.GroupRecallOperationInfo) {
-        if (operationInfo.info.operatorUid == QQInterfaces.currentUid) return
+    private fun showInterceptedC2CTips(list: List<FriendChatMessageRecall>) {
+        if (list.isEmpty()) return
         GlobalScope.launchWithCatch {
-            val groupPeerId = operationInfo.peerId
-            val msgInfo = operationInfo.info.msgInfo
-            val targetUid = msgInfo.senderUid
-            val operatorUid = operationInfo.info.operatorUid
+            list.forEach { showC2CRecallTipInternal(it.peerUid, it.msgSeq) }
+        }
+    }
 
-            val targetNick = getMemberDisplayName(groupPeerId, targetUid)
-            val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
+    private suspend fun showC2CRecallTipInternal(peerUid: String, msgSeq: Int) {
+        val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, peerUid)
+        LocalGrayTips.addLocalGrayTip(
+            contact,
+            JsonGrayBusiId.AIO_AV_C2C_NOTICE,
+            LocalGrayTips.Align.CENTER
+        ) {
+            text("对方想撤回一条")
+            msgRef("消息", msgSeq.toLong())
+            text("(seq=$msgSeq)")
+        }
+    }
 
-            val targetUin = ContactHelper.getUinByUidAsync(targetUid)
-            val operatorUin = ContactHelper.getUinByUidAsync(operatorUid)
+    // ═══════════════════════════════════════════════════════════
+    // Group 撤回提示
+    // ═══════════════════════════════════════════════════════════
 
-            val contact =
-                ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, groupPeerId.toString())
+    private fun showGroupRecallTip(operationInfo: QQMessage.MessageBody.GroupRecallOperationInfo) {
+        GlobalScope.launchWithCatch {
+            showGroupRecallTipInternal(
+                groupUin = operationInfo.peerId.toString(),
+                operatorUid = operationInfo.info.operatorUid,
+                targetUid = operationInfo.info.msgInfo.senderUid,
+                msgSeq = operationInfo.info.msgInfo.msgSeq,
+            )
+        }
+    }
 
-            LocalGrayTips.addLocalGrayTip(
-                contact,
-                JsonGrayBusiId.AIO_AV_GROUP_NOTICE,
-                LocalGrayTips.Align.CENTER
-            ) {
-                member(operatorUid, operatorUin, operatorNick, "3")
-                text("尝试撤回")
-                if (targetUid == operatorUid) {
-                    text("TA自己")
-                } else {
-                    member(targetUid, targetUin, targetNick, "3")
-                }
-                text("的")
-                msgRef("消息", msgInfo.msgSeq.toLong())
-                text("(seq=${msgInfo.msgSeq}), 已拦截")
+    /*private fun showInterceptedGroupRecalls(list: List<GroupChatMessageRecall>) {
+        if (list.isEmpty()) return
+        GlobalScope.launchWithCatch {
+            list.forEach {
+                showGroupRecallTipInternal(it.groupUin, it.operatorUid, it.senderUid, it.msgSeq)
             }
+        }
+    }*/
+
+    private suspend fun showGroupRecallTipInternal(
+        groupUin: String,
+        operatorUid: String,
+        targetUid: String,
+        msgSeq: Int,
+    ) {
+        val groupPeerId = groupUin.toLong()
+        val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
+        val targetNick = getMemberDisplayName(groupPeerId, targetUid)
+        val operatorUin = ContactHelper.getUinByUidAsync(operatorUid)
+        val targetUin = ContactHelper.getUinByUidAsync(targetUid)
+        val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, groupUin)
+
+        LocalGrayTips.addLocalGrayTip(
+            contact,
+            JsonGrayBusiId.AIO_AV_GROUP_NOTICE,
+            LocalGrayTips.Align.CENTER
+        ) {
+            member(operatorUid, operatorUin, operatorNick, "3")
+            text("尝试撤回")
+            if (targetUid == operatorUid) {
+                text("TA自己")
+            } else {
+                member(targetUid, targetUin, targetNick, "3")
+            }
+            text("的")
+            msgRef("消息", msgSeq.toLong())
+            text("(seq=$msgSeq)")
         }
     }
 
@@ -415,5 +302,140 @@ object NewPreventRetractingMessageCore : MessageHandler {
         return GroupHelper.getTroopMemberNickByUin(groupPeerId, uin.toLong())
             ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } }
             ?: uid
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // SyncPush 协议处理
+    // ═══════════════════════════════════════════════════════════
+
+    private fun rewriteSyncInfoBody(
+        syncInfoBodyBytes: ByteArray,
+        friendList: MutableList<FriendChatMessageRecall>,
+        troopList: MutableList<GroupChatMessageRecall>,
+    ): ByteArray {
+        val fields = parseProtoFields(syncInfoBodyBytes) ?: return syncInfoBodyBytes
+
+        val kept = fields.filterNot { field ->
+            field.fieldNumber == 8 && field.wireType == 2 &&
+                shouldRemoveRecallMessage(field.payload, friendList, troopList)
+        }
+
+        return kept.takeIf { it.size < fields.size }
+            ?.map { it.rawBytes }
+            ?.reduce(ByteArray::plus)
+            ?: syncInfoBodyBytes
+    }
+
+    private fun parseProtoFields(bytes: ByteArray): List<ProtoField>? {
+        val fields = mutableListOf<ProtoField>()
+        var index = 0
+
+        while (index < bytes.size) {
+            val fieldStart = index
+            val key = readVarInt(bytes, index) ?: return null
+            index = key.nextIndex
+            val fieldNumber = key.value ushr 3
+            val wireType = key.value and 0x07
+
+            val (fieldEnd, payload) = when (wireType) {
+                0 -> readVarInt(bytes, index)
+                    ?.let { it.nextIndex to ByteArray(0) } ?: return null
+
+                1 -> (index + 8).takeIf { it <= bytes.size }
+                    ?.let { it to ByteArray(0) } ?: return null
+
+                2 -> {
+                    val len = readVarInt(bytes, index) ?: return null
+                    val end = len.nextIndex + len.value
+                    end.takeIf { it <= bytes.size }
+                        ?.let { it to bytes.copyOfRange(len.nextIndex, end) }
+                        ?: return null
+                }
+
+                5 -> (index + 4).takeIf { it <= bytes.size }
+                    ?.let { it to ByteArray(0) } ?: return null
+
+                else -> return null
+            }
+
+            fields.add(ProtoField(fieldNumber, wireType, bytes.copyOfRange(fieldStart, fieldEnd), payload))
+            index = fieldEnd
+        }
+
+        return fields
+    }
+
+    private fun shouldRemoveRecallMessage(
+        msgBytes: ByteArray,
+        friendList: MutableList<FriendChatMessageRecall>,
+        troopList: MutableList<GroupChatMessageRecall>,
+    ): Boolean {
+        val qqMessage = runCatching {
+            ProtoBuf.decodeFromByteArray<QQMessage>(msgBytes)
+        }.getOrNull() ?: return false
+        val messageBody = qqMessage.messageBody ?: return false
+        val msgType = qqMessage.messageContentInfo.msgType
+        val msgSubType = qqMessage.messageContentInfo.msgSubType
+
+        return when (msgType) {
+            528 if msgSubType == 138 -> {
+                val c2cRecall = runCatching {
+                    ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.C2CRecallOperationInfo>(
+                        messageBody.operationInfo
+                    )
+                }.getOrNull() ?: return false
+                friendList.add(
+                    FriendChatMessageRecall(
+                        qqMessage.messageHead.senderUid,
+                        c2cRecall.info.msgSeq
+                    )
+                )
+                true
+            }
+
+            732 if msgSubType == 17 -> {
+                if (messageBody.operationInfo.size <= 7) {
+                    return false
+                }
+                val groupRecall = runCatching {
+                    ProtoBuf.decodeFromByteArray<QQMessage.MessageBody.GroupRecallOperationInfo>(
+                        messageBody.operationInfo.copyOfRange(7, messageBody.operationInfo.size)
+                    )
+                }.getOrNull() ?: return false
+
+                if (groupRecall.info.operatorUid == QQInterfaces.currentUid) {
+                    return false
+                }
+
+                troopList.add(
+                    GroupChatMessageRecall(
+                        groupUin = groupRecall.peerId.toString(),
+                        operatorUid = groupRecall.info.operatorUid,
+                        senderUid = groupRecall.info.msgInfo.senderUid,
+                        msgSeq = groupRecall.info.msgInfo.msgSeq
+                    )
+                )
+                true
+            }
+
+            else -> false
+        }
+    }
+
+    private fun readVarInt(bytes: ByteArray, startIndex: Int): ProtoVarInt? {
+        var result = 0
+        var shift = 0
+        var index = startIndex
+
+        while (index < bytes.size && shift < Int.SIZE_BITS) {
+            val byte = bytes[index].toInt() and 0xFF
+            result = result or ((byte and 0x7F) shl shift)
+            index++
+            if ((byte and 0x80) == 0) {
+                return ProtoVarInt(result, index)
+            }
+            shift += 7
+        }
+        return null
     }
 }
