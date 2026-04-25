@@ -122,6 +122,9 @@ public class TicketManagerImpl implements TicketManager {
         throw new RuntimeException("Stub!");
     }
 
+    public void registerTicketManagerListenerProcess(String str) {
+    }
+
     public void reloadCache(Context context) {
         throw new RuntimeException("Stub!");
     }
@@ -149,8 +152,14 @@ public class TicketManagerImpl implements TicketManager {
         }
     }
 
+    public void setPskeyManager(IPskeyManager iPskeyManager) {
+    }
+
     public void unregistTicketManagerListener(TicketManagerListener ticketManagerListener) {
         throw new RuntimeException("Stub!");
+    }
+
+    public void unregisterTicketManagerListenerProcess(String str) {
     }
 
     public boolean useAsyncTicketInterface() {

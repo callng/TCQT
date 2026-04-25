@@ -17,7 +17,11 @@ public interface IKernelLoginService {
 
     void deleteAllLoginTicket();
 
+    void deleteLoginA2Ticket(long j, long j2);
+
     void deleteLoginTicket(long j, long j2);
+
+    void easyLogin(long j, AppInfo appInfo, ILoginCallback iLoginCallback);
 
     void getAllLoginTicket(ILoginTicketListCallback iLoginTicketListCallback);
 

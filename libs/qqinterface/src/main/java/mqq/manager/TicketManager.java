@@ -8,6 +8,11 @@ import oicq.wlogin_sdk.request.WTLoginRecordSnapshot;
 import oicq.wlogin_sdk.request.WtTicketPromise;
 
 public interface TicketManager extends Manager {
+
+    public interface IPskeyManager {
+        void reportGetPskey(String[] strArr);
+    }
+
     int addWTLoginRecordFromNT(WTLoginRecordSnapshot wTLoginRecordSnapshot);
 
     void clearA1(long j, int i);
@@ -45,6 +50,7 @@ public interface TicketManager extends Manager {
 
     String getStweb(String str);
 
+    @Deprecated
     String getSuperkey(String str);
 
     WTLoginRecordSnapshot getWTLoginRecordSnapshot(long j, int i);
@@ -53,17 +59,19 @@ public interface TicketManager extends Manager {
 
     void registTicketManagerListener(TicketManagerListener ticketManagerListener);
 
+    void registerTicketManagerListenerProcess(String str);
+
     void reloadCache(Context context);
 
     int sendRPCData(long j, String str, String str2, byte[] bArr, int i);
 
     void setAlterTicket(HashMap<String, String> hashMap);
 
+    void setPskeyManager(IPskeyManager iPskeyManager);
+
     void unregistTicketManagerListener(TicketManagerListener ticketManagerListener);
 
-    boolean useAsyncTicketInterface();
+    void unregisterTicketManagerListenerProcess(String str);
 
-    public interface IPskeyManager {
-        void reportGetPskey(String[] strArr);
-    }
+    boolean useAsyncTicketInterface();
 }

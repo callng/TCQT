@@ -1,12 +1,21 @@
 package com.owo233.tcqt.impl
 
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods
+import com.tencent.mobileqq.qroute.QRoute
+import com.tencent.qphone.base.util.BaseApplication
+import com.tencent.qqnt.kernel.api.ILoginService
+import com.tencent.qqnt.kernel.nativeinterface.AppInfo
+import com.tencent.qqnt.kernel.nativeinterface.LoginResult
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import mqq.manager.MainTicketCallback
 import mqq.manager.MainTicketInfo
 import mqq.manager.TicketManager
@@ -168,6 +177,35 @@ internal object TicketManager {
         return mainTicketInfo ?: throw Exception("获取A2和D2失败")
     }
 
+    suspend fun easyLogin(): LoginResult {
+        if (requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+            val appInfo = AppInfo().apply {
+                appId = 16L
+                appName = "com.tencent.mobileqq"
+                qua = BaseApplication.getContext().qua
+            }
+
+            return withTimeout(10000L) {
+                suspendCancellableCoroutine { cont ->
+                    val api = QRoute.api(ILoginService::class.java)
+                    api.easyLogin(QQInterfaces.currentUin.toLong(), appInfo) { code, msg, result ->
+                        if (code == 0 && result != null) {
+                            cont.resumeWith(Result.success(result))
+                        } else {
+                            cont.resumeWith(Result.failure(
+                                EasyLoginException(code, "easyLogin fail, code: $code, msg: $msg")
+                            ))
+                        }
+                    }
+
+                    cont.invokeOnCancellation {
+                        Log.w("easyLogin cancelled")
+                    }
+                }
+            }
+        } else throw UnsupportedOperationException("easyLogin not supported")
+    }
+
     fun getCookie(domain: String): String {
         var uin = uin
         val skey = getSkey()
@@ -192,3 +230,8 @@ internal object TicketManager {
         }.removeSuffix("; ")
     }
 }
+
+class EasyLoginException(
+    val code: Int,
+    override val message: String
+) : Exception(message)

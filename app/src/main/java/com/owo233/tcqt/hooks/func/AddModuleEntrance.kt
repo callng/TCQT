@@ -25,10 +25,11 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.impl.EasyLoginException
 import com.owo233.tcqt.impl.TicketManager
-import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -45,6 +46,8 @@ import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
+import com.tencent.qqnt.kernel.nativeinterface.LoginResult
+import kotlinx.coroutines.TimeoutCancellationException
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
@@ -330,61 +333,85 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
             context,
             0,
             "安全提醒",
-            "账号票据信息（A2/D2/SuperKey）等同于您的登录密码。一旦复制并泄露，攻击者可绕过身份验证直接接管您的账号。${TCQTBuild.APP_NAME} 仅提供调试支持，不对因用户主动分享数据或被第三方APP读取剪切板内容导致的资产损失、隐私泄露承担任何法律责任。",
+            "你即将进行的操作有导致账号被盗的风险！！！" +
+                    "票据一旦复制并泄露，攻击者可绕过身份验证直接接管你的账号！" +
+                    "${TCQTBuild.APP_NAME} 仅提供调试支持，不对因用户主动分享数据" +
+                    "或被第三方APP读取剪切板内容导致的资产损失、隐私泄露承担任何法律责任。",
             "我已深知泄露风险，并自愿承担后续后果",
             false,
             "取消",
             "复制",
             null,
             { dialog, _ ->
-                if ((dialog as QQCustomDialog).checkBoxState) {
-                    val uin = QQInterfaces.currentUin
-                    val uid = QQInterfaces.currentUid
-                    val ticket = TicketManager.getA2AndD2()
-                    val superKey = TicketManager.getSuperKey()
-                    val stWeb = TicketManager.getStweb()
-                    val (superToken, authToken) = CalculationUtils.getSuperToken(superKey)
-                        .let { st ->
-                            st to CalculationUtils.getAuthToken(st)
-                        }
-
-                    val info = """
-                        这是账号票据信息
-                        泄露会导致账号被盗!!!
-
-                        请及时清空剪切板中的内容
-                        以免被第三方APP读取!!!
-
-                        Uin: $uin
-
-                        Uid: $uid
-
-                        A2: ${ticket.a2}
-
-                        D2: ${ticket.d2.toHexString(true)}
-
-                        D2Key: ${ticket.d2Key.toHexString(true)}
-
-                        StWeb: $stWeb
-
-                        SuperKey: $superKey
-
-                        SuperToken: $superToken
-
-                        AuthToken: $authToken
-                    """.trimIndent()
-
-                    context.copyToClipboard(info, true)
-                } else {
+                val checked = (dialog as QQCustomDialog).checkBoxState
+                if (!checked) {
                     Toasts.error("勾选框在等待你临幸 (｡•ˇ‸ˇ•｡)")
+                    return@createDialogWithCheckBox
                 }
+                ModuleScope.launchIO { loginAndCopyTicket(context) }
             },
-            { dialog, _ ->
-                dialog.dismiss()
-            }
+            { dialog, _ -> dialog.dismiss() }
         ).apply {
             setCanceledOnTouchOutside(true)
         }.show()
+    }
+
+    private fun buildTicketInfo(loginResult: LoginResult): String {
+        val stWeb = TicketManager.getStweb()
+        val superKey = TicketManager.getSuperKey()
+        val superToken = CalculationUtils.getSuperToken(superKey)
+        val authToken = CalculationUtils.getAuthToken(superToken)
+
+        return """
+        这是账号票据信息
+        泄露会导致账号被盗!!!
+
+        请及时清空剪切板中的内容
+        以免被第三方APP读取!!!
+
+        Uin: ${loginResult.account.uin}
+
+        Uid: ${loginResult.account.uid}
+
+        A1: ${loginResult.ticket.a1.toHexString(true)} // 0106
+
+        A2: ${loginResult.ticket.a2.toHexString(true)} // 010A
+
+        D2: ${loginResult.ticket.d2.toHexString(true)} // 0143
+
+        D2Key: ${loginResult.ticket.d2Key.toHexString(true)} // 0305
+
+        StWeb: $stWeb // 0103
+
+        SuperKey: $superKey // 016D
+
+        SuperToken: $superToken
+
+        AuthToken: $authToken
+
+        生成时间: ${loginResult.ticket.generateTime},
+        过期时间: ${loginResult.ticket.expireTime},
+        下次刷新时间: ${loginResult.ticket.nextRefreshTime}
+    """.trimIndent()
+    }
+
+    private suspend fun loginAndCopyTicket(context: Context) {
+        val loginResult = try {
+            TicketManager.easyLogin()
+        } catch (_: TimeoutCancellationException) {
+            Toasts.error("easyLogin Timeout")
+            return
+        } catch (e: EasyLoginException) {
+            Toasts.error(e.message)
+            Log.e("easyLogin fail", e)
+            return
+        } catch (_: UnsupportedOperationException) {
+            Toasts.error("版本要求=> 9.2.70")
+            return
+        }
+
+        val info = buildTicketInfo(loginResult)
+        context.copyToClipboard(info, true)
     }
 
     private fun openTCQTSettings(ctx: Context? = null) {
@@ -516,34 +543,42 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 
-    private val entryConfigs = listOf(
-        SettingEntryConfig(
-            id = R.id.setting2Activity_settingEntryItem,
-            title = TCQTBuild.APP_NAME,
-            iconName = "qui_setting",
-            groupTag = "TCQT_SettingEntry",
-            groupTitle = null,
-            onClick = ::openTCQTSettings
-        ),
-        SettingEntryConfig(
-            id = R.id.open_info_card,
-            title = "打开资料卡片",
-            iconName = "qui_tuning",
-            extraEntry = true,
-            groupTag = "TCQT_OtherSettingEntry",
-            groupTitle = "TCQT工具",
-            onClick = ::showInfoCardDialog
-        ),
-        SettingEntryConfig(
-            id = R.id.account_get_ticket,
-            title = "复制账号票据",
-            iconName = "qui_check_account",
-            extraEntry = true,
-            groupTag = "TCQT_OtherSettingEntry",
-            groupTitle = "TCQT工具",
-            onClick = ::copyTicket
+    private val entryConfigs = buildList {
+        add(
+            SettingEntryConfig(
+                id = R.id.setting2Activity_settingEntryItem,
+                title = TCQTBuild.APP_NAME,
+                iconName = "qui_setting",
+                groupTag = "TCQT_SettingEntry",
+                groupTitle = null,
+                onClick = ::openTCQTSettings
+            )
         )
-    )
+        add(
+            SettingEntryConfig(
+                id = R.id.open_info_card,
+                title = "打开资料卡片",
+                iconName = "qui_tuning",
+                extraEntry = true,
+                groupTag = "TCQT_OtherSettingEntry",
+                groupTitle = "TCQT工具",
+                onClick = ::showInfoCardDialog
+            )
+        )
+        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+            add(
+                SettingEntryConfig(
+                    id = R.id.account_get_ticket,
+                    title = "复制账号票据",
+                    iconName = "qui_check_account",
+                    extraEntry = true,
+                    groupTag = "TCQT_OtherSettingEntry",
+                    groupTitle = "TCQT工具",
+                    onClick = ::copyTicket
+                )
+            )
+        }
+    }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
         "recent_adapter_onclick" to FindMethod().apply {
