@@ -7,13 +7,13 @@ androidx-core = "1.18.0"
 androidx-browser = "1.10.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
-compose-bom = "2026.03.01"
+compose-bom = "2026.04.01"
 activity-compose = "1.13.0"
 lifecycle = "2.10.0"
 
 # Kotlin
-kotlin = "2.3.20"
-ksp = "2.3.6"
+kotlin = "2.3.21"
+ksp = "2.3.7"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"

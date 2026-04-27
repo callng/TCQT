@@ -50,7 +50,6 @@ public interface TicketManager extends Manager {
 
     String getStweb(String str);
 
-    @Deprecated
     String getSuperkey(String str);
 
     WTLoginRecordSnapshot getWTLoginRecordSnapshot(long j, int i);
