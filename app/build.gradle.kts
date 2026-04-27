@@ -95,17 +95,20 @@ extensions.configure<ApplicationExtension> {
     }
 
     packaging {
+        jniLibs {
+            excludes += "lib/*/libandroidx.graphics.path.so"
+        }
+
         resources {
             excludes += "google/**"
             excludes += "kotlin/**"
-            excludes += "META-INF/**"
+            excludes += "META-INF/androidx/**"
+            excludes += "META-INF/org/**"
+            excludes += "META-INF/androidx*"
+            excludes += "META-INF/kotlinx*"
             excludes += "WEB-INF/**"
             excludes += "DebugProbesKt.bin"
             excludes += "kotlin-tooling-metadata.json"
-            pickFirsts += setOf(
-                "META-INF/xposed/**",
-                "META-INF/services/**"
-            )
         }
     }
 
