@@ -27,6 +27,7 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.EasyLoginException
 import com.owo233.tcqt.impl.TicketManager
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.QQVersion
@@ -46,8 +47,9 @@ import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
 import com.tencent.mobileqq.utils.DialogUtil
 import com.tencent.mobileqq.utils.QQCustomDialog
-import com.tencent.qqnt.kernel.nativeinterface.LoginResult
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
@@ -356,7 +358,7 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
         }.show()
     }
 
-    private fun buildTicketInfo(loginResult: LoginResult): String {
+    private fun buildTicketInfo(wtLoginResult: WTLoginRecordSnapshot): String {
         val stWeb = TicketManager.getStweb()
         val superKey = TicketManager.getSuperKey()
         val superToken = CalculationUtils.getSuperToken(superKey)
@@ -369,35 +371,42 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
         请及时清空剪切板中的内容
         以免被第三方APP读取!!!
 
-        Uin: ${loginResult.account.uin}
+        Uin: ${wtLoginResult.uin}
 
-        Uid: ${loginResult.account.uid}
+        Uid: ${QQInterfaces.currentUid}
 
-        A1: ${loginResult.ticket.a1.toHexString(true)} // 0106
+        a1: ${wtLoginResult.a1.toHexString(true)} // 0106 en_A1
 
-        A2: ${loginResult.ticket.a2.toHexString(true)} // 010A
+        a1Key: ${wtLoginResult.a1Key.toHexString(true)} // 010C TGTGTKey
 
-        D2: ${loginResult.ticket.d2.toHexString(true)} // 0143
+        noPicSig: ${wtLoginResult.noPicSig.toHexString(true)} // 016A
 
-        D2Key: ${loginResult.ticket.d2Key.toHexString(true)} // 0305
+        a2: ${wtLoginResult.a2.toHexString(true)} // 010A TGT
 
-        StWeb: $stWeb // 0103
+        a2Key: ${wtLoginResult.a2Key.toHexString(true)} // 010D TGTKey
 
-        SuperKey: $superKey // 016D
+        d2: ${wtLoginResult.d2.toHexString(true)} // 0143
 
-        SuperToken: $superToken
+        d2Key: ${wtLoginResult.d2Key.toHexString(true)} // 0305
 
-        AuthToken: $authToken
+        stWeb: $stWeb // 0103
 
-        生成时间: ${loginResult.ticket.generateTime},
-        过期时间: ${loginResult.ticket.expireTime},
-        下次刷新时间: ${loginResult.ticket.nextRefreshTime}
+        superKey: $superKey // 016D
+
+        superToken: $superToken
+
+        authToken: $authToken
+
+        a2生成时间: ${wtLoginResult.a2GenerateTime}
+        a2过期时间: ${wtLoginResult.expireTime}
     """.trimIndent()
     }
 
     private suspend fun loginAndCopyTicket(context: Context) {
-        val loginResult = try {
+        val loginResult: WTLoginRecordSnapshot = try {
             TicketManager.easyLogin()
+            delay(233L)
+            TicketManager.getWTLoginRecordSnapshot()
         } catch (_: TimeoutCancellationException) {
             Toasts.error("easyLogin Timeout")
             return

@@ -2,10 +2,13 @@ package com.owo233.tcqt.impl
 
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.requireMinQQVersion
+import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadAs
+import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.QQVersion
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.getMethods
@@ -19,6 +22,7 @@ import kotlinx.coroutines.withTimeout
 import mqq.manager.MainTicketCallback
 import mqq.manager.MainTicketInfo
 import mqq.manager.TicketManager
+import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -28,6 +32,20 @@ internal object TicketManager {
     private val ticketManagerMap = mutableMapOf<String, TicketManager>()
     private val uin: String get() = QQInterfaces.currentUin
     private var thirdSigService: Any? = null
+
+    init {
+        if (GeneratedSettingList.getBoolean(
+                GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
+            ) && requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+            loadOrThrow("oicq.wlogin_sdk.request.WtloginHelper")
+                .getDeclaredMethod(
+                    "IsNeedLoginWithPasswd",
+                    String::class.java,
+                    Long::class.javaPrimitiveType
+                )
+                .hookBefore { param -> param.result = true }
+        }
+    }
 
     private fun getTicketManager(): TicketManager {
         if (ticketManagerMap.containsKey(uin)) {
@@ -204,6 +222,10 @@ internal object TicketManager {
                 }
             }
         } else throw UnsupportedOperationException("easyLogin not supported")
+    }
+
+    fun getWTLoginRecordSnapshot(): WTLoginRecordSnapshot {
+        return getTicketManager().getWTLoginRecordSnapshot(uin.toLong(), 16)
     }
 
     fun getCookie(domain: String): String {
