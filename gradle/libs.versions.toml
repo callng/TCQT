@@ -13,7 +13,7 @@ lifecycle = "2.10.0"
 
 # Kotlin
 kotlin = "2.3.20"
-ksp = "2.3.6"
+ksp = "2.3.7"
 
 # KotlinX
 kotlinx-coroutines = "1.10.2"
