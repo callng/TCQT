@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
+import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -8,6 +9,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isPublic
@@ -26,7 +28,8 @@ class RemoveEmoReply : IAction {
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.api.impl.AIOEmoReplyMenuApiImpl")
             .hookMethodBefore({
-                name = "getSeparateEmoReplyMenuView"
+                name = if (requireMinQQVersion(QQVersion.QQ_9_1_70))
+                    "getSeparateEmoReplyMenuView" else "getEmoReplyMenuView"
             }) { param ->
                 param.result = null
             }
