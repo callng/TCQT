@@ -108,7 +108,6 @@ import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.ConfigBackupManager
-import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.log.Log
@@ -1688,7 +1687,7 @@ class SettingViewModel : ViewModel() {
     }
 
     fun clearAllSettings() {
-        MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).clearAll()
+        TCQTSetting.clearAll()
         DexKitCache.clearCache()
 
         pendingBooleans.clear()

@@ -371,9 +371,11 @@ class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
         请及时清空剪切板中的内容
         以免被第三方APP读取!!!
 
-        Uin: ${wtLoginResult.uin}
+        uin: ${wtLoginResult.uin}
 
-        Uid: ${QQInterfaces.currentUid}
+        uid: ${QQInterfaces.currentUid}
+
+        guid: ${QQInterfaces.guid}
 
         a1: ${wtLoginResult.a1.toHexString(true)} // 0106 en_A1
 

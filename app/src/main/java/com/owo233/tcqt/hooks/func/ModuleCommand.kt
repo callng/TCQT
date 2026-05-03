@@ -8,10 +8,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
-import com.owo233.tcqt.utils.MMKVUtils
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
 import mqq.app.MobileQQ
 
@@ -50,7 +49,7 @@ class ModuleCommand : AlwaysRunAction() {
 
                     "config_clear" -> {
                         try {
-                            MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME).also { it.clearAll() }
+                            TCQTSetting.clearAll()
                         } catch (t: Throwable) {
                             Log.e("ModuleCommand onReceive config_clear error", t)
                         }

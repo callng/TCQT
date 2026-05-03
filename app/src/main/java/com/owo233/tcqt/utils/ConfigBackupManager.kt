@@ -9,7 +9,6 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
-import com.tencent.mmkv.MMKV
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -33,19 +32,16 @@ object ConfigBackupManager {
     }
 
     fun getBackupDirectoryUri(): Uri? {
-        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
-        val uriString = config.getString(KEY_BACKUP_DIRECTORY_URI, null)
-        return uriString?.toUri()
+        val uriString = TCQTSetting.getRawString(KEY_BACKUP_DIRECTORY_URI)
+        return uriString.ifBlank { null }?.toUri()
     }
 
     fun saveBackupDirectoryUri(uri: Uri) {
-        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
-        config.putString(KEY_BACKUP_DIRECTORY_URI, uri.toString())
+        TCQTSetting.putRawString(KEY_BACKUP_DIRECTORY_URI, uri.toString())
     }
 
     fun clearBackupDirectoryUri() {
-        val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
-        config.remove(KEY_BACKUP_DIRECTORY_URI)
+        TCQTSetting.remove(KEY_BACKUP_DIRECTORY_URI)
     }
 
     fun isBackupDirectoryUriValid(context: Context, uri: Uri): Boolean {
@@ -100,14 +96,13 @@ object ConfigBackupManager {
 
             val fileName = generateBackupFileName()
 
-            val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
             val settings = mutableListOf<SettingItem>()
 
             val settingMap = GeneratedSettingList.SETTING_MAP
             for ((key, setting) in settingMap) {
-                if (!isDefaultValue(config, setting)) {
+                if (!isDefaultValue(setting)) {
                     val typeStr = setting.type.name
-                    val valueStr = getValueAsString(config, setting)
+                    val valueStr = getValueAsString(setting)
                     settings.add(SettingItem(key, typeStr, valueStr))
                 }
             }
@@ -137,9 +132,9 @@ object ConfigBackupManager {
         }
     }
 
-    private fun isDefaultValue(config: MMKV, setting: TCQTSetting.Setting<out Any>): Boolean {
+    private fun isDefaultValue(setting: TCQTSetting.Setting<out Any>): Boolean {
         return try {
-            val currentValue = setting.getValue(config)
+            val currentValue = setting.getValue()
             val defaultValue = getDefaultValue(setting)
             currentValue == defaultValue
         } catch (_: Exception) {
@@ -167,10 +162,9 @@ object ConfigBackupManager {
                 return RestoreResult.VersionMismatch
             }
 
-            val config = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
             val settingMap = GeneratedSettingList.SETTING_MAP
 
-            config.clearAll()
+            TCQTSetting.clearAll()
 
             var restoredCount = 0
 
@@ -189,7 +183,7 @@ object ConfigBackupManager {
                     continue
                 }
 
-                if (setValueFromString(config, setting, item.value)) {
+                if (setValueFromString(setting, item.value)) {
                     restoredCount++
                 }
             }
@@ -202,19 +196,17 @@ object ConfigBackupManager {
         }
     }
 
-    private fun getValueAsString(config: MMKV, setting: TCQTSetting.Setting<out Any>): String {
+    private fun getValueAsString(setting: TCQTSetting.Setting<out Any>): String {
         return when (setting.type) {
-            TCQTSetting.SettingType.BOOLEAN -> setting.getValue(config).toString()
-            TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> setting.getValue(
-                config
-            ).toString()
+            TCQTSetting.SettingType.BOOLEAN -> setting.getValue().toString()
+            TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> setting.getValue()
+                .toString()
 
-            TCQTSetting.SettingType.STRING -> setting.getValue(config).toString()
+            TCQTSetting.SettingType.STRING -> setting.getValue().toString()
         }
     }
 
     private fun setValueFromString(
-        config: MMKV,
         setting: TCQTSetting.Setting<out Any>,
         value: String
     ): Boolean {
@@ -223,18 +215,18 @@ object ConfigBackupManager {
                 TCQTSetting.SettingType.BOOLEAN -> {
                     val boolValue = value.toBooleanStrict()
                     @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<Boolean>).setValue(config, boolValue)
+                    (setting as TCQTSetting.Setting<Boolean>).setValue(boolValue)
                 }
 
                 TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> {
                     val intValue = value.toInt()
                     @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<Int>).setValue(config, intValue)
+                    (setting as TCQTSetting.Setting<Int>).setValue(intValue)
                 }
 
                 TCQTSetting.SettingType.STRING -> {
                     @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<String>).setValue(config, value)
+                    (setting as TCQTSetting.Setting<String>).setValue(value)
                 }
             }
             true

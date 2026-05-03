@@ -86,14 +86,16 @@ object PlatformTools {
         return Settings.Secure.getString(HookEnv.hostAppContext.contentResolver, "android_id")
     }
 
-    fun killMsfProcess(context: Context = HookEnv.hostAppContext) {
+    fun killMsfProcess(context: Context = HookEnv.hostAppContext): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val runningProcesses = activityManager.runningAppProcesses
         runningProcesses.forEach {
             if (it.processName.contains("msf", ignoreCase = true)) {
                 Process.killProcess(it.pid)
+                return true
             }
         }
+        return false
     }
 
     @OptIn(DelicateCoroutinesApi::class)

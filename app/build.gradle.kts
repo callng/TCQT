@@ -185,6 +185,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.documentfile)
     implementation(libs.dexkit)
+    implementation(libs.fastkv)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

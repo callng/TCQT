@@ -31,6 +31,9 @@ xposed = "82"
 # dexkit
 dexkit = "2.2.0"
 
+# FastKV
+fastkv = "3.0.1"
+
 [libraries]
 # AndroidX
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidx-documentfile" }
@@ -70,6 +73,9 @@ xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xp
 
 # dexkit
 dexkit = { group = "org.luckypray", name = "dexkit", version.ref = "dexkit"}
+
+# FastKV
+fastkv = { group = "io.github.billywei01", name = "fastkv", version.ref = "fastkv"}
 
 [plugins]
 # Android

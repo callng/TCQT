@@ -1,18 +1,45 @@
 package com.owo233.tcqt.internals.setting
 
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.MMKVUtils
 import com.owo233.tcqt.utils.log.Log
-import com.tencent.mmkv.MMKV
+import io.fastkv.FastKV
 import kotlin.reflect.KProperty
 
 internal object TCQTSetting {
 
-    private val config: MMKV get() = MMKVUtils.mmkvWithId(TCQTBuild.APP_NAME)
+    private val config: FastKV by lazy {
+        val path = "${HookEnv.moduleDataPath}/global/setting"
+        FastKV.Builder(path, TCQTBuild.APP_NAME).build()
+    }
 
     val settingMap: HashMap<String, Setting<out Any>> by lazy {
         GeneratedSettingList.SETTING_MAP
+    }
+
+    fun clearAll() {
+        config.clear()
+    }
+
+    fun containsKey(key: String): Boolean {
+        return config.contains(key)
+    }
+
+    fun getAllKeys(): MutableSet<String> {
+        return config.all.keys
+    }
+
+    fun getRawString(key: String, def: String = ""): String {
+        return config.getString(key, def) ?: ""
+    }
+
+    fun putRawString(key: String, value: String) {
+        config.putString(key, value)
+    }
+
+    fun remove(key: String) {
+        config.remove(key)
     }
 
     inline fun <reified T : Any> getValue(key: String): T? {
@@ -20,7 +47,6 @@ internal object TCQTSetting {
             val setting = settingMap[key]
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
-                // INT 和 INT_MULTI 互相兼容
                 val isCompatible = setting.type == requestedType ||
                         (setting.type == SettingType.INT_MULTI && requestedType == SettingType.INT) ||
                         (setting.type == SettingType.INT && requestedType == SettingType.INT_MULTI)
@@ -29,10 +55,9 @@ internal object TCQTSetting {
                     return null
                 }
                 @Suppress("UNCHECKED_CAST")
-                return (setting as Setting<T>).getValue(config)
+                return (setting as Setting<T>).getValue()
             }
 
-            // 如果不在 settingMap 中,检查 MMKV 中是否存在类型元数据
             val storedType = getStoredType(key)
             if (storedType != null) {
                 val requestedType = inferSettingType<T>()
@@ -40,11 +65,9 @@ internal object TCQTSetting {
                     Log.e("Type mismatch for key: $key, stored: $storedType, requested: $requestedType")
                     return null
                 }
-                // 根据存储的类型读取
-                return readFromMMKVByType<T>(key, storedType)
+                return readFromStorageByType<T>(key, storedType)
             }
 
-            // 如果都没有,说明该 key 不存在
             null
         }.onFailure {
             Log.e("Failed to get value for key: $key", it)
@@ -56,7 +79,6 @@ internal object TCQTSetting {
             val setting = settingMap[key]
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
-                // INT 和 INT_MULTI 互相兼容
                 val isCompatible = setting.type == requestedType ||
                         (setting.type == SettingType.INT_MULTI && requestedType == SettingType.INT) ||
                         (setting.type == SettingType.INT && requestedType == SettingType.INT_MULTI)
@@ -65,14 +87,13 @@ internal object TCQTSetting {
                     return
                 }
                 @Suppress("UNCHECKED_CAST")
-                (setting as Setting<T>).setValue(config, value)
+                (setting as Setting<T>).setValue(value)
                 return
             }
 
-            // 如果不在 settingMap 中,保存类型元数据和值
             val type = inferSettingType<T>()
             saveStoredType(key, type)
-            writeToMMKV(key, value)
+            writeToStorage(key, value)
         }.onFailure {
             Log.e("Failed to set value for key: $key", it)
         }
@@ -96,7 +117,7 @@ internal object TCQTSetting {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private inline fun <reified T : Any> readFromMMKVByType(key: String, type: SettingType): T? {
+    private inline fun <reified T : Any> readFromStorageByType(key: String, type: SettingType): T? {
         return when (type) {
             SettingType.BOOLEAN -> config.getBoolean(key, false) as T
             SettingType.INT, SettingType.INT_MULTI -> config.getInt(key, 0) as T
@@ -104,7 +125,7 @@ internal object TCQTSetting {
         }
     }
 
-    private inline fun <reified T : Any> writeToMMKV(key: String, value: T) {
+    private inline fun <reified T : Any> writeToStorage(key: String, value: T) {
         when (T::class) {
             Boolean::class -> config.putBoolean(key, value as Boolean)
             Int::class -> config.putInt(key, value as Int)
@@ -131,40 +152,40 @@ internal object TCQTSetting {
         val default: T? = null
     ) {
         @Suppress("UNCHECKED_CAST")
-        fun getValue(mmkv: MMKV): T {
+        fun getValue(): T {
             return when (type) {
-                SettingType.BOOLEAN -> mmkv.getBoolean(key, default as? Boolean ?: false)
-                SettingType.INT, SettingType.INT_MULTI -> mmkv.getInt(key, default as? Int ?: 0)
-                SettingType.STRING -> mmkv.getString(key, default as? String ?: "") ?: ""
+                SettingType.BOOLEAN -> config.getBoolean(key, default as? Boolean ?: false)
+                SettingType.INT, SettingType.INT_MULTI -> config.getInt(key, default as? Int ?: 0)
+                SettingType.STRING -> config.getString(key, default as? String ?: "") ?: ""
             } as T
         }
 
         @Suppress("UNCHECKED_CAST")
-        fun setValue(mmkv: MMKV, value: T) {
+        fun setValue(value: T) {
             when (type) {
-                SettingType.BOOLEAN -> mmkv.putBoolean(
+                SettingType.BOOLEAN -> config.putBoolean(
                     key,
                     value as? Boolean ?: runCatching { value.toString().toBooleanStrict() }
                         .getOrDefault(false)
                 )
 
-                SettingType.INT, SettingType.INT_MULTI -> mmkv.putInt(
+                SettingType.INT, SettingType.INT_MULTI -> config.putInt(
                     key,
                     value as? Int ?: runCatching { value.toString().toInt() }
                         .getOrDefault(0)
                 )
 
-                SettingType.STRING -> mmkv.putString(key, value.toString())
+                SettingType.STRING -> config.putString(key, value.toString())
             }
         }
 
         @Suppress("UNCHECKED_CAST")
         operator fun getValue(thisRef: Any?, property: KProperty<*>?): T {
-            return getValue(config)
+            return getValue()
         }
 
         operator fun setValue(thisRef: Any, property: KProperty<*>?, value: T) {
-            setValue(config, value)
+            setValue(value)
         }
     }
 }
