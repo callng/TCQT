@@ -1,7 +1,6 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
-import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.owo233.tcqt.annotations.RegisterAction
@@ -13,7 +12,7 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.utils.ViewUtils
@@ -30,19 +29,19 @@ class RemoveMenuIcon : IAction {
 
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.menu.ui.QQCustomMenuExpandableLayout")
-            .declaredMethods.first { method ->
-                method.returnType == View::class.java && method.paramCount == 4
-                        && method.parameterTypes[0] == Int::class.javaPrimitiveType
-                        && method.parameterTypes[2] == Boolean::class.javaPrimitiveType
-                        && method.parameterTypes[3] == FloatArray::class.java
+            .findMethod {
+                returnType = view
+                paramCount = 4
+                paramTypes = arrayOf(int, null, boolean, floatArr)
             }
             .apply {
                 hookBefore { param ->
-                    val newVer = param.thisObject.getFields(false).any { it.name == "m" }
+                    val newVer = param.thisObject.getFields(false)
+                        .any { it.name == "o" && it.type == Int::class.javaPrimitiveType }.not()
                     val defaultHeight = if (newVer) 76f else 71f
                     val scale = 1.5f
                     val height = ViewUtils.dip2px(defaultHeight / scale)
-                    param.thisObject.setObject(if (newVer) "m" else "n", height)
+                    param.thisObject.setObject(if (newVer) "m" else "o", height)
                 }
                 hookAfter { param ->
                     val root = param.result as LinearLayout

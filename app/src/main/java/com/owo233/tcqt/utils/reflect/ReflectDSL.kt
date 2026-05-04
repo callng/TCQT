@@ -65,7 +65,7 @@ class MethodSearcher(private val clazz: Class<*>) {
 
     internal fun match(method: Method): Boolean {
         if (name != null && method.name != name) return false
-        if (returnType != null && method.returnType != returnType) return false
+        if (returnType != null && !returnType!!.isCompatibleWith(method.returnType)) return false
         if (paramCount != null && method.parameterCount != paramCount) return false
 
         if (paramTypes != null) {
@@ -119,15 +119,20 @@ fun Class<*>.findMethodOrNull(block: MethodSearcher.() -> Unit): Method? {
                 val paramType = methodParams[i]
 
                 if (searchType == paramType) continue
+                if (searchType.isCompatibleWith(paramType)
+                    && paramType.isCompatibleWith(searchType)) continue
 
-                var depth = 0
-                var current: Class<*>? = searchType
-                while (current != null && current != paramType) {
-                    depth++
-                    current = current.superclass
+                if (paramType.isAssignableFrom(searchType)) {
+                    var depth = 0
+                    var current: Class<*>? = searchType
+                    while (current != null && current != paramType) {
+                        depth++
+                        current = current.superclass
+                    }
+                    score += if (current == paramType) depth else 1000
+                } else {
+                    score += 1000
                 }
-
-                score += if (current == paramType) depth else 1000
             }
             score
         }?.apply { isAccessible = true }

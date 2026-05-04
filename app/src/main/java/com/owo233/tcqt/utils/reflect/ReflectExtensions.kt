@@ -106,11 +106,7 @@ fun Class<*>.newInstanceWithArgs(vararg args: Any?): Any {
     }
         ?: throw NoSuchMethodException("No constructor found for ${this.name} with args: ${args.map { it?.javaClass?.simpleName ?: "null" }}")
 
-    return try {
-        constructor.newInstance(*args)
-    } catch (e: Exception) {
-        throw e
-    }
+    return constructor.newInstance(*args)
 }
 
 private val primitiveWrapperMap = mapOf(
@@ -125,11 +121,21 @@ private val primitiveWrapperMap = mapOf(
 )
 
 fun Class<*>.isCompatibleWith(actualType: Class<*>?): Boolean {
-    if (actualType == null) {
-        return !this.isPrimitive
-    }
+    // null 表示任意类型
+    if (actualType == null) return true
 
+    // 直接赋值兼容（含自身相等）
     if (this.isAssignableFrom(actualType)) return true
 
-    return if (this.isPrimitive) primitiveWrapperMap[this] == actualType else false
+    // 原始类型 → 包装类型（如 int ↔ Integer）
+    if (this.isPrimitive) {
+        return primitiveWrapperMap[this] == actualType
+    }
+
+    // 包装类型 → 原始类型（如 Integer ↔ int）
+    if (actualType.isPrimitive) {
+        return primitiveWrapperMap[actualType] == this
+    }
+
+    return false
 }
