@@ -26,7 +26,7 @@ extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
     compileSdk {
         version = release(androidCompileSdkVersion) {
-            minorApiLevel = 1
+            minorApiLevel = 0
         }
     }
 

@@ -77,9 +77,8 @@ val gitInfoProvider: Provider<GitInfo> =
 val gitInfo: GitInfo = gitInfoProvider.get()
 
 val androidMinSdkVersion         by extra(27)
-val androidTargetSdkVersion      by extra(36)
-val androidCompileSdkVersion     by extra(36)
-val androidBuildToolsVersion     by extra("36.1.0")
+val androidTargetSdkVersion      by extra(37)
+val androidCompileSdkVersion     by extra(37)
 val androidSourceCompatibility   by extra(JavaVersion.VERSION_21)
 val androidTargetCompatibility   by extra(JavaVersion.VERSION_21)
 val kotlinJvmTarget              by extra(JvmTarget.JVM_21)
