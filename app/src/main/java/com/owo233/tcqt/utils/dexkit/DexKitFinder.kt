@@ -53,12 +53,22 @@ internal object DexKitFinder {
                             val tip = "${task.TAG}->$name"
 
                             when (query) {
-                                is FindClass -> bridge.findClass(query).singleOrNull()?.let {
-                                    DexKitCache.cacheMap[tip] = it.descriptor
+                                is FindClass -> {
+                                    val result = bridge.findClass(query).singleOrNull()
+                                    if (result != null) {
+                                        DexKitCache.cacheMap[tip] = result.descriptor
+                                    } else {
+                                        Log.e("$tip: No class found matching query")
+                                    }
                                 }
 
-                                is FindMethod -> bridge.findMethod(query).singleOrNull()?.let {
-                                    DexKitCache.cacheMap[tip] = it.descriptor
+                                is FindMethod -> {
+                                    val result = bridge.findMethod(query).singleOrNull()
+                                    if (result != null) {
+                                        DexKitCache.cacheMap[tip] = result.descriptor
+                                    } else {
+                                        Log.e("$tip: No method found matching query")
+                                    }
                                 }
                             }
                         }
@@ -66,7 +76,7 @@ internal object DexKitFinder {
                 }
             }
             DexKitCache.saveCache()
-            Toasts.success("查找完成，请重启宿主")
+            Toasts.success("查找完成，请重启${HookEnv.appName}")
             delay(2500L)
             ModuleCommand.sendCommand(HookEnv.application, "exitApp")
         }
