@@ -17,7 +17,7 @@ import mqq.app.AppRuntime
 @RegisterAction
 @RegisterSetting(
     key = "block_at_everyone",
-    name = "屏蔽艾特全体通知",
+    name = "屏蔽艾特全体成员通知",
     type = SettingType.BOOLEAN,
     desc = "屏蔽艾特全体消息的通知。",
 )
