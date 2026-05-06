@@ -30,6 +30,7 @@ import com.tencent.mobileqq.vas.api.IVasSingedApi
     name = "一键20赞",
     type = SettingType.BOOLEAN,
     desc = "开启后点赞时将自动点赞20个（非SVIP为10个）。",
+    uiTab = "基础"
 )
 class OneClickLikes : IAction {
 

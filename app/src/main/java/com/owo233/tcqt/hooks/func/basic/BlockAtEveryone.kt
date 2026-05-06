@@ -20,6 +20,7 @@ import mqq.app.AppRuntime
     name = "屏蔽艾特全体成员通知",
     type = SettingType.BOOLEAN,
     desc = "屏蔽艾特全体消息的通知。",
+    uiTab = "基础"
 )
 class BlockAtEveryone : IAction {
 

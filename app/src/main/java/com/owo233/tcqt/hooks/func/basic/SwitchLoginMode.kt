@@ -19,7 +19,8 @@ import com.tencent.common.config.pad.DeviceType
     name = "切换登录模式",
     type = SettingType.BOOLEAN,
     desc = "在不改变UI的情况下以手机或平板模式登录账号，一个账号可以两处登录互不干扰。",
-    uiOrder = 2
+    uiOrder = 2,
+    uiTab = "基础"
 )
 @RegisterSetting(
     key = "switch_login_mode.type",

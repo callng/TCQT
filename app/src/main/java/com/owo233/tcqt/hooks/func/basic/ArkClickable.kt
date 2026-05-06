@@ -17,6 +17,7 @@ import com.owo233.tcqt.utils.hook.hookMethodBefore
     name = "允许打开Ark消息",
     type = SettingType.BOOLEAN,
     desc = "仅TIM可用，绕过部分Ark卡片消息禁止访问（请到最新版本QQ使用）的限制。",
+    uiTab = "基础"
 )
 class ArkClickable : IAction {
 

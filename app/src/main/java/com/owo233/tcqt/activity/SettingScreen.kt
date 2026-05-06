@@ -2,7 +2,11 @@
 
 package com.owo233.tcqt.activity
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -13,6 +17,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -34,22 +41,24 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.rounded.ToggleOn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -58,11 +67,14 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +92,15 @@ import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.utils.PlatformTools
 
+// ───── Page transition spec ─────
+
+private val pageEnterTransition: EnterTransition =
+    slideInHorizontally(initialOffsetX = { it / 8 }) + fadeIn(tween(220))
+private val pageExitTransition: ExitTransition =
+    slideOutHorizontally(targetOffsetX = { -it / 8 }) + fadeOut(tween(180))
+
+// ───── Main Screen ─────
+
 @Composable
 fun SettingScreen(
     viewModel: SettingViewModel,
@@ -91,56 +112,22 @@ fun SettingScreen(
     onSaveClick: () -> Unit,
     onBackupRestoreClick: () -> Unit
 ) {
-    val visibleFeatures by viewModel.visibleFeaturesState
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
-    val lazyListState = rememberLazyListState()
+    val isSearchActive = viewModel.isSearchActive
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onBackupRestoreClick
-                            )
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Backup,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "备份/还原",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
+            TopBar(
+                viewModel = viewModel,
+                isSearchActive = isSearchActive,
+                searchQuery = viewModel.searchQuery,
+                onSearchRequested = onSearchRequested,
+                onSearchClosed = onSearchClosed,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                onClearQuery = viewModel::clearSearchQuery,
+                onBackupRestoreClick = onBackupRestoreClick
+            )
         },
         snackbarHost = {
             SnackbarHost(
@@ -151,18 +138,10 @@ fun SettingScreen(
         floatingActionButton = {
             AnimatedVisibility(
                 visible = hasPending,
-                enter = fadeIn(
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-                ) + scaleIn(
-                    initialScale = 0.85f,
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-                ),
-                exit = fadeOut(
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-                ) + scaleOut(
-                    targetScale = 0.85f,
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-                )
+                enter = fadeIn(tween(220, easing = FastOutSlowInEasing))
+                        + scaleIn(initialScale = 0.85f, animationSpec = tween(220, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(180, easing = FastOutSlowInEasing))
+                        + scaleOut(targetScale = 0.85f, animationSpec = tween(180, easing = FastOutSlowInEasing))
             ) {
                 SavePill(
                     hasPendingChanges = hasPending,
@@ -172,19 +151,57 @@ fun SettingScreen(
             }
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            state = lazyListState,
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = 12.dp,
-                end = 16.dp,
-                bottom = if (hasPending) 112.dp else 24.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        val currentPath by rememberUpdatedState(viewModel.currentPath)
+
+        AnimatedContent(
+            targetState = currentPath,
+            transitionSpec = {
+                pageEnterTransition togetherWith pageExitTransition
+            },
+            label = "page_transition"
+        ) { _ ->
+            PageContent(
+                viewModel = viewModel,
+                innerPadding = innerPadding,
+                hasPending = hasPending,
+                onIssueClick = onIssueClick,
+                onIssueLongClick = onIssueLongClick
+            )
+        }
+    }
+}
+
+// ───── Page Content ─────
+
+@Composable
+private fun PageContent(
+    viewModel: SettingViewModel,
+    innerPadding: PaddingValues,
+    hasPending: Boolean,
+    onIssueClick: () -> Unit,
+    onIssueLongClick: () -> Unit
+) {
+    val categories by viewModel.currentCategories
+    val features by viewModel.currentFeatures
+    val isSearchActive = viewModel.isSearchActive
+
+    val lazyListState = rememberLazyListState()
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
+        state = lazyListState,
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            top = 12.dp,
+            end = 16.dp,
+            bottom = if (hasPending) 112.dp else 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Header (root only)
+        if (!isSearchActive && viewModel.isAtRoot) {
             item(key = "header") {
                 CompactHeaderCard(
                     hostName = PlatformTools.getHostName(),
@@ -195,67 +212,319 @@ fun SettingScreen(
                     disabledCount = viewModel.disabledCount
                 )
             }
+        }
 
-            stickyHeader(key = "control") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(bottom = 8.dp)
-                ) {
-                    ControlCard(
-                        tabs = viewModel.tabs,
-                        currentTab = viewModel.currentTab,
-                        isSearchActive = viewModel.isSearchActive,
-                        searchQuery = viewModel.searchQuery,
-                        resultCount = visibleFeatures.size,
-                        onTabClick = viewModel::selectTab,
-                        onSearchClick = onSearchRequested,
-                        onSearchBackClick = onSearchClosed,
-                        onQueryChange = viewModel::updateSearchQuery,
-                        onClearQuery = viewModel::clearSearchQuery
-                    )
-                }
+        // Search: prompt before typing
+        if (isSearchActive && viewModel.searchQuery.isBlank()) {
+            item(key = "search_prompt") {
+                SearchPromptCard()
             }
+        }
 
-            if (visibleFeatures.isEmpty()) {
-                item(key = "empty") {
-                    EmptyStateCard()
-                }
-            } else {
-                items(
-                    items = visibleFeatures,
-                    key = { it.key },
-                    contentType = { "feature_card" }
-                ) { item ->
-                    FeatureCard(
-                        item = item,
-                        searchQuery = viewModel.searchQuery,
-                        onToggleExpanded = { viewModel.toggleExpanded(item.key) },
-                        onFeatureEnabledChange = { checked ->
-                            viewModel.setFeatureEnabled(item.key, checked)
-                        },
-                        onOptionValueChange = { value ->
-                            item.optionGroup?.let { group ->
-                                viewModel.setOptionValue(group.key, value)
-                            }
-                        },
-                        onTextValueChange = { key, value ->
-                            viewModel.setTextValue(key, value)
-                        }
-                    )
-                }
-            }
-
-            item(key = "footer") {
-                FooterCard(
-                    onIssueClick = onIssueClick,
-                    onIssueLongClick = onIssueLongClick
+        // Search: result count (only when there are results)
+        if (isSearchActive && viewModel.searchQuery.isNotBlank() && features.isNotEmpty()) {
+            item(key = "search_result_count") {
+                Text(
+                    text = "共找到 ${features.size} 项",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
+            }
+        }
+
+        // Search: zero results
+        if (isSearchActive && viewModel.searchQuery.isNotBlank() && features.isEmpty()) {
+            item(key = "search_empty") {
+                EmptyStateCard()
+            }
+        }
+
+        // Sub-category title (non-root, non-search)
+        if (!isSearchActive && !viewModel.isAtRoot && categories.isNotEmpty()) {
+            item(key = "subcat_title") {
+                Text(
+                    text = "子分类",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Category cards
+        if (!isSearchActive) {
+            items(
+                items = categories,
+                key = { "cat_${it.fullPath}" },
+                contentType = { "category_card" }
+            ) { category ->
+                CategoryCard(
+                    category = category,
+                    onClick = { viewModel.navigateTo(category.fullPath) }
+                )
+            }
+
+            // Separator between categories and features
+            if (categories.isNotEmpty() && features.isNotEmpty()) {
+                item(key = "separator") {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+            }
+        }
+
+        // Feature cards
+        if (features.isEmpty() && categories.isEmpty() && !isSearchActive) {
+            item(key = "empty") {
+                EmptyStateCard()
+            }
+        } else if (features.isNotEmpty()) {
+            items(
+                items = features,
+                key = { it.key },
+                contentType = { "feature_card" }
+            ) { item ->
+                FeatureCard(
+                    item = item,
+                    searchQuery = viewModel.searchQuery,
+                    onToggleExpanded = { viewModel.toggleExpanded(item.key) },
+                    onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
+                    onOptionValueChange = { item.optionGroup?.let { g -> viewModel.setOptionValue(g.key, it) } },
+                    onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
+                    forceExpanded = isSearchActive
+                )
+            }
+        }
+
+        if (!isSearchActive) {
+            item(key = "footer") {
+                FooterCard(onIssueClick = onIssueClick, onIssueLongClick = onIssueLongClick)
             }
         }
     }
 }
+
+// ───── Top Bar ─────
+
+@Composable
+private fun TopBar(
+    viewModel: SettingViewModel,
+    isSearchActive: Boolean,
+    searchQuery: String,
+    onSearchRequested: () -> Unit,
+    onSearchClosed: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    onBackupRestoreClick: () -> Unit
+) {
+    val breadcrumbs by viewModel.breadcrumbs
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        if (isSearchActive) {
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onBackClick = onSearchClosed,
+                onClearClick = onClearQuery
+            )
+        } else if (!viewModel.isAtRoot) {
+            // ─── Sub-page: back + breadcrumbs + search ───
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { viewModel.navigateUp() }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "返回",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Inline breadcrumbs
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    breadcrumbs.forEachIndexed { index, crumb ->
+                        if (index > 0) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                        }
+                        Text(
+                            text = crumb.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (index == breadcrumbs.lastIndex) FontWeight.Bold else FontWeight.Normal,
+                            color = if (index == breadcrumbs.lastIndex) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { viewModel.navigateToBreadcrumb(crumb.fullPath) }
+                                )
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                        if (index < breadcrumbs.lastIndex) {
+                            Spacer(modifier = Modifier.width(2.dp))
+                        }
+                    }
+                }
+
+                IconButton(onClick = onSearchRequested) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            // ─── Root page: right-aligned search + backup ───
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onSearchRequested) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                TextButton(onClick = onBackupRestoreClick) {
+                    Icon(
+                        imageVector = Icons.Rounded.Backup,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "备份",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ───── Category Card ─────
+
+@Composable
+private fun CategoryCard(category: CategoryUiState, onClick: () -> Unit) {
+    val accent = if (category.enabledCount > 0) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.onSurfaceVariant
+
+    val borderColor = if (category.enabledCount > 0)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = if (category.enabledCount > 0) 1.dp else 0.dp,
+        border = BorderStroke(1.dp, borderColor),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = if (category.enabledCount > 0)
+                    MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(46.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (category.isLeaf) Icons.Rounded.ToggleOn
+                        else Icons.Rounded.Folder,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = category.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(
+                        text = "已启用 ${category.enabledCount}",
+                        containerColor = if (category.enabledCount > 0)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (category.enabledCount > 0)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    StatusPill(
+                        text = "共 ${category.totalFeatureCount} 项",
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+// ───── Compact Header ─────
 
 @Composable
 private fun CompactHeaderCard(
@@ -276,32 +545,16 @@ private fun CompactHeaderCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
+            Text(
+                text = "${TCQTBuild.APP_NAME} 模块配置",
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Spacer(modifier = Modifier.width(48.dp))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = "${TCQTBuild.APP_NAME} 模块配置",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.width(48.dp))
-            }
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 CombinedInfoCard(
                     hostName = hostName,
                     hostVersion = hostVersion,
@@ -350,30 +603,19 @@ private fun CombinedInfoCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            InfoRow(
-                title = "宿主环境",
-                value = "$hostName\n$hostVersion"
-            )
+            InfoRow(title = "宿主环境", value = "$hostName\n$hostVersion")
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
                 modifier = Modifier.padding(vertical = 2.dp)
             )
-            InfoRow(
-                title = "模块版本",
-                value = "$moduleName\n$moduleVersion"
-            )
+            InfoRow(title = "模块版本", value = "$moduleName\n$moduleVersion")
         }
     }
 }
 
 @Composable
-private fun InfoRow(
-    title: String,
-    value: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+private fun InfoRow(title: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
@@ -390,12 +632,7 @@ private fun InfoRow(
 }
 
 @Composable
-private fun SmallStatCard(
-    title: String,
-    value: String,
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
+private fun SmallStatCard(title: String, value: String, accent: Color, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -406,146 +643,87 @@ private fun SmallStatCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = accent
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = accent)
+            Text(text = title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
+// ───── Search Prompt (animated) ─────
+
 @Composable
-private fun ControlCard(
-    tabs: List<String>,
-    currentTab: String,
-    isSearchActive: Boolean,
-    searchQuery: String,
-    resultCount: Int,
-    onTabClick: (String) -> Unit,
-    onSearchClick: () -> Unit,
-    onSearchBackClick: () -> Unit,
-    onQueryChange: (String) -> Unit,
-    onClearQuery: () -> Unit
-) {
-    val listState = rememberLazyListState()
+private fun SearchPromptCard() {
+    val infinite = rememberInfiniteTransition(label = "search_prompt")
+    val iconScale by infinite.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "icon_scale"
+    )
+    val ringScale by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring_scale"
+    )
+    val ringAlpha by infinite.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring_alpha"
+    )
 
-    LaunchedEffect(currentTab) {
-        val index = tabs.indexOf(currentTab)
-        if (index >= 0) {
-            listState.animateScrollToItem(index)
-        }
-    }
-
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 80.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        // Expanding ring
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = ringAlpha),
+            modifier = Modifier
+                .size(80.dp)
+                .graphicsLayer {
+                    scaleX = ringScale
+                    scaleY = ringScale
+                }
+        ) {}
+
+        // Core icon
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+            modifier = Modifier
+                .size(72.dp)
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                }
         ) {
-            if (isSearchActive) {
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = onQueryChange,
-                    onBackClick = onSearchBackClick,
-                    onClearClick = onClearQuery
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(34.dp)
                 )
-                Text(
-                    text = "共找到 $resultCount 项",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "功能配置",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    CircleActionButton(
-                        onClick = onSearchClick,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = "搜索",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    )
-                }
-
-                if (tabs.isNotEmpty()) {
-                    LazyRow(
-                        state = listState,
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            8.dp,
-                            Alignment.CenterHorizontally
-                        ),
-                        contentPadding = PaddingValues(horizontal = 3.dp)
-                    ) {
-                        items(tabs, key = { it }) { tab ->
-                            FilterChip(
-                                selected = currentTab == tab,
-                                onClick = { onTabClick(tab) },
-                                label = {
-                                    Text(
-                                        text = tab,
-                                        fontWeight = if (currentTab == tab) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                        }
-                    }
-                }
             }
         }
     }
 }
 
-@Composable
-private fun CircleActionButton(
-    onClick: () -> Unit,
-    icon: @Composable () -> Unit
-) {
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            icon()
-        }
-    }
-}
+// ───── Search Bar ─────
 
 @Composable
 private fun SearchBar(
@@ -554,27 +732,28 @@ private fun SearchBar(
     onBackClick: () -> Unit,
     onClearClick: () -> Unit
 ) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CircleActionButton(
-            onClick = onBackClick,
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "返回",
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-        )
+        IconButton(onClick = onBackClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "返回",
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).focusRequester(focusRequester),
             placeholder = { Text("搜索功能名称或描述") },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -600,54 +779,52 @@ private fun SearchBar(
 
 @Composable
 private fun EmptyStateCard() {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier.fillMaxWidth()
+    val infinite = rememberInfiniteTransition(label = "empty_state")
+    val bounce by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bounce"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 64.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 52.dp, horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .size(76.dp)
+                .graphicsLayer { translationY = bounce }
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(68.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Box(contentAlignment = Alignment.Center) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-
-            Text(
-                text = "没有找到相关功能",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "试试更换关键词，或者切换到其他分类。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
 
 @Composable
-private fun FooterCard(
-    onIssueClick: () -> Unit,
-    onIssueLongClick: () -> Unit
-) {
+private fun FooterCard(onIssueClick: () -> Unit, onIssueLongClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -659,17 +836,13 @@ private fun FooterCard(
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
-            ),
-            modifier = Modifier
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onIssueClick,
-                    onLongClick = onIssueLongClick
-                )
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+            modifier = Modifier.combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onIssueClick,
+                onLongClick = onIssueLongClick
+            )
         ) {
             Text(
                 text = "反馈问题与建议",
@@ -679,7 +852,6 @@ private fun FooterCard(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-
         Text(
             text = "${TCQTBuild.APP_NAME} Module © ${TCQTBuild.COPYRIGHT_YEAR}",
             style = MaterialTheme.typography.labelSmall,
@@ -688,12 +860,10 @@ private fun FooterCard(
     }
 }
 
+// ───── Save Pill ─────
+
 @Composable
-private fun SavePill(
-    hasPendingChanges: Boolean,
-    pendingCount: Int,
-    onClick: () -> Unit
-) {
+private fun SavePill(hasPendingChanges: Boolean, pendingCount: Int, onClick: () -> Unit) {
     val hapticFeedback = LocalHapticFeedback.current
     val pulseScale = if (hasPendingChanges) {
         val infiniteTransition = rememberInfiniteTransition(label = "savePulse")
@@ -701,42 +871,29 @@ private fun SavePill(
             initialValue = 1f,
             targetValue = 1.04f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+                animation = tween(900, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "savePulseValue"
         )
-    } else {
-        null
-    }
+    } else null
 
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = if (hasPendingChanges) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
-        contentColor = if (hasPendingChanges) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
+        color = if (hasPendingChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (hasPendingChanges) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         shadowElevation = if (hasPendingChanges) 8.dp else 0.dp,
         modifier = Modifier
             .graphicsLayer {
                 val scale = pulseScale?.value ?: 1f
-                scaleX = scale
-                scaleY = scale
+                scaleX = scale; scaleY = scale
             }
             .clip(RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {
-                    if (hasPendingChanges) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
+                    if (hasPendingChanges) hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     onClick()
                 }
             )
@@ -746,10 +903,7 @@ private fun SavePill(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = "保存"
-            )
+            Icon(imageVector = Icons.Rounded.Check, contentDescription = "保存")
             Text(
                 text = if (pendingCount > 0) "保存配置 · $pendingCount" else "保存配置",
                 fontWeight = FontWeight.Bold
@@ -758,6 +912,8 @@ private fun SavePill(
     }
 }
 
+// ───── Feature Card ─────
+
 @Composable
 private fun FeatureCard(
     item: FeatureItemUiState,
@@ -765,13 +921,14 @@ private fun FeatureCard(
     onToggleExpanded: () -> Unit,
     onFeatureEnabledChange: (Boolean) -> Unit,
     onOptionValueChange: (Int) -> Unit,
-    onTextValueChange: (String, String) -> Unit
+    onTextValueChange: (String, String) -> Unit,
+    forceExpanded: Boolean = false
 ) {
+    val effectivelyExpanded = item.expanded || forceExpanded
     val feature = item.feature
     val query = searchQuery.trim()
-
     val borderColor = when {
-        item.expanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+        effectivelyExpanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
         item.hasPending -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
         item.enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
@@ -798,14 +955,8 @@ private fun FeatureCard(
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = rememberHighlightedText(feature.label, query),
                             style = MaterialTheme.typography.titleMedium,
@@ -814,112 +965,66 @@ private fun FeatureCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-
                         if (feature.expandable) {
                             Icon(
-                                imageVector = if (item.expanded) {
-                                    Icons.Rounded.KeyboardArrowUp
-                                } else {
-                                    Icons.Rounded.KeyboardArrowDown
-                                },
+                                imageVector = if (effectivelyExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatusPill(
                             text = if (item.enabled) "已启用" else "未启用",
-                            containerColor = if (item.enabled) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            contentColor = if (item.enabled) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                            containerColor = if (item.enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (item.enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         )
-
-                        if (item.hasPending) {
-                            StatusPill(
-                                text = "未保存",
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-
-                        if (item.optionGroup != null) {
-                            StatusPill(
-                                text = "选项",
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        if (item.textAreas.isNotEmpty()) {
-                            StatusPill(
-                                text = "文本 ${item.textAreas.size}",
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        if (item.hasPending) StatusPill(
+                            text = "未保存",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        if (item.optionGroup != null) StatusPill(
+                            text = "选项",
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (item.textAreas.isNotEmpty()) StatusPill(
+                            text = "文本 ${item.textAreas.size}",
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
-
-                Switch(
-                    checked = item.enabled,
-                    onCheckedChange = onFeatureEnabledChange,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
+                Switch(checked = item.enabled, onCheckedChange = onFeatureEnabledChange, modifier = Modifier.padding(start = 12.dp))
             }
 
-            AnimatedVisibility(visible = item.expanded && feature.expandable) {
+            AnimatedVisibility(visible = effectivelyExpanded && feature.expandable) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     if (feature.desc.isNotBlank()) {
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                         Text(
                             text = rememberHighlightedText(feature.desc, query),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
                     item.optionGroup?.let { group ->
-                        if (feature.desc.isBlank()) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                            )
-                        }
-
-                        OptionGroup(
-                            group = group,
-                            currentValue = item.optionValue ?: group.fallbackValue,
-                            onValueChange = onOptionValueChange
-                        )
+                        if (feature.desc.isBlank())
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                        OptionGroup(group = group, currentValue = item.optionValue ?: group.fallbackValue, onValueChange = onOptionValueChange)
                     }
-
                     item.textAreas.forEach { area ->
                         OutlinedTextField(
                             value = area.value,
                             onValueChange = { value -> onTextValueChange(area.key, value) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text(area.label) },
-                            placeholder = {
-                                Text(area.placeholder.ifBlank { area.label })
-                            },
+                            placeholder = { Text(area.placeholder.ifBlank { area.label }) },
                             minLines = 3,
                             shape = RoundedCornerShape(14.dp)
                         )
@@ -934,38 +1039,20 @@ private fun FeatureCard(
 private fun rememberHighlightedText(text: String, keyword: String): AnnotatedString {
     val colorScheme = MaterialTheme.colorScheme
     return remember(text, keyword, colorScheme) {
-        if (keyword.isBlank() || text.isBlank()) {
-            return@remember AnnotatedString(text)
-        }
-
+        if (keyword.isBlank() || text.isBlank()) return@remember AnnotatedString(text)
         val lowerText = text.lowercase()
         val lowerKeyword = keyword.lowercase()
         val highlightBackground = colorScheme.primaryContainer.copy(alpha = 0.9f)
         val highlightColor = colorScheme.primary
-
         buildAnnotatedString {
             var cursor = 0
             while (cursor < text.length) {
                 val index = lowerText.indexOf(lowerKeyword, startIndex = cursor)
-                if (index < 0) {
-                    append(text.substring(cursor))
-                    break
-                }
-
-                if (index > cursor) {
-                    append(text.substring(cursor, index))
-                }
-
-                pushStyle(
-                    SpanStyle(
-                        color = highlightColor,
-                        background = highlightBackground,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
+                if (index < 0) { append(text.substring(cursor)); break }
+                if (index > cursor) append(text.substring(cursor, index))
+                pushStyle(SpanStyle(color = highlightColor, background = highlightBackground, fontWeight = FontWeight.Bold))
                 append(text.substring(index, index + keyword.length))
                 pop()
-
                 cursor = index + keyword.length
             }
         }
@@ -973,16 +1060,8 @@ private fun rememberHighlightedText(text: String, keyword: String): AnnotatedStr
 }
 
 @Composable
-private fun StatusPill(
-    text: String,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = containerColor,
-        contentColor = contentColor
-    ) {
+private fun StatusPill(text: String, containerColor: Color, contentColor: Color) {
+    Surface(shape = RoundedCornerShape(999.dp), color = containerColor, contentColor = contentColor) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -993,38 +1072,16 @@ private fun StatusPill(
 }
 
 @Composable
-private fun OptionGroup(
-    group: FeatureOptionGroup,
-    currentValue: Int,
-    onValueChange: (Int) -> Unit
-) {
+private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueChange: (Int) -> Unit) {
     val hapticFeedback = LocalHapticFeedback.current
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         group.options.forEachIndexed { index, option ->
             val mask = group.resolveMask(option, index)
-            val selected = if (group.isMulti) {
-                (currentValue and mask) != 0
-            } else {
-                currentValue == option.value
-            }
-
+            val selected = if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                },
-                border = BorderStroke(
-                    1.dp,
-                    if (selected) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    }
-                ),
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
@@ -1033,43 +1090,25 @@ private fun OptionGroup(
                         indication = null
                     ) {
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        val nextValue = if (group.isMulti) {
-                            currentValue xor mask
-                        } else {
-                            option.value
-                        }
-                        onValueChange(nextValue)
+                        onValueChange(if (group.isMulti) currentValue xor mask else option.value)
                     }
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .background(
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.Transparent
-                                },
-                                shape = if (group.isMulti) RoundedCornerShape(5.dp) else CircleShape
-                            )
+                        modifier = Modifier.size(18.dp).background(
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            shape = if (group.isMulti) RoundedCornerShape(5.dp) else CircleShape
+                        )
                     )
-
                     Text(
                         text = option.label,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
+                        color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                     )
                 }
             }

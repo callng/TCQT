@@ -2,6 +2,8 @@ package com.owo233.tcqt.activity
 
 import androidx.compose.runtime.Immutable
 
+// ───── Feature Models ─────
+
 @Immutable
 data class SettingFeature(
     val key: String,
@@ -9,6 +11,7 @@ data class SettingFeature(
     val desc: String,
     val order: Int,
     val tab: String,
+    val categoryPath: List<String>,
     val textAreas: List<TextAreaField>,
     val optionGroup: FeatureOptionGroup?
 ) {
@@ -17,6 +20,11 @@ data class SettingFeature(
 
     val labelLower: String by lazy(LazyThreadSafetyMode.NONE) { label.lowercase() }
     val descLower: String by lazy(LazyThreadSafetyMode.NONE) { desc.lowercase() }
+
+    /** Full category path as a display string, e.g. "高级/过检测" */
+    val categoryDisplay: String by lazy(LazyThreadSafetyMode.NONE) {
+        categoryPath.joinToString(" / ")
+    }
 }
 
 @Immutable
@@ -70,6 +78,50 @@ data class OptionItem(
     val label: String,
     val value: Int
 )
+
+// ───── Category Navigation Models ─────
+
+/**
+ * Represents a category card shown on the current navigation level.
+ * A leaf category (depth == maxDepth or children empty) maps to features;
+ * an intermediate category maps to sub-categories.
+ */
+@Immutable
+data class CategoryUiState(
+    /** Path segment name at this level, e.g. "过检测" */
+    val name: String,
+    /** Full path from root, e.g. "高级/过检测" */
+    val fullPath: String,
+    /** Depth: 0 = root level, 1 = first sub-level, … */
+    val depth: Int,
+    /** Human-readable label (from the main feature's label or same as name) */
+    val label: String,
+    /** Sorting order */
+    val uiOrder: Int,
+    /** Feature keys directly under this category (leaf) */
+    val featureKeys: List<String>,
+    /** Sub-categories (non-leaf) */
+    val children: List<CategoryUiState>,
+    /** Whether this node is a leaf (has features, no further sub-categories) */
+    val isLeaf: Boolean,
+    /** Number of enabled features under this entire subtree */
+    val enabledCount: Int,
+    /** Total feature count under this entire subtree */
+    val totalFeatureCount: Int
+)
+
+/**
+ * A single breadcrumb segment for the top navigation bar.
+ */
+@Immutable
+data class BreadcrumbItem(
+    /** Display name, e.g. "高级" */
+    val name: String,
+    /** Full path that clicking this breadcrumb should navigate to */
+    val fullPath: String
+)
+
+// ───── Restart Prompt ─────
 
 enum class RestartPrompt(
     val title: String,

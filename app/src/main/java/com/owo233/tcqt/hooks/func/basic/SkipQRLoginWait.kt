@@ -23,6 +23,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
     name = "跳过扫码登录等待",
     type = SettingType.BOOLEAN,
     desc = "扫码登录时跳过倒计时。",
+    uiTab = "基础"
 )
 class SkipQRLoginWait : IAction, DexKitTask {
 

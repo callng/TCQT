@@ -19,7 +19,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
     name = "消息防撤回",
     type = SettingType.BOOLEAN,
     desc = "防止消息被撤回，添加灰条提示。",
-    uiOrder = 1
+    uiOrder = 1,
+    uiTab = "基础"
 )
 @RegisterSetting(
     key = "msg_anti_recall.type",

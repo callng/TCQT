@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap
     name = "屏蔽烦人弹窗",
     type = SettingType.BOOLEAN,
     desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。",
+    uiTab = "基础"
 )
 @RegisterSetting(
     key = "disable_dialog.type",

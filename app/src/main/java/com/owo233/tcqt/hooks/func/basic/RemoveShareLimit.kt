@@ -26,6 +26,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
     name = "移除转发选择数量限制",
     type = SettingType.BOOLEAN,
     desc = "移除转发消息时最多选择9名联系人的限制。",
+    uiTab = "基础"
 )
 class RemoveShareLimit : IAction, DexKitTask {
 

@@ -19,7 +19,8 @@ class ActionRegistrarProcessor(
     override fun process(resolver: Resolver): List<KSAnnotated> {
         processActions(resolver)
         processSettings(resolver)
-        generateFeaturesJson(resolver)
+        generateFeaturesData(resolver)
+        generateCategoryTree(resolver)
         return emptyList()
     }
 
@@ -61,7 +62,6 @@ class ActionRegistrarProcessor(
             )
             writer.write("\n")
 
-            // Action 类列表
             actions.forEach { classDecl ->
                 val qName = classDecl.qualifiedName?.asString() ?: return@forEach
                 writer.write("        $qName::class.java,\n")
@@ -76,10 +76,7 @@ class ActionRegistrarProcessor(
             )
             writer.write("\n")
 
-            // name 映射
             actions.forEach { classDecl ->
-
-                // 跳过 AlwaysRunAction
                 if (classDecl.isAlwaysRunAction()) return@forEach
 
                 val settingAnn = classDecl.annotations
@@ -118,7 +115,7 @@ class ActionRegistrarProcessor(
                 decl == null -> false
                 decl.qualifiedName?.asString() ==
                         "com.owo233.tcqt.ext.AlwaysRunAction" -> true
-                else -> decl.isAlwaysRunAction() // 递归向上找
+                else -> decl.isAlwaysRunAction()
             }
         }
     }
@@ -134,7 +131,6 @@ class ActionRegistrarProcessor(
             .flatMap { extractAllSettings(it) }
             .toList()
 
-        // 检查重复 key
         allSettings.groupBy { it.key }
             .filterValues { it.size > 1 }
             .forEach { (dupKey, list) ->
@@ -226,8 +222,23 @@ class ActionRegistrarProcessor(
                         .replace("\"", "\\\"") + "\""
                 }
 
-                SettingInfo(actualKey, name, type, formattedDefaultValue, desc, hasTextAreas, uiOrder, textAreaPlaceholder, hidden, options, uiTab)
+                val categoryPath = parseCategoryPath(uiTab)
+
+                SettingInfo(
+                    actualKey, name, type, formattedDefaultValue,
+                    desc, hasTextAreas, uiOrder, textAreaPlaceholder,
+                    hidden, options, uiTab, categoryPath
+                )
             }
+    }
+
+    private fun parseCategoryPath(uiTab: String): List<String> {
+        val trimmed = uiTab.trim()
+        if (trimmed.isEmpty()) return listOf("基础")
+        return trimmed.split("/")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .ifEmpty { listOf("基础") }
     }
 
     private fun generateSafeConstantName(key: String): String {
@@ -243,7 +254,7 @@ class ActionRegistrarProcessor(
             .takeIf { it.isNotBlank() && it != "_" } ?: "UNKNOWN_KEY"
     }
 
-    private fun generateFeaturesJson(resolver: Resolver) {
+    private fun generateFeaturesData(resolver: Resolver) {
         val enabledActionClasses = resolver
             .getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
             .filterIsInstance<KSClassDeclaration>()
@@ -264,12 +275,10 @@ class ActionRegistrarProcessor(
 
         if (!annotatedClasses.iterator().hasNext()) return
 
-        // 收集所有设置信息，按主键分组
         val allSettings = annotatedClasses
             .flatMap { extractAllSettings(it) }
             .toList()
 
-        // 按主键分组，找出主设置和子设置
         val settingGroups = allSettings.groupBy { setting ->
             if (setting.key.contains('.')) {
                 setting.key.substringBefore('.')
@@ -278,7 +287,6 @@ class ActionRegistrarProcessor(
             }
         }
 
-        // 同时生成Kotlin数据类
         val kotlinFile = codeGenerator.createNewFile(
             Dependencies.ALL_FILES,
             "com.owo233.tcqt.generated",
@@ -313,7 +321,8 @@ object GeneratedFeaturesData {
         val textareas: List<TextAreaConfig>? = null,
         val options: List<OptionConfig>? = null,
         val uiOrder: Int = 1000,
-        val uiTab: String = "基础"
+        val uiTab: String = "基础",
+        val categoryPath: List<String> = listOf("基础")
     )
 
     val FEATURES: List<FeatureConfig> = listOf(
@@ -354,7 +363,13 @@ $$kotlinFeatures
                     append("\n            ],")
                 }
                 append("\n            \"uiOrder\": ${feature.uiOrder},")
-                append("\n            \"uiTab\": \"${escapeJsonString(feature.uiTab)}\"")
+                append("\n            \"uiTab\": \"${escapeJsonString(feature.uiTab)}\",")
+                append("\n            \"categoryPath\": [")
+                feature.categoryPath.forEachIndexed { ci, segment ->
+                    if (ci > 0) append(",")
+                    append("\"${escapeJsonString(segment)}\"")
+                }
+                append("]")
                 append("\n        }")
             }
             append("\n    ]")
@@ -378,7 +393,6 @@ $$kotlinFeatures
         return settingGroups.mapNotNull { (mainKey, settings) ->
             val mainSetting = settings.find { it.key == mainKey } ?: settings.first()
 
-            // 如果主设置被隐藏，则跳过整个功能组
             if (mainSetting.hidden) return@mapNotNull null
 
             val subSettings = settings.filter { it.key != mainKey && it.key.startsWith("$mainKey.") }
@@ -389,7 +403,6 @@ $$kotlinFeatures
                 append("\n            label = \"${escapeKotlinString(mainSetting.name)}\",")
                 append("\n            desc = \"${escapeKotlinString(mainSetting.desc)}\",")
 
-                // 处理文本框
                 if (mainSetting.hasTextAreas || subSettings.any { it.type == SettingType.STRING }) {
                     append("\n            textareas = listOf(")
 
@@ -410,8 +423,10 @@ $$kotlinFeatures
                     append("\n            ),")
                 }
 
-                // 处理选项（子配置中的INT或INT_MULTI类型且有options）
-                val optionSetting = subSettings.find { (it.type == SettingType.INT || it.type == SettingType.INT_MULTI) && it.options.isNotBlank() && !it.hidden }
+                val optionSetting = subSettings.find {
+                    (it.type == SettingType.INT || it.type == SettingType.INT_MULTI) &&
+                    it.options.isNotBlank() && !it.hidden
+                }
                 if (optionSetting != null) {
                     val optionList = optionSetting.options.split("|").map { it.trim() }.filter { it.isNotEmpty() }
                     if (optionList.isNotEmpty()) {
@@ -421,9 +436,7 @@ $$kotlinFeatures
                             append("\n                OptionConfig(")
                             append("\n                    key = \"${optionSetting.key}\",")
                             append("\n                    label = \"${escapeKotlinString(label)}\",")
-                            // 选项值从1开始，因为0保留给主开关的关闭状态
                             append("\n                    value = ${index + 1},")
-                            // 添加类型标记，用于前端区分单选和多选
                             append("\n                    isMulti = ${optionSetting.type == SettingType.INT_MULTI}")
                             append("\n                )")
                         }
@@ -434,25 +447,191 @@ $$kotlinFeatures
                 val effectiveOrder = mainSetting.uiOrder
                 append("\n            uiOrder = $effectiveOrder,")
 
-                // 确定Tab名称
                 val tabName = mainSetting.uiTab.ifBlank { "基础" }
-                append("\n            uiTab = \"${escapeKotlinString(tabName)}\"")
+                append("\n            uiTab = \"${escapeKotlinString(tabName)}\",")
+
+                val pathStr = mainSetting.categoryPath.joinToString("\", \"") { escapeKotlinString(it) }
+                append("\n            categoryPath = listOf(\"$pathStr\")")
                 append("\n        )")
-            }
-        }.groupBy { keyStr ->
-            // 按Tab分组
-            val k = keyStr.substringAfter("key = \"").substringBefore("\"")
-            val main = settingGroups[k]?.first()
-            main?.uiTab?.ifBlank { "基础" } ?: "基础"
-        }.flatMap { (_, features) ->
-            // 每个Tab内部按uiOrder排序
-            features.sortedBy { keyStr ->
-                val k = keyStr.substringAfter("key = \"").substringBefore("\"")
-                val main = settingGroups[k]?.first()
-                main?.uiOrder ?: 1000
             }
         }.joinToString(",\n")
     }
+
+    // ───── Category Tree Generation ─────
+
+    private class TreeNode {
+        var pathSegment: String = ""
+        var fullPath: String = ""
+        var depth: Int = 0
+        var label: String = ""
+        var uiOrder: Int = 1000
+        val children: MutableList<TreeNode> = mutableListOf()
+        val featureKeys: MutableList<String> = mutableListOf()
+    }
+
+    private fun generateCategoryTree(resolver: Resolver) {
+        val enabledActionClasses = resolver
+            .getSymbolsWithAnnotation(RegisterAction::class.qualifiedName!!)
+            .filterIsInstance<KSClassDeclaration>()
+            .filter { classDecl ->
+                val ann = classDecl.annotations.find { it.shortName.asString() == "RegisterAction" }
+                val enabled = ann?.arguments?.find { it.name?.asString() == "enabled" }?.value as? Boolean
+                enabled ?: true
+            }
+            .map { it.qualifiedName?.asString() }
+            .toSet()
+
+        val annotatedClasses = resolver
+            .getSymbolsWithAnnotation(RegisterSetting::class.qualifiedName!!)
+            .filterIsInstance<KSClassDeclaration>()
+            .filter { classDecl ->
+                enabledActionClasses.contains(classDecl.qualifiedName?.asString())
+            }
+
+        if (!annotatedClasses.iterator().hasNext()) return
+
+        val allSettings = annotatedClasses
+            .flatMap { extractAllSettings(it) }
+            .toList()
+
+        val settingGroups = allSettings.groupBy { setting ->
+            if (setting.key.contains('.')) {
+                setting.key.substringBefore('.')
+            } else {
+                setting.key
+            }
+        }
+
+        data class FeatureEntry(
+            val key: String,
+            val label: String,
+            val desc: String,
+            val uiOrder: Int,
+            val categoryPath: List<String>
+        )
+
+        val features = settingGroups.mapNotNull { (mainKey, settings) ->
+            val main = settings.find { it.key == mainKey } ?: settings.first()
+            if (main.hidden) return@mapNotNull null
+            FeatureEntry(
+                key = mainKey,
+                label = main.name,
+                desc = main.desc,
+                uiOrder = main.uiOrder,
+                categoryPath = main.categoryPath
+            )
+        }
+
+        val root = TreeNode()
+
+        for (feat in features) {
+            var current = root
+            for (i in feat.categoryPath.indices) {
+                val segment = feat.categoryPath[i]
+                val isLast = i == feat.categoryPath.lastIndex
+                val existing = current.children.find { it.pathSegment == segment }
+                val node = existing
+                    ?: TreeNode().apply {
+                        pathSegment = segment
+                        fullPath = if (current == root) segment else "${current.fullPath}/$segment"
+                        depth = i
+                        label = segment
+                    }.also { current.children.add(it) }
+                if (isLast) {
+                    node.featureKeys.add(feat.key)
+                    node.uiOrder = feat.uiOrder
+                }
+                current = node
+            }
+        }
+
+        fun sortTree(node: TreeNode) {
+            node.children.sortWith(compareBy<TreeNode> { it.depth }.thenBy { it.uiOrder })
+            node.children.forEach { sortTree(it) }
+        }
+        sortTree(root)
+
+        val file = codeGenerator.createNewFile(
+            Dependencies.ALL_FILES,
+            "com.owo233.tcqt.generated",
+            "GeneratedCategoryTree"
+        )
+
+        file.bufferedWriter().use { writer ->
+            val sb = StringBuilder()
+            sb.appendLine("package com.owo233.tcqt.generated")
+            sb.appendLine()
+            sb.appendLine("/**")
+            sb.appendLine(" * Auto-generated category tree from @RegisterSetting(uiTab=...) paths.")
+            sb.appendLine(" * Paths like \"高级/过检测\" become nested CategoryNode entries.")
+            sb.appendLine(" */")
+            sb.appendLine("object GeneratedCategoryTree {")
+            sb.appendLine()
+            sb.appendLine("    data class CategoryNode(")
+            sb.appendLine("        val name: String,")
+            sb.appendLine("        val fullPath: String,")
+            sb.appendLine("        val depth: Int,")
+            sb.appendLine("        val label: String,")
+            sb.appendLine("        val uiOrder: Int,")
+            sb.appendLine("        val featureKeys: List<String>,")
+            sb.appendLine("        val children: List<CategoryNode>")
+            sb.appendLine("    )")
+            sb.appendLine()
+
+            sb.appendLine("    val ROOTS: List<CategoryNode> = listOf(")
+            root.children.forEachIndexed { i, child ->
+                if (i > 0) sb.append(",\n")
+                appendTreeNode(sb, child, indent = "        ")
+            }
+            sb.appendLine()
+            sb.appendLine("    )")
+            sb.appendLine()
+
+            sb.appendLine("    val FEATURE_CATEGORY_MAP: Map<String, List<String>> = mapOf(")
+            features.sortedBy { it.key }.forEach { feat ->
+                val pathStr = feat.categoryPath.joinToString("\", \"") { escapeKotlinStringForTree(it) }
+                sb.appendLine("        \"${feat.key}\" to listOf(\"$pathStr\"),")
+            }
+            sb.appendLine("    )")
+            sb.appendLine("}")
+
+            writer.write(sb.toString())
+        }
+    }
+
+    private fun appendTreeNode(sb: StringBuilder, node: TreeNode, indent: String) {
+        val featureKeys = node.featureKeys.map { "\"$it\"" }
+
+        sb.append("${indent}CategoryNode(")
+        sb.append("\n${indent}    name = \"${escapeKotlinStringForTree(node.pathSegment)}\",")
+        sb.append("\n${indent}    fullPath = \"${escapeKotlinStringForTree(node.fullPath)}\",")
+        sb.append("\n${indent}    depth = ${node.depth},")
+        sb.append("\n${indent}    label = \"${escapeKotlinStringForTree(node.label)}\",")
+        sb.append("\n${indent}    uiOrder = ${node.uiOrder},")
+        sb.append("\n${indent}    featureKeys = listOf(${featureKeys.joinToString(", ")}),")
+        if (node.children.isEmpty()) {
+            sb.append("\n${indent}    children = emptyList()")
+        } else {
+            sb.append("\n${indent}    children = listOf(")
+            node.children.forEachIndexed { i, child ->
+                if (i > 0) sb.append(",\n")
+                appendTreeNode(sb, child, indent = "$indent        ")
+            }
+            sb.append("\n${indent}    )")
+        }
+        sb.append("\n$indent)")
+    }
+
+    private fun escapeKotlinStringForTree(str: String): String {
+        return str.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            .replace("$", "\\$")
+    }
+
+    // ───── Helpers ─────
 
     private fun escapeKotlinString(str: String): String {
         return str.replace("\\", "\\\\")
@@ -474,6 +653,7 @@ $$kotlinFeatures
         val textAreaPlaceholder: String = "",
         val hidden: Boolean = false,
         val options: String = "",
-        val uiTab: String = ""
+        val uiTab: String = "",
+        val categoryPath: List<String> = listOf("基础")
     )
 }

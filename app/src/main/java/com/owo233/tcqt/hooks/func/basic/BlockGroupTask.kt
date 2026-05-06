@@ -18,6 +18,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
     name = "屏蔽群待办通知",
     type = SettingType.BOOLEAN,
     desc = "屏蔽群待办消息的通知。",
+    uiTab = "基础"
 )
 class BlockGroupTask : IAction, DexKitTask {
 

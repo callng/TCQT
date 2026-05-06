@@ -179,8 +179,12 @@ class SettingActivity : BaseComposeActivity() {
                     }
                 }
 
-                BackHandler(enabled = viewModel.isSearchActive) {
-                    viewModel.exitSearch()
+                BackHandler {
+                    when {
+                        viewModel.isSearchActive -> viewModel.exitSearch()
+                        !viewModel.isAtRoot -> viewModel.navigateUp()
+                        else -> finish()
+                    }
                 }
 
                 if (showClearDialog) {

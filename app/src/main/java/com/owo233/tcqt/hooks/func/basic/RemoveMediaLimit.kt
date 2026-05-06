@@ -18,6 +18,7 @@ import com.owo233.tcqt.utils.hook.isPublic
     name = "移除媒体选择数量限制",
     type = SettingType.BOOLEAN,
     desc = "移除聊天页相册最多只能选择20张图片/视频的限制，移除空间上传最多只能选择50张图片/视频的限制。",
+    uiTab = "基础"
 )
 class RemoveMediaLimit : IAction {
 

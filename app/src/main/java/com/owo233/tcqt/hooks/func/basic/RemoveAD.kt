@@ -27,6 +27,7 @@ import com.owo233.tcqt.utils.hook.paramCount
     name = "移除部分广告",
     type = SettingType.BOOLEAN,
     desc = "移除一些常见的广告弹窗。",
+    uiTab = "基础"
 )
 class RemoveAD : IAction {
 

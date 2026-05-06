@@ -5,10 +5,13 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.owo233.tcqt.generated.GeneratedCategoryTree
+import com.owo233.tcqt.generated.GeneratedCategoryTree.CategoryNode
 import com.owo233.tcqt.generated.GeneratedFeaturesData
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -29,17 +32,31 @@ class SettingViewModel : ViewModel() {
 
     private val expandedKeys = mutableStateMapOf<String, Boolean>()
 
-    private val allFeatures = GeneratedFeaturesData.FEATURES
+    // ───── All features (flat) ─────
+
+    private val allFeatures: List<SettingFeature> = GeneratedFeaturesData.FEATURES
         .sortedBy { it.uiOrder }
         .mapIndexed { index, feature -> feature.toSettingFeature(index) }
 
-    val tabs: List<String> = allFeatures
-        .map { it.tab }
-        .distinct()
-        .sortedWith(compareBy<String> { tabPriority(it) }.thenBy { it })
+    private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
-    var currentTab by mutableStateOf(tabs.firstOrNull().orEmpty())
-        private set
+    // ───── Category tree ─────
+
+    private val rootNodes: List<CategoryNode> = GeneratedCategoryTree.ROOTS
+
+    // ───── Navigation ─────
+
+    /** Stack of full paths. Empty = root. */
+    private val _navStack = mutableStateListOf<String>()
+
+    /** Current path, e.g. "" for root, "高级" for first level, "高级/过检测" for second. */
+    val currentPath: String
+        get() = _navStack.lastOrNull().orEmpty()
+
+    val isAtRoot: Boolean
+        get() = _navStack.isEmpty()
+
+    // ───── Search ─────
 
     var searchQuery by mutableStateOf("")
         private set
@@ -47,11 +64,15 @@ class SettingViewModel : ViewModel() {
     var isSearchActive by mutableStateOf(false)
         private set
 
+    // ───── Stats (scoped to current level) ─────
+
     var enabledCount by mutableIntStateOf(0)
         private set
 
     var disabledCount by mutableIntStateOf(0)
         private set
+
+    // ───── Pending ─────
 
     val hasPendingChanges: Boolean
         get() = pendingBooleans.isNotEmpty() || pendingInts.isNotEmpty() || pendingStrings.isNotEmpty()
@@ -59,8 +80,30 @@ class SettingViewModel : ViewModel() {
     val pendingChangeCount: Int
         get() = pendingBooleans.size + pendingInts.size + pendingStrings.size
 
-    val visibleFeaturesState: State<List<FeatureItemUiState>> = derivedStateOf {
+    // ───── Derived state ─────
+
+    /** Categories shown at the current navigation level. */
+    val currentCategories: State<List<CategoryUiState>> = derivedStateOf {
+        buildCurrentCategories()
+    }
+
+    /** Features shown at the current level (only when it's a leaf / has direct features). */
+    val currentFeatures: State<List<FeatureItemUiState>> = derivedStateOf {
         computeVisibleFeatureUiStates()
+    }
+
+    /** Breadcrumb trail for the top bar. */
+    val breadcrumbs: State<List<BreadcrumbItem>> = derivedStateOf {
+        buildBreadcrumbs()
+    }
+
+    /** Label for the current category level (used as page title). */
+    val currentCategoryLabel: State<String> = derivedStateOf {
+        if (isAtRoot) "功能配置"
+        else {
+            val node = resolveNode(currentPath)
+            node?.label?.ifBlank { node.name } ?: currentPath.substringAfterLast('/')
+        }
     }
 
     init {
@@ -68,53 +111,49 @@ class SettingViewModel : ViewModel() {
         recalculateStats()
     }
 
-    private fun computeVisibleFeatureUiStates(): List<FeatureItemUiState> {
-        val keyword = searchQuery.trim().lowercase()
+    // ───── Navigation ─────
 
-        val visibleFeatures = if (keyword.isBlank()) {
-            if (currentTab.isBlank()) {
-                allFeatures
-            } else {
-                allFeatures.filter { it.tab == currentTab }
-            }
-        } else {
-            allFeatures
-                .mapNotNull { feature ->
-                    val priority = when {
-                        feature.labelLower == keyword || feature.descLower == keyword -> 3
-                        feature.labelLower.contains(keyword) -> 2
-                        feature.descLower.contains(keyword) -> 1
-                        else -> 0
-                    }
-                    if (priority == 0) null else priority to feature
-                }
-                .sortedWith(
-                    compareByDescending<Pair<Int, SettingFeature>> { it.first }
-                        .thenBy { it.second.order }
-                )
-                .map { it.second }
+    fun navigateTo(fullPath: String) {
+        _navStack.add(fullPath)
+    }
+
+    fun navigateUp(): Boolean {
+        if (_navStack.isEmpty()) return false
+        _navStack.removeLast()
+        return true
+    }
+
+    fun navigateToRoot() {
+        _navStack.clear()
+    }
+
+    fun navigateToBreadcrumb(fullPath: String) {
+        if (fullPath.isEmpty()) {
+            navigateToRoot()
+            return
         }
-
-        return visibleFeatures.map { feature ->
-            FeatureItemUiState(
-                key = feature.key,
-                feature = feature,
-                enabled = effectiveBoolean(feature.key),
-                expanded = expandedKeys[feature.key] == true,
-                hasPending = hasPendingFor(feature),
-                optionGroup = feature.optionGroup,
-                optionValue = feature.optionGroup?.let(::currentOptionValue),
-                textAreas = feature.textAreas.map { area ->
-                    TextAreaUiState(
-                        key = area.key,
-                        label = area.label,
-                        placeholder = area.placeholder,
-                        value = effectiveString(area.key)
-                    )
+        // Pop back to the point where we can push this path
+        while (_navStack.isNotEmpty() && _navStack.last() != fullPath) {
+            val last = _navStack.last()
+            if (fullPath.startsWith(last) && _navStack.size > 1) {
+                // Check if the previous element is a prefix
+                val prev = _navStack[_navStack.size - 2]
+                if (fullPath.startsWith(prev)) {
+                    _navStack.removeLast()
+                    continue
                 }
-            )
+            }
+            _navStack.removeLast()
+        }
+        if (_navStack.isEmpty() || _navStack.last() != fullPath) {
+            _navStack.clear()
+            if (fullPath.isNotEmpty()) {
+                _navStack.add(fullPath)
+            }
         }
     }
+
+    // ───── Search ─────
 
     fun enterSearch() {
         isSearchActive = true
@@ -133,12 +172,7 @@ class SettingViewModel : ViewModel() {
         searchQuery = ""
     }
 
-    fun selectTab(tab: String) {
-        currentTab = tab
-        if (isSearchActive) {
-            exitSearch()
-        }
-    }
+    // ───── Feature interaction ─────
 
     fun toggleExpanded(key: String) {
         expandedKeys[key] = !(expandedKeys[key] ?: false)
@@ -243,6 +277,164 @@ class SettingViewModel : ViewModel() {
         disabledCount = (allFeatures.size - enabled).coerceAtLeast(0)
     }
 
+    // ───── Internal: category building ─────
+
+    private fun buildCurrentCategories(): List<CategoryUiState> {
+        val nodes = if (isAtRoot) {
+            rootNodes
+        } else {
+            val node = resolveNode(currentPath) ?: return emptyList()
+            node.children
+        }
+
+        return nodes
+            .filter { it.featureKeys.isNotEmpty() || it.children.isNotEmpty() }
+            .filterNot { isCollapsibleNode(it) }
+            .map { node -> toCategoryUiState(node) }
+    }
+
+    /**
+     * A leaf node with exactly one feature whose label matches the node's own
+     * label is redundant — the category page would just show a single feature
+     * with the same name.  Collapse it so the feature appears at the parent level.
+     */
+    private fun isCollapsibleNode(node: CategoryNode): Boolean {
+        if (node.children.isNotEmpty()) return false
+        if (node.featureKeys.size != 1) return false
+        val featureKey = node.featureKeys.single()
+        val feature = featureByKey[featureKey] ?: return false
+        return node.label == feature.label
+    }
+
+    private fun getCollapsedFeatureKeys(): List<String> {
+        val nodes = if (isAtRoot) {
+            rootNodes
+        } else {
+            val node = resolveNode(currentPath) ?: return emptyList()
+            node.children
+        }
+        return nodes.filter { isCollapsibleNode(it) }.flatMap { it.featureKeys }
+    }
+
+    private fun toCategoryUiState(node: CategoryNode): CategoryUiState {
+        val isLeaf = node.children.isEmpty()
+        val allKeysInSubtree = collectFeatureKeys(node)
+        val enabledInSubtree = allKeysInSubtree.count { effectiveBoolean(it) }
+
+        return CategoryUiState(
+            name = node.name,
+            fullPath = node.fullPath,
+            depth = node.depth,
+            label = node.label.ifBlank { node.name },
+            uiOrder = node.uiOrder,
+            featureKeys = node.featureKeys,
+            children = node.children.map { toCategoryUiState(it) },
+            isLeaf = isLeaf,
+            enabledCount = enabledInSubtree,
+            totalFeatureCount = allKeysInSubtree.size
+        )
+    }
+
+    private fun collectFeatureKeys(node: CategoryNode): List<String> {
+        val result = mutableListOf<String>()
+        result.addAll(node.featureKeys)
+        node.children.forEach { result.addAll(collectFeatureKeys(it)) }
+        return result
+    }
+
+    private fun resolveNode(fullPath: String): CategoryNode? {
+        if (fullPath.isEmpty()) return null
+
+        val segments = fullPath.split("/")
+        var currentList = rootNodes
+        for (segment in segments) {
+            val node = currentList.find { it.name == segment } ?: return null
+            if (segment == segments.last()) return node
+            currentList = node.children
+        }
+        return null
+    }
+
+    private fun buildBreadcrumbs(): List<BreadcrumbItem> {
+        if (_navStack.isEmpty()) return emptyList()
+
+        val result = mutableListOf<BreadcrumbItem>()
+        for (path in _navStack) {
+            val node = resolveNode(path)
+            val name = node?.name ?: path.substringAfterLast('/')
+            result.add(BreadcrumbItem(name = name, fullPath = path))
+        }
+        return result
+    }
+
+    // ───── Internal: feature computation ─────
+
+    private fun computeVisibleFeatureUiStates(): List<FeatureItemUiState> {
+        val keyword = searchQuery.trim().lowercase()
+
+        if (keyword.isNotBlank()) {
+            // Search mode: flat across all features
+            val ranked = allFeatures
+                .mapNotNull { feature ->
+                    val priority = when {
+                        feature.labelLower == keyword || feature.descLower == keyword -> 3
+                        feature.labelLower.contains(keyword) -> 2
+                        feature.descLower.contains(keyword) -> 1
+                        else -> 0
+                    }
+                    if (priority == 0) null else priority to feature
+                }
+                .sortedWith(
+                    compareByDescending<Pair<Int, SettingFeature>> { it.first }
+                        .thenBy { it.second.order }
+                )
+                .map { it.second }
+
+            return ranked.map { feature -> toFeatureItemUiState(feature) }
+        }
+
+        // Normal mode: features whose categoryPath exactly matches current path,
+        // plus collapsed features from child nodes that are redundant.
+        val collapsedKeys = getCollapsedFeatureKeys()
+        val matchPath = currentPath
+        val explicitFeatures = if (matchPath.isEmpty()) {
+            emptyList()
+        } else {
+            allFeatures.filter { feature ->
+                feature.categoryPath.joinToString("/") == matchPath
+            }
+        }
+
+        val collapsedFeatures = collapsedKeys.mapNotNull { key -> featureByKey[key] }
+        val allVisibleFeatures = (explicitFeatures + collapsedFeatures)
+            .distinctBy { it.key }
+            .sortedBy { it.order }
+
+        return allVisibleFeatures.map { feature -> toFeatureItemUiState(feature) }
+    }
+
+    private fun toFeatureItemUiState(feature: SettingFeature): FeatureItemUiState {
+        return FeatureItemUiState(
+            key = feature.key,
+            feature = feature,
+            enabled = effectiveBoolean(feature.key),
+            expanded = expandedKeys[feature.key] == true,
+            hasPending = hasPendingFor(feature),
+            optionGroup = feature.optionGroup,
+            optionValue = feature.optionGroup?.let(::currentOptionValue),
+            textAreas = feature.textAreas.map { area ->
+                TextAreaUiState(
+                    key = area.key,
+                    label = area.label,
+                    placeholder = area.placeholder,
+                    value = effectiveString(area.key)
+                )
+            }
+        )
+    }
+
+    // ───── Internal: value helpers ─────
+
     private fun hasPendingFor(feature: SettingFeature): Boolean {
         if (pendingBooleans.containsKey(feature.key)) return true
         if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
@@ -270,14 +462,7 @@ class SettingViewModel : ViewModel() {
         }
     }
 
-    private fun tabPriority(tab: String): Int {
-        return when (tab) {
-            "基础" -> 0
-            "杂项" -> 100
-            "调试" -> 101
-            else -> 1
-        }
-    }
+    // ───── Internal: conversion ─────
 
     private fun GeneratedFeaturesData.FeatureConfig.toSettingFeature(order: Int): SettingFeature {
         val optionGroup = options
@@ -302,6 +487,7 @@ class SettingViewModel : ViewModel() {
             desc = desc,
             order = order,
             tab = uiTab.ifBlank { "基础" },
+            categoryPath = categoryPath.toList(),
             textAreas = textareas.orEmpty().map { textArea ->
                 TextAreaField(
                     key = textArea.key,
