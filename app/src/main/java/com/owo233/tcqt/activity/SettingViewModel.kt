@@ -119,7 +119,7 @@ class SettingViewModel : ViewModel() {
 
     fun navigateUp(): Boolean {
         if (_navStack.isEmpty()) return false
-        _navStack.removeLast()
+        popNavStack()
         return true
     }
 
@@ -139,11 +139,11 @@ class SettingViewModel : ViewModel() {
                 // Check if the previous element is a prefix
                 val prev = _navStack[_navStack.size - 2]
                 if (fullPath.startsWith(prev)) {
-                    _navStack.removeLast()
+                    popNavStack()
                     continue
                 }
             }
-            _navStack.removeLast()
+            popNavStack()
         }
         if (_navStack.isEmpty() || _navStack.last() != fullPath) {
             _navStack.clear()
@@ -152,6 +152,8 @@ class SettingViewModel : ViewModel() {
             }
         }
     }
+
+    private fun popNavStack(): String = _navStack.removeAt(_navStack.lastIndex)
 
     // ───── Search ─────
 
