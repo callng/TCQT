@@ -4,9 +4,6 @@ package com.owo233.tcqt.activity
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,8 +14,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -92,12 +87,56 @@ import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.utils.PlatformTools
 
-// ───── Page transition spec ─────
+private const val PageTransitionDurationMillis = 380
+private const val TopBarTransitionDurationMillis = 340
 
-private val pageEnterTransition: EnterTransition =
-    slideInHorizontally(initialOffsetX = { it / 8 }) + fadeIn(tween(220))
-private val pageExitTransition: ExitTransition =
-    slideOutHorizontally(targetOffsetX = { -it / 8 }) + fadeOut(tween(180))
+private fun softFadeScaleIn(initialScale: Float, durationMillis: Int) =
+    fadeIn(animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)) +
+            scaleIn(
+                initialScale = initialScale,
+                animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
+            )
+
+private fun softFadeScaleOut(targetScale: Float, durationMillis: Int) =
+    fadeOut(animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)) +
+            scaleOut(
+                targetScale = targetScale,
+                animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
+            )
+
+
+private fun String.navigationDepth(): Int = if (isEmpty()) 0 else count { it == '/' } + 1
+
+private data class SettingsPageContentState(
+    val path: String,
+    val isAtRoot: Boolean,
+    val isSearchActive: Boolean,
+    val searchQuery: String,
+    val categories: List<CategoryUiState>,
+    val features: List<FeatureItemUiState>,
+    val enabledCount: Int,
+    val disabledCount: Int,
+    val hasPending: Boolean
+) {
+    val animationKey: String
+        get() = if (isSearchActive) "search" else path
+}
+
+private enum class SettingsTopBarMode { Search, SubPage, Root }
+
+private data class SettingsTopBarState(
+    val mode: SettingsTopBarMode,
+    val path: String,
+    val breadcrumbs: List<BreadcrumbItem>,
+    val searchQuery: String
+) {
+    val animationKey: String
+        get() = when (mode) {
+            SettingsTopBarMode.Search -> "search"
+            SettingsTopBarMode.SubPage -> "sub_$path"
+            SettingsTopBarMode.Root -> "root"
+        }
+}
 
 // ───── Main Screen ─────
 
@@ -151,19 +190,44 @@ fun SettingScreen(
             }
         }
     ) { innerPadding ->
-        val currentPath by rememberUpdatedState(viewModel.currentPath)
+        val categories by viewModel.currentCategories
+        val features by viewModel.currentFeatures
+        val currentPath = viewModel.currentPath
+        val pageState = SettingsPageContentState(
+            path = currentPath,
+            isAtRoot = viewModel.isAtRoot,
+            isSearchActive = isSearchActive,
+            searchQuery = viewModel.searchQuery,
+            categories = categories,
+            features = features,
+            enabledCount = viewModel.enabledCount,
+            disabledCount = viewModel.disabledCount,
+            hasPending = hasPending
+        )
 
         AnimatedContent(
-            targetState = currentPath,
+            targetState = pageState,
+            modifier = Modifier.fillMaxSize(),
+            contentKey = { it.animationKey },
             transitionSpec = {
-                pageEnterTransition togetherWith pageExitTransition
+                val forward = targetState.path.navigationDepth() >= initialState.path.navigationDepth()
+                softFadeScaleIn(
+                    initialScale = if (forward) 0.96f else 1.015f,
+                    durationMillis = PageTransitionDurationMillis
+                ).togetherWith(
+                    softFadeScaleOut(
+                        targetScale = if (forward) 1.015f else 0.985f,
+                        durationMillis = PageTransitionDurationMillis
+                    )
+                )
+
             },
-            label = "page_transition"
-        ) { _ ->
+            label = "settings_page_transition"
+        ) { targetPageState ->
             PageContent(
+                pageState = targetPageState,
                 viewModel = viewModel,
                 innerPadding = innerPadding,
-                hasPending = hasPending,
                 onIssueClick = onIssueClick,
                 onIssueLongClick = onIssueLongClick
             )
@@ -175,16 +239,15 @@ fun SettingScreen(
 
 @Composable
 private fun PageContent(
+    pageState: SettingsPageContentState,
     viewModel: SettingViewModel,
     innerPadding: PaddingValues,
-    hasPending: Boolean,
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit
 ) {
-    val categories by viewModel.currentCategories
-    val features by viewModel.currentFeatures
-    val isSearchActive = viewModel.isSearchActive
-
+    val categories = pageState.categories
+    val features = pageState.features
+    val isSearchActive = pageState.isSearchActive
     val lazyListState = rememberLazyListState()
 
     LazyColumn(
@@ -196,33 +259,35 @@ private fun PageContent(
             start = 16.dp,
             top = 12.dp,
             end = 16.dp,
-            bottom = if (hasPending) 112.dp else 24.dp
+            bottom = if (pageState.hasPending) 112.dp else 24.dp
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Header (root only)
-        if (!isSearchActive && viewModel.isAtRoot) {
+        if (!isSearchActive && pageState.isAtRoot) {
             item(key = "header") {
                 CompactHeaderCard(
                     hostName = PlatformTools.getHostName(),
                     hostVersion = "${PlatformTools.getHostVersion()} (${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}",
                     moduleName = TCQTBuild.APP_NAME,
                     moduleVersion = TCQTBuild.VER_NAME,
-                    enabledCount = viewModel.enabledCount,
-                    disabledCount = viewModel.disabledCount
+                    enabledCount = pageState.enabledCount,
+                    disabledCount = pageState.disabledCount
                 )
+
             }
         }
 
         // Search: prompt before typing
-        if (isSearchActive && viewModel.searchQuery.isBlank()) {
+        if (isSearchActive && pageState.searchQuery.isBlank()) {
             item(key = "search_prompt") {
+
                 SearchPromptCard()
             }
         }
 
         // Search: result count (only when there are results)
-        if (isSearchActive && viewModel.searchQuery.isNotBlank() && features.isNotEmpty()) {
+        if (isSearchActive && pageState.searchQuery.isNotBlank() && features.isNotEmpty()) {
             item(key = "search_result_count") {
                 Text(
                     text = "共找到 ${features.size} 项",
@@ -234,14 +299,14 @@ private fun PageContent(
         }
 
         // Search: zero results
-        if (isSearchActive && viewModel.searchQuery.isNotBlank() && features.isEmpty()) {
+        if (isSearchActive && pageState.searchQuery.isNotBlank() && features.isEmpty()) {
             item(key = "search_empty") {
                 EmptyStateCard()
             }
         }
 
         // Sub-category title (non-root, non-search)
-        if (!isSearchActive && !viewModel.isAtRoot && categories.isNotEmpty()) {
+        if (!isSearchActive && !pageState.isAtRoot && categories.isNotEmpty()) {
             item(key = "subcat_title") {
                 Text(
                     text = "子分类",
@@ -290,7 +355,7 @@ private fun PageContent(
             ) { item ->
                 FeatureCard(
                     item = item,
-                    searchQuery = viewModel.searchQuery,
+                    searchQuery = pageState.searchQuery,
                     onToggleExpanded = { viewModel.toggleExpanded(item.key) },
                     onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
                     onOptionValueChange = { item.optionGroup?.let { g -> viewModel.setOptionValue(g.key, it) } },
@@ -322,6 +387,16 @@ private fun TopBar(
     onBackupRestoreClick: () -> Unit
 ) {
     val breadcrumbs by viewModel.breadcrumbs
+    val topBarState = SettingsTopBarState(
+        mode = when {
+            isSearchActive -> SettingsTopBarMode.Search
+            !viewModel.isAtRoot -> SettingsTopBarMode.SubPage
+            else -> SettingsTopBarMode.Root
+        },
+        path = viewModel.currentPath,
+        breadcrumbs = breadcrumbs,
+        searchQuery = searchQuery
+    )
 
     Box(
         modifier = Modifier
@@ -330,110 +405,134 @@ private fun TopBar(
             .statusBarsPadding()
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        if (isSearchActive) {
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                onBackClick = onSearchClosed,
-                onClearClick = onClearQuery
-            )
-        } else if (!viewModel.isAtRoot) {
-            // ─── Sub-page: back + breadcrumbs + search ───
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { viewModel.navigateUp() }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "返回",
-                        tint = MaterialTheme.colorScheme.onSurface
+        AnimatedContent(
+            targetState = topBarState,
+            modifier = Modifier.fillMaxWidth(),
+            contentKey = { it.animationKey },
+            transitionSpec = {
+                softFadeScaleIn(
+                    initialScale = 0.98f,
+                    durationMillis = TopBarTransitionDurationMillis
+                ).togetherWith(
+                    softFadeScaleOut(
+                        targetScale = 0.98f,
+                        durationMillis = TopBarTransitionDurationMillis
                     )
-                }
+                )
 
-                Spacer(modifier = Modifier.width(4.dp))
+            },
+            label = "settings_top_bar_transition"
+        ) { state ->
+            when (state.mode) {
+                SettingsTopBarMode.Search -> SearchBar(
+                    query = state.searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    onBackClick = onSearchClosed,
+                    onClearClick = onClearQuery
+                )
 
-                // Inline breadcrumbs
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    breadcrumbs.forEachIndexed { index, crumb ->
-                        if (index > 0) {
+                SettingsTopBarMode.SubPage -> {
+                    // ─── Sub-page: back + breadcrumbs + search ───
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.navigateUp() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.width(2.dp))
                         }
-                        Text(
-                            text = crumb.name,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (index == breadcrumbs.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                            color = if (index == breadcrumbs.lastIndex) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { viewModel.navigateToBreadcrumb(crumb.fullPath) }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Inline breadcrumbs
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            state.breadcrumbs.forEachIndexed { index, crumb ->
+                                if (index > 0) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                }
+                                Text(
+                                    text = crumb.name,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (index == state.breadcrumbs.lastIndex) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (index == state.breadcrumbs.lastIndex) {
+                                        MaterialTheme.colorScheme.onSurface
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { viewModel.navigateToBreadcrumb(crumb.fullPath) }
+                                        )
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                        if (index < breadcrumbs.lastIndex) {
-                            Spacer(modifier = Modifier.width(2.dp))
+                                if (index < state.breadcrumbs.lastIndex) {
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                }
+                            }
+                        }
+
+                        IconButton(onClick = onSearchRequested) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = "搜索",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
 
-                IconButton(onClick = onSearchRequested) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "搜索",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            // ─── Root page: right-aligned search + backup ───
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onSearchRequested) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "搜索",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                SettingsTopBarMode.Root -> {
+                    // ─── Root page: right-aligned search + backup ───
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onSearchRequested) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = "搜索",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                TextButton(onClick = onBackupRestoreClick) {
-                    Icon(
-                        imageVector = Icons.Rounded.Backup,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "备份",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                        TextButton(onClick = onBackupRestoreClick) {
+                            Icon(
+                                imageVector = Icons.Rounded.Backup,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "备份",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+
 }
 
 // ───── Category Card ─────
