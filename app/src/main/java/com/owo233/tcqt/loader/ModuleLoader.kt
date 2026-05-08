@@ -40,16 +40,28 @@ internal object ModuleLoader {
         sLoaded = true
     }
 
-    @JvmStatic
     private fun nextInit(hostClassLoader: ClassLoader) {
-        runCatching {
-            hostClassLoader.loadClass("com.tencent.common.app.QFixApplicationImpl")
-                .getDeclaredMethod("attachBaseContext", Context::class.java)
-        }.onSuccess { method ->
-            hookQFixAttach(method)
-        }.onFailure {
-            Log.e("ModuleLoader nextInit Failure", it)
+        val classNames = listOf(
+            "com.tencent.common.app.QFixApplicationImplProxy",
+            "com.tencent.common.app.QFixApplicationImpl"
+        )
+        val errors = mutableListOf<Pair<String, Throwable>>()
+
+        for (className in classNames) {
+            try {
+                val clazz = hostClassLoader.loadClass(className)
+                val method = clazz.getDeclaredMethod("attachBaseContext", Context::class.java)
+                hookQFixAttach(method)
+                return
+            } catch (th: Throwable) {
+                errors.add(className to th)
+            }
         }
+
+        errors.forEach { (className, th) ->
+            Log.e("nextInit Failure: $className", th)
+        }
+        errors.clear()
     }
 
     private fun hookQFixAttach(attach: Method) {

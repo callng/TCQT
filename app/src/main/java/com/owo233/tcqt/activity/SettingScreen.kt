@@ -116,7 +116,8 @@ private data class SettingsPageContentState(
     val features: List<FeatureItemUiState>,
     val enabledCount: Int,
     val disabledCount: Int,
-    val hasPending: Boolean
+    val hasPending: Boolean,
+    val currentCategoryLabel: String
 ) {
     val animationKey: String
         get() = if (isSearchActive) "search" else path
@@ -202,7 +203,8 @@ fun SettingScreen(
             features = features,
             enabledCount = viewModel.enabledCount,
             disabledCount = viewModel.disabledCount,
-            hasPending = hasPending
+            hasPending = hasPending,
+            currentCategoryLabel = viewModel.currentCategoryLabel.value
         )
 
         AnimatedContent(
@@ -309,7 +311,7 @@ private fun PageContent(
         if (!isSearchActive && !pageState.isAtRoot && categories.isNotEmpty()) {
             item(key = "subcat_title") {
                 Text(
-                    text = "子分类",
+                    text = pageState.currentCategoryLabel,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

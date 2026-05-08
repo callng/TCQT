@@ -292,6 +292,7 @@ class SettingViewModel : ViewModel() {
         return nodes
             .filter { it.featureKeys.isNotEmpty() || it.children.isNotEmpty() }
             .filterNot { isCollapsibleNode(it) }
+            .sortedWith(categoryNodeComparator)
             .map { node -> toCategoryUiState(node) }
     }
 
@@ -330,12 +331,16 @@ class SettingViewModel : ViewModel() {
             label = node.label.ifBlank { node.name },
             uiOrder = node.uiOrder,
             featureKeys = node.featureKeys,
-            children = node.children.map { toCategoryUiState(it) },
+            children = node.children.sortedWith(categoryNodeComparator).map { toCategoryUiState(it) },
             isLeaf = isLeaf,
             enabledCount = enabledInSubtree,
             totalFeatureCount = allKeysInSubtree.size
         )
     }
+
+    private val categoryNodeComparator = compareByDescending<CategoryNode> { collectFeatureKeys(it).size }
+        .thenBy { it.uiOrder }
+        .thenBy { node -> node.label.ifBlank { node.name } }
 
     private fun collectFeatureKeys(node: CategoryNode): List<String> {
         val result = mutableListOf<String>()

@@ -3,6 +3,7 @@ package com.owo233.tcqt
 import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Build
+import android.os.Environment
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
@@ -31,14 +32,13 @@ internal object HookSteps {
     }
 
     fun initContext(app: Application) {
-
         val packageManager = app.packageManager
         val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
         val appName = packageManager.getApplicationLabel(app.applicationInfo).toString()
 
         val dirPath = app.getExternalFilesDir(null)?.parentFile?.let {
             "${it.absolutePath}/${TCQTBuild.APP_NAME}/"
-        } ?: "/storage/emulated/0/Android/data/${app.packageName}/${TCQTBuild.APP_NAME}/"
+        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${app.packageName}/${TCQTBuild.APP_NAME}/"
 
         HookEnv.setModuleDataPath(dirPath)
         HookEnv.setHostAppContext(app)

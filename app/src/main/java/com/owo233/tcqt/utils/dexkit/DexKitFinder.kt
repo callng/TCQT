@@ -50,7 +50,7 @@ internal object DexKitFinder {
                 tasks.forEach { task ->
                     runCatching {
                         task.getQueryMap().forEach { (name, query) ->
-                            val tip = "${task.TAG}->$name"
+                            val tip = name
 
                             when (query) {
                                 is FindClass -> {
@@ -72,7 +72,7 @@ internal object DexKitFinder {
                                 }
                             }
                         }
-                    }.onFailure { Log.e(task.TAG, it) }
+                    }.onFailure { Log.e("", it) }
                 }
             }
             DexKitCache.saveCache()
@@ -96,10 +96,10 @@ interface DexKitTask {
     fun getQueryMap(): Map<String, BaseMatcher>
 
     fun requireClass(key: String): Class<*> {
-        return DexKitCache.getClass("${TAG}->$key")
+        return DexKitCache.getClass(key)
     }
 
     fun requireMethod(key: String): Method {
-        return DexKitCache.getMethod("${TAG}->$key")
+        return DexKitCache.getMethod(key)
     }
 }

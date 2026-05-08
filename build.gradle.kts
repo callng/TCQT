@@ -16,7 +16,7 @@ plugins {
     alias(libs.plugins.protobuf) apply false
 }
 
-val appBaseVersionName: String by extra("3.6.3")
+val appBaseVersionName: String by extra("3.6.4")
 
 abstract class GitCommandValueSource :
     ValueSource<String, GitCommandValueSource.Parameters> {
