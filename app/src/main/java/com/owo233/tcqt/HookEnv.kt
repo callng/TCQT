@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.log.Log
 import com.tencent.mobileqq.vas.theme.api.ThemeUtil
@@ -123,5 +124,10 @@ internal object HookEnv {
         } else {
             false
         }
+    }
+
+    fun resetApp() {
+        PlatformTools.killSubProcesses()
+        PlatformTools.reStartLoadingActivity()
     }
 }

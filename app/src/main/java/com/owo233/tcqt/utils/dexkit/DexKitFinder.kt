@@ -75,8 +75,9 @@ internal object DexKitFinder {
                     }.onFailure { Log.e("", it) }
                 }
             }
+
             DexKitCache.saveCache()
-            Toasts.success("查找完成，请重启${HookEnv.appName}")
+            Toasts.success("查找完成，准备重启${HookEnv.appName}")
             delay(2500L)
             ModuleCommand.sendCommand(HookEnv.application, "exitApp")
         }

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
@@ -42,8 +43,7 @@ class ModuleCommand : AlwaysRunAction() {
                         MobileQQ.getMobileQQ()?.takeIf {
                             it.isRuntimeReady
                         }?.run {
-                            otherProcessExit(false)
-                            qqProcessExit(true)
+                            HookEnv.resetApp()
                         }
                     }
 
