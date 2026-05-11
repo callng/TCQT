@@ -9,7 +9,7 @@ import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookReplace
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.allConstructors
 import com.tencent.common.app.BaseApplicationImpl
@@ -65,36 +65,36 @@ internal object ModuleLoader {
     }
 
     private fun hookQFixAttach(attach: Method) {
-        attach.hookReplace { chain ->
-            val constructorUnhooks = mutableListOf<Unhook>()
+        val constructorUnhooks = mutableListOf<Unhook>()
 
-            BaseDexClassLoader::class.java.allConstructors().forEach { ctor ->
-                val unhook = ctor.hookAfter { param ->
-                    val loader = param.thisObject as ClassLoader
-                    val loaderStr = loader.toString()
-                    if (loaderStr.contains(TCQTBuild.APP_ID)) return@hookAfter
+        attach.apply {
+            hookBefore {
+                BaseDexClassLoader::class.java.allConstructors().forEach { ctor ->
+                    val unhook = ctor.hookAfter { param ->
+                        val loader = param.thisObject as ClassLoader
+                        val loaderStr = loader.toString()
+                        if (loaderStr.contains(TCQTBuild.APP_ID)) return@hookAfter
 
-                    if ((loaderStr.contains("com.tencent.") ||
-                                loaderStr.contains("TinkerClassLoader") ||
-                                loaderStr.contains("DelegateLastClassLoader"))
-                        && !hasCapturedTinker.get()
-                    ) {
-                        hasCapturedTinker.set(true)
-                        Log.d("捕获到热更新 ClassLoader： $loader")
-                        doRealStartup(loader)
+                        if ((loaderStr.contains("com.tencent.") ||
+                                    loaderStr.contains("TinkerClassLoader") ||
+                                    loaderStr.contains("DelegateLastClassLoader"))
+                            && !hasCapturedTinker.get()
+                        ) {
+                            hasCapturedTinker.set(true)
+                            Log.d("捕获到热更新 ClassLoader： $loader")
+                            doRealStartup(loader)
+                        }
                     }
+                    constructorUnhooks.add(unhook)
                 }
-                constructorUnhooks.add(unhook)
             }
 
-            try {
-                return@hookReplace chain.proceed()
-            } finally {
+            hookAfter { param ->
                 constructorUnhooks.forEach { it.unhook() }
                 constructorUnhooks.clear()
 
                 if (!hasCapturedTinker.get()) {
-                    val context = chain.args[0] as Context
+                    val context = param.args[0] as Context
                     doRealStartup(context.classLoader)
                 }
             }
