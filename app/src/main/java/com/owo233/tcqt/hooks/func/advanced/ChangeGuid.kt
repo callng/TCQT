@@ -6,14 +6,13 @@ import android.content.Context
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -26,7 +25,6 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodAfter
-import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
 @RegisterSetting(
@@ -57,20 +55,24 @@ import com.owo233.tcqt.utils.log.Log
 )
 class ChangeGuid : IAction {
 
+    override val key: String
+        get() = GeneratedSettingList.CHANGE_GUID
+
+    override val processes: Set<ActionProcess>
+        get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
+
     override fun onRun(app: Application, process: ActionProcess) {
         when {
-            PlatformTools.isMsfProcess() -> setupMsfHook()
-            PlatformTools.isMainProcess() -> setupLoginUiHook()
+            PlatformTools.isMsfProcess() -> setupGuidHook()
+            PlatformTools.isMainProcess() -> {
+                setupGuidHook()
+                setupLoginUiHook()
+            }
         }
     }
 
-    override val key: String get() = GeneratedSettingList.CHANGE_GUID
-
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
-
-    private fun setupMsfHook() {
+    private fun setupGuidHook() {
         if (GuidConfig.isEnabled && GuidConfig.newGuid.isNotBlank()) {
-            Log.i("MSF: 自定义 GUID 已启用, 准备修改")
             GuidHelper.hookGuid(GuidConfig.newGuid)
         }
     }
@@ -112,43 +114,75 @@ class ChangeGuid : IAction {
             GuidConfig.defaultGuid.ifEmpty { "无法获取原始GUID" }
         }
 
+        val density = context.resources.displayMetrics.density
+        val hPad = (16 * density).toInt()
+        val vPad = (14 * density).toInt()
+
         val input = EditText(context).apply {
             hint = "32 位 GUID（可为空）"
-            inputType = InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            minHeight = (48 * resources.displayMetrics.density).toInt()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             filters = arrayOf(InputFilter.LengthFilter(32))
-            textSize = 16f
-            gravity = Gravity.CENTER_HORIZONTAL
-            setSingleLine()
-            setPadding(50, 36, 50, 36)
+            textSize = 14f
+            typeface = android.graphics.Typeface.MONOSPACE
+            isSingleLine = true
+            setHorizontallyScrolling(true)
+            setPadding(hPad, vPad, hPad, vPad)
             setText(currentDisplayGuid)
+            setSelectAllOnFocus(true)
         }
 
-        val container = FrameLayout(context).apply {
-            val params = FrameLayout.LayoutParams(
+        val randomButton = Button(context).apply {
+            text = "随机生成"
+            textSize = 13f
+            isAllCaps = false
+            setBackgroundResource(android.R.color.transparent)
+            layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            val margin = (20 * context.resources.displayMetrics.density).toInt()
+            setOnClickListener {
+                val randomGuid = buildString(32) {
+                    val hex = "0123456789abcdef"
+                    repeat(32) { append(hex.random()) }
+                }
+                input.setText(randomGuid)
+                input.selectAll()
+            }
+        }
+
+        val container = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val margin = (20 * density).toInt()
             setPadding(margin, margin, margin, margin)
-            addView(input, params)
+            addView(input, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+            addView(randomButton, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
         }
 
         val dialog = AlertDialog.Builder(context)
             .setTitle("设置自定义 GUID")
             .setView(container)
             .setPositiveButton("保存") { _, _ ->
-                handleSaveGuid(
-                    context,
-                    input.text.toString().trim()
-                )
+                handleSaveGuid(context, input.text.toString().trim())
             }
             .setNeutralButton("恢复") { _, _ -> handleRestoreGuid(context) }
             .setNegativeButton("取消", null)
             .create()
 
         dialog.show()
-        dialog.getButton(-3).isEnabled = GuidConfig.isEnabled
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = GuidConfig.isEnabled
+
+        input.requestFocus()
+        input.post {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                    as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(input, 0)
+        }
     }
 
     private fun handleSaveGuid(context: Context, guid: String) {
@@ -157,7 +191,7 @@ class ChangeGuid : IAction {
         when {
             guid.isBlank() -> {
                 GuidConfig.disable()
-                toastAndRestart(context, "已禁用自定义GUID，立即生效")
+                toastAndRestart(context, "已禁用自定义GUID")
             }
 
             !guid.matches(Regex("^[a-fA-F0-9]{32}$")) -> {
@@ -171,7 +205,7 @@ class ChangeGuid : IAction {
             guid.equals(GuidConfig.defaultGuid, true) -> {
                 if (GuidConfig.isEnabled) {
                     GuidConfig.disable()
-                    toastAndRestart(context, "已还原为系统默认，立即生效")
+                    toastAndRestart(context, "已还原为系统默认值")
                 } else {
                     toast(context, "与系统默认值一致，无需重复设置")
                 }
@@ -179,7 +213,7 @@ class ChangeGuid : IAction {
 
             else -> {
                 GuidConfig.enableWith(guid)
-                toastAndRestart(context, "已保存，立即生效")
+                toastAndRestart(context, "已保存")
             }
         }
     }
@@ -187,7 +221,7 @@ class ChangeGuid : IAction {
     private fun handleRestoreGuid(context: Context) {
         if (GuidConfig.isEnabled) {
             GuidConfig.disable()
-            toastAndRestart(context, "已恢复默认，立即生效")
+            toastAndRestart(context, "已恢复默认值")
         }
     }
 
@@ -196,7 +230,7 @@ class ChangeGuid : IAction {
 
     private fun toastAndRestart(context: Context, msg: String) {
         toast(context, msg)
-        PlatformTools.restartMsfProcess()
+        HookEnv.resetApp()
     }
 
     private fun findLoginButton(view: View): Button? {

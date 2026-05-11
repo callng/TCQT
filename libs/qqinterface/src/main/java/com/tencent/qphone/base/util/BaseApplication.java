@@ -1,6 +1,8 @@
 package com.tencent.qphone.base.util;
 
-public abstract class BaseApplication {
+import android.app.Application;
+
+public abstract class BaseApplication extends Application {
 
     public static BaseApplication getContext() {
         throw new RuntimeException("Stub!");
