@@ -53,19 +53,16 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
--keepattributes LineNumberTable,SourceFile
--keepattributes RuntimeVisibleAnnotations,AnnotationDefault
-
 -dontwarn androidx.constraintlayout.core.Metrics
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintAnchor$Type
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidget
 -dontwarn androidx.constraintlayout.core.widgets.ConstraintWidgetContainer
+-dontwarn androidx.window.extensions.WindowExtensions
+-dontwarn androidx.window.extensions.WindowExtensionsProvider
 -dontwarn androidx.window.extensions.area.ExtensionWindowAreaPresentation
 -dontwarn androidx.window.extensions.core.util.function.Consumer
 -dontwarn androidx.window.extensions.core.util.function.Function
 -dontwarn androidx.window.extensions.core.util.function.Predicate
--dontwarn androidx.window.extensions.WindowExtensions
--dontwarn androidx.window.extensions.WindowExtensionsProvider
 -dontwarn androidx.window.extensions.layout.DisplayFeature
 -dontwarn androidx.window.extensions.layout.FoldingFeature
 -dontwarn androidx.window.extensions.layout.WindowLayoutComponent
@@ -76,7 +73,9 @@
 -dontwarn androidx.window.sidecar.SidecarInterface
 -dontwarn androidx.window.sidecar.SidecarProvider
 -dontwarn androidx.window.sidecar.SidecarWindowLayoutInfo
--dontwarn java.beans.**
+
+-keepattributes LineNumberTable,SourceFile
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
 -classobfuscationdictionary obf-dict.txt
 -obfuscationdictionary obf-dict.txt
