@@ -108,7 +108,7 @@ internal object ModuleLoader {
         HookSteps.injectClassLoader(reClassLoader)
 
         try {
-            BaseApplicationImpl::class.java.getDeclaredMethod("onCreate").hookAfter { param ->
+            BaseApplicationImpl::class.java.getDeclaredMethod("onCreate").hookBefore { param ->
                 if (isInit.compareAndSet(false, true)) {
                     val app = param.thisObject as Application
                     HookSteps.initContext(app)
