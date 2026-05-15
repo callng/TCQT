@@ -38,11 +38,19 @@ class BlockAtEveryone : IAction {
             )
         }.hookBefore { param ->
             val info = param.args[1] as? RecentContactInfo ?: return@hookBefore
-            // atType 1 艾特全体成员 2 艾特群成员 6 艾特自己
-            // chatType 2 群组 1 好友
-            if (info.chatType == 2 && info.atType == 1) {
-                param.result = null
-            }
+            if (info.chatType != CHAT_TYPE_GROUP) return@hookBefore
+
+            val isAtAll = (info.atType and AT_ALL_FLAG) != 0 ||
+                    info.abstractContent.orEmpty().any { it.content == "@全体成员" }
+
+            if (isAtAll) param.result = null
         }
+    }
+
+    companion object {
+        // atType 1 艾特全体成员 2 艾特群成员 6 艾特自己
+        // chatType 2 群组 1 好友
+        private const val AT_ALL_FLAG = 1
+        private const val CHAT_TYPE_GROUP = 2
     }
 }
