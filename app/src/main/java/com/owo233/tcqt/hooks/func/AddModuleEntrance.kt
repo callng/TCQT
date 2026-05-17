@@ -7,6 +7,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Parcelable
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
@@ -32,26 +35,18 @@ import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.ResourcesUtils
-import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.fieldValue
 import com.owo233.tcqt.utils.reflect.getFields
-import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.new
 import com.tencent.mobileqq.app.BaseActivity
-import com.tencent.mobileqq.utils.DialogUtil
-import com.tencent.mobileqq.utils.QQCustomDialog
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
-import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
@@ -64,545 +59,385 @@ import java.lang.reflect.Proxy
     desc = "在宿主设置页面额外显示模块附加工具入口",
     uiTab = "高级"
 )
-class AddModuleEntrance : AlwaysRunAction(), DexKitTask {
+class AddModuleEntrance : AlwaysRunAction() {
 
-    override fun onRun(app: Application, process: ActionProcess) {
-        // 设置页入口
-        runCatching {
-            val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
-            val (entryClass, isNewProvider) = resolveSettingProvider(mainClass)
-            createEntries(entryClass, isNewProvider)
-        }.onFailure {
-            Log.e("创建模块设置入口失败", it)
-        }
+    private var cachedProcessorInfo: ProcessorInfo? = null
 
-        // 首页 + 入口
-        runCatching {
-            plusMenu()
-        }.onFailure {
-            Log.e("添加Plus菜单入口失败", it)
+    // ── Entry Configurations ───────────────────────────────────────────
+
+    private val entryConfigs by lazy {
+        buildList {
+            add(
+                SettingEntryConfig(
+                    id = R.id.setting2Activity_settingEntryItem,
+                    title = TCQTBuild.APP_NAME,
+                    groupTag = "TCQT_SettingEntry",
+                    onClick = ::openTCQTSettings
+                )
+            )
+            add(
+                SettingEntryConfig(
+                    id = R.id.open_info_card,
+                    title = "打开资料卡片",
+                    iconName = "qui_tuning",
+                    extraEntry = true,
+                    groupTag = "TCQT_OtherSettingEntry",
+                    groupTitle = "TCQT工具",
+                    onClick = ::showInfoCardDialog
+                )
+            )
+            if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+                add(
+                    SettingEntryConfig(
+                        id = R.id.account_get_ticket,
+                        title = "复制账号票据",
+                        iconName = "qui_check_account",
+                        extraEntry = true,
+                        groupTag = "TCQT_OtherSettingEntry",
+                        groupTitle = "TCQT工具",
+                        onClick = ::copyTicket
+                    )
+                )
+            }
         }
     }
 
-    @SuppressLint("DiscouragedApi")
-    private fun plusMenu() {
-        val menuItemId = 686617
-        val resId = HookEnv.hostAppContext.resources.getIdentifier(
-            "qui_setting",
-            "drawable",
-            HookEnv.hostAppPackageName
-        )
-        val entryMenuItem = loadOrThrow($$"com.tencent.widget.PopupMenuDialog$MenuItem")
-            .getConstructor(
-                Int::class.javaPrimitiveType,
-                String::class.java,
-                String::class.java,
-                Int::class.javaPrimitiveType
-            )
-            .newInstance(
-                menuItemId,
-                TCQTBuild.APP_NAME,
-                TCQTBuild.APP_NAME,
-                resId
+    // ── Lifecycle ──────────────────────────────────────────────────────
+
+    override fun onRun(app: Application, process: ActionProcess) {
+        runCatching { hookSettingEntries() }
+            .onFailure { Log.e("创建模块设置入口失败", it) }
+    }
+
+    // ── Settings Page Entries ──────────────────────────────────────────
+
+    private fun hookSettingEntries() {
+        val mainClass = loadOrThrow("com.tencent.mobileqq.setting.main.MainSettingFragment")
+        val (providerClass, isNew) = resolveSettingProvider(mainClass)
+
+        val buildMethod = providerClass.findBuildMethod()
+            ?: return Log.e("没有找到 build 方法,无法创建模块设置入口!!!")
+
+        buildMethod.hookAfter { param ->
+            val context = param.args.firstOrNull() as? Context ?: return@hookAfter
+            val result = param.result as? MutableList<*> ?: return@hookAfter
+            val processorInfo = resolveProcessorInfo(result) ?: return@hookAfter
+
+            ResourcesUtils.injectResourcesToContext(context.resources)
+
+            val showAttached = GeneratedSettingList.getBoolean(
+                GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
             )
 
-        loadOrThrow("com.tencent.widget.PopupMenuDialog")
-            .hookMethodBefore(
-                "conversationPlusBuild",
-                Activity::class.java,
-                List::class.java,
-                loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnClickActionListener"),
-                loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnDismissListener")
-            ) { param ->
-                param.args[1] = listOf(entryMenuItem) + param.args[1] as List<*>
-            }
-
-        requireMethod("recent_adapter_onclick").hookBefore { param ->
-            if ((param.args[0]!!.getObject("id") as Int) == menuItemId) {
-                openTCQTSettings()
-                param.result = Unit
-            }
+            entryConfigs
+                .filter { !it.extraEntry || showAttached }
+                .groupBy { it.groupTag.orEmpty() }
+                .values
+                .map { group ->
+                    val title = group.firstNotNullOfOrNull { it.groupTitle }
+                    val items = group.map { it.toSettingItem(context, processorInfo) }
+                    title to items
+                }
+                .asReversed()
+                .forEach { (title, items) -> insertGroup(result, items, isNew, title) }
         }
     }
 
     private fun resolveSettingProvider(mainFragmentClass: Class<*>): Pair<Class<*>, Boolean> {
-        val candidates = listOf(
+        val knownProviders = listOf(
             "com.tencent.mobileqq.setting.main.MainSettingConfigProvider",
             "com.tencent.mobileqq.setting.main.NewSettingConfigProvider",
         )
 
-        val entryClass = candidates
-            .firstNotNullOfOrNull { name -> load(name) }
-            ?: inferProviderFromField(mainFragmentClass)
+        val providerClass = knownProviders.firstNotNullOfOrNull(::load)
+            ?: mainFragmentClass.inferProviderClass()
             ?: error("未找到MainSettingFragment类中被混淆的Provider,无法创建模块设置入口!")
 
-        val isNewProvider = entryClass.name == candidates.last() || entryClass.name !in candidates
-
-        return entryClass to isNewProvider
+        val isNew = providerClass.name == knownProviders.last() || providerClass.name !in knownProviders
+        return providerClass to isNew
     }
 
-    private fun inferProviderFromField(clz: Class<*>): Class<*>? {
-        return clz.getFields(false)
-            .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
-            ?.type
-            ?.name
-            ?.let { load(it) }
-    }
-
-    /**
-     * 在设置页插入多个自定义入口
-     *
-     * @param settingConfigProviderClass SettingConfigProvider 类
-     * @param isNewSetting 是否为新版设置页
-     */
-    @SuppressLint("DiscouragedApi")
-    private fun createEntries(settingConfigProviderClass: Class<*>, isNewSetting: Boolean) {
-        runCatching {
-            val buildMethod = findBuildMethod(settingConfigProviderClass)
-                ?: return@runCatching Log.e("没有找到 build 方法,无法创建模块设置入口!!!")
-
-            buildMethod.hookAfter { param ->
-                val context = param.args.firstOrNull() as? Context ?: return@hookAfter
-                val result = param.result as? MutableList<*> ?: return@hookAfter
-
-                val processorInfo = resolveProcessorInfo(result)
-                    ?: return@hookAfter
-
-                ResourcesUtils.injectResourcesToContext(context.resources)
-
-                val showAttached = GeneratedSettingList.getBoolean(
-                    GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
-                )
-                val filteredConfigs = entryConfigs.filter { config ->
-                    !config.extraEntry || showAttached
-                }
-                val grouped = filteredConfigs
-                    .groupBy { it.groupTag ?: "" }
-                    .map { (tag, groupConfigs) ->
-                        val title = groupConfigs.firstOrNull { it.groupTitle != null }?.groupTitle
-                        val items = groupConfigs.map { config ->
-                            createSettingItem(context, config, processorInfo)
-                        }
-                        Triple(tag, title, items)
-                    }
-
-                for ((_, title, items) in grouped.asReversed()) {
-                    insertGroups(result, items, isNewSetting, title)
-                }
-            }
-        }.onFailure { Log.e("模块设置入口创建失败", it) }
-    }
-
-    private fun findBuildMethod(cls: Class<*>): Method? {
-        return cls.declaredMethods.find {
-            it.paramCount == 1 &&
-                    it.parameterTypes[0] == Context::class.java &&
-                    List::class.java.isAssignableFrom(it.returnType)
-        }
-    }
-
-    private var cachedProcessorInfo: ProcessorInfo? = null
+    // ── Processor Resolution ───────────────────────────────────────────
 
     private fun resolveProcessorInfo(result: List<*>): ProcessorInfo? {
-        if (cachedProcessorInfo != null) return cachedProcessorInfo
+        cachedProcessorInfo?.let { return it }
 
-        val candidates = mutableSetOf<Class<*>>()
-        result.forEach { item ->
-            if (item == null) return@forEach
-            val cls = item.javaClass
-            cls.declaredFields.forEach { field ->
-                field.isAccessible = true
-                val value = runCatching { field.get(item) }.getOrNull()
-                when (value) {
-                    is Array<*> -> value.forEach { v -> v?.javaClass?.let(candidates::add) }
-                    is Collection<*> -> value.forEach { v -> v?.javaClass?.let(candidates::add) }
-                }
-            }
-        }
+        val processorClass = result.collectProcessorCandidates()
+            .firstOrNull(::matchesProcessorSignature)
+            ?: return null.also { Log.e("无法从 build() 结果中自动识别 processor 类,无法创建模块设置入口!") }
 
-        val target = candidates.find { cls ->
-            cls.constructors.any { ctor ->
-                val types = ctor.parameterTypes
-                types.size in 4..5 &&
-                        types[0] == Context::class.java &&
-                        types[1] == Int::class.javaPrimitiveType &&
-                        types[2] == CharSequence::class.java &&
-                        types[3] == Int::class.javaPrimitiveType &&
-                        (types.size == 4 || types[4] == String::class.java)
-            }
-        } ?: return null.also {
-            Log.e("无法从 build() 结果中自动识别 processor 类,无法创建模块设置入口!")
-        }
+        val ctor = processorClass.constructors.first { it.parameterTypes.size in 4..5 }
+        val onClick = processorClass.findOnClickMethod()
+            ?: return null.also { Log.e("无法找到点击事件方法 (Function0),无法创建模块设置入口!") }
 
-        val constructor = target.constructors.first { it.parameterTypes.size in 4..5 }
-        val argCount = constructor.parameterTypes.size
-
-        val onClickMethod = target.declaredMethods.find {
-            it.returnType == Void.TYPE &&
-                    it.parameterTypes.size == 1 &&
-                    it.parameterTypes[0].name == "kotlin.jvm.functions.Function0"
-        } ?: return null.also {
-            Log.e("无法找到点击事件方法 (Function0),无法创建模块设置入口!")
-        }
-
-        return ProcessorInfo(target, argCount, onClickMethod).also {
+        return ProcessorInfo(processorClass, ctor.parameterTypes.size, onClick).also {
             cachedProcessorInfo = it
         }
     }
 
-    @SuppressLint("DiscouragedApi")
-    private fun createSettingItem(
-        context: Context,
-        config: SettingEntryConfig,
-        info: ProcessorInfo
-    ): Any {
-        val resId =
-            context.resources.getIdentifier(config.iconName, "drawable", context.packageName)
-        val args = arrayOf(
-            context,
-            config.id,
-            config.title,
-            resId,
-            null
-        ).take(info.argCount).toTypedArray()
-
-        val settingItem = info.clazz.new(*args)
-
-        // 绑定单击事件
-        bindClickAction(settingItem, info.onClickMethod, config.onClick, context)
-
-        return settingItem
-    }
-
-    private fun bindClickAction(
-        item: Any,
-        onClickMethod: Method,
-        clickListener: (Context) -> Unit,
-        context: Context
-    ) {
-        val function0Class = onClickMethod.parameterTypes.first()
-        val unit = HookEnv.hostClassLoader
-            .loadClass("kotlin.Unit")
-            ?.fieldValue("INSTANCE") ?: Unit
-
-        val proxy = Proxy.newProxyInstance(
-            HookEnv.hostClassLoader,
-            arrayOf(function0Class)
-        ) { _, method, _ ->
-            if (method.name == "invoke") {
-                runCatching {
-                    clickListener(context)
-                }.onFailure { Log.e("设置入口点击事件执行失败", it) }
+    private fun List<*>.collectProcessorCandidates(): Set<Class<*>> = buildSet {
+        this@collectProcessorCandidates.filterNotNull().forEach { item ->
+            item.javaClass.declaredFields.forEach { field ->
+                field.isAccessible = true
+                when (val value = runCatching { field.get(item) }.getOrNull()) {
+                    is Array<*> -> value.mapNotNullTo(this) { it?.javaClass }
+                    is Collection<*> -> value.mapNotNullTo(this) { it?.javaClass }
+                }
             }
-            unit
         }
-
-        onClickMethod.invoke(item, proxy)
     }
 
-    private fun insertGroups(
+    // ── Setting Item Factory ───────────────────────────────────────────
+
+    @SuppressLint("DiscouragedApi")
+    private fun SettingEntryConfig.toSettingItem(context: Context, info: ProcessorInfo): Any {
+        val resId = context.resources.getIdentifier(iconName, "drawable", context.packageName)
+        val args = arrayOf(context, id, title, resId, null).take(info.argCount).toTypedArray()
+        return info.clazz.new(*args).also { it.bindClick(info.onClickMethod, onClick, context) }
+    }
+
+    private fun Any.bindClick(method: Method, listener: (Context) -> Unit, context: Context) {
+        val function0Class = method.parameterTypes.first()
+        val unitInstance = HookEnv.hostClassLoader
+            .loadClass("kotlin.Unit")?.fieldValue("INSTANCE") ?: Unit
+
+        val proxy = Proxy.newProxyInstance(HookEnv.hostClassLoader, arrayOf(function0Class)) { _, m, _ ->
+            if (m.name == "invoke") {
+                runCatching { listener(context) }
+                    .onFailure { Log.e("设置入口点击事件执行失败", it) }
+            }
+            unitInstance
+        }
+        method.invoke(this, proxy)
+    }
+
+    private fun insertGroup(
         result: MutableList<*>,
         items: List<Any>,
         isNewSetting: Boolean,
         title: CharSequence?
     ) {
         val groupClass = result.firstOrNull()?.javaClass ?: return
-        val markerClass = HookEnv.hostClassLoader
-            .loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
+        val markerClass = HookEnv.hostClassLoader.loadClass("kotlin.jvm.internal.DefaultConstructorMarker")
 
-        val groupConstructor = groupClass.getConstructor(
-            List::class.java,
-            CharSequence::class.java,
-            CharSequence::class.java,
-            Int::class.javaPrimitiveType,
-            markerClass
-        )
+        val group = groupClass
+            .getConstructor(List::class.java, CharSequence::class.java, CharSequence::class.java,
+                Int::class.javaPrimitiveType, markerClass)
+            .newInstance(items, title, null, if (title != null) 4 else 6, null)
 
-        val group = groupConstructor.newInstance(
-            items,
-            title,
-            null,
-            if (title != null) 4 else 6,
-            null
-        )
-
-        val insertIndex = if (isNewSetting) 1 else 0
-        result.invoke("add", insertIndex, group)
+        result.invoke("add", if (isNewSetting) 1 else 0, group)
     }
 
-    private fun copyTicket(context: Context) {
-        DialogUtil.createDialogWithCheckBox(
-            context,
-            0,
-            "安全提醒",
-            "你即将进行的操作有导致账号被盗的风险！！！" +
-                    "票据一旦复制并泄露，攻击者可绕过身份验证直接接管你的账号！" +
-                    "${TCQTBuild.APP_NAME} 仅提供调试支持，不对因用户主动分享数据" +
-                    "或被第三方APP读取剪切板内容导致的资产损失、隐私泄露承担任何法律责任。",
-            "我已深知泄露风险，并自愿承担后续后果",
-            false,
-            "取消",
-            "复制",
-            null,
-            { dialog, _ ->
-                val checked = (dialog as QQCustomDialog).checkBoxState
-                if (!checked) {
-                    Toasts.error("勾选框在等待你临幸 (｡•ˇ‸ˇ•｡)")
-                    return@createDialogWithCheckBox
-                }
-                ModuleScope.launchIO { loginAndCopyTicket(context) }
-            },
-            { dialog, _ -> dialog.dismiss() }
-        ).apply {
-            setCanceledOnTouchOutside(true)
-        }.show()
+    // ── Ticket Copying ─────────────────────────────────────────────────
+
+    private fun copyTicket(ctx: Context) {
+        val context = ctx.toCompatibleContext()
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_copy_ticket_warning, null)
+        val etConfirm = view.findViewById<EditText>(R.id.et_confirm_input)
+        val btnCancel = view.findViewById<Button>(R.id.btn_cancel)
+        val btnCopy = view.findViewById<Button>(R.id.btn_copy)
+
+        val dialog = AlertDialog.Builder(context)
+            .setView(view)
+            .setCancelable(true)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnCopy.setOnClickListener {
+            val userInput = etConfirm.text.toString().trim()
+            val expectedText = "我已知晓风险"
+
+            if (userInput != expectedText) {
+                etConfirm.error = "请输入“${expectedText}”以确认操作"
+                return@setOnClickListener
+            }
+
+            dialog.dismiss()
+            ModuleScope.launchIO { loginAndCopyTicket(context) }
+        }
+
+        dialog.show()
+
+        dialog.window?.setLayout(
+            (context.resources.displayMetrics.widthPixels * 0.9).toInt(),
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
     }
 
-    private fun buildTicketInfo(wtLoginResult: WTLoginRecordSnapshot): String {
+    private suspend fun loginAndCopyTicket(context: Context) {
+        val snapshot = try {
+            TicketManager.easyLogin()
+            delay(233L)
+            TicketManager.getWTLoginRecordSnapshot()
+        } catch (_: TimeoutCancellationException) {
+            return Toasts.error("easyLogin Timeout")
+        } catch (e: EasyLoginException) {
+            Log.e("easyLogin fail", e)
+            return Toasts.error(e.message)
+        } catch (_: UnsupportedOperationException) {
+            return Toasts.error("版本要求=> 9.2.70")
+        }
+
+        context.copyToClipboard(snapshot.formatTicketInfo(), true)
+    }
+
+    private fun WTLoginRecordSnapshot.formatTicketInfo(): String = buildString {
+        appendLine("这是账号票据信息")
+        appendLine("泄露会导致账号被盗!!!\n")
+        appendLine("请及时清空剪切板中的内容")
+        appendLine("以免被第三方APP读取!!!\n")
+        appendLine("uin: $uin\n")
+        appendLine("uid: ${QQInterfaces.currentUid}\n")
+        appendLine("guid: ${QQInterfaces.guid}\n")
+        appendLine("a1: ${a1.toHexString(true)} // 0106 en_A1\n")
+        appendLine("a1Key: ${a1Key.toHexString(true)} // 010C TGTGTKey\n")
+        appendLine("noPicSig: ${noPicSig.toHexString(true)} // 016A\n")
+        appendLine("a2: ${a2.toHexString(true)} // 010A TGT\n")
+        appendLine("a2Key: ${a2Key.toHexString(true)} // 010D TGTKey\n")
+        appendLine("d2: ${d2.toHexString(true)} // 0143\n")
+        appendLine("d2Key: ${d2Key.toHexString(true)} // 0305\n")
+
         val stWeb = TicketManager.getStweb()
         val superKey = TicketManager.getSuperKey()
         val superToken = CalculationUtils.getSuperToken(superKey)
         val authToken = CalculationUtils.getAuthToken(superToken)
 
-        return """
-        这是账号票据信息
-        泄露会导致账号被盗!!!
-
-        请及时清空剪切板中的内容
-        以免被第三方APP读取!!!
-
-        uin: ${wtLoginResult.uin}
-
-        uid: ${QQInterfaces.currentUid}
-
-        guid: ${QQInterfaces.guid}
-
-        a1: ${wtLoginResult.a1.toHexString(true)} // 0106 en_A1
-
-        a1Key: ${wtLoginResult.a1Key.toHexString(true)} // 010C TGTGTKey
-
-        noPicSig: ${wtLoginResult.noPicSig.toHexString(true)} // 016A
-
-        a2: ${wtLoginResult.a2.toHexString(true)} // 010A TGT
-
-        a2Key: ${wtLoginResult.a2Key.toHexString(true)} // 010D TGTKey
-
-        d2: ${wtLoginResult.d2.toHexString(true)} // 0143
-
-        d2Key: ${wtLoginResult.d2Key.toHexString(true)} // 0305
-
-        stWeb: $stWeb // 0103
-
-        superKey: $superKey // 016D
-
-        superToken: $superToken
-
-        authToken: $authToken
-
-        a2生成时间: ${wtLoginResult.a2GenerateTime}
-        a2过期时间: ${wtLoginResult.expireTime}
-    """.trimIndent()
+        appendLine("stWeb: $stWeb // 0103\n")
+        appendLine("superKey: $superKey // 016D\n")
+        appendLine("superToken: $superToken\n")
+        appendLine("authToken: $authToken\n")
+        appendLine("a2生成时间: $a2GenerateTime")
+        appendLine("a2过期时间: $expireTime")
     }
 
-    private suspend fun loginAndCopyTicket(context: Context) {
-        val loginResult: WTLoginRecordSnapshot = try {
-            TicketManager.easyLogin()
-            delay(233L)
-            TicketManager.getWTLoginRecordSnapshot()
-        } catch (_: TimeoutCancellationException) {
-            Toasts.error("easyLogin Timeout")
-            return
-        } catch (e: EasyLoginException) {
-            Toasts.error(e.message)
-            Log.e("easyLogin fail", e)
-            return
-        } catch (_: UnsupportedOperationException) {
-            Toasts.error("版本要求=> 9.2.70")
-            return
-        }
-
-        val info = buildTicketInfo(loginResult)
-        context.copyToClipboard(info, true)
-    }
-
-    private fun openTCQTSettings(ctx: Context? = null) {
-        runCatching {
-            val activity = ctx ?: BaseActivity.sTopActivity
-
-            ModuleScope.launchMain {
-                activity.apply {
-                    startActivity(Intent(this, SettingActivity::class.java))
-                }
-            }
-        }.onFailure {
-            Toasts.error("需要重新启动${HookEnv.appName}")
-        }
-    }
+    // ── Info Card Dialog ───────────────────────────────────────────────
 
     private fun showInfoCardDialog(ctx: Context) {
         val context = ctx.toCompatibleContext()
 
         val editText = EditText(context).apply {
             hint = "输入QQ号或群号"
-
-            val paddingDp = 16
-            val density = context.resources.displayMetrics.density
-            val paddingPx = (paddingDp * density).toInt()
             setSingleLine()
-            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
         }
 
         AlertDialog.Builder(context).apply {
             setTitle("Open the card")
             setView(editText)
-            setNegativeButton("Cancel") { dialog, _ ->
-                dialog.dismiss()
+            setNegativeButton("Cancel") { d, _ -> d.dismiss() }
+            setNeutralButton("Group") { _, _ ->
+                editText.validateUin("请输入群号", "请输入正确的群号")
+                    ?.let { openGroupInfoCard(context, it) }
             }
-            setNeutralButton("Group") { dialog, _ ->
-                val uin = editText.text.toString().trim()
-                if (uin.isEmpty()) {
-                    Toasts.error("请输入群号")
-                    return@setNeutralButton
-                }
-                try {
-                    if (uin.toLong() < 10000) {
-                        Toasts.error("请输入正确的群号")
-                        return@setNeutralButton
-                    }
-                } catch (_: NumberFormatException) {
-                    Toasts.error("请输入正确的群号")
-                    return@setNeutralButton
-                }
-                dialog.dismiss()
-                openGroupInfoCard(context, uin)
-            }
-            setPositiveButton("User") { dialog, _ ->
-                val uin = editText.text.toString().trim()
-                if (uin.isEmpty()) {
-                    Toasts.error("请输入QQ号")
-                    return@setPositiveButton
-                }
-                try {
-                    if (uin.toLong() < 10000) {
-                        Toasts.error("请输入正确的账号")
-                        return@setPositiveButton
-                    }
-                } catch (_: NumberFormatException) {
-                    Toasts.error("请输入正确的账号")
-                    return@setPositiveButton
-                }
-                dialog.dismiss()
-                openUserInfoCard(context, uin)
+            setPositiveButton("User") { _, _ ->
+                editText.validateUin("请输入QQ号", "请输入正确的账号")
+                    ?.let { openUserInfoCard(context, it) }
             }
         }.create().show()
     }
 
+    private fun EditText.validateUin(emptyMsg: String, invalidMsg: String): String? {
+        val uin = text.toString().trim()
+        if (uin.isEmpty()) return null.also { Toasts.error(emptyMsg) }
+        if (runCatching { uin.toLong() < 10000 }.getOrDefault(true)) {
+            return null.also { Toasts.error(invalidMsg) }
+        }
+        return uin
+    }
+
     private fun openUserInfoCard(context: Context, uin: String) {
-        val allInOne = load(
-            "com.tencent.mobileqq.profilecard.data.AllInOne"
-        ) ?: run {
-            Toasts.error("接口异常")
-            return
-        }
-        val newAllInOne = allInOne.new(uin, 83) as Parcelable
+        val allInOneClass = load("com.tencent.mobileqq.profilecard.data.AllInOne")
+            ?: return Toasts.error("接口异常")
 
-        val mActivity = if (HookEnv.isQQ())
-            "com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity" else
+        val activityClass = if (HookEnv.isQQ())
+            "com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity"
+        else
             "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity"
-        if (load(mActivity) == null) {
-            Toasts.error("接口异常")
-            return
-        }
 
-        val intent = Intent().apply {
-            setComponent(ComponentName(context, mActivity))
+        if (load(activityClass) == null) return Toasts.error("接口异常")
+
+        val allInOne = allInOneClass.new(uin, 83) as Parcelable
+
+        context.startActivity(Intent().apply {
+            component = ComponentName(context, activityClass)
             putExtra("key_is_friend_profile_card", true)
             putExtra("fling_action_key", 2)
-            putExtra("AllInOne", newAllInOne)
-            if (context !is Activity) {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        }
-
-        context.startActivity(intent)
+            putExtra("AllInOne", allInOne)
+            if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
     }
 
     private fun openGroupInfoCard(context: Context, uin: String) {
-        val mActivity = "com.tencent.mobileqq.activity.QPublicFragmentActivity"
-        val mFragment = load("com.tencent.mobileqq.troop.troopcard.reborn.TroopInfoCardFragment")
-        if (load(mActivity) == null || mFragment == null) {
-            Toasts.error("接口异常")
-            return
-        }
+        val activityClass = "com.tencent.mobileqq.activity.QPublicFragmentActivity"
+        val fragmentClass = load("com.tencent.mobileqq.troop.troopcard.reborn.TroopInfoCardFragment")
+        if (load(activityClass) == null || fragmentClass == null) return Toasts.error("接口异常")
 
-        val intent = Intent().apply {
-            setComponent(ComponentName(context, mActivity))
-            setFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+        context.startActivity(Intent().apply {
+            component = ComponentName(context, activityClass)
+            flags = Intent.FLAG_ACTIVITY_NO_USER_ACTION
             putExtra("fling_action_key", 2)
             putExtra("keyword", uin)
-            putExtra("authSig", "") // 风控, 通过这样的方式打开资料卡申请加群, 请求可能会被屏蔽
+            putExtra("authSig", "")
             putExtra("troop_uin", uin)
             putExtra("vistor_type", 2)
-            putExtra("public_fragment_class", mFragment.name)
-            if (context !is Activity) {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        }
-
-        context.startActivity(intent)
+            putExtra("public_fragment_class", fragmentClass.name)
+            if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
     }
 
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+    // ── Navigation ─────────────────────────────────────────────────────
 
-    private val entryConfigs = buildList {
-        add(
-            SettingEntryConfig(
-                id = R.id.setting2Activity_settingEntryItem,
-                title = TCQTBuild.APP_NAME,
-                iconName = "qui_setting",
-                groupTag = "TCQT_SettingEntry",
-                groupTitle = null,
-                onClick = ::openTCQTSettings
-            )
-        )
-        add(
-            SettingEntryConfig(
-                id = R.id.open_info_card,
-                title = "打开资料卡片",
-                iconName = "qui_tuning",
-                extraEntry = true,
-                groupTag = "TCQT_OtherSettingEntry",
-                groupTitle = "TCQT工具",
-                onClick = ::showInfoCardDialog
-            )
-        )
-        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
-            add(
-                SettingEntryConfig(
-                    id = R.id.account_get_ticket,
-                    title = "复制账号票据",
-                    iconName = "qui_check_account",
-                    extraEntry = true,
-                    groupTag = "TCQT_OtherSettingEntry",
-                    groupTitle = "TCQT工具",
-                    onClick = ::copyTicket
-                )
-            )
+    private fun openTCQTSettings(ctx: Context? = null) {
+        runCatching {
+            val activity = ctx ?: BaseActivity.sTopActivity
+            ModuleScope.launchMain {
+                activity.startActivity(Intent(activity, SettingActivity::class.java))
+            }
+        }.onFailure {
+            Toasts.error("需要重新启动${HookEnv.appName}")
+            HookEnv.resetApp()
         }
     }
 
-    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
-        "recent_adapter_onclick" to FindMethod().apply {
-            searchPackages("com.tencent.mobileqq.activity.recent")
-            matcher {
-                name = "onClickAction"
-                paramTypes($$"com.tencent.widget.PopupMenuDialog$MenuItem")
-                declaredClass {
-                    addInterface($$"com.tencent.widget.PopupMenuDialog$OnClickActionListener")
-                }
+    // ── Reflection Helpers ─────────────────────────────────────────────
+
+    private companion object {
+
+        private fun Class<*>.inferProviderClass(): Class<*>? =
+            getFields(false)
+                .firstOrNull { it.isNotStatic && it.type != Boolean::class.javaPrimitiveType }
+                ?.type
+                ?.let { load(it.name) }
+
+        private fun Class<*>.findBuildMethod(): Method? =
+            declaredMethods.find {
+                it.paramCount == 1 &&
+                        it.parameterTypes[0] == Context::class.java &&
+                        List::class.java.isAssignableFrom(it.returnType)
             }
-        }
-    )
+
+        private fun Class<*>.findOnClickMethod(): Method? =
+            declaredMethods.find {
+                it.returnType == Void.TYPE &&
+                        it.parameterTypes.size == 1 &&
+                        it.parameterTypes[0].name == "kotlin.jvm.functions.Function0"
+            }
+
+        private fun matchesProcessorSignature(cls: Class<*>): Boolean =
+            cls.constructors.any { ctor ->
+                val t = ctor.parameterTypes
+                t.size in 4..5 &&
+                        t[0] == Context::class.java &&
+                        t[1] == Int::class.javaPrimitiveType &&
+                        t[2] == CharSequence::class.java &&
+                        t[3] == Int::class.javaPrimitiveType &&
+                        (t.size == 4 || t[4] == String::class.java)
+            }
+    }
+
+    // ── Data Models ────────────────────────────────────────────────────
 
     private data class SettingEntryConfig(
         val id: Int,

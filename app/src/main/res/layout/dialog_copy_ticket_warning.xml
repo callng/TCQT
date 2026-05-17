@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚠️ 严重安全警告"
+        android:textColor="#D32F2F"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="此操作会复制你的敏感数据。这些数据一旦泄露，攻击者将绕过身份验证直接接管你的账号，造成不可逆的资产损失和隐私泄露。\n\n此风险不因本工具或模块作者而转移，完全由操作者自行承担。\n模块作者不对因用户主动分享或被第三方APP读取内容导致的资产损失、隐私泄露承担任何法律责任。\n\n如你已完全理解此行为的致命后果，并确认由自己承担全部责任，请在下方输入“我已知晓风险”以继续。"
+        android:textColor="#212121"
+        android:textSize="15sp"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请在下方输入“我已知晓风险”以确认："
+        android:textColor="#757575"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/et_confirm_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="输入：我已知晓风险"
+        android:inputType="text"
+        android:padding="12dp"
+        android:background="@drawable/edit_text_border"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="取消"
+            android:backgroundTint="#9E9E9E"
+            android:textColor="#FFFFFF"
+            style="@style/Widget.AppCompat.Button.Borderless" />
+
+        <Button
+            android:id="@+id/btn_copy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="确认复制"
+            android:backgroundTint="#D32F2F"
+            android:textColor="#FFFFFF"
+            android:layout_marginStart="12dp" />
+    </LinearLayout>
+
+</LinearLayout>
