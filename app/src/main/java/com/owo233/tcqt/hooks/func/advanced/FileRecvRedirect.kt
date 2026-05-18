@@ -10,8 +10,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.toClass
-import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.reflect.findMethod
 import java.io.File
 
 @RegisterAction
@@ -23,6 +24,10 @@ import java.io.File
     uiTab = "高级"
 )
 class FileRecvRedirect : IAction {
+
+    private val defaultPath: String by lazy {
+        "${HookEnv.application.getExternalFilesDir(null)!!.parent!!}/Tencent/${HookEnv.appName}file_recv/"
+    }
 
     private val downLoadPath: String by lazy {
         "${Environment.getExternalStorageDirectory().absolutePath}/Download/${HookEnv.appName}/"
@@ -39,10 +44,18 @@ class FileRecvRedirect : IAction {
             return
         }
 
-        "com.tencent.mobileqq.filemanager.api.impl.FileSandboxPathUtilApiImpl".toClass
-            .hookMethodBefore("getMobileQQFileSavePath") { param ->
-                param.result = downLoadPath
+        "com.tencent.mobileqq.vfs.VFSAssistantUtils".toClass.findMethod {
+            name = "getSDKPrivatePath"
+            paramCount = 1
+            paramTypes = arrayOf(string)
+        }.hookAfter { param ->
+            val result = param.result as String
+            val file = File(result)
+            if (file.exists() && file.isFile) return@hookAfter
+            if (result.startsWith(defaultPath)) {
+                param.result = File(downLoadPath, file.name).absolutePath
             }
+        }
     }
 
     private fun isTargetDirUsable(): Boolean {
