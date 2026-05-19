@@ -57,9 +57,11 @@ internal object HookSteps {
             Log.i(
                 """
 
-                    android version: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
-                    module version: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${if (TCQTBuild.DEBUG) "Debug" else "Release"}
-                    host version: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
+                    安卓版本: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
+                    系统指纹: ${Build.FINGERPRINT}
+                    设备名称: ${PlatformTools.getDeviceName()}
+                    模块版本: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${if (TCQTBuild.DEBUG) "debug" else "release"}
+                    宿主版本: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
 
                 """.trimIndent()
             )

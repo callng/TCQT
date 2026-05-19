@@ -2,9 +2,7 @@ package com.owo233.tcqt.utils
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageInfo
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -20,14 +18,11 @@ import androidx.core.net.toUri
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
 import com.owo233.tcqt.HookEnv.toHostClass
-import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.context.ContextUtils
 import com.owo233.tcqt.utils.hook.isStatic
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.callMethod
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 
 object PlatformTools {
 
@@ -117,16 +112,16 @@ object PlatformTools {
         return Settings.Secure.getString(HookEnv.hostAppContext.contentResolver, "android_id")
     }
 
-    fun killMsfProcess(context: Context = HookEnv.hostAppContext): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val runningProcesses = activityManager.runningAppProcesses
-        runningProcesses.forEach {
-            if (it.processName.contains("msf", ignoreCase = true)) {
-                Process.killProcess(it.pid)
-                return true
-            }
-        }
-        return false
+    @SuppressLint("PrivateApi")
+    fun getDeviceName(): String {
+        val props = Class.forName("android.os.SystemProperties")
+        val get = props.getDeclaredMethod("get", String::class.java, String::class.java)
+
+        fun prop(key: String): String =
+            runCatching { get.invoke(null, key, "") as String }
+                .getOrDefault("")
+
+        return prop("ro.product.marketname").ifEmpty { prop("ro.product.model") }
     }
 
     fun killSubProcesses(context: Context = HookEnv.hostAppContext) {
@@ -144,20 +139,6 @@ object PlatformTools {
                 // kill
                 Process.killProcess(processInfo.pid)
             }
-        }
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    fun restartMsfProcess(context: Context = HookEnv.hostAppContext) {
-        killMsfProcess(context)
-        GlobalScope.launchWithCatch {
-            val componentName =
-                ComponentName(context.packageName, "com.tencent.mobileqq.msf.service.MsfService")
-            val intent = Intent().apply {
-                component = componentName
-                putExtra("to_SenderProcessName", context.packageName)
-            }
-            context.startService(intent)
         }
     }
 

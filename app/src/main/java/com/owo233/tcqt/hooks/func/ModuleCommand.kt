@@ -12,6 +12,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.log.Log
 import mqq.app.MobileQQ
 
@@ -58,10 +59,12 @@ class ModuleCommand : AlwaysRunAction() {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            app.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            app.registerReceiver(receiver, filter)
+        SyncUtils.post {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                app.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                app.registerReceiver(receiver, filter)
+            }
         }
     }
 
