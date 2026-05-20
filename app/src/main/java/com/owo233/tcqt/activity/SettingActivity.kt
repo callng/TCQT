@@ -53,6 +53,7 @@ import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.utils.ConfigBackupManager
+import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.log.Log
 import kotlinx.coroutines.launch
 
@@ -171,6 +172,7 @@ class SettingActivity : BaseComposeActivity() {
                 var restartPrompt by rememberSaveable { mutableStateOf<RestartPrompt?>(null) }
                 var showClearDialog by rememberSaveable { mutableStateOf(false) }
                 var showBackupDialog by rememberSaveable { mutableStateOf(false) }
+                var showDexKitClearDialog by rememberSaveable { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     onRestoreSuccessCallback = {
@@ -381,6 +383,30 @@ class SettingActivity : BaseComposeActivity() {
                     )
                 }
 
+                if (showDexKitClearDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDexKitClearDialog = false },
+                        title = { Text("清空 DexKit 缓存") },
+                        text = { Text("是否清空 DexKit 缓存并重新查找？") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showDexKitClearDialog = false
+                                    DexKitCache.clearCache()
+                                    ModuleCommand.sendCommand(this@SettingActivity, "exitApp")
+                                }
+                            ) {
+                                Text("清空")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDexKitClearDialog = false }) {
+                                Text("取消")
+                            }
+                        }
+                    )
+                }
+
                 if (restartPrompt != null) {
                     val prompt = restartPrompt!!
                     AlertDialog(
@@ -437,6 +463,9 @@ class SettingActivity : BaseComposeActivity() {
                     },
                     onBackupRestoreClick = {
                         showBackupDialog = true
+                    },
+                    onBackupRestoreLongClick = {
+                        showDexKitClearDialog = true
                     }
                 )
                 }

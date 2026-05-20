@@ -62,17 +62,16 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -150,7 +149,8 @@ fun SettingScreen(
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onBackupRestoreClick: () -> Unit
+    onBackupRestoreClick: () -> Unit,
+    onBackupRestoreLongClick: () -> Unit
 ) {
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
     val isSearchActive = viewModel.isSearchActive
@@ -166,7 +166,8 @@ fun SettingScreen(
                 onSearchClosed = onSearchClosed,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 onClearQuery = viewModel::clearSearchQuery,
-                onBackupRestoreClick = onBackupRestoreClick
+                onBackupRestoreClick = onBackupRestoreClick,
+                onBackupRestoreLongClick = onBackupRestoreLongClick
             )
         },
         snackbarHost = {
@@ -386,7 +387,8 @@ private fun TopBar(
     onSearchClosed: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onBackupRestoreClick: () -> Unit
+    onBackupRestoreClick: () -> Unit,
+    onBackupRestoreLongClick: () -> Unit
 ) {
     val breadcrumbs by viewModel.breadcrumbs
     val topBarState = SettingsTopBarState(
@@ -515,7 +517,17 @@ private fun TopBar(
                             )
                         }
 
-                        TextButton(onClick = onBackupRestoreClick) {
+                        Row(
+                            modifier = Modifier
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onBackupRestoreClick,
+                                    onLongClick = onBackupRestoreLongClick
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
                                 imageVector = Icons.Rounded.Backup,
                                 contentDescription = null,
