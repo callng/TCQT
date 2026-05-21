@@ -1,10 +1,8 @@
 package com.owo233.tcqt.activity
 
-import android.annotation.SuppressLint
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,7 +15,6 @@ import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 
-@SuppressLint("AutoboxingStateCreation")
 class SettingViewModel : ViewModel() {
 
     private val definitions = GeneratedSettingList.SETTING_MAP
@@ -64,13 +61,15 @@ class SettingViewModel : ViewModel() {
     var isSearchActive by mutableStateOf(false)
         private set
 
-    // ───── Stats (scoped to current level) ─────
+    // ───── Stats (computed dynamically using derivedStateOf) ─────
 
-    var enabledCount by mutableIntStateOf(0)
-        private set
+    val enabledCount: Int by derivedStateOf {
+        allFeatures.count { effectiveBoolean(it.key) }
+    }
 
-    var disabledCount by mutableIntStateOf(0)
-        private set
+    val disabledCount: Int by derivedStateOf {
+        (allFeatures.size - enabledCount).coerceAtLeast(0)
+    }
 
     // ───── Pending ─────
 
@@ -108,7 +107,6 @@ class SettingViewModel : ViewModel() {
 
     init {
         reloadPersistedSettings()
-        recalculateStats()
     }
 
     // ───── Navigation ─────
@@ -132,24 +130,14 @@ class SettingViewModel : ViewModel() {
             navigateToRoot()
             return
         }
-        // Pop back to the point where we can push this path
-        while (_navStack.isNotEmpty() && _navStack.last() != fullPath) {
-            val last = _navStack.last()
-            if (fullPath.startsWith(last) && _navStack.size > 1) {
-                // Check if the previous element is a prefix
-                val prev = _navStack[_navStack.size - 2]
-                if (fullPath.startsWith(prev)) {
-                    popNavStack()
-                    continue
-                }
+        val idx = _navStack.indexOf(fullPath)
+        if (idx >= 0) {
+            while (_navStack.size > idx + 1) {
+                _navStack.removeAt(_navStack.lastIndex)
             }
-            popNavStack()
-        }
-        if (_navStack.isEmpty() || _navStack.last() != fullPath) {
+        } else {
             _navStack.clear()
-            if (fullPath.isNotEmpty()) {
-                _navStack.add(fullPath)
-            }
+            _navStack.add(fullPath)
         }
     }
 
@@ -181,19 +169,12 @@ class SettingViewModel : ViewModel() {
     }
 
     fun setFeatureEnabled(key: String, value: Boolean) {
-        val before = effectiveBoolean(key)
         val persisted = persistedBooleans[key] ?: false
 
         if (value == persisted) {
             pendingBooleans.remove(key)
         } else {
             pendingBooleans[key] = value
-        }
-
-        val after = effectiveBoolean(key)
-        if (before != after) {
-            enabledCount += if (after) 1 else -1
-            disabledCount = (allFeatures.size - enabledCount).coerceAtLeast(0)
         }
     }
 
@@ -232,7 +213,6 @@ class SettingViewModel : ViewModel() {
         pendingBooleans.clear()
         pendingInts.clear()
         pendingStrings.clear()
-        recalculateStats()
     }
 
     fun clearAllSettings() {
@@ -245,7 +225,6 @@ class SettingViewModel : ViewModel() {
         expandedKeys.clear()
 
         reloadPersistedSettings()
-        recalculateStats()
     }
 
     fun reloadPersistedSettings() {
@@ -272,11 +251,7 @@ class SettingViewModel : ViewModel() {
     }
 
     fun recalculateStats() {
-        val enabled = allFeatures.count { feature ->
-            effectiveBoolean(feature.key)
-        }
-        enabledCount = enabled
-        disabledCount = (allFeatures.size - enabled).coerceAtLeast(0)
+        // No-op: statistics are automatically computed using derivedStateOf
     }
 
     // ───── Internal: category building ─────

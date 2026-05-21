@@ -20,7 +20,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,10 +34,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,17 +51,21 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ToggleOn
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,7 +106,6 @@ private fun softFadeScaleOut(targetScale: Float, durationMillis: Int) =
                 targetScale = targetScale,
                 animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
             )
-
 
 private fun String.navigationDepth(): Int = if (isEmpty()) 0 else count { it == '/' } + 1
 
@@ -149,8 +152,7 @@ fun SettingScreen(
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onBackupRestoreClick: () -> Unit,
-    onBackupRestoreLongClick: () -> Unit
+    onBackupRestoreClick: () -> Unit
 ) {
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
     val isSearchActive = viewModel.isSearchActive
@@ -166,8 +168,7 @@ fun SettingScreen(
                 onSearchClosed = onSearchClosed,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 onClearQuery = viewModel::clearSearchQuery,
-                onBackupRestoreClick = onBackupRestoreClick,
-                onBackupRestoreLongClick = onBackupRestoreLongClick
+                onBackupRestoreClick = onBackupRestoreClick
             )
         },
         snackbarHost = {
@@ -387,8 +388,7 @@ private fun TopBar(
     onSearchClosed: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onBackupRestoreClick: () -> Unit,
-    onBackupRestoreLongClick: () -> Unit
+    onBackupRestoreClick: () -> Unit
 ) {
     val breadcrumbs by viewModel.breadcrumbs
     val topBarState = SettingsTopBarState(
@@ -451,9 +451,16 @@ private fun TopBar(
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        // Inline breadcrumbs
+                        // Scrollable breadcrumbs to prevent wrapping/clipping
+                        val scrollState = rememberScrollState()
+                        LaunchedEffect(state.breadcrumbs.size) {
+                            scrollState.animateScrollTo(scrollState.maxValue)
+                        }
+
                         Row(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(scrollState),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             state.breadcrumbs.forEachIndexed { index, crumb ->
@@ -479,11 +486,7 @@ private fun TopBar(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = { viewModel.navigateToBreadcrumb(crumb.fullPath) }
-                                        )
+                                        .clickable { viewModel.navigateToBreadcrumb(crumb.fullPath) }
                                         .padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
                                 if (index < state.breadcrumbs.lastIndex) {
@@ -519,13 +522,9 @@ private fun TopBar(
 
                         Row(
                             modifier = Modifier
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = onBackupRestoreClick,
-                                    onLongClick = onBackupRestoreLongClick
-                                )
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(onClick = onBackupRestoreClick)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -534,11 +533,12 @@ private fun TopBar(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "备份",
+                                text = "备份/清理",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -568,11 +568,7 @@ private fun CategoryCard(category: CategoryUiState, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -667,15 +663,12 @@ private fun CompactHeaderCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                CombinedInfoCard(
-                    hostName = hostName,
-                    hostVersion = hostVersion,
-                    moduleName = moduleName,
-                    moduleVersion = moduleVersion,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+            CombinedInfoCard(
+                hostName = hostName,
+                hostVersion = hostVersion,
+                moduleName = moduleName,
+                moduleVersion = moduleVersion
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -707,57 +700,112 @@ private fun CombinedInfoCard(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = modifier.wrapContentWidth()
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            InfoRow(title = "宿主环境", value = "$hostName\n$hostVersion")
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
-                modifier = Modifier.padding(vertical = 2.dp)
+            // Host info section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+                Text(
+                    text = "宿主($hostName)",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+            }
+            Text(
+                text = hostVersion,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
-            InfoRow(title = "模块版本", value = "$moduleName\n$moduleVersion")
+
+            Spacer(modifier = Modifier.size(2.dp))
+
+            // Module info section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+                Text(
+                    text = "模块($moduleName)",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+            }
+            Text(
+                text = moduleVersion,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
-private fun InfoRow(title: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun SmallStatCard(title: String, value: String, accent: Color, modifier: Modifier = Modifier) {
+private fun SmallStatCard(
+    title: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = accent)
-            Text(text = title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = accent
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -863,13 +911,22 @@ private fun SearchBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        OutlinedTextField(
+        TextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f).focusRequester(focusRequester),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
             placeholder = { Text("搜索功能名称或描述") },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+            ),
             trailingIcon = {
                 if (query.isNotBlank()) {
                     Icon(
@@ -878,11 +935,7 @@ private fun SearchBar(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onClearClick
-                            )
+                            .clickable(onClick = onClearClick)
                     )
                 }
             }
@@ -951,8 +1004,6 @@ private fun FooterCard(onIssueClick: () -> Unit, onIssueLongClick: () -> Unit) {
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
             modifier = Modifier.combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
                 onClick = onIssueClick,
                 onLongClick = onIssueLongClick
             )
@@ -1002,14 +1053,10 @@ private fun SavePill(hasPendingChanges: Boolean, pendingCount: Int, onClick: () 
                 scaleX = scale; scaleY = scale
             }
             .clip(RoundedCornerShape(18.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    if (hasPendingChanges) hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onClick()
-                }
-            )
+            .clickable {
+                if (hasPendingChanges) hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
@@ -1060,10 +1107,13 @@ private fun FeatureCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(22.dp))
                     .clickable(
-                        enabled = feature.expandable,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onToggleExpanded
+                        onClick = {
+                            if (feature.expandable) {
+                                onToggleExpanded()
+                            } else {
+                                onFeatureEnabledChange(!item.enabled)
+                            }
+                        }
                     )
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1198,10 +1248,7 @@ private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueCha
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
+                    .clickable {
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onValueChange(if (group.isMulti) currentValue xor mask else option.value)
                     }
@@ -1211,12 +1258,19 @@ private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueCha
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.size(18.dp).background(
-                            color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            shape = if (group.isMulti) RoundedCornerShape(5.dp) else CircleShape
+                    if (group.isMulti) {
+                        Checkbox(
+                            checked = selected,
+                            onCheckedChange = null, // Handled by row click
+                            modifier = Modifier.size(20.dp)
                         )
-                    )
+                    } else {
+                        RadioButton(
+                            selected = selected,
+                            onClick = null, // Handled by row click
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     Text(
                         text = option.label,
                         style = MaterialTheme.typography.bodyMedium,

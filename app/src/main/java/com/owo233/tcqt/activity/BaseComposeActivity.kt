@@ -19,14 +19,19 @@ abstract class BaseComposeActivity : ComponentActivity() {
 
     protected var isDarkTheme by mutableStateOf(false)
 
+    override fun attachBaseContext(newBase: Context) {
+        val isNight = HookEnv.isNightMode()
+        val config = Configuration(newBase.resources.configuration)
+        val mode = if (isNight) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+        config.uiMode = mode or (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv())
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        applyTheme(this)
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
         setupTransparentStatusBar()
 
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -58,14 +63,5 @@ abstract class BaseComposeActivity : ComponentActivity() {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.isAppearanceLightStatusBars = !isDarkTheme
         controller.isAppearanceLightNavigationBars = !isDarkTheme
-    }
-
-    private fun applyTheme(context: Context) {
-        val isNight = HookEnv.isNightMode()
-        val res = context.resources
-        val config = Configuration(res.configuration)
-        val mode = if (isNight) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
-        config.uiMode = mode or (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv())
-        res.updateConfiguration(config, null)
     }
 }
