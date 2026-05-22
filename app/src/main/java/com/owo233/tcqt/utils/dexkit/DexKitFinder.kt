@@ -49,29 +49,7 @@ internal object DexKitFinder {
             DexKitBridge.create(HookEnv.hostApkPath).use { bridge ->
                 tasks.forEach { task ->
                     runCatching {
-                        task.getQueryMap().forEach { (name, query) ->
-                            val tip = name
-
-                            when (query) {
-                                is FindClass -> {
-                                    val result = bridge.findClass(query).singleOrNull()
-                                    if (result != null) {
-                                        DexKitCache.cacheMap[tip] = result.descriptor
-                                    } else {
-                                        Log.e("$tip: No class found matching query")
-                                    }
-                                }
-
-                                is FindMethod -> {
-                                    val result = bridge.findMethod(query).singleOrNull()
-                                    if (result != null) {
-                                        DexKitCache.cacheMap[tip] = result.descriptor
-                                    } else {
-                                        Log.e("$tip: No method found matching query")
-                                    }
-                                }
-                            }
-                        }
+                        task.execute(bridge, DexKitCache.cacheMap)
                     }.onFailure { Log.e("", it) }
                 }
             }
@@ -94,7 +72,31 @@ internal object DexKitFinder {
 
 interface DexKitTask {
 
-    fun getQueryMap(): Map<String, BaseMatcher>
+    fun getQueryMap(): Map<String, BaseMatcher> = emptyMap()
+
+    fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
+        getQueryMap().forEach { (name, query) ->
+            when (query) {
+                is FindClass -> {
+                    val result = bridge.findClass(query).singleOrNull()
+                    if (result != null) {
+                        cache[name] = result.descriptor
+                    } else {
+                        Log.e("$name: No class found matching query")
+                    }
+                }
+
+                is FindMethod -> {
+                    val result = bridge.findMethod(query).singleOrNull()
+                    if (result != null) {
+                        cache[name] = result.descriptor
+                    } else {
+                        Log.e("$name: No method found matching query")
+                    }
+                }
+            }
+        }
+    }
 
     fun requireClass(key: String): Class<*> {
         return DexKitCache.getClass(key)

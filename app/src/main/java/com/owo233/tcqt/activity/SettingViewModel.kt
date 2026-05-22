@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.owo233.tcqt.generated.GeneratedCategoryTree
@@ -16,6 +17,12 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 
 class SettingViewModel : ViewModel() {
+
+    private val scrollStates = mutableMapOf<String, LazyListState>()
+
+    fun getScrollState(path: String): LazyListState {
+        return scrollStates.getOrPut(path) { LazyListState() }
+    }
 
     private val definitions = GeneratedSettingList.SETTING_MAP
 
@@ -223,6 +230,7 @@ class SettingViewModel : ViewModel() {
         pendingInts.clear()
         pendingStrings.clear()
         expandedKeys.clear()
+        scrollStates.clear()
 
         reloadPersistedSettings()
     }

@@ -12,8 +12,8 @@ import com.owo233.tcqt.utils.avatar.AvatarUtil
 import com.owo233.tcqt.utils.avatar.toStream
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookBefore
-import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.base.BaseMatcher
+import com.owo233.tcqt.utils.log.Log
+import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 import java.io.File
 import java.io.FileOutputStream
@@ -50,22 +50,36 @@ class NullAvatar : IAction, DexKitTask {
         }
     }
 
-    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
-        "NullAvatar" to FindMethod().apply {
+    override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
+        val nullAvatarMethod = bridge.findClass {
             matcher {
-                declaredClass("com.tencent.mobileqq.util.ProfileCardUtil")
+                className("com.tencent.mobileqq.util.ProfileCardUtil")
+            }
+        }.findMethod {
+            matcher {
                 usingEqStrings("image illegal, size must be square.")
             }
-        },
-        "compressUtils" to FindMethod().apply {
+        }.singleOrNull()
+        if (nullAvatarMethod != null) {
+            cache["NullAvatar"] = nullAvatarMethod.descriptor
+        } else {
+            Log.e("NullAvatar: No method found matching query")
+        }
+
+        val compressUtilsMethod = bridge.findClass {
             searchPackages("com.tencent.mobileqq.pic.compress")
             matcher {
-                declaredClass(
-                    "com.tencent.mobileqq.pic.compress",
-                    StringMatchType.StartsWith
-                )
+                className("com.tencent.mobileqq.pic.compress", StringMatchType.StartsWith)
+            }
+        }.findMethod {
+            matcher {
                 usingEqStrings("JpegCompressor.compress() error")
             }
+        }.singleOrNull()
+        if (compressUtilsMethod != null) {
+            cache["compressUtils"] = compressUtilsMethod.descriptor
+        } else {
+            Log.e("compressUtils: No method found matching query")
         }
-    )
+    }
 }

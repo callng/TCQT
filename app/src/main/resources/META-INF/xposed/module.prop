@@ -1,4 +1,4 @@
-minApiVersion=51
+minApiVersion=100
 targetApiVersion=101
 staticScope=true
 exceptionMode=passthrough

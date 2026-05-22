@@ -1,11 +1,13 @@
 package com.owo233.tcqt.internals
 
+import android.content.Context
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
 import com.owo233.tcqt.hooks.maple.Maple
 import com.owo233.tcqt.internals.helper.GuidHelper
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.PlatformTools.getHostVersionCode
+import com.tencent.mobileqq.mqq.api.IAccountRuntime
+import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import mqq.app.AppRuntime
 import mqq.app.MobileQQ
@@ -15,23 +17,25 @@ open class QQInterfaces {
     companion object {
         val appRuntime: AppRuntime get() = MobileQQ.getMobileQQ().waitAppRuntime(null)
 
-        val isLogin: Boolean inline get() = appRuntime.isLogin
+        val context: Context get() = QRoute.api(IAccountRuntime::class.java).applicationContext
 
-        val currentUin: String inline get() = appRuntime.currentAccountUin ?: ""
+        val isLogin: Boolean get() = appRuntime.isLogin
 
-        val currentUid: String inline get() = appRuntime.currentUid ?: ""
+        val currentUin: String get() = appRuntime.currentAccountUin ?: ""
 
-        val guid: String inline get() = GuidHelper.getGuid()
+        val currentUid: String get() = appRuntime.currentUid ?: ""
+
+        val guid: String get() = GuidHelper.getGuid()
 
         val maple by lazy {
-            val ver = getHostVersionCode()
+            val ver = PlatformTools.getHostVersionCode()
             val usePublic = (PlatformTools.isMqq() && ver >= PlatformTools.QQ_9_0_70_VER) ||
                     (PlatformTools.isTim() && ver >= PlatformTools.TIM_4_0_95_VER)
             if (usePublic) Maple.PublicKernel else Maple.Kernel
         }
 
         val msgService: IKernelMsgService
-            inline get() = NTServiceFetcher.kernelService
+            get() = NTServiceFetcher.kernelService
                 .wrapperSession
                 .msgService
 

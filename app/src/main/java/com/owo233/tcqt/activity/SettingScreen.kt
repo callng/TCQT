@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -252,7 +251,9 @@ private fun PageContent(
     val categories = pageState.categories
     val features = pageState.features
     val isSearchActive = pageState.isSearchActive
-    val lazyListState = rememberLazyListState()
+    val lazyListState = remember(pageState.animationKey) {
+        viewModel.getScrollState(pageState.animationKey)
+    }
 
     LazyColumn(
         modifier = Modifier
