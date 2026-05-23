@@ -183,6 +183,7 @@ internal object QQVersion {
     const val QQ_9_2_50: Long = 12670
     const val QQ_9_2_55_BETA_32895: Long = 12798
     const val QQ_9_2_55: Long = 12840
+    const val QQ_9_2_60_BETA_ONE: Long = 12968
     const val QQ_9_2_60: Long = 13010
     const val QQ_9_2_65: Long = 13180
     const val QQ_9_2_66: Long = 13188

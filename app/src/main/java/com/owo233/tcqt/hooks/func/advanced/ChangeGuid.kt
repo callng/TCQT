@@ -32,7 +32,7 @@ import com.owo233.tcqt.utils.hook.hookMethodAfter
     name = "自定义GUID",
     type = SettingType.BOOLEAN,
     defaultValue = "true",
-    desc = "启用后在登录页面长按登录按钮即可调出设置窗口。",
+    desc = "启用后在登录页面长按登录按钮即可调出设置窗口，这个功能使用不当可能会导致用户身份信息失效需重新登录。",
     uiTab = "高级"
 )
 @RegisterSetting(

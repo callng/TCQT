@@ -1,7 +1,7 @@
 package com.owo233.tcqt.hooks.func.test
 
 import android.app.Application
-import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.annotations.RegisterSetting
 import com.owo233.tcqt.annotations.SettingType
@@ -9,11 +9,12 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.generated.GeneratedSettingList
-import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.QQVersion
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.proto2json.ProtoUtils
 import com.owo233.tcqt.utils.proto2json.asUtf8String
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.channel.ChannelProxyExt
 import com.tencent.mobileqq.fe.EventCallback
 import com.tencent.mobileqq.sign.QQSecuritySign
@@ -29,47 +30,26 @@ import java.lang.reflect.Proxy
 )
 class TCQTDeBug : IAction {
 
+    override val key: String
+        get() = GeneratedSettingList.TCQT_DEBUG
+
+    override val processes: Set<ActionProcess>
+        get() = setOf(ActionProcess.MSF)
+
     override fun onRun(app: Application, process: ActionProcess) {
-        QQSecuritySign::class.java.hookMethodBefore(
-            "dispatchEvent",
-            String::class.java,
-            String::class.java,
-            EventCallback::class.java
-        ) { param ->
-            val eventName = param.args[0] as String
-            val eventData = param.args[1] as String
+        hookSend()
+        hookEvent()
+    }
 
-            (param.args[2] as? EventCallback)?.let { originalCallback ->
-                val proxy = Proxy.newProxyInstance(
-                    originalCallback.javaClass.classLoader,
-                    arrayOf(EventCallback::class.java)
-                ) { _, method, args ->
-                    if (method.name == "onResult" && args != null && args.size == 2) {
-                        val code = args[0] as Int
-                        val result = (args[1] as ByteArray).toString(Charsets.UTF_8)
-
-                        if (!result.isEmpty()) {
-                            Log.i("dispatchEvent Log Start\neventName: $eventName\neventData: $eventData\ncode: $code\nresult: $result\ndispatchEvent Log End")
-                        }
-                    }
-
-                    method.invoke(originalCallback, *(args ?: emptyArray()))
-                }
-
-                param.args[2] = proxy
-            }
-        }
-
+    private fun hookSend() {
         val method = "sendMessageInner".takeIf {
-            !HookEnv.isTim() && HookEnv.versionCode >= PlatformTools.QQ_9_2_60_GRAY_ONE_VER
+            requireMinQQVersion(QQVersion.QQ_9_2_60_BETA_ONE)
         } ?: "sendMessage"
 
-        ChannelProxyExt::class.java.hookMethodBefore(
-            method,
-            String::class.java,
-            ByteArray::class.java,
-            Long::class.javaPrimitiveType
-        ) { param ->
+        ChannelProxyExt::class.java.findMethod {
+            name = method
+            paramTypes = arrayOf(string, byteArr, long)
+        }.hookBefore { param ->
             val cmd = param.args[0] as String
             val body = param.args[1] as ByteArray
             val callbackId = param.args[2] as Long
@@ -79,7 +59,32 @@ class TCQTDeBug : IAction {
         }
     }
 
-    override val key: String = GeneratedSettingList.TCQT_DEBUG
+    private fun hookEvent() {
+        QQSecuritySign::class.java.findMethod {
+            name = "dispatchEvent"
+            paramTypes = arrayOf(string, string, EventCallback::class.java)
+        }.hookBefore { param ->
+            val eventName = param.args[0] as String
+            val eventData = param.args[1] as String
+            val originalCallback = param.args[2] as? EventCallback ?: return@hookBefore
 
-    override val processes: Set<ActionProcess> = setOf(ActionProcess.MSF)
+            val proxy = Proxy.newProxyInstance(
+                originalCallback.javaClass.classLoader,
+                arrayOf(EventCallback::class.java)
+            ) { _, method, args ->
+                if (method.name == "onResult" && args.size == 2) {
+                    val code = args[0] as Int
+                    val result = (args[1] as ByteArray).toString(Charsets.UTF_8)
+
+                    if (!result.isEmpty()) {
+                        Log.i("dispatchEvent Log Start\neventName: $eventName\neventData: $eventData\ncode: $code\nresult: $result\ndispatchEvent Log End")
+                    }
+                }
+
+                method.invoke(originalCallback, *args)
+            }
+
+            param.args[2] = proxy
+        }
+    }
 }

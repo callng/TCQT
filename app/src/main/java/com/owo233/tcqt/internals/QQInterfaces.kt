@@ -1,11 +1,13 @@
 package com.owo233.tcqt.internals
 
 import android.content.Context
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
 import com.owo233.tcqt.hooks.maple.Maple
 import com.owo233.tcqt.internals.helper.GuidHelper
-import com.owo233.tcqt.utils.PlatformTools
+import com.owo233.tcqt.utils.QQVersion
+import com.owo233.tcqt.utils.TIMVersion
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
@@ -28,9 +30,9 @@ open class QQInterfaces {
         val guid: String get() = GuidHelper.getGuid()
 
         val maple by lazy {
-            val ver = PlatformTools.getHostVersionCode()
-            val usePublic = (PlatformTools.isMqq() && ver >= PlatformTools.QQ_9_0_70_VER) ||
-                    (PlatformTools.isTim() && ver >= PlatformTools.TIM_4_0_95_VER)
+            val usePublic =
+                HookEnv.requireMinQQVersion(QQVersion.QQ_9_0_70_BETA_17590) ||
+                        HookEnv.requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)
             if (usePublic) Maple.PublicKernel else Maple.Kernel
         }
 

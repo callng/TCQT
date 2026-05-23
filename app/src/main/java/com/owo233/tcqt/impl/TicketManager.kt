@@ -1,12 +1,10 @@
 package com.owo233.tcqt.impl
 
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
@@ -36,7 +34,7 @@ internal object TicketManager {
     init {
         if (GeneratedSettingList.getBoolean(
                 GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
-            ) && requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+            ) && HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
             loadOrThrow("oicq.wlogin_sdk.request.WtloginHelper")
                 .getDeclaredMethod(
                     "IsNeedLoginWithPasswd",
@@ -57,7 +55,7 @@ internal object TicketManager {
     }
 
     private fun initThirdSigService() {
-        if (PlatformTools.getHostVersionCode() > PlatformTools.QQ_9_1_52_VER && thirdSigService == null) {
+        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_1_52) && thirdSigService == null) {
             thirdSigService = QQInterfaces.appRuntime.getRuntimeService(
                 loadAs("com.tencent.mobileqq.thirdsig.api.IThirdSigService"),
                 "all"
@@ -196,7 +194,7 @@ internal object TicketManager {
     }
 
     suspend fun easyLogin(): LoginResult {
-        if (requireMinQQVersion(QQVersion.QQ_9_2_70)) {
+        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
             val appInfo = AppInfo().apply {
                 appId = 16L
                 appName = "com.tencent.mobileqq"
