@@ -14,7 +14,6 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.context.ContextUtils
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -93,7 +92,7 @@ class MultiSelectRecall : IAction {
             }
         }
 
-        ContextUtils.getCurrentActivity().onBackPressed()
+        QQInterfaces.topActivity.onBackPressed()
     }
 
     private fun recallSingleItem(msg: AIOMsgItem) {

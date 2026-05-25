@@ -11,9 +11,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.hooks.base.Toasts
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTBrowserInterface
 import com.owo233.tcqt.utils.PlatformTools
-import com.owo233.tcqt.utils.context.ContextUtils
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.tencent.smtt.sdk.WebView
@@ -42,13 +42,13 @@ class WebJsBridge : AlwaysRunAction() {
     private fun handleSettingPageRedirect(param: MethodHookParam) {
         param.result = Unit
 
-        val packageContext = ContextUtils.getCurrentActivity()
+        val context = QQInterfaces.topActivity
         runCatching {
             ModuleScope.launchMain {
-                val intent = Intent(packageContext, SettingActivity::class.java)
-                packageContext.startActivity(intent)
-                packageContext.finish()
-                packageContext.clearTransition()
+                val intent = Intent(context, SettingActivity::class.java)
+                context.startActivity(intent)
+                context.finish()
+                context.clearTransition()
             }
         }.onFailure {
             Toasts.error("需要重新启动${HookEnv.appName}")

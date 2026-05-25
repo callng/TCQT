@@ -19,7 +19,7 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.utils.context.ContextUtils
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.isStatic
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.callMethod
@@ -151,7 +151,7 @@ object PlatformTools {
     }
 
     fun reStartLoadingActivity() {
-        captureScreenshot(ContextUtils.getCurrentActivity().window) { screenshot ->
+        captureScreenshot(QQInterfaces.topActivity.window) { screenshot ->
             companionInstance?.also {
                 it.callMethod("a", HookEnv.hostAppContext, screenshot, "重启中...")
             } ?: Log.w("Restart: companionInstance is null, skip restart")

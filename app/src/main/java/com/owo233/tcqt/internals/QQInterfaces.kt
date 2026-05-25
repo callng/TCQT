@@ -1,5 +1,6 @@
 package com.owo233.tcqt.internals
 
+import android.app.Activity
 import android.content.Context
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.loadOrThrow
@@ -8,10 +9,12 @@ import com.owo233.tcqt.hooks.maple.Maple
 import com.owo233.tcqt.internals.helper.GuidHelper
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.TIMVersion
+import com.tencent.mobileqq.app.QBaseActivity
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import mqq.app.AppRuntime
+import mqq.app.Foreground
 import mqq.app.MobileQQ
 
 open class QQInterfaces {
@@ -28,6 +31,11 @@ open class QQInterfaces {
         val currentUid: String get() = appRuntime.currentUid ?: ""
 
         val guid: String get() = GuidHelper.getGuid()
+
+        val topActivity: Activity
+            get() = QBaseActivity.sTopActivity
+                ?: Foreground.getTopActivity()
+                ?: error("activity is null!")
 
         val maple by lazy {
             val usePublic =

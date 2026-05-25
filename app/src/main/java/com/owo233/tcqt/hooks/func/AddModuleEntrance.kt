@@ -43,7 +43,6 @@ import com.owo233.tcqt.utils.reflect.fieldValue
 import com.owo233.tcqt.utils.reflect.getFields
 import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.new
-import com.tencent.mobileqq.app.BaseActivity
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
@@ -391,7 +390,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     private fun openTCQTSettings(ctx: Context? = null) {
         runCatching {
-            val activity = ctx ?: BaseActivity.sTopActivity
+            val activity = ctx ?: QQInterfaces.topActivity
             ModuleScope.launchMain {
                 activity.startActivity(Intent(activity, SettingActivity::class.java))
             }
