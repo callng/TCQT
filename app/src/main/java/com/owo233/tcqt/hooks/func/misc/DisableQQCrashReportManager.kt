@@ -3,11 +3,8 @@ package com.owo233.tcqt.hooks.func.misc
 import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.loader.api.HookParam
 import com.owo233.tcqt.utils.hook.hookBefore
@@ -16,14 +13,11 @@ import com.owo233.tcqt.utils.hook.isNotStatic
 import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
-@RegisterSetting(
-    key = "disable_qq_crash_report_manager",
-    name = "禁用QQ崩溃报告管理器",
-    type = SettingType.BOOLEAN,
-    desc = "没有实际意义的功能，仅供测试使用。",
-    uiTab = "杂项"
-)
 class DisableQQCrashReportManager : IAction {
+
+    override val name: String get() = "禁用QQ崩溃报告管理器"
+    override val desc: String get() = "没有实际意义的功能，仅供测试使用。"
+    override val uiTab: String get() = "杂项"
 
     override fun onRun(app: Application, process: ActionProcess) {
         val doNothing: (HookParam) -> Unit = { it.result = Unit }
@@ -73,5 +67,5 @@ class DisableQQCrashReportManager : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.DISABLE_QQ_CRASH_REPORT_MANAGER
+    override val key: String get() = "disable_qq_crash_report_manager"
 }

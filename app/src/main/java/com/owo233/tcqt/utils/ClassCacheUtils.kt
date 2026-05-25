@@ -8,6 +8,7 @@ object ClassCacheUtils {
     private val classCache = ConcurrentHashMap<String, Class<*>>()
 
     class FinderBuilder {
+
         internal val classNames = mutableListOf<String>()
         internal var indices: IntArray = intArrayOf()
 

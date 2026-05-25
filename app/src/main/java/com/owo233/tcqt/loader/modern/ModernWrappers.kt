@@ -11,7 +11,6 @@ import java.lang.reflect.Method
 class ModernHookParam(val chain: XposedInterface.Chain) : HookParam {
 
     override val method: Member get() = chain.executable
-
     override val thisObject: Any get() = chain.thisObject
 
     override var args: Array<Any?> = chain.args.toTypedArray()
@@ -29,6 +28,7 @@ class ModernHookParam(val chain: XposedInterface.Chain) : HookParam {
 }
 
 class ModernChain(private val modernParam: ModernHookParam) : Chain, HookParam by modernParam {
+
     constructor(chain: XposedInterface.Chain) : this(ModernHookParam(chain))
 
     override fun proceed(args: Array<Any?>): Any? {

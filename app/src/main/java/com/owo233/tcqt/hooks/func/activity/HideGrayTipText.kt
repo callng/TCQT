@@ -4,12 +4,12 @@ import android.app.Application
 import android.view.ViewGroup
 import android.widget.TextView
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.isPrivate
 import com.owo233.tcqt.utils.hook.isPublic
@@ -17,21 +17,22 @@ import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.reflect.callMethod
 
 @RegisterAction
-@RegisterSetting(
-    key = "hide_gray_tip_text",
-    name = "隐藏灰色提示文本",
-    type = SettingType.BOOLEAN,
-    desc = "隐藏聊天界面上的灰色提示文本。",
-    hasTextAreas = true,
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "hide_gray_tip_text.string.saveConfig",
-    name = "保存的配置",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "即将彻底消失\n加入了群聊\n我也要打卡\n一起来玩吧\n... 一行一个关键字"
-)
 class HideGrayTipText : IAction {
+
+    override val name: String get() = "隐藏灰色提示文本"
+    override val desc: String get() = "隐藏聊天界面上的灰色提示文本。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "hide_gray_tip_text.string.saveConfig",
+                "保存的配置",
+                "",
+                "",
+                "即将彻底消失\n加入了群聊\n我也要打卡\n一起来玩吧\n... 一行一个关键字",
+                false
+            ),
+        )
 
     override fun onRun(app: Application, process: ActionProcess) {
         val grayTipClass =
@@ -56,11 +57,11 @@ class HideGrayTipText : IAction {
     companion object {
 
         private val configList by lazy {
-            GeneratedSettingList.getString(
-                GeneratedSettingList.HIDE_GRAY_TIP_TEXT_STRING_SAVECONFIG
+            TCQTSetting.getString(
+                "hide_gray_tip_text.string.saveConfig"
             ).lines()
         }
     }
 
-    override val key: String get() = GeneratedSettingList.HIDE_GRAY_TIP_TEXT
+    override val key: String get() = "hide_gray_tip_text"
 }

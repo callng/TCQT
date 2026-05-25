@@ -2,11 +2,8 @@ package com.owo233.tcqt.hooks.func.misc
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.servlet.MiniSvc
 import com.owo233.tcqt.utils.SyncUtils
@@ -16,17 +13,13 @@ import com.tencent.smtt.sdk.WebViewClient
 import java.util.WeakHashMap
 
 @RegisterAction
-@RegisterSetting(
-    key = "card_fetcher",
-    name = "自动领取达人补登卡",
-    type = SettingType.BOOLEAN,
-    desc = "在进入QQ达人页时自动领取当天的补登卡，不用再玩**的**小程序游戏！",
-    uiTab = "杂项"
-)
 class CardFetcher : IAction {
 
+    override val name: String get() = "自动领取达人补登卡"
+    override val desc: String get() = "在进入QQ达人页时自动领取当天的补登卡，不用再玩**的**小程序游戏！"
+    override val uiTab: String get() = "杂项"
     override val key: String
-        get() = GeneratedSettingList.CARD_FETCHER
+        get() = "card_fetcher"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.TOOL)

@@ -3,40 +3,42 @@ package com.owo233.tcqt.hooks.func.misc
 import android.app.Application
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookBefore
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
-@RegisterSetting(
-    key = "fake_phone",
-    name = "伪装手机号码",
-    type = SettingType.BOOLEAN,
-    desc = "伪装账号与安全设置页面中的手机号码。",
-    uiTab = "杂项"
-)
-@RegisterSetting(
-    key = "fake_phone.string.phone",
-    name = "phone",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "填写要伪装的手机号码，如 1145141919810"
-)
 class FakePhone : IAction, DexKitTask {
 
+    override val name: String get() = "伪装手机号码"
+    override val desc: String get() = "伪装账号与安全设置页面中的手机号码。"
+    override val uiTab: String get() = "杂项"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "fake_phone.string.phone",
+                "phone",
+                "",
+                "",
+                "填写要伪装的手机号码，如 1145141919810",
+                false
+            ),
+        )
+
     private val fakePhone: String by lazy {
-        GeneratedSettingList.getString(
-            GeneratedSettingList.FAKE_PHONE_STRING_PHONE
+        TCQTSetting.getString(
+            "fake_phone.string.phone"
         ).ifEmpty { "1145141919810" }
     }
 
     override val key: String
-        get() = GeneratedSettingList.FAKE_PHONE
+        get() = "fake_phone"
 
     override fun onRun(app: Application, process: ActionProcess) {
         requireMethod("fake_phone").hookBefore { param ->

@@ -4,17 +4,17 @@ import android.app.Application
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.ext.isFlagEnabled
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.log.Log
@@ -30,24 +30,18 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 @RegisterAction
-@RegisterSetting(
-    key = "repeat_message",
-    name = "复读机 +1",
-    type = SettingType.BOOLEAN,
-    desc = "人类的本质是什么？不支持修改+1图标，可选触发方式，默认200ms内重复点击触发。",
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "repeat_message.type",
-    name = "可选触发方式",
-    type = SettingType.INT_MULTI,
-    defaultValue = "0",
-    options = "单击触发复读"
-)
 class RepeatMessage : IAction {
 
+    override val name: String get() = "复读机 +1"
+    override val desc: String get() = "人类的本质是什么？不支持修改+1图标，可选触发方式，默认200ms内重复点击触发。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            MultiIntSetting("repeat_message.type", "可选触发方式", 0, "", listOf("单击触发复读")),
+        )
+
     private val options: Int by lazy {
-        GeneratedSettingList.getInt(GeneratedSettingList.REPEAT_MESSAGE_TYPE)
+        TCQTSetting.getInt("repeat_message.type")
     }
 
     override fun onRun(app: Application, process: ActionProcess) {
@@ -180,6 +174,7 @@ class RepeatMessage : IAction {
     }
 
     private object MsgRecordHelper {
+
         private val getMsgRecordMethod by lazy {
             loadOrThrow("com.tencent.mobileqq.aio.msg.AIOMsgItem")
                 .getDeclaredMethod("getMsgRecord")
@@ -191,5 +186,5 @@ class RepeatMessage : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.REPEAT_MESSAGE
+    override val key: String get() = "repeat_message"
 }

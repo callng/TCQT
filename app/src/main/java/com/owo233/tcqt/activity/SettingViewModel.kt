@@ -1,18 +1,14 @@
 package com.owo233.tcqt.activity
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.owo233.tcqt.generated.GeneratedCategoryTree
-import com.owo233.tcqt.generated.GeneratedCategoryTree.CategoryNode
-import com.owo233.tcqt.generated.GeneratedFeaturesData
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 
@@ -24,7 +20,7 @@ class SettingViewModel : ViewModel() {
         return scrollStates.getOrPut(path) { LazyListState() }
     }
 
-    private val definitions = GeneratedSettingList.SETTING_MAP
+    private val definitions = TCQTSetting.settingMap
 
     private val persistedBooleans = mutableStateMapOf<String, Boolean>()
     private val persistedInts = mutableStateMapOf<String, Int>()
@@ -38,15 +34,15 @@ class SettingViewModel : ViewModel() {
 
     // ───── All features (flat) ─────
 
-    private val allFeatures: List<SettingFeature> = GeneratedFeaturesData.FEATURES
-        .sortedBy { it.uiOrder }
-        .mapIndexed { index, feature -> feature.toSettingFeature(index) }
+    private val allFeatures: List<SettingFeature> = com.owo233.tcqt.ActionManager.getAllFeatures()
+        .sortedBy { it.order }
+        .mapIndexed { index, feature -> feature.copy(order = index) }
 
     private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
     // ───── Category tree ─────
 
-    private val rootNodes: List<CategoryNode> = GeneratedCategoryTree.ROOTS
+    private val rootNodes: List<CategoryNode> = CategoryTreeBuilder.buildCategoryTree(allFeatures)
 
     // ───── Navigation ─────
 
@@ -454,38 +450,63 @@ class SettingViewModel : ViewModel() {
 
     // ───── Internal: conversion ─────
 
-    private fun GeneratedFeaturesData.FeatureConfig.toSettingFeature(order: Int): SettingFeature {
-        val optionGroup = options
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { optionList ->
-                FeatureOptionGroup(
-                    key = optionList.first().key,
-                    isMulti = optionList.first().isMulti,
-                    fallbackValue = if (optionList.first().isMulti) 0 else optionList.first().value,
-                    options = optionList.map { option ->
-                        OptionItem(
-                            label = option.label,
-                            value = option.value
-                        )
-                    }
-                )
-            }
+}
 
-        return SettingFeature(
-            key = key,
-            label = label,
-            desc = desc,
-            order = order,
-            tab = uiTab.ifBlank { "基础" },
-            categoryPath = categoryPath.toList(),
-            textAreas = textareas.orEmpty().map { textArea ->
-                TextAreaField(
-                    key = textArea.key,
-                    label = textArea.key.substringAfterLast('.'),
-                    placeholder = textArea.placeholder
-                )
-            },
-            optionGroup = optionGroup
-        )
+private object CategoryTreeBuilder {
+
+    class TreeNode {
+
+        var pathSegment: String = ""
+        var fullPath: String = ""
+        var depth: Int = 0
+        var label: String = ""
+        var uiOrder: Int = 1000
+        val children: MutableList<TreeNode> = mutableListOf()
+        val featureKeys: MutableList<String> = mutableListOf()
+    }
+
+    fun buildCategoryTree(features: List<SettingFeature>): List<CategoryNode> {
+        val root = TreeNode()
+
+        for (feat in features) {
+            var current = root
+            for (i in feat.categoryPath.indices) {
+                val segment = feat.categoryPath[i]
+                val isLast = i == feat.categoryPath.lastIndex
+                val existing = current.children.find { it.pathSegment == segment }
+                val node = existing
+                    ?: TreeNode().apply {
+                        pathSegment = segment
+                        fullPath = if (current == root) segment else "${current.fullPath}/$segment"
+                        depth = i
+                        label = segment
+                    }.also { current.children.add(it) }
+                if (isLast) {
+                    node.featureKeys.add(feat.key)
+                    node.uiOrder = feat.order
+                }
+                current = node
+            }
+        }
+
+        fun sortTree(node: TreeNode) {
+            node.children.sortWith(compareBy<TreeNode> { it.depth }.thenBy { it.uiOrder })
+            node.children.forEach { sortTree(it) }
+        }
+        sortTree(root)
+
+        fun toCategoryNode(node: TreeNode): CategoryNode {
+            return CategoryNode(
+                name = node.pathSegment,
+                fullPath = node.fullPath,
+                depth = node.depth,
+                label = node.label,
+                uiOrder = node.uiOrder,
+                featureKeys = node.featureKeys,
+                children = node.children.map { toCategoryNode(it) }
+            )
+        }
+
+        return root.children.map { toCategoryNode(it) }
     }
 }

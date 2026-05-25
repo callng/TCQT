@@ -5,10 +5,12 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 enum class Visibility {
+
     PUBLIC, PROTECTED, PRIVATE, PACKAGE
 }
 
 class MethodSearcher(private val clazz: Class<*>) {
+
     var name: String? = null
     var returnType: Class<*>? = null
     var paramTypes: Array<out Class<*>?>? = null
@@ -156,6 +158,7 @@ fun Class<*>.findMethods(block: MethodSearcher.() -> Unit): List<Method> {
 }
 
 class FieldSearcher(private val ownerClass: Class<*>) {
+
     var name: String? = null
     var type: Class<*>? = null
     var isStatic: Boolean? = null

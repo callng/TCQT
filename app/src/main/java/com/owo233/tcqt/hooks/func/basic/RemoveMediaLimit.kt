@@ -2,25 +2,19 @@ package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.emptyParam
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.isPublic
 
 @RegisterAction
-@RegisterSetting(
-    key = "remove_media_limit",
-    name = "移除媒体选择数量限制",
-    type = SettingType.BOOLEAN,
-    desc = "移除聊天页相册最多只能选择20张图片/视频的限制，移除空间上传最多只能选择50张图片/视频的限制。",
-    uiTab = "基础"
-)
 class RemoveMediaLimit : IAction {
+
+    override val name: String get() = "移除媒体选择数量限制"
+    override val desc: String get() = "移除聊天页相册最多只能选择20张图片/视频的限制，移除空间上传最多只能选择50张图片/视频的限制。"
+    override val uiTab: String get() = "基础"
 
     override fun onRun(app: Application, process: ActionProcess) {
         // 群聊私聊
@@ -73,5 +67,5 @@ class RemoveMediaLimit : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.REMOVE_MEDIA_LIMIT
+    override val key: String get() = "remove_media_limit"
 }

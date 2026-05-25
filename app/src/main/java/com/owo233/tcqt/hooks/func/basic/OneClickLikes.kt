@@ -4,11 +4,8 @@ import android.app.Application
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.PlatformTools
@@ -25,14 +22,11 @@ import com.tencent.mobileqq.profilecard.base.component.AbsProfileHeaderComponent
 import com.tencent.mobileqq.vas.api.IVasSingedApi
 
 @RegisterAction
-@RegisterSetting(
-    key = "one_click_likes",
-    name = "一键20赞",
-    type = SettingType.BOOLEAN,
-    desc = "开启后点赞时将自动点赞20个（非SVIP为10个）。",
-    uiTab = "基础"
-)
 class OneClickLikes : IAction {
+
+    override val name: String get() = "一键20赞"
+    override val desc: String get() = "开启后点赞时将自动点赞20个（非SVIP为10个）。"
+    override val uiTab: String get() = "基础"
 
     override fun onRun(app: Application, process: ActionProcess) {
         // TIM不支持点赞行为
@@ -93,7 +87,6 @@ class OneClickLikes : IAction {
         return false
     }
 
-    override val key: String get() = GeneratedSettingList.ONE_CLICK_LIKES
-
+    override val key: String get() = "one_click_likes"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

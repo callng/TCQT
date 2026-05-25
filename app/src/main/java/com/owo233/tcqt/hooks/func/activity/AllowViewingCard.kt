@@ -3,11 +3,8 @@ package com.owo233.tcqt.hooks.func.activity
 import android.app.Application
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -16,14 +13,12 @@ import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.data.Card
 
 @RegisterAction
-@RegisterSetting(
-    key = "allow_viewing_card",
-    name = "允许查看异常资料卡",
-    type = SettingType.BOOLEAN,
-    desc = "忽略账号的异常状态，使其能够正常查看资料卡。",
-    uiTab = "界面"
-)
 class AllowViewingCard : IAction {
+
+    override val key: String get() = "allow_viewing_card"
+    override val name: String get() = "允许查看异常资料卡"
+    override val desc: String get() = "忽略账号的异常状态，使其能够正常查看资料卡。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         "com.tencent.mobileqq.profilecard.api.impl.ProfileDataServiceImpl".toHostClass()
@@ -59,9 +54,6 @@ class AllowViewingCard : IAction {
                 }
             }
     }
-
-    override val key: String
-        get() = GeneratedSettingList.ALLOW_VIEWING_CARD
 
     private fun hookProfileCardMethod(
         clazz: Class<*>,

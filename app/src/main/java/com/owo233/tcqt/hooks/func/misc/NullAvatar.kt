@@ -3,11 +3,8 @@ package com.owo233.tcqt.hooks.func.misc
 import android.app.Application
 import android.graphics.Bitmap
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.avatar.AvatarUtil
 import com.owo233.tcqt.utils.avatar.toStream
 import com.owo233.tcqt.utils.dexkit.DexKitTask
@@ -19,17 +16,13 @@ import java.io.File
 import java.io.FileOutputStream
 
 @RegisterAction
-@RegisterSetting(
-    key = "null_avatar",
-    name = "上传透明头像",
-    type = SettingType.BOOLEAN,
-    desc = "随便从相册选择一张图片上传即可，自动替换为透明头像。",
-    uiTab = "杂项"
-)
 class NullAvatar : IAction, DexKitTask {
 
+    override val name: String get() = "上传透明头像"
+    override val desc: String get() = "随便从相册选择一张图片上传即可，自动替换为透明头像。"
+    override val uiTab: String get() = "杂项"
     override val key: String
-        get() = GeneratedSettingList.NULL_AVATAR
+        get() = "null_avatar"
 
     override fun onRun(app: Application, process: ActionProcess) {
         requireMethod("NullAvatar").hookBefore { param ->

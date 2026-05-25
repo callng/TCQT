@@ -2,23 +2,17 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 
 @RegisterAction
-@RegisterSetting(
-    key = "show_precise_ban_time",
-    name = "显示精准禁言时间",
-    type = SettingType.BOOLEAN,
-    desc = "禁言状态下在聊天页文字输入框中将替换显示精确的禁言时间，而非只显示单独的<天，分，秒>",
-    uiTab = "界面"
-)
 class ShowPreciseBanTime : IAction {
+
+    override val name: String get() = "显示精准禁言时间"
+    override val desc: String get() = "禁言状态下在聊天页文字输入框中将替换显示精确的禁言时间，而非只显示单独的<天，分，秒>"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         load("com.tencent.qqnt.troop.impl.TroopGagUtils")!!
@@ -49,5 +43,5 @@ class ShowPreciseBanTime : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.SHOW_PRECISE_BAN_TIME
+    override val key: String get() = "show_precise_ban_time"
 }

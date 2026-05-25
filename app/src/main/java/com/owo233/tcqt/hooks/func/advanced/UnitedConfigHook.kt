@@ -1,33 +1,35 @@
 package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Application
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.ext.toUtf8ByteArray
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.ConcurrentHashMap
 
 /*@RegisterAction*/
-@RegisterSetting(
-    key = "united_config_hook",
-    name = "统一配置Hook",
-    type = SettingType.BOOLEAN,
-    desc = "仅高级用户使用，针对'UnitedConfig'处理，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。",
-    hasTextAreas = true,
-    uiTab = "高级"
-)
-@RegisterSetting(
-    key = "united_config_hook.string.saveConfig",
-    name = "保存的配置",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "s:<string>:<string>\nb:<string>:<boolean>\ne.g: b:i_like_you:true\n一行一个配置项"
-)
+
 class UnitedConfigHook : IAction {
+
+    override val name: String get() = "统一配置Hook"
+    override val desc: String get() = "仅高级用户使用，针对'UnitedConfig'处理，本功能与「AB测试强制转B组」有本质上的不同，它覆盖了前者未处理到的配置项。"
+    override val uiTab: String get() = "高级"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "united_config_hook.string.saveConfig",
+                "保存的配置",
+                "",
+                "",
+                "s:<string>:<string>\nb:<string>:<boolean>\ne.g: b:i_like_you:true\n一行一个配置项",
+                false
+            ),
+        )
 
     private val configClass by lazy { load("com.tencent.freesia.UnitedConfig")!! }
 
@@ -73,7 +75,7 @@ class UnitedConfigHook : IAction {
 
     companion object {
         private val configString by lazy {
-            GeneratedSettingList.getString(GeneratedSettingList.UNITED_CONFIG_HOOK_STRING_SAVECONFIG)
+            TCQTSetting.getString("united_config_hook.string.saveConfig")
         }
 
         private val configMap: Map<Pair<String, String>, String> by lazy {
@@ -96,7 +98,6 @@ class UnitedConfigHook : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.UNITED_CONFIG_HOOK
-
+    override val key: String get() = "united_config_hook"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

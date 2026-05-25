@@ -9,12 +9,9 @@ import android.os.Bundle
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.launchWithCatch
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.ContactHelper
 import com.owo233.tcqt.hooks.helper.CustomMenu
@@ -35,14 +32,11 @@ import kotlinx.coroutines.GlobalScope
 import java.io.File
 
 @RegisterAction
-@RegisterSetting(
-    key = "ptt_forward",
-    name = "允许转发语音消息",
-    type = SettingType.BOOLEAN,
-    desc = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。",
-    uiTab = "界面"
-)
 class PttForward : IAction, OnMenuBuilder {
+
+    override val name: String get() = "允许转发语音消息"
+    override val desc: String get() = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。"
+    override val uiTab: String get() = "界面"
 
     private companion object {
         const val MAGIC_TOKEN = "114514" // 恶臭的 MAGIC_TOKEN
@@ -52,8 +46,7 @@ class PttForward : IAction, OnMenuBuilder {
         var currentPttElement: PttElement? = null
     }
 
-    override val key: String get() = GeneratedSettingList.PTT_FORWARD
-
+    override val key: String get() = "ptt_forward"
     override val targetComponentTypes: Array<String>
         get() = arrayOf(
             "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"

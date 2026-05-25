@@ -2,12 +2,12 @@ package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.reflect.getObject
@@ -15,25 +15,24 @@ import com.owo233.tcqt.utils.reflect.invoke
 import com.owo233.tcqt.utils.reflect.setObject
 
 @RegisterAction
-@RegisterSetting(
-    key = "forced_to_ab",
-    name = "AB测试强制转组",
-    type = SettingType.BOOLEAN,
-    defaultValue = "false",
-    desc = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。",
-    uiTab = "高级"
-)
-@RegisterSetting(
-    key = "forced_to_ab.mode",
-    name = "强制模式",
-    type = SettingType.INT,
-    defaultValue = "1",
-    options = "强制A组（对照组）|强制B组（实验组）",
-)
 class ForcedABTest : IAction {
 
+    override val name: String get() = "AB测试强制转组"
+    override val desc: String get() = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。"
+    override val uiTab: String get() = "高级"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            IntSetting(
+                "forced_to_ab.mode",
+                "强制模式",
+                1,
+                "",
+                listOf("强制A组（对照组）", "强制B组（实验组）")
+            ),
+        )
+
     override fun onRun(app: Application, process: ActionProcess) {
-        val mode = GeneratedSettingList.getInt(GeneratedSettingList.FORCED_TO_AB_MODE)
+        val mode = TCQTSetting.getInt("forced_to_ab.mode")
 
         val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")
         val expEntityClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")
@@ -94,7 +93,6 @@ class ForcedABTest : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.FORCED_TO_AB
-
+    override val key: String get() = "forced_to_ab"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

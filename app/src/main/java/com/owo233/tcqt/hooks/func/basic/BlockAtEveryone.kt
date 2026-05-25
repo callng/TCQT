@@ -2,11 +2,8 @@ package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -15,17 +12,13 @@ import com.tencent.qqnt.kernel.nativeinterface.RecentContactInfo
 import mqq.app.AppRuntime
 
 @RegisterAction
-@RegisterSetting(
-    key = "block_at_everyone",
-    name = "屏蔽艾特全体成员通知",
-    type = SettingType.BOOLEAN,
-    desc = "屏蔽艾特全体消息的通知。",
-    uiTab = "基础"
-)
 class BlockAtEveryone : IAction {
 
+    override val name: String get() = "屏蔽艾特全体成员通知"
+    override val desc: String get() = "屏蔽艾特全体消息的通知。"
+    override val uiTab: String get() = "基础"
     override val key: String
-        get() = GeneratedSettingList.BLOCK_AT_EVERYONE
+        get() = "block_at_everyone"
 
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.notification.NotificationFacade").findMethod {

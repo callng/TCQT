@@ -6,6 +6,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord as MR1
 sealed class MapleMsgRecord(
     override val maple: Maple
 ) : IMaple {
+
     companion object {
         fun from(instance: Any): MapleMsgRecord {
             return if (instance.javaClass.name[23] == 'p') {
@@ -28,6 +29,7 @@ sealed class MapleMsgRecord(
     class KernelMsgRecord(
         instance: Any
     ) : MapleMsgRecord(Maple.Kernel) {
+
         private val innerRecord = instance as MR1
 
         override val msgType: Int
@@ -47,6 +49,7 @@ sealed class MapleMsgRecord(
     class PublicMsgRecord(
         instance: Any
     ) : MapleMsgRecord(Maple.PublicKernel) {
+
         override val msgType: Int
             get() = error("Not implemented")
 

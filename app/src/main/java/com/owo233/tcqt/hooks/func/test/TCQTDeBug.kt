@@ -3,12 +3,9 @@ package com.owo233.tcqt.hooks.func.test
 import android.app.Application
 import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.toHexString
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
@@ -21,17 +18,13 @@ import com.tencent.mobileqq.sign.QQSecuritySign
 import java.lang.reflect.Proxy
 
 @RegisterAction
-@RegisterSetting(
-    key = "tcqt_debug",
-    name = "FEKit打印调用内容",
-    type = SettingType.BOOLEAN,
-    desc = "向框架日志中输出指定内容，本功能仅做调试使用，正常使用模块请勿启用本功能。",
-    uiTab = "调试"
-)
 class TCQTDeBug : IAction {
 
+    override val name: String get() = "FEKit打印调用内容"
+    override val desc: String get() = "向框架日志中输出指定内容，本功能仅做调试使用，正常使用模块请勿启用本功能。"
+    override val uiTab: String get() = "调试"
     override val key: String
-        get() = GeneratedSettingList.TCQT_DEBUG
+        get() = "tcqt_debug"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.MSF)

@@ -2,11 +2,8 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.hook.invokeOriginal
@@ -19,14 +16,11 @@ import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
-@RegisterSetting(
-    key = "reply_no_at",
-    name = "移除引用消息自动艾特",
-    type = SettingType.BOOLEAN,
-    desc = "引用消息时不添加艾特文本。",
-    uiTab = "界面"
-)
 class ReplyNoAt : IAction, DexKitTask {
+
+    override val name: String get() = "移除引用消息自动艾特"
+    override val desc: String get() = "引用消息时不添加艾特文本。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         requireClass("reply_no_at").findMethod {
@@ -46,7 +40,7 @@ class ReplyNoAt : IAction, DexKitTask {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.REPLY_NO_AT
+    override val key: String get() = "reply_no_at"
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
         "reply_no_at" to FindClass().apply {

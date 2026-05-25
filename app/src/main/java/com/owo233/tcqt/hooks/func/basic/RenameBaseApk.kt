@@ -5,13 +5,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.ext.isFlagEnabled
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.OnAIOSendMsgBefore
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.setObject
@@ -20,27 +20,27 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import java.io.File
 
 @RegisterAction
-@RegisterSetting(
-    key = "rename_base_apk",
-    name = "重命名.apk文件",
-    type = SettingType.BOOLEAN,
-    desc = "发送文件时自动重命名 .apk 文件，防止添加.1。",
-    uiTab = "基础"
-)
-@RegisterSetting(
-    key = "rename_base_apk.type",
-    name = "可选项",
-    type = SettingType.INT_MULTI,
-    defaultValue = "1", // 默认启用 "更新文件名前缀"
-    options = "更新文件名前缀|忽略后缀大小写"
-)
 class RenameBaseApk : IAction, OnAIOSendMsgBefore {
 
+    override val name: String get() = "重命名.apk文件"
+    override val desc: String get() = "发送文件时自动重命名 .apk 文件，防止添加.1。"
+    override val uiTab: String get() = "基础"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            MultiIntSetting(
+                "rename_base_apk.type",
+                "可选项",
+                1,
+                "",
+                listOf("更新文件名前缀", "忽略后缀大小写")
+            ),
+        )
+
     private val options: Int by lazy {
-        GeneratedSettingList.getInt(GeneratedSettingList.RENAME_BASE_APK_TYPE)
+        TCQTSetting.getInt("rename_base_apk.type")
     }
 
-    override val key: String get() = GeneratedSettingList.RENAME_BASE_APK
+    override val key: String get() = "rename_base_apk"
 
     override fun onRun(app: Application, process: ActionProcess) {
         hookFile()

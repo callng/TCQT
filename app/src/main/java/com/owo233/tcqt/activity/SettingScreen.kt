@@ -120,6 +120,7 @@ private data class SettingsPageContentState(
     val hasPending: Boolean,
     val currentCategoryLabel: String
 ) {
+
     val animationKey: String
         get() = if (isSearchActive) "search" else path
 }
@@ -132,6 +133,7 @@ private data class SettingsTopBarState(
     val breadcrumbs: List<BreadcrumbItem>,
     val searchQuery: String
 ) {
+
     val animationKey: String
         get() = when (mode) {
             SettingsTopBarMode.Search -> "search"

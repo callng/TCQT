@@ -4,11 +4,8 @@ import android.app.Application
 import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -21,14 +18,11 @@ import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
-@RegisterSetting(
-    key = "remove_share_limit",
-    name = "移除转发选择数量限制",
-    type = SettingType.BOOLEAN,
-    desc = "移除转发消息时最多选择9名联系人的限制。",
-    uiTab = "基础"
-)
 class RemoveShareLimit : IAction, DexKitTask {
+
+    override val name: String get() = "移除转发选择数量限制"
+    override val desc: String get() = "移除转发消息时最多选择9名联系人的限制。"
+    override val uiTab: String get() = "基础"
 
     private val isKuiklyUISupported: Boolean by lazy {
         requireMinQQVersion(QQVersion.QQ_9_2_25)
@@ -39,7 +33,7 @@ class RemoveShareLimit : IAction, DexKitTask {
     private lateinit var troopListFragmentCls: Class<*>
     private lateinit var selectTroopListFragmentCls: Class<*>
 
-    override val key: String get() = GeneratedSettingList.REMOVE_SHARE_LIMIT
+    override val key: String get() = "remove_share_limit"
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (isKuiklyUISupported) {
@@ -91,6 +85,7 @@ class RemoveShareLimit : IAction, DexKitTask {
     }
 
     private class UnlimitedMap<K, V> : LinkedHashMap<K, V>() {
+
         override val size: Int
             get() {
                 val s = super.size

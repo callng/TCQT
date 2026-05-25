@@ -83,6 +83,7 @@ object LocalGrayTips {
     }
 
     class Builder {
+
         private val items = mutableListOf<GrayTipItem>()
         private val showText = StringBuilder()
 
@@ -183,6 +184,7 @@ object LocalGrayTips {
 
     @Serializable
     enum class Align {
+
         @SerialName("left")
         LEFT,
 

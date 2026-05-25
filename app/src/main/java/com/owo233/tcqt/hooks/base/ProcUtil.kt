@@ -8,6 +8,7 @@ import com.owo233.tcqt.ext.runRetry
 import java.io.File
 
 object ProcUtil {
+
     const val UNKNOW = 0
     const val MAIN = 1
     const val MSF = 1 shl 1

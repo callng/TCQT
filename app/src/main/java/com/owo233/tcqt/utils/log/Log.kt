@@ -5,6 +5,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.loader.api.HookEngineManager
 
 enum class LogLevel {
+
     VERBOSE, DEBUG, INFO, WARN, ERROR
 }
 
@@ -12,6 +13,7 @@ private val XPOSED_OUTPUT_LEVELS =
     setOf(LogLevel.INFO, LogLevel.DEBUG, LogLevel.WARN, LogLevel.ERROR)
 
 interface Logger {
+
     fun log(level: LogLevel, message: String, throwable: Throwable? = null)
 
     fun v(message: String, throwable: Throwable? = null) = log(LogLevel.VERBOSE, message, throwable)
@@ -22,6 +24,7 @@ interface Logger {
 }
 
 class AndroidLogger(private val tag: String) : Logger {
+
     override fun log(level: LogLevel, message: String, throwable: Throwable?) {
         when (level) {
             LogLevel.VERBOSE -> Log.v(tag, message, throwable)
@@ -71,6 +74,7 @@ class DebugFilterLogger(
 }
 
 object LogUtils {
+
     private const val TAG = TCQTBuild.HOOK_TAG
 
     val xposed: Logger = DebugFilterLogger(XposedLogger(TAG))

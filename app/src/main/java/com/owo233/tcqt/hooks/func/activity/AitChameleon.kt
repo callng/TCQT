@@ -17,11 +17,8 @@ import androidx.core.graphics.ColorUtils
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -32,14 +29,12 @@ import com.tencent.qqnt.aio.widget.AIOMsgTextView
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
 @RegisterAction
-@RegisterSetting(
-    key = "ait_chameleon",
-    name = "艾特变色龙",
-    type = SettingType.BOOLEAN,
-    desc = "赋予群聊中 @艾特文本 点击功能，可直接跳转至该成员的群名片资料页。",
-    uiTab = "界面"
-)
 class AitChameleon : IAction, OnAIOViewUpdate {
+
+    override val key: String get() = "ait_chameleon"
+    override val name: String get() = "艾特变色龙"
+    override val desc: String get() = "赋予群聊中 @艾特文本 点击功能，可直接跳转至该成员的群名片资料页。"
+    override val uiTab: String get() = "界面"
 
     private var TextView.msgTag: MsgRecord?
         get() = getTag(TAG_KEY_MSG) as? MsgRecord
@@ -54,8 +49,6 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         private const val TAG_KEY_GUARD = -0x7E00_0002
         private const val TAG_KEY_BG_CACHE = -0x7E00_0003
     }
-
-    override val key: String get() = GeneratedSettingList.AIT_CHAMELEON
 
     override fun onRun(app: Application, process: ActionProcess) = Unit
 

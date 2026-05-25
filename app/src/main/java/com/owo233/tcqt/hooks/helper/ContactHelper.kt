@@ -7,6 +7,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 internal object ContactHelper {
+
     suspend fun getUinByUidAsync(uid: String): String {
         if (uid.isBlank() || uid == "0") {
             return "0"

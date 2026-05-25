@@ -8,15 +8,15 @@ import android.view.View
 import android.widget.FrameLayout
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.ext.isFlagEnabled
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
@@ -33,24 +33,24 @@ import mqq.app.Foreground
 import java.util.concurrent.ConcurrentHashMap
 
 @RegisterAction
-@RegisterSetting(
-    key = "disable_dialog",
-    name = "屏蔽烦人弹窗",
-    type = SettingType.BOOLEAN,
-    desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。",
-    uiTab = "基础"
-)
-@RegisterSetting(
-    key = "disable_dialog.type",
-    name = "可选项",
-    type = SettingType.INT_MULTI,
-    defaultValue = "0",
-    options = "屏蔽灰度版本体验|屏蔽社交封禁提醒|屏蔽版本升级弹窗"
-)
 class DisableDialog : IAction {
 
+    override val name: String get() = "屏蔽烦人弹窗"
+    override val desc: String get() = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。"
+    override val uiTab: String get() = "基础"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            MultiIntSetting(
+                "disable_dialog.type",
+                "可选项",
+                0,
+                "",
+                listOf("屏蔽灰度版本体验", "屏蔽社交封禁提醒", "屏蔽版本升级弹窗")
+            ),
+        )
+
     private val options: Int by lazy {
-        GeneratedSettingList.getInt(GeneratedSettingList.DISABLE_DIALOG_TYPE)
+        TCQTSetting.getInt("disable_dialog.type")
     }
 
     override fun onRun(app: Application, process: ActionProcess) {
@@ -184,10 +184,10 @@ class DisableDialog : IAction {
     )
 
     companion object {
+
         private val isShowMap = ConcurrentHashMap<String, Boolean>()
     }
 
-    override val key: String get() = GeneratedSettingList.DISABLE_DIALOG
-
+    override val key: String get() = "disable_dialog"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

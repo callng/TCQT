@@ -8,11 +8,12 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
@@ -20,33 +21,40 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 
 @RegisterAction
-@RegisterSetting(
-    key = "image_custom_summary",
-    name = "自定义图片外显文字",
-    type = SettingType.BOOLEAN,
-    desc = "自定义消息列表中图片类型消息的外显文字。",
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "image_custom_summary.type",
-    name = "外显类型",
-    type = SettingType.INT_MULTI,
-    defaultValue = "0",
-    options = "表情商城|表情泡泡|纯图片0/图文混排0|动画表情1/表情搜索2/表情消息4/表情推荐7"
-)
-@RegisterSetting(
-    key = "image_custom_summary.string",
-    name = "自定义内容",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "填写内容, e.g: 你干嘛,哎哟,你好烦~"
-)
 class ImageCustomSummary : IAction {
+
+    override val name: String get() = "自定义图片外显文字"
+    override val desc: String get() = "自定义消息列表中图片类型消息的外显文字。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            MultiIntSetting(
+                "image_custom_summary.type",
+                "外显类型",
+                0,
+                "",
+                listOf(
+                    "表情商城",
+                    "表情泡泡",
+                    "纯图片0/图文混排0",
+                    "动画表情1/表情搜索2/表情消息4/表情推荐7"
+                )
+            ),
+            StringSetting(
+                "image_custom_summary.string",
+                "自定义内容",
+                "",
+                "",
+                "填写内容, e.g: 你干嘛,哎哟,你好烦~",
+                false
+            ),
+        )
 
     override fun onRun(app: Application, process: ActionProcess) {
         val mHookType =
-            GeneratedSettingList.getInt(GeneratedSettingList.IMAGE_CUSTOM_SUMMARY_TYPE)
+            TCQTSetting.getInt("image_custom_summary.type")
         val mHookString =
-            GeneratedSettingList.getString(GeneratedSettingList.IMAGE_CUSTOM_SUMMARY_STRING)
+            TCQTSetting.getString("image_custom_summary.string")
 
         if (mHookType == 0 || mHookString.isBlank()) {
             return
@@ -88,7 +96,7 @@ class ImageCustomSummary : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.IMAGE_CUSTOM_SUMMARY
+    override val key: String get() = "image_custom_summary"
 
-    override fun canRun(): Boolean = PlatformTools.isNt() && GeneratedSettingList.getBoolean(key)
+    override fun canRun(): Boolean = PlatformTools.isNt() && TCQTSetting.getBoolean(key)
 }

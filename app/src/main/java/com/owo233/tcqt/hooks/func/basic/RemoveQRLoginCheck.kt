@@ -2,24 +2,18 @@ package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
-@RegisterSetting(
-    key = "remove_qr_login_check",
-    name = "移除扫码登录检查",
-    type = SettingType.BOOLEAN,
-    desc = "扫描相册里的二维码时不再拦截登录。",
-    uiTab = "基础"
-)
 class RemoveQRLoginCheck : IAction {
+
+    override val name: String get() = "移除扫码登录检查"
+    override val desc: String get() = "扫描相册里的二维码时不再拦截登录。"
+    override val uiTab: String get() = "基础"
 
     override fun onRun(app: Application, process: ActionProcess) {
         val clazz = load("com.tencent.open.agent.QrAgentLoginManager")!!
@@ -40,7 +34,6 @@ class RemoveQRLoginCheck : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.REMOVE_QR_LOGIN_CHECK
-
+    override val key: String get() = "remove_qr_login_check"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

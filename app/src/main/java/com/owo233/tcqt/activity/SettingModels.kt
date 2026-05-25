@@ -2,29 +2,42 @@ package com.owo233.tcqt.activity
 
 import androidx.compose.runtime.Immutable
 
+@Immutable
+data class CategoryNode(
+    val name: String,
+    val fullPath: String,
+    val depth: Int,
+    val label: String,
+    val uiOrder: Int,
+    val featureKeys: List<String>,
+    val children: List<CategoryNode>
+)
+
 // ───── Feature Models ─────
 
 @Immutable
 data class SettingFeature(
     val key: String,
     val label: String,
-    val desc: String,
+    private val staticDesc: String,
     val order: Int,
     val tab: String,
     val categoryPath: List<String>,
     val textAreas: List<TextAreaField>,
     val optionGroup: FeatureOptionGroup?
 ) {
+
+    val desc: String
+        get() = com.owo233.tcqt.ActionManager.getSettingDesc(key, staticDesc)
+
     val expandable: Boolean
         get() = desc.isNotBlank() || textAreas.isNotEmpty() || optionGroup != null
 
-    val labelLower: String by lazy(LazyThreadSafetyMode.NONE) { label.lowercase() }
-    val descLower: String by lazy(LazyThreadSafetyMode.NONE) { desc.lowercase() }
+    val labelLower: String
+        get() = label.lowercase()
 
-    /** Full category path as a display string, e.g. "高级/过检测" */
-    val categoryDisplay: String by lazy(LazyThreadSafetyMode.NONE) {
-        categoryPath.joinToString(" / ")
-    }
+    val descLower: String
+        get() = desc.lowercase()
 }
 
 @Immutable
@@ -61,6 +74,7 @@ data class FeatureOptionGroup(
     val fallbackValue: Int,
     val options: List<OptionItem>
 ) {
+
     private val useOptionValueAsMask: Boolean by lazy(LazyThreadSafetyMode.NONE) {
         isMulti && options.all { option ->
             option.value > 0 && (option.value and (option.value - 1)) == 0
@@ -128,6 +142,7 @@ enum class RestartPrompt(
     val message: String,
     val dismissMessage: String
 ) {
+
     Save(
         title = "设置已保存",
         message = "是否现在重启宿主以应用修改？",

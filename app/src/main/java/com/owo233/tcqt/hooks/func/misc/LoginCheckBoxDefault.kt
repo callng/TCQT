@@ -4,23 +4,17 @@ import android.app.Application
 import android.content.Context
 import android.widget.CheckBox
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.allConstructors
 
 @RegisterAction
-@RegisterSetting(
-    key = "login_check_box_default",
-    name = "默认勾选登录协议",
-    type = SettingType.BOOLEAN,
-    desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
-    uiTab = "杂项"
-)
 class LoginCheckBoxDefault : IAction {
+
+    override val name: String get() = "默认勾选登录协议"
+    override val desc: String get() = "登录界面自动勾选复选框（用户协议，有人看了吗）。"
+    override val uiTab: String get() = "杂项"
 
     override fun onRun(app: Application, process: ActionProcess) {
         CheckBox::class.java.allConstructors().forEach {
@@ -46,7 +40,6 @@ class LoginCheckBoxDefault : IAction {
         )
     }
 
-    override val key: String get() = GeneratedSettingList.LOGIN_CHECK_BOX_DEFAULT
-
+    override val key: String get() = "login_check_box_default"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

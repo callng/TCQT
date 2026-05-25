@@ -17,6 +17,7 @@ object DynamicActivityRegistry {
     }
 
     fun unregister(className: String) {
+
         registry.remove(className)
     }
 

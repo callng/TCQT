@@ -2,25 +2,20 @@ package com.owo233.tcqt.hooks.func.misc
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.smtt.sdk.WebView
 import com.tencent.smtt.sdk.WebViewClient
 
 @RegisterAction
-@RegisterSetting(
-    key = "inject_console",
-    name = "注入Console",
-    type = SettingType.BOOLEAN,
-    desc = "对宿主内置浏览器注入Console，方便调试。此外，无论本功能是否启用，都会对每个网页注入剪切板保护代码。",
-    uiTab = "杂项"
-)
 class InjectConsole : IAction {
+
+    override val name: String get() = "注入Console"
+    override val desc: String get() = "对宿主内置浏览器注入Console，方便调试。此外，无论本功能是否启用，都会对每个网页注入剪切板保护代码。"
+    override val uiTab: String get() = "杂项"
 
     companion object {
         private var enableConsole = false
@@ -31,7 +26,7 @@ class InjectConsole : IAction {
     }
 
     override fun canRun(): Boolean {
-        enableConsole = GeneratedSettingList.getBoolean(key)
+        enableConsole = TCQTSetting.getBoolean(key)
         installHookIfNeeded()
         return enableConsole
     }
@@ -350,7 +345,6 @@ class InjectConsole : IAction {
         webView.evaluateJavascript(jsCode, null)
     }
 
-    override val key: String get() = GeneratedSettingList.INJECT_CONSOLE
-
+    override val key: String get() = "inject_console"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

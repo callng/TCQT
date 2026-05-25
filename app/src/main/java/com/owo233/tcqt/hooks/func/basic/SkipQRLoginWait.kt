@@ -4,11 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.view.View
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookBefore
@@ -18,14 +15,11 @@ import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
-@RegisterSetting(
-    key = "skip_qr_login_wait",
-    name = "跳过扫码登录等待",
-    type = SettingType.BOOLEAN,
-    desc = "扫码登录时跳过倒计时。",
-    uiTab = "基础"
-)
 class SkipQRLoginWait : IAction, DexKitTask {
+
+    override val name: String get() = "跳过扫码登录等待"
+    override val desc: String get() = "扫码登录时跳过倒计时。"
+    override val uiTab: String get() = "基础"
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (process == ActionProcess.MAIN) {
@@ -59,8 +53,7 @@ class SkipQRLoginWait : IAction, DexKitTask {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.SKIP_QR_LOGIN_WAIT
-
+    override val key: String get() = "skip_qr_login_wait"
     override val processes: Set<ActionProcess>
         get() = setOf(
             ActionProcess.MAIN,

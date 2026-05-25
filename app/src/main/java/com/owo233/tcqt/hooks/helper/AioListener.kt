@@ -3,9 +3,9 @@ package com.owo233.tcqt.hooks.helper
 import com.google.protobuf.ByteString
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
@@ -44,7 +44,7 @@ object AioListener : MessageHandler {
             MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> processC2CRecallPush(msgPush, param)
             MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> processGroupRecallPush(msgPush, param)
             MSG_TYPE_FLASH_PIC to SUB_TYPE_FLASH_PIC -> {
-                if (GeneratedSettingList.getBoolean(GeneratedSettingList.DISABLE_FLASH_PIC)) {
+                if (TCQTSetting.getBoolean("disable_flash_pic")) {
                     processFlashPicPush(msgPush)
                 }
             }

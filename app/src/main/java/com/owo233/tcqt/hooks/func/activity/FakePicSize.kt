@@ -4,11 +4,11 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
@@ -16,30 +16,30 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 
 @RegisterAction
-@RegisterSetting(
-    key = "fake_pic_size",
-    name = "篡改图片显示大小",
-    type = SettingType.BOOLEAN,
-    desc = "将发送的消息图片以指定的比例显示。",
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "fake_pic_size.type",
-    name = "图片比例",
-    type = SettingType.INT,
-    defaultValue = "1",
-    options = "默认|最小|略小|略大|最大",
-)
 class FakePicSize : IAction {
 
+    override val name: String get() = "篡改图片显示大小"
+    override val desc: String get() = "将发送的消息图片以指定的比例显示。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            IntSetting(
+                "fake_pic_size.type",
+                "图片比例",
+                1,
+                "",
+                listOf("默认", "最小", "略小", "略大", "最大")
+            ),
+        )
+
     override fun onRun(app: Application, process: ActionProcess) {
-        val type = GeneratedSettingList.getInt(GeneratedSettingList.FAKE_PIC_SIZE_TYPE)
+        val type = TCQTSetting.getInt("fake_pic_size.type")
         val targetSize = type.toTargetSize() ?: return
 
         hookSendMsg(targetSize)
     }
 
-    override val key: String get() = GeneratedSettingList.FAKE_PIC_SIZE
+    override val key: String get() = "fake_pic_size"
 
     private fun hookSendMsg(targetSize: Int) {
         IKernelMsgService.CppProxy::class.java.findMethod {

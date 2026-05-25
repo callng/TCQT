@@ -2,11 +2,8 @@ package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.msfcore.MSFConfig
@@ -14,14 +11,11 @@ import com.tencent.mobileqq.msfcore.MSFKernel
 import com.tencent.mobileqq.msfcore.MSFNetworkConfig
 
 @RegisterAction
-@RegisterSetting(
-    key = "disable_light_quic",
-    name = "禁用QUIC",
-    type = SettingType.BOOLEAN,
-    desc = "不允许MSF使用QUIC，强制它使用TCP。",
-    uiTab = "高级"
-)
 class DisableLightQuic : IAction {
+
+    override val name: String get() = "禁用QUIC"
+    override val desc: String get() = "不允许MSF使用QUIC，强制它使用TCP。"
+    override val uiTab: String get() = "高级"
 
     override fun onRun(app: Application, process: ActionProcess) {
         MSFKernel::class.java.findMethod {
@@ -39,7 +33,6 @@ class DisableLightQuic : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.DISABLE_LIGHT_QUIC
-
+    override val key: String get() = "disable_light_quic"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MSF)
 }

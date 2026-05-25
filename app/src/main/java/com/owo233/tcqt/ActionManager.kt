@@ -1,12 +1,19 @@
 package com.owo233.tcqt
 
 import android.app.Application
+import com.owo233.tcqt.activity.FeatureOptionGroup
+import com.owo233.tcqt.activity.OptionItem
+import com.owo233.tcqt.activity.SettingFeature
+import com.owo233.tcqt.activity.TextAreaField
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.BooleanSetting
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.generated.GeneratedActionList
-import com.owo233.tcqt.generated.GeneratedFeaturesData
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getObject
@@ -19,6 +26,22 @@ internal object ActionManager {
     private val instanceMap = hashMapOf<Class<out IAction>, IAction>()
 
     private val failedActions = hashSetOf<Class<out IAction>>()
+
+    private val keyToActionMap = hashMapOf<String, Class<out IAction>>()
+
+    init {
+        FIRST_ACTION.forEach { actionClass ->
+            runCatching {
+                val action = instanceOf(actionClass) ?: return@forEach
+                if (action.key.isNotBlank()) {
+                    keyToActionMap[action.key] = actionClass
+                }
+                action.settings.forEach { setting ->
+                    keyToActionMap[setting.key] = actionClass
+                }
+            }
+        }
+    }
 
     private fun instanceOf(cls: Class<out IAction>): IAction? {
         if (cls in failedActions) return null
@@ -80,23 +103,111 @@ internal object ActionManager {
     }
 
     fun getEnabledActionCount(): Int {
-        return GeneratedFeaturesData.FEATURES.count {
-            GeneratedSettingList.getBoolean(it.key)
+        return getAllFeatures().count {
+            TCQTSetting.getBoolean(it.key)
         }
     }
 
     fun getDisabledActionCount(): Int {
-        return GeneratedFeaturesData.FEATURES.count {
-            !GeneratedSettingList.getBoolean(it.key)
+        return getAllFeatures().count {
+            !TCQTSetting.getBoolean(it.key)
         }
     }
 
     fun resolve(action: IAction): String {
-        if (action.key.isBlank()) {
-            return action::class.simpleName ?: "Unknown"
+        if (action.name.isNotBlank()) {
+            return action.name
         }
+        if (action.key.isNotBlank()) {
+            return action.key
+        }
+        return action::class.simpleName ?: "Unknown"
+    }
 
-        return GeneratedActionList.ACTION_NAME_MAP[action.key]
-            ?: action.key
+    fun getActionByKey(key: String): IAction? {
+        val actionClass = keyToActionMap[key] ?: return null
+        return instanceOf(actionClass)
+    }
+
+    fun getSettingDesc(key: String, defaultDesc: String): String {
+        val action = getActionByKey(key) ?: return defaultDesc
+        return action.getSettingDesc(key) ?: defaultDesc
+    }
+
+    fun registerAllSettings(map: HashMap<String, TCQTSetting.Setting<out Any>>) {
+        FIRST_ACTION.forEach { actionClass ->
+            val action = instanceOf(actionClass) ?: return@forEach
+            if (action.key.isNotBlank()) {
+                map[action.key] = TCQTSetting.Setting(
+                    action.key,
+                    TCQTSetting.SettingType.BOOLEAN,
+                    action.defaultEnabled
+                )
+            }
+            action.settings.forEach { s ->
+                val type = when (s) {
+                    is BooleanSetting -> TCQTSetting.SettingType.BOOLEAN
+                    is StringSetting -> TCQTSetting.SettingType.STRING
+                    is IntSetting -> TCQTSetting.SettingType.INT
+                    is MultiIntSetting -> TCQTSetting.SettingType.INT_MULTI
+                }
+                map[s.key] = TCQTSetting.Setting(
+                    s.key,
+                    type,
+                    s.defaultValue
+                )
+            }
+        }
+    }
+
+    fun getAllFeatures(): List<SettingFeature> {
+        val features = mutableListOf<SettingFeature>()
+        FIRST_ACTION.forEach { actionClass ->
+            val action = instanceOf(actionClass) ?: return@forEach
+            if (action.key.isBlank() || action.hidden) return@forEach
+
+            val textAreas = action.settings.filterIsInstance<StringSetting>().map { s ->
+                TextAreaField(
+                    key = s.key,
+                    label = s.name,
+                    placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" }
+                )
+            }
+
+            val optionSetting = action.settings.find { it is IntSetting || it is MultiIntSetting }
+            val optionGroup = optionSetting?.let { s ->
+                val options = when (s) {
+                    is IntSetting -> s.options
+                    is MultiIntSetting -> s.options
+                    else -> emptyList()
+                }
+                FeatureOptionGroup(
+                    key = s.key,
+                    isMulti = s is MultiIntSetting,
+                    fallbackValue = s.defaultValue as Int,
+                    options = options.mapIndexed { i, label ->
+                        OptionItem(label = label, value = i + 1)
+                    }
+                )
+            }
+
+            val categoryPath =
+                action.uiTab.trim().split("/").map { it.trim() }.filter { it.isNotEmpty() }
+                    .ifEmpty { listOf("基础") }
+
+            features.add(
+                SettingFeature(
+                    key = action.key,
+                    label = action.name,
+                    staticDesc = action.desc,
+                    order = action.uiOrder,
+                    tab = action.uiTab.ifBlank { "基础" },
+                    categoryPath = categoryPath,
+                    textAreas = textAreas,
+                    optionGroup = optionGroup
+                )
+            )
+        }
+        return features
     }
 }

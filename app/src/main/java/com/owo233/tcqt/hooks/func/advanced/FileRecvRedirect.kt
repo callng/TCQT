@@ -4,11 +4,8 @@ import android.app.Application
 import android.os.Environment
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
@@ -16,14 +13,11 @@ import com.owo233.tcqt.utils.reflect.findMethod
 import java.io.File
 
 @RegisterAction
-@RegisterSetting(
-    key = "file_recv_redirect",
-    name = "文件接收重定向",
-    type = SettingType.BOOLEAN,
-    desc = "目前只能重定向到/sdcard/Download/{HostAppName}/",
-    uiTab = "高级"
-)
 class FileRecvRedirect : IAction {
+
+    override val name: String get() = "文件接收重定向"
+    override val desc: String get() = "目前只能重定向到/sdcard/Download/{HostAppName}/"
+    override val uiTab: String get() = "高级"
 
     private val defaultPath: String by lazy {
         "${HookEnv.application.getExternalFilesDir(null)!!.parent!!}/Tencent/${HookEnv.appName}file_recv/"
@@ -36,7 +30,7 @@ class FileRecvRedirect : IAction {
     private val targetDir: File by lazy { File(downLoadPath) }
 
     override val key: String
-        get() = GeneratedSettingList.FILE_RECV_REDIRECT
+        get() = "file_recv_redirect"
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (!isTargetDirUsable()) {

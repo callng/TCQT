@@ -41,6 +41,7 @@ private fun Class<*>.allFields(withSuper: Boolean): Array<Field> {
 }
 
 private fun Class<*>.allMethods(withSuper: Boolean): Array<Method> {
+
     return methodCache.getOrPut(this to withSuper) {
         val methods = mutableListOf<Method>()
         var current: Class<*>? = this
@@ -53,6 +54,7 @@ private fun Class<*>.allMethods(withSuper: Boolean): Array<Method> {
 }
 
 fun Class<*>.allConstructors(): Array<Constructor<*>> {
+
     return constructorCache.getOrPut(this) {
         this.declaredConstructors.clone()
     }

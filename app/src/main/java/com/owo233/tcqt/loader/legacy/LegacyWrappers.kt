@@ -10,7 +10,6 @@ import java.lang.reflect.Member
 class LegacyHookParam(val param: XC_MethodHook.MethodHookParam) : HookParam {
 
     override val method: Member get() = param.method
-
     override val thisObject: Any get() = param.thisObject
 
     override var args: Array<Any?>
@@ -33,6 +32,7 @@ class LegacyHookParam(val param: XC_MethodHook.MethodHookParam) : HookParam {
 }
 
 class LegacyChain(private val legacyParam: LegacyHookParam) : Chain, HookParam by legacyParam {
+
     constructor(param: XC_MethodHook.MethodHookParam) : this(LegacyHookParam(param))
 
     override fun proceed(args: Array<Any?>): Any? {
@@ -41,6 +41,7 @@ class LegacyChain(private val legacyParam: LegacyHookParam) : Chain, HookParam b
 }
 
 class LegacyInvoker(private val method: Member) : Invoker {
+
     override fun invokeOrigin(thisObject: Any?, vararg args: Any?): Any? {
         return XposedBridge.invokeOriginalMethod(method, thisObject, arrayOf(*args))
     }

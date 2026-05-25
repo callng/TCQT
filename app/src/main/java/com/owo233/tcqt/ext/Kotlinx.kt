@@ -35,6 +35,7 @@ internal fun Context.toast(msg: String, flag: Int = Toast.LENGTH_SHORT) {
 class Nullable<T : Any>(
     private var value: T?
 ) {
+
     fun get(): T {
         return value!!
     }

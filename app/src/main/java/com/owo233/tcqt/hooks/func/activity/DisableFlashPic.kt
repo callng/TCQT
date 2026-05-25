@@ -3,11 +3,8 @@ package com.owo233.tcqt.hooks.func.activity
 import android.app.Application
 import com.owo233.tcqt.HookEnv.requireMinTimVersion
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.hook.hookMethodAfter
@@ -15,14 +12,11 @@ import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
 @RegisterAction
-@RegisterSetting(
-    key = "disable_flash_pic",
-    name = "将闪照视为正常图片",
-    type = SettingType.BOOLEAN,
-    desc = "好友发送的闪照将作为正常图片显示并添加灰条提示。",
-    uiTab = "界面"
-)
 class DisableFlashPic : IAction {
+
+    override val name: String get() = "将闪照视为正常图片"
+    override val desc: String get() = "好友发送的闪照将作为正常图片显示并添加灰条提示。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (PlatformTools.isNt() || requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)) {
@@ -39,7 +33,6 @@ class DisableFlashPic : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.DISABLE_FLASH_PIC
-
+    override val key: String get() = "disable_flash_pic"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

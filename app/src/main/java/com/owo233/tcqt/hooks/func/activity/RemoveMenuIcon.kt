@@ -4,11 +4,8 @@ import android.app.Application
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
@@ -18,14 +15,11 @@ import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.mobileqq.utils.ViewUtils
 
 @RegisterAction
-@RegisterSetting(
-    key = "remove_menu_icon",
-    name = "移除菜单图标",
-    type = SettingType.BOOLEAN,
-    desc = "移除消息气泡菜单中的图标。",
-    uiTab = "界面"
-)
 class RemoveMenuIcon : IAction {
+
+    override val name: String get() = "移除菜单图标"
+    override val desc: String get() = "移除消息气泡菜单中的图标。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.qqnt.aio.menu.ui.QQCustomMenuExpandableLayout")
@@ -52,5 +46,5 @@ class RemoveMenuIcon : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.REMOVE_MENU_ICON
+    override val key: String get() = "remove_menu_icon"
 }

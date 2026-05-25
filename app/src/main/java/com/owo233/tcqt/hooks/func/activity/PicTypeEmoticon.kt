@@ -2,25 +2,19 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.PicElement
 
 @RegisterAction
-@RegisterSetting(
-    key = "pic_type_emoticon",
-    name = "以图片方式打开表情",
-    type = SettingType.BOOLEAN,
-    desc = "可以保存一些不让保存的表情。",
-    uiTab = "界面"
-)
 class PicTypeEmoticon : IAction {
+
+    override val name: String get() = "以图片方式打开表情"
+    override val desc: String get() = "可以保存一些不让保存的表情。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         load("com.tencent.qqnt.aio.adapter.api.impl.RichMediaBrowserApiImpl")!!
@@ -32,5 +26,5 @@ class PicTypeEmoticon : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.PIC_TYPE_EMOTICON
+    override val key: String get() = "pic_type_emoticon"
 }

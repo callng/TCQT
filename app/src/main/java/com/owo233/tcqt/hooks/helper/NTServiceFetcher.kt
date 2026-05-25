@@ -2,7 +2,7 @@ package com.owo233.tcqt.hooks.helper
 
 import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.ext.runOnce
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.api.IKernelService
@@ -19,8 +19,8 @@ object NTServiceFetcher {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
         isMsgHookInitialized.runOnce {
-            val key = GeneratedSettingList.MSG_ANTI_RECALL
-            if (GeneratedSettingList.getBoolean(key)) {
+            val key = "msg_anti_recall"
+            if (TCQTSetting.getBoolean(key)) {
                 msgPushHook()
             }
         }
@@ -43,7 +43,7 @@ object NTServiceFetcher {
     private fun action(cmd: String, buffer: ByteArray, param: MethodHookParam) {
         // 新版与旧版的区别: 核心差异在于 Protobuf 解析方式不同。
         // 旧版使用 Google Protobuf，而新版使用 kotlinx-serialization。
-        val options = GeneratedSettingList.getInt(GeneratedSettingList.MSG_ANTI_RECALL_TYPE)
+        val options = TCQTSetting.getInt("msg_anti_recall.type")
 
         val handler: MessageHandler = if (options.isFlagEnabled(0)) {
             NewPreventRetractingMessageCore

@@ -16,21 +16,19 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.activity.SettingActivity
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.ext.toHexString
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.impl.EasyLoginException
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.QQVersion
@@ -50,15 +48,12 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 @RegisterAction
-@RegisterSetting(
-    key = "add_module_entrance.boolean.ShowAttachedEntries",
-    name = "显示附加工具入口",
-    type = SettingType.BOOLEAN,
-    defaultValue = "false",
-    desc = "在宿主设置页面额外显示模块附加工具入口",
-    uiTab = "高级"
-)
 class AddModuleEntrance : AlwaysRunAction() {
+
+    override val key: String get() = "add_module_entrance"
+    override val name: String get() = "显示附加工具入口"
+    override val desc: String get() = "在宿主设置页面额外显示模块附加工具入口"
+    override val uiTab: String get() = "高级"
 
     private var cachedProcessorInfo: ProcessorInfo? = null
 
@@ -124,9 +119,7 @@ class AddModuleEntrance : AlwaysRunAction() {
 
             ResourcesUtils.injectResourcesToContext(context.resources)
 
-            val showAttached = GeneratedSettingList.getBoolean(
-                GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
-            )
+            val showAttached = TCQTSetting.getBoolean(key)
 
             entryConfigs
                 .filter { !it.extraEntry || showAttached }

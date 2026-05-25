@@ -13,6 +13,7 @@ object FieldUtils {
     class Finder internal constructor(
         private val target: Target
     ) {
+
         private var fieldName: String? = null
         private var fieldType: Class<*>? = null
 
@@ -143,6 +144,7 @@ object FieldUtils {
                     if (includeParents) {
                         var c: Class<*>? = p.superclass
                         while (c != null && c != Any::class.java) {
+
                             scanClass(c)
                             c = c.superclass
                         }
@@ -187,6 +189,7 @@ object FieldUtils {
                         // 从 p 往上爬
                         var c: Class<*>? = p.superclass
                         while (c != null && c != Any::class.java) {
+
                             findInClass(c)?.let { return it }
                             c = c.superclass
                         }
@@ -296,15 +299,18 @@ object FieldUtils {
     }
 
     internal sealed class Target {
+
         abstract fun targetClass(): Class<*>
         abstract fun instanceOrNull(): Any?
 
         data class Instance(val obj: Any) : Target() {
+
             override fun targetClass(): Class<*> = obj.javaClass
             override fun instanceOrNull(): Any = obj
         }
 
         data class StaticClass(val clazz: Class<*>) : Target() {
+
             override fun targetClass(): Class<*> = clazz
             override fun instanceOrNull(): Any? = null
         }

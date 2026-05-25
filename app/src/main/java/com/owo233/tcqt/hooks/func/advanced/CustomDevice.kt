@@ -3,45 +3,50 @@ package com.owo233.tcqt.hooks.func.advanced
 import android.app.Application
 import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodReplace
 import com.owo233.tcqt.utils.hook.invokeOriginal
 import com.owo233.tcqt.utils.reflect.getMethods
 
 @RegisterAction
-@RegisterSetting(
-    key = "custom_device",
-    name = "自定义设备信息",
-    type = SettingType.BOOLEAN,
-    desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
-    hasTextAreas = true,
-    uiTab = "高级"
-)
-@RegisterSetting(
-    key = "custom_device.string.device",
-    name = "设备代号",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "填写device内容, e.g: ingres"
-)
-@RegisterSetting(
-    key = "custom_device.string.model",
-    name = "设备型号",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "填写model内容, e.g: 21121210C"
-)
-@RegisterSetting(
-    key = "custom_device.string.manufacturer",
-    name = "设备制造商",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "填写manufacturer内容, e.g: Xiaomi"
-)
 class CustomDevice : IAction {
+
+    override val name: String get() = "自定义设备信息"
+    override val desc: String get() = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。"
+    override val uiTab: String get() = "高级"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "custom_device.string.device",
+                "设备代号",
+                "",
+                "",
+                "填写device内容, e.g: ingres",
+                false
+            ),
+            StringSetting(
+                "custom_device.string.model",
+                "设备型号",
+                "",
+                "",
+                "填写model内容, e.g: 21121210C",
+                false
+            ),
+            StringSetting(
+                "custom_device.string.manufacturer",
+                "设备制造商",
+                "",
+                "",
+                "填写manufacturer内容, e.g: Xiaomi",
+                false
+            ),
+        )
 
     override fun onRun(app: Application, process: ActionProcess) {
         load("android.os.SystemProperties")!!
@@ -71,29 +76,28 @@ class CustomDevice : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.CUSTOM_DEVICE
-
+    override val key: String get() = "custom_device"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 
     override fun canRun(): Boolean {
-        val isEnabled = GeneratedSettingList.getBoolean(key)
+        val isEnabled = TCQTSetting.getBoolean(key)
 
         if (!isEnabled) {
             if (device.isBlank()) {
-                GeneratedSettingList.setString(
-                    GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE,
+                TCQTSetting.setString(
+                    "custom_device.string.device",
                     Build.DEVICE
                 )
             }
             if (model.isBlank()) {
-                GeneratedSettingList.setString(
-                    GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL,
+                TCQTSetting.setString(
+                    "custom_device.string.model",
                     Build.MODEL
                 )
             }
             if (manufacturer.isBlank()) {
-                GeneratedSettingList.setString(
-                    GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER,
+                TCQTSetting.setString(
+                    "custom_device.string.manufacturer",
                     Build.MANUFACTURER
                 )
             }
@@ -108,18 +112,18 @@ class CustomDevice : IAction {
         const val MANUFACTURER_KEY = "ro.product.manufacturer"
 
         val device by lazy {
-            GeneratedSettingList.getString(
-                GeneratedSettingList.CUSTOM_DEVICE_STRING_DEVICE
+            TCQTSetting.getString(
+                "custom_device.string.device"
             )
         }
         val model by lazy {
-            GeneratedSettingList.getString(
-                GeneratedSettingList.CUSTOM_DEVICE_STRING_MODEL
+            TCQTSetting.getString(
+                "custom_device.string.model"
             )
         }
         val manufacturer by lazy {
-            GeneratedSettingList.getString(
-                GeneratedSettingList.CUSTOM_DEVICE_STRING_MANUFACTURER
+            TCQTSetting.getString(
+                "custom_device.string.manufacturer"
             )
         }
     }

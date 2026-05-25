@@ -6,24 +6,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.func.ModuleCommand
 
 @RegisterAction
-@RegisterSetting(
-    key = "module_update",
-    name = "模块更新干掉宿主",
-    type = SettingType.BOOLEAN,
-    defaultValue = "true",
-    desc = "每次本模块更新后将自动重启（杀死）宿主进程。",
-    uiTab = "杂项"
-)
 class ModuleUpdate : IAction {
+
+    override val name: String get() = "模块更新干掉宿主"
+    override val defaultEnabled: Boolean get() = true
+    override val desc: String get() = "每次本模块更新后将自动重启（杀死）宿主进程。"
+    override val uiTab: String get() = "杂项"
 
     override fun onRun(app: Application, process: ActionProcess) {
         val filter = IntentFilter().apply {
@@ -51,7 +45,6 @@ class ModuleUpdate : IAction {
         app.registerReceiver(receiver, filter)
     }
 
-    override val key: String get() = GeneratedSettingList.MODULE_UPDATE
-
+    override val key: String get() = "module_update"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

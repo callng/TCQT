@@ -8,34 +8,36 @@ import android.app.Application
 import android.widget.TextView
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.FieldUtils
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.invokeMethod
 
 @RegisterAction
-@RegisterSetting(
-    key = "change_preview_text_size",
-    name = "修改预览字体大小",
-    type = SettingType.BOOLEAN,
-    desc = "修改双击启动预览界面的文本字体大小, 缩小方便预览和复制。",
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "change_preview_text_size.string.textSize",
-    name = "textSize",
-    type = SettingType.STRING,
-    textAreaPlaceholder = "默认大小 14\n配置为空或无效值则使用默认大小\n"
-)
 class ChangePreviewTextSize : IAction {
 
+    override val name: String get() = "修改预览字体大小"
+    override val desc: String get() = "修改双击启动预览界面的文本字体大小, 缩小方便预览和复制。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "change_preview_text_size.string.textSize",
+                "textSize",
+                "",
+                "",
+                "默认大小 14\n配置为空或无效值则使用默认大小\n",
+                false
+            ),
+        )
+
     override val key: String
-        get() = GeneratedSettingList.CHANGE_PREVIEW_TEXT_SIZE
+        get() = "change_preview_text_size"
 
     override fun onRun(app: Application, process: ActionProcess) {
         val containerViewClass =
@@ -61,8 +63,8 @@ class ChangePreviewTextSize : IAction {
     companion object {
 
         val configTextSize: Float by lazy {
-            GeneratedSettingList
-                .getString(GeneratedSettingList.CHANGE_PREVIEW_TEXT_SIZE_STRING_TEXTSIZE)
+            TCQTSetting
+                .getString("change_preview_text_size.string.textSize")
                 .trim()
                 .toFloatOrNull()
                 ?.takeIf { it > 0f }

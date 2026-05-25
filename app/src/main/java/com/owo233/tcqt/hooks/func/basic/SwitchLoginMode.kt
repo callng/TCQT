@@ -3,36 +3,30 @@ package com.owo233.tcqt.hooks.func.basic
 import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.paramCount
 import com.tencent.common.config.pad.DeviceType
 
 @RegisterAction
-@RegisterSetting(
-    key = "switch_login_mode",
-    name = "切换登录模式",
-    type = SettingType.BOOLEAN,
-    desc = "在不改变UI的情况下以手机或平板模式登录账号，一个账号可以两处登录互不干扰。",
-    uiOrder = 2,
-    uiTab = "基础"
-)
-@RegisterSetting(
-    key = "switch_login_mode.type",
-    name = "登录类型",
-    type = SettingType.INT,
-    defaultValue = "1",
-    options = "手机模式|平板模式",
-)
 class SwitchLoginMode : IAction {
 
+    override val name: String get() = "切换登录模式"
+    override val desc: String get() = "在不改变UI的情况下以手机或平板模式登录账号，一个账号可以两处登录互不干扰。"
+    override val uiTab: String get() = "基础"
+    override val uiOrder: Int get() = 2
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            IntSetting("switch_login_mode.type", "登录类型", 1, "", listOf("手机模式", "平板模式")),
+        )
+
     override fun onRun(app: Application, process: ActionProcess) {
-        val loginType = GeneratedSettingList.getInt(GeneratedSettingList.SWITCH_LOGIN_MODE_TYPE)
+        val loginType = TCQTSetting.getInt("switch_login_mode.type")
 
         loadOrThrow("com.tencent.common.config.pad.PadUtil")
             .declaredMethods.first {
@@ -46,7 +40,6 @@ class SwitchLoginMode : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.SWITCH_LOGIN_MODE
-
+    override val key: String get() = "switch_login_mode"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MSF)
 }

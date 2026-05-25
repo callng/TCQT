@@ -87,6 +87,7 @@ interface DexKitTask {
                 }
 
                 is FindMethod -> {
+
                     val result = bridge.findMethod(query).singleOrNull()
                     if (result != null) {
                         cache[name] = result.descriptor

@@ -10,32 +10,26 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import java.util.regex.Pattern
 
 @RegisterAction
-@RegisterSetting(
-    key = "fxxk_qq_browser",
-    name = "去你大爷的QQ浏览器",
-    type = SettingType.BOOLEAN,
-    desc = "在宿主内访问网页时，强制使用系统默认浏览器打开，而非使用内置浏览器。",
-    uiTab = "高级"
-)
 class FxxkQQBrowser : IAction {
+
+    override val name: String get() = "去你大爷的QQ浏览器"
+    override val desc: String get() = "在宿主内访问网页时，强制使用系统默认浏览器打开，而非使用内置浏览器。"
+    override val uiTab: String get() = "高级"
 
     override fun onRun(app: Application, process: ActionProcess) {
         hookExecStartActivity()
     }
 
     override val key: String
-        get() = GeneratedSettingList.FXXK_QQ_BROWSER
+        get() = "fxxk_qq_browser"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.ALL)

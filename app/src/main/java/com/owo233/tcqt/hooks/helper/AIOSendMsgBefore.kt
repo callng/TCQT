@@ -43,5 +43,6 @@ class AIOSendMsgBefore : AlwaysRunAction() {
 }
 
 fun interface OnAIOSendMsgBefore {
+
     fun onSend(elements: ArrayList<MsgElement>)
 }

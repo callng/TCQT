@@ -2,11 +2,8 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.owo233.tcqt.utils.reflect.FieldUtils
@@ -14,14 +11,11 @@ import com.tencent.qqnt.kernel.nativeinterface.MemberInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
 
 @RegisterAction
-@RegisterSetting(
-    key = "sort_at_list",
-    name = "优化排序@列表",
-    type = SettingType.BOOLEAN,
-    desc = "键入'@'时重新排序成员列表，由群主·管理员·机器人·至普通群成员。",
-    uiTab = "界面"
-)
 class SortAtList : IAction {
+
+    override val name: String get() = "优化排序@列表"
+    override val desc: String get() = "键入'@'时重新排序成员列表，由群主·管理员·机器人·至普通群成员。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.mobileqq.aio.input.at.common.SubmitListEvent")
@@ -36,7 +30,7 @@ class SortAtList : IAction {
             }
     }
 
-    override val key: String get() = GeneratedSettingList.SORT_AT_LIST
+    override val key: String get() = "sort_at_list"
 
     private fun extractMemberInfo(item: Any?): MemberInfo? {
         if (item == null) return null

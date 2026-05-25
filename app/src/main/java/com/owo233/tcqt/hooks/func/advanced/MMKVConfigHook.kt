@@ -2,39 +2,41 @@ package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.owo233.tcqt.utils.log.Log
 import java.util.concurrent.ConcurrentHashMap
 
 @RegisterAction
-@RegisterSetting(
-    key = "mmkv_config_hook",
-    name = "MMKV配置Hook",
-    type = SettingType.BOOLEAN,
-    desc = $$"仅高级用户使用，针对'common_mmkv_configurations'处理，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
-    hasTextAreas = true,
-    uiTab = "高级"
-)
-@RegisterSetting(
-    key = "mmkv_config_hook.string.saveConfig",
-    name = "保存的配置",
-    type = SettingType.STRING,
-    textAreaPlaceholder = $$"<key>:<boolean>\ne.g: FROM_EXP$uin:true\n一行一个配置项"
-)
 class MMKVConfigHook : IAction {
+
+    override val name: String get() = "MMKV配置Hook"
+    override val desc: String get() = $$"仅高级用户使用，针对'common_mmkv_configurations'处理，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。"
+    override val uiTab: String get() = "高级"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting(
+                "mmkv_config_hook.string.saveConfig",
+                "保存的配置",
+                "",
+                "",
+                $$"<key>:<boolean>\ne.g: FROM_EXP$uin:true\n一行一个配置项",
+                false
+            ),
+        )
 
     override fun onRun(app: Application, process: ActionProcess) {
         val clazz = load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")
             ?: error("MMKVOptionEntityV2 class not found...")
 
         val mmapIdField = clazz.getDeclaredField("mmapId").apply {
+
             isAccessible = true
         }
 
@@ -68,7 +70,7 @@ class MMKVConfigHook : IAction {
     companion object {
 
         private val configString by lazy {
-            GeneratedSettingList.getString(GeneratedSettingList.MMKV_CONFIG_HOOK_STRING_SAVECONFIG)
+            TCQTSetting.getString("mmkv_config_hook.string.saveConfig")
         }
 
         private val configMap: Map<String, String> by lazy {
@@ -104,7 +106,6 @@ class MMKVConfigHook : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.MMKV_CONFIG_HOOK
-
+    override val key: String get() = "mmkv_config_hook"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

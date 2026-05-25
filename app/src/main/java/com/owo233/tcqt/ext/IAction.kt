@@ -2,10 +2,11 @@ package com.owo233.tcqt.ext
 
 import android.app.Application
 import com.owo233.tcqt.ActionManager
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
 
 enum class ActionProcess {
+
     MSF, MAIN, TOOL, OPENSDK, QZONE, QQFAV,
     OTHER, ALL
 }
@@ -13,8 +14,23 @@ enum class ActionProcess {
 interface IAction {
 
     val key: String
+    val name: String
+    val desc: String get() = ""
+    val uiTab: String get() = "基础"
+    val uiOrder: Int get() = 1000
+    val hidden: Boolean get() = false
+    val defaultEnabled: Boolean get() = false
+
+    val settings: List<Setting<*>> get() = emptyList()
 
     val processes: Set<ActionProcess> get() = DEFAULT_PROCESSES
+
+    /**
+     * 获取配置项的动态描述
+     * @param key 配置项键名
+     * @return 动态描述内容，返回 null 时将使用静态描述作为后备
+     */
+    fun getSettingDesc(key: String): String? = null
 
     operator fun invoke(app: Application, process: ActionProcess) {
         runCatching {
@@ -27,10 +43,10 @@ interface IAction {
     fun onRun(app: Application, process: ActionProcess)
 
     fun canRun(): Boolean = runCatching {
-        GeneratedSettingList.getBoolean(key)
+        TCQTSetting.getValue<Boolean>(key) ?: defaultEnabled
     }.getOrElse { e ->
         Log.e("功能 [${ActionManager.resolve(this)}] 开关检查异常", e)
-        false
+        defaultEnabled
     }
 
     /**
@@ -48,7 +64,9 @@ interface IAction {
  * 无视设置开关条件的 Action
  */
 abstract class AlwaysRunAction : IAction {
+
     override val key: String = ""
+    override val name: String = ""
     override val processes: Set<ActionProcess> = IAction.DEFAULT_PROCESSES
     override fun canRun(): Boolean = true
 }

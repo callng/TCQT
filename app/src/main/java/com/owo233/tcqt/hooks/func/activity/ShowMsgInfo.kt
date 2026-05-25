@@ -17,12 +17,9 @@ import com.owo233.tcqt.HookEnv.requireMinQQVersion
 import com.owo233.tcqt.HookEnv.requireMinTimVersion
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.shortClassName
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.ui.CustomDialog
@@ -38,14 +35,11 @@ import java.util.Date
 import java.util.Locale
 
 @RegisterAction
-@RegisterSetting(
-    key = "show_msg_info",
-    name = "显示消息Seq与时间",
-    type = SettingType.BOOLEAN,
-    desc = "在每条消息气泡下显示消息Seq和具体发送时间。",
-    uiTab = "界面"
-)
 class ShowMsgInfo : IAction, OnAIOViewUpdate {
+
+    override val name: String get() = "显示消息Seq与时间"
+    override val desc: String get() = "在每条消息气泡下显示消息Seq和具体发送时间。"
+    override val uiTab: String get() = "界面"
 
     private val timeFormatter by lazy {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -53,7 +47,7 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
 
     override fun onRun(app: Application, process: ActionProcess) = Unit
 
-    override val key: String get() = GeneratedSettingList.SHOW_MSG_INFO
+    override val key: String get() = "show_msg_info"
 
     override fun onGetViewNt(
         rootView: ViewGroup,

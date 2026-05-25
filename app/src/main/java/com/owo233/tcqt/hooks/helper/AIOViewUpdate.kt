@@ -59,6 +59,7 @@ class AIOViewUpdate : AlwaysRunAction() {
                 if (aioMsgItem is GrayTipsMsgItem) return@hookAfter
 
                 activeDecorators.forEach {
+
                     it.onGetViewNt(rootView, aioMsgItem.msgRecord, param)
                 }
             }.onFailure { e ->
@@ -69,6 +70,7 @@ class AIOViewUpdate : AlwaysRunAction() {
 }
 
 fun interface OnAIOViewUpdate {
+
     fun onGetViewNt(
         rootView: ViewGroup,
         chatMessage: MsgRecord,

@@ -3,24 +3,18 @@ package com.owo233.tcqt.hooks.func.activity
 import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
-@RegisterSetting(
-    key = "hide_red_pack_skin",
-    name = "隐藏红包推荐皮肤",
-    type = SettingType.BOOLEAN,
-    desc = "隐藏点击红包按钮后出现的红包皮肤推荐。",
-    uiTab = "界面"
-)
 class HideRedPackSkin : IAction {
+
+    override val name: String get() = "隐藏红包推荐皮肤"
+    override val desc: String get() = "隐藏点击红包按钮后出现的红包皮肤推荐。"
+    override val uiTab: String get() = "界面"
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isQQ()) {
@@ -36,5 +30,5 @@ class HideRedPackSkin : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.HIDE_RED_PACK_SKIN
+    override val key: String get() = "hide_red_pack_skin"
 }

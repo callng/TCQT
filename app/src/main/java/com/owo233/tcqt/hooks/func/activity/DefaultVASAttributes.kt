@@ -3,12 +3,12 @@ package com.owo233.tcqt.hooks.func.activity
 import android.app.Application
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.MultiIntSetting
+import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -16,24 +16,24 @@ import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
 @RegisterAction
-@RegisterSetting(
-    key = "default_vas_attrs",
-    name = "净化聊天界面装扮",
-    type = SettingType.BOOLEAN,
-    desc = "默认禁用他人消息的个性化气泡、字体、QQ秀头像与头像挂件，若需保留特定项目（如头像挂件），请在下方勾选排除。",
-    uiTab = "界面"
-)
-@RegisterSetting(
-    key = "default_vas_attrs.type",
-    name = "可选保留",
-    type = SettingType.INT_MULTI,
-    defaultValue = "0",
-    options = "保留个性气泡|保留个性字体|保留头像挂件|保留QQ秀头像"
-)
 class DefaultVASAttributes : IAction {
 
+    override val name: String get() = "净化聊天界面装扮"
+    override val desc: String get() = "默认禁用他人消息的个性化气泡、字体、QQ秀头像与头像挂件，若需保留特定项目（如头像挂件），请在下方勾选排除。"
+    override val uiTab: String get() = "界面"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            MultiIntSetting(
+                "default_vas_attrs.type",
+                "可选保留",
+                0,
+                "",
+                listOf("保留个性气泡", "保留个性字体", "保留头像挂件", "保留QQ秀头像")
+            ),
+        )
+
     override fun onRun(app: Application, process: ActionProcess) {
-        val options = GeneratedSettingList.getInt(GeneratedSettingList.DEFAULT_VAS_ATTRS_TYPE)
+        val options = TCQTSetting.getInt("default_vas_attrs.type")
 
         AIOMsgItem::class.java.findMethod {
             name = "getMsgRecord"
@@ -83,7 +83,6 @@ class DefaultVASAttributes : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.DEFAULT_VAS_ATTRS
-
+    override val key: String get() = "default_vas_attrs"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

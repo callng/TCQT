@@ -2,7 +2,6 @@ package com.owo233.tcqt.internals.setting
 
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.utils.log.Log
 import io.fastkv.FastKV
 import kotlin.reflect.KProperty
@@ -15,7 +14,9 @@ internal object TCQTSetting {
     }
 
     val settingMap: HashMap<String, Setting<out Any>> by lazy {
-        GeneratedSettingList.SETTING_MAP
+        val map = hashMapOf<String, Setting<out Any>>()
+        com.owo233.tcqt.ActionManager.registerAllSettings(map)
+        map
     }
 
     fun clearAll() {
@@ -143,6 +144,7 @@ internal object TCQTSetting {
         }
 
     enum class SettingType {
+
         BOOLEAN, INT, STRING, INT_MULTI
     }
 
@@ -151,6 +153,7 @@ internal object TCQTSetting {
         val type: SettingType,
         val default: T? = null
     ) {
+
         @Suppress("UNCHECKED_CAST")
         fun getValue(): T {
             return when (type) {
@@ -188,4 +191,12 @@ internal object TCQTSetting {
             setValue(value)
         }
     }
+
+    fun getString(settingKey: String): String = getValue<String>(settingKey).orEmpty().trim()
+    fun getInt(settingKey: String): Int = getValue<Int>(settingKey) ?: 0
+    fun getBoolean(settingKey: String): Boolean = getValue<Boolean>(settingKey) ?: false
+
+    fun setString(settingKey: String, value: String) = setValue(settingKey, value)
+    fun setInt(settingKey: String, value: Int) = setValue(settingKey, value)
+    fun setBoolean(settingKey: String, value: Boolean) = setValue(settingKey, value)
 }

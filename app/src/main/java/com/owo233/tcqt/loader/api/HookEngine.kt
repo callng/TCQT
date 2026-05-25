@@ -3,15 +3,18 @@ package com.owo233.tcqt.loader.api
 import java.lang.reflect.Member
 
 fun interface Unhook {
+
     fun unhook()
 }
 
 interface Invoker {
+
     fun invokeOrigin(thisObject: Any?, vararg args: Any?): Any?
     fun invokeWithMaxPriority(maxPriority: Int, thisObject: Any?, vararg args: Any?): Any?
 }
 
 interface HookParam {
+
     val method: Member
 
     val thisObject: Any
@@ -22,10 +25,12 @@ interface HookParam {
 }
 
 interface Chain : HookParam {
+
     fun proceed(args: Array<Any?> = this.args): Any?
 }
 
 interface IHookEngine {
+
     val apiLevel: Int
     val frameworkName: String
     val frameworkVersion: String
@@ -43,6 +48,7 @@ interface IHookEngine {
 }
 
 object HookEngineManager {
+
     lateinit var engine: IHookEngine
 
     val isInitialized: Boolean

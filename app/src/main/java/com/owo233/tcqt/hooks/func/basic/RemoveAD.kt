@@ -5,11 +5,8 @@ import android.os.Message
 import android.view.View
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.ClassCacheUtils
@@ -22,14 +19,11 @@ import com.owo233.tcqt.utils.hook.isPublic
 import com.owo233.tcqt.utils.hook.paramCount
 
 @RegisterAction
-@RegisterSetting(
-    key = "remove_ad",
-    name = "移除部分广告",
-    type = SettingType.BOOLEAN,
-    desc = "移除一些常见的广告弹窗。",
-    uiTab = "基础"
-)
 class RemoveAD : IAction {
+
+    override val name: String get() = "移除部分广告"
+    override val desc: String get() = "移除一些常见的广告弹窗。"
+    override val uiTab: String get() = "基础"
 
     override fun onRun(app: Application, process: ActionProcess) {
         removeImmersionBannerAD()
@@ -85,5 +79,5 @@ class RemoveAD : IAction {
             }?.hookBefore { param -> param.result = Unit }
     }
 
-    override val key: String get() = GeneratedSettingList.REMOVE_AD
+    override val key: String get() = "remove_ad"
 }

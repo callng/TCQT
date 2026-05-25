@@ -3,26 +3,19 @@ package com.owo233.tcqt.hooks.func.misc
 import android.app.Application
 import android.os.Bundle
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 
 @RegisterAction
-@RegisterSetting(
-    key = "mini_app_share",
-    name = "修改小程序分享行为",
-    type = SettingType.BOOLEAN,
-    desc = "在小程序中调用分享时，如果取消分享，小程序也会收到分享成功的回调。",
-    uiTab = "杂项"
-)
 class MiniAppShare : IAction {
 
+    override val name: String get() = "修改小程序分享行为"
+    override val desc: String get() = "在小程序中调用分享时，如果取消分享，小程序也会收到分享成功的回调。"
+    override val uiTab: String get() = "杂项"
     override val key: String
-        get() = GeneratedSettingList.MINI_APP_SHARE
+        get() = "mini_app_share"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.ALL) // 在MAIN或者MINI3又或者其他进程, 干脆ALL

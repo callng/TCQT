@@ -7,12 +7,9 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.ModuleScope
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
@@ -28,14 +25,11 @@ import java.lang.reflect.Method
 import java.util.concurrent.CopyOnWriteArrayList
 
 @RegisterAction
-@RegisterSetting(
-    key = "multi_select_recall",
-    name = "消息多选撤回",
-    type = SettingType.BOOLEAN,
-    desc = "启用本功能后,消息多选模式下可批量撤回选中消息,非管理员也可使用。",
-    uiTab = "界面"
-)
 class MultiSelectRecall : IAction {
+
+    override val name: String get() = "消息多选撤回"
+    override val desc: String get() = "启用本功能后,消息多选模式下可批量撤回选中消息,非管理员也可使用。"
+    override val uiTab: String get() = "界面"
 
     private var multiSelectBarVM: Any? = null
 
@@ -52,7 +46,7 @@ class MultiSelectRecall : IAction {
         }
     }
 
-    override val key: String get() = GeneratedSettingList.MULTI_SELECT_RECALL
+    override val key: String get() = "multi_select_recall"
 
     private fun injectRecallButton(
         operationLayout: LinearLayout,
@@ -151,6 +145,7 @@ class MultiSelectRecall : IAction {
             }
 
             makeView = barVB.findMethod {
+
                 returnType = view
                 paramCount = 4
                 paramTypes = arrayOf(barVB, int, int, View.OnClickListener::class.java)

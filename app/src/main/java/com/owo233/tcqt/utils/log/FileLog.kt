@@ -15,6 +15,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 internal object FileLog {
+
     private const val LOG_MAX_SIZE = 2 * 1024 * 1024 // 2MB
     private const val LOG_KEEP_DAYS = 7
     private const val BACKUP_FILE_PREFIX = "log_"

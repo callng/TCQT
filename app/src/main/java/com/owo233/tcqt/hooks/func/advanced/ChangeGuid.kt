@@ -14,49 +14,35 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
-import com.owo233.tcqt.annotations.RegisterSetting
-import com.owo233.tcqt.annotations.SettingType
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.BooleanSetting
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.generated.GeneratedSettingList
+import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 
 @RegisterAction
-@RegisterSetting(
-    key = "change_guid",
-    name = "自定义GUID",
-    type = SettingType.BOOLEAN,
-    defaultValue = "true",
-    desc = "启用后在登录页面长按登录按钮即可调出设置窗口，这个功能使用不当可能会导致用户身份信息失效需重新登录。",
-    uiTab = "高级"
-)
-@RegisterSetting(
-    key = "change_guid.string.defaultGuid",
-    name = "默认GUID",
-    type = SettingType.STRING,
-    hidden = true
-)
-@RegisterSetting(
-    key = "change_guid.string.newGuid",
-    name = "新GUID",
-    type = SettingType.STRING,
-    hidden = true
-)
-@RegisterSetting(
-    key = "change_guid.boolean.isEnabled",
-    name = "是否启用更改",
-    type = SettingType.BOOLEAN,
-    defaultValue = "false"
-)
 class ChangeGuid : IAction {
 
+    override val name: String get() = "自定义GUID"
+    override val defaultEnabled: Boolean get() = true
+    override val desc: String get() = "启用后在登录页面长按登录按钮即可调出设置窗口，这个功能使用不当可能会导致用户身份信息失效需重新登录。"
+    override val uiTab: String get() = "高级"
+    override val settings: List<Setting<*>>
+        get() = listOf(
+            StringSetting("change_guid.string.defaultGuid", "默认GUID", "", "", "", false),
+            StringSetting("change_guid.string.newGuid", "新GUID", "", "", "", false),
+            BooleanSetting("change_guid.boolean.isEnabled", "是否启用更改", false, ""),
+        )
+
     override val key: String
-        get() = GeneratedSettingList.CHANGE_GUID
+        get() = "change_guid"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
@@ -245,24 +231,25 @@ class ChangeGuid : IAction {
 }
 
 private object GuidConfig {
+
     var defaultGuid: String
-        get() = GeneratedSettingList.getString(GeneratedSettingList.CHANGE_GUID_STRING_DEFAULTGUID)
-        set(value) = GeneratedSettingList.setString(
-            GeneratedSettingList.CHANGE_GUID_STRING_DEFAULTGUID,
+        get() = TCQTSetting.getString("change_guid.string.defaultGuid")
+        set(value) = TCQTSetting.setString(
+            "change_guid.string.defaultGuid",
             value
         )
 
     var newGuid: String
-        get() = GeneratedSettingList.getString(GeneratedSettingList.CHANGE_GUID_STRING_NEWGUID)
-        set(value) = GeneratedSettingList.setString(
-            GeneratedSettingList.CHANGE_GUID_STRING_NEWGUID,
+        get() = TCQTSetting.getString("change_guid.string.newGuid")
+        set(value) = TCQTSetting.setString(
+            "change_guid.string.newGuid",
             value
         )
 
     var isEnabled: Boolean
-        get() = GeneratedSettingList.getBoolean(GeneratedSettingList.CHANGE_GUID_BOOLEAN_ISENABLED)
-        set(value) = GeneratedSettingList.setBoolean(
-            GeneratedSettingList.CHANGE_GUID_BOOLEAN_ISENABLED,
+        get() = TCQTSetting.getBoolean("change_guid.boolean.isEnabled")
+        set(value) = TCQTSetting.setBoolean(
+            "change_guid.boolean.isEnabled",
             value
         )
 

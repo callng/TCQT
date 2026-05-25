@@ -7,6 +7,7 @@ enum class HostTypeEnum(
     val packageName: String,
     val appName: String
 ) {
+
     QQ(QQ_PACKAGE, "QQ"),
     TIM(TIM_PACKAGE, "TIM");
 
@@ -33,6 +34,7 @@ enum class HostTypeEnum(
     }
 
     class UnSupportHostTypeException : RuntimeException {
+
         constructor() : super()
         constructor(message: String?) : super(message)
         constructor(message: String?, cause: Throwable?) : super(message, cause)

@@ -6,7 +6,7 @@ import android.provider.DocumentsContract
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.owo233.tcqt.data.TCQTBuild
-import com.owo233.tcqt.generated.GeneratedSettingList
+
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
 import kotlinx.serialization.Serializable
@@ -75,6 +75,7 @@ object ConfigBackupManager {
     )
 
     sealed class RestoreResult {
+
         data class Success(val count: Int) : RestoreResult()
         object InvalidFile : RestoreResult()
         object VersionMismatch : RestoreResult()
@@ -82,6 +83,7 @@ object ConfigBackupManager {
     }
 
     fun generateBackupFileName(): String {
+
         val timestamp = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(Date())
         return "${TCQTBuild.APP_NAME}_Backup_$timestamp.json"
     }
@@ -98,7 +100,7 @@ object ConfigBackupManager {
 
             val settings = mutableListOf<SettingItem>()
 
-            val settingMap = GeneratedSettingList.SETTING_MAP
+            val settingMap = TCQTSetting.settingMap
             for ((key, setting) in settingMap) {
                 if (!isDefaultValue(setting)) {
                     val typeStr = setting.type.name
@@ -162,7 +164,7 @@ object ConfigBackupManager {
                 return RestoreResult.VersionMismatch
             }
 
-            val settingMap = GeneratedSettingList.SETTING_MAP
+            val settingMap = TCQTSetting.settingMap
 
             TCQTSetting.clearAll()
 

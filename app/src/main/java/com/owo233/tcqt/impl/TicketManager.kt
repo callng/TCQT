@@ -1,10 +1,10 @@
 package com.owo233.tcqt.impl
 
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.generated.GeneratedSettingList
 import com.owo233.tcqt.hooks.base.loadAs
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
@@ -32,8 +32,8 @@ internal object TicketManager {
     private var thirdSigService: Any? = null
 
     init {
-        if (GeneratedSettingList.getBoolean(
-                GeneratedSettingList.ADD_MODULE_ENTRANCE_BOOLEAN_SHOWATTACHEDENTRIES
+        if (TCQTSetting.getBoolean(
+                "add_module_entrance.boolean.ShowAttachedEntries"
             ) && HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
             loadOrThrow("oicq.wlogin_sdk.request.WtloginHelper")
                 .getDeclaredMethod(
