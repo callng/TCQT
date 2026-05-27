@@ -101,7 +101,7 @@ object ProcUtil {
     }
 
     val isMain get() = inProcess(MAIN)
-    val isMsf get() = inProcess(MSF)
+    val isMSF get() = inProcess(MSF)
     val isPeak get() = inProcess(PEAK)
     val isTool get() = inProcess(TOOL)
     val isQzone get() = inProcess(QZONE)

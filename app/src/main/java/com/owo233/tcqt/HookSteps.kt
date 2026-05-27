@@ -71,7 +71,7 @@ internal object HookSteps {
             app,
             when {
                 ProcUtil.isMain -> ActionProcess.MAIN
-                ProcUtil.isMsf -> ActionProcess.MSF
+                ProcUtil.isMSF -> ActionProcess.MSF
                 ProcUtil.isTool -> ActionProcess.TOOL
                 ProcUtil.isOpenSdk -> ActionProcess.OPENSDK
                 ProcUtil.isQzone -> ActionProcess.QZONE

@@ -267,3 +267,43 @@ fun Int.isFlagEnabled(index: Int): Boolean {
     require(index >= 0) { "Index must be non-negative" }
     return (this and (1 shl index)) != 0
 }
+
+/**
+ * 将 Int 转为大端序字节数组（4字节）
+ * 例如：94124 -> [0x00, 0x01, 0x6F, 0xAC]
+ */
+fun Int.toBytes(): ByteArray {
+    return byteArrayOf(
+        (this shr 24 and 0xFF).toByte(),
+        (this shr 16 and 0xFF).toByte(),
+        (this shr 8 and 0xFF).toByte(),
+        (this and 0xFF).toByte()
+    )
+}
+
+/**
+ * 将 Int 转为小端序字节数组（4字节）
+ * 例如：94124 -> [0xAC, 0x6F, 0x01, 0x00]
+ */
+fun Int.toBytesLittleEndian(): ByteArray {
+    return byteArrayOf(
+        (this and 0xFF).toByte(),
+        (this shr 8 and 0xFF).toByte(),
+        (this shr 16 and 0xFF).toByte(),
+        (this shr 24 and 0xFF).toByte()
+    )
+}
+
+/**
+ * 将 Int 转为字节数组，并自动省略前导零（至少保留1个字节）
+ * 例如：94124 -> [0x01, 0x6F, 0xAC]（省略前导0x00）
+ */
+fun Int.toCompactBytes(): ByteArray {
+    var temp = this
+    val list = mutableListOf<Byte>()
+    do {
+        list.add(0, (temp and 0xFF).toByte())
+        temp = temp shr 8
+    } while (temp != 0)
+    return list.toByteArray()
+}
