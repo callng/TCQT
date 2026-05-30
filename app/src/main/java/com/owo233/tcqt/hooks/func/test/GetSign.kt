@@ -15,13 +15,17 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hex2ByteArray
+import com.owo233.tcqt.ext.toHexString
+import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.findField
-import com.tencent.mobileqq.msf.core.c0.a
+import com.owo233.tcqt.utils.reflect.findMethod
+import com.tencent.mobileqq.msf.core.c0.a as QSign
+import com.tencent.mobileqq.msf.core.d0.a as TSign
 import com.tencent.mobileqq.msf.service.MsfService
 import com.tencent.qphone.base.remote.ToServiceMsg
 import org.luckypray.dexkit.query.FindMethod
@@ -57,7 +61,13 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initMainProcess(app: Application) {
-        requireMethod("InputRootInit").hookAfter { param ->
+        val method = if (HookEnv.isTim()) {
+            "com.tencent.tim.aio.inputbar.simpleui.TimAIOInputSimpleUIVBDelegate".toClass.findMethod {
+                name = "B"
+            }
+        } else requireMethod("InputRootInit")
+
+        method.hookAfter { param ->
             val sendBtn = param.thisObject::class.java.findField {
                 type = Button::class.java
             }.get(param.thisObject) as Button
@@ -107,7 +117,6 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         inputRoot: ViewGroup
     ) {
         pendingEditText = editText
-        editText.setText("正在获取签名...")
 
         Intent(ACTION_REQUEST_SIGN).apply {
             putExtra("uin", QQInterfaces.currentUin)
@@ -130,7 +139,9 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                         putWupBuffer(buffer)
                         requestSsoSeq = seq
                     }
-                    val sign: String = a.c().a(toServiceMsg, cmd).sign.toHexString()
+                    val sign: String = if (HookEnv.isQQ()) {
+                        QSign.c().a(toServiceMsg, cmd).sign.toHexString()
+                    } else TSign.e().a(toServiceMsg, cmd).sign.toHexString()
 
                     Intent(ACTION_SIGN_RESULT).apply {
                         putExtra("sign", sign)
