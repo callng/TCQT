@@ -15,7 +15,7 @@ import com.owo233.tcqt.hooks.func.ModuleCommand
 class ModuleUpdate : IAction {
 
     override val name: String get() = "模块更新干掉宿主"
-    override val defaultEnabled: Boolean get() = true
+    override val defaultEnabled: Boolean get() = false
     override val desc: String get() = "每次本模块更新后将自动重启（杀死）宿主进程。"
     override val uiTab: String get() = "杂项"
 

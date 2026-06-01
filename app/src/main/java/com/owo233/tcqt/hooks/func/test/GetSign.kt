@@ -68,15 +68,24 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         } else requireMethod("InputRootInit")
 
         method.hookAfter { param ->
-            val sendBtn = param.thisObject::class.java.findField {
-                type = Button::class.java
-            }.get(param.thisObject) as Button
-            val editText = param.thisObject::class.java.findField {
-                type = EditText::class.java
-            }.get(param.thisObject) as EditText
-            val inputRoot = param.thisObject::class.java.findField {
-                type = ViewGroup::class.java
-            }.get(param.thisObject) as ViewGroup
+            val sendBtn = runCatching {
+                param.thisObject::class.java.findField { type = Button::class.java }.get(param.thisObject) as? Button
+            }.getOrNull() ?: return@hookAfter
+
+            val editText = runCatching {
+                param.thisObject::class.java.findField { type = EditText::class.java }.get(param.thisObject) as? EditText
+            }.getOrNull() ?: return@hookAfter
+
+            val inputRoot = runCatching {
+                param.thisObject::class.java.declaredFields
+                    .filter { ViewGroup::class.java.isAssignableFrom(it.type) }
+                    .firstNotNullOfOrNull { field ->
+                        runCatching {
+                            field.isAccessible = true
+                            field.get(param.thisObject) as? ViewGroup
+                        }.getOrNull()
+                    }
+            }.getOrNull() ?: return@hookAfter
 
             sendBtn.setOnLongClickListener { _ ->
                 onBtnLongClick(editText.text.toString(), sendBtn, editText, inputRoot)

@@ -5,7 +5,6 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.activity.SettingActivity
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
@@ -45,7 +44,10 @@ class WebJsBridge : AlwaysRunAction() {
         val context = QQInterfaces.topActivity
         runCatching {
             ModuleScope.launchMain {
-                val intent = Intent(context, SettingActivity::class.java)
+                val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader
+                    ?: this.javaClass.classLoader
+                val settingActivityClass = latestLoader.loadClass("com.owo233.tcqt.activity.SettingActivity")
+                val intent = Intent(context, settingActivityClass)
                 context.startActivity(intent)
                 context.finish()
                 context.clearTransition()

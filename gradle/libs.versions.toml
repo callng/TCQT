@@ -13,7 +13,7 @@ lifecycle = "2.10.0"
 
 # Kotlin
 kotlin = "2.3.21"
-ksp = "2.3.8"
+ksp = "2.3.9"
 
 # KotlinX
 kotlinx-coroutines = "1.11.0"
@@ -25,7 +25,7 @@ protobuf-plugin = "0.10.0"
 protobuf-lib = "4.35.0"
 
 # Xposed
-libxposed = "101.0.1"
+libxposed = "102.0.0-SNAPSHOT"
 xposed = "82"
 
 # dexkit

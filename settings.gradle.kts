@@ -30,6 +30,15 @@ dependencyResolutionManagement {
         maven("https://api.xposed.info")
         maven("https://jitpack.io")
         maven("https://repo1.maven.org/maven2")
+        maven {
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            mavenContent {
+                snapshotsOnly()
+            }
+            content {
+                includeGroup("io.github.libxposed")
+            }
+        }
     }
 }
 

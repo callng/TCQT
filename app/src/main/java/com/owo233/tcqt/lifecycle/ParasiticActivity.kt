@@ -21,6 +21,7 @@ import com.owo233.tcqt.utils.reflect.callMethod
 import com.owo233.tcqt.utils.reflect.callStaticMethod
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.getObject
+import com.owo233.tcqt.utils.reflect.getObjectOrNull
 import com.owo233.tcqt.utils.reflect.getStaticObject
 import com.owo233.tcqt.utils.reflect.setObject
 import java.lang.reflect.InvocationTargetException
@@ -39,13 +40,11 @@ object ParasiticActivity {
     private const val MSG_LAUNCH_ACTIVITY = 100
     private const val MSG_EXECUTE_TRANSACTION = 159
 
-    private val moduleLoader by lazy(LazyThreadSafetyMode.NONE) {
-        HookEnv.moduleClassLoader
-    }
+    private val moduleLoader: ClassLoader
+        get() = HookEnv.moduleClassLoader
 
-    private val hostLoader by lazy(LazyThreadSafetyMode.NONE) {
-        HookEnv.hostClassLoader
-    }
+    private val hostLoader: ClassLoader
+        get() = HookEnv.hostClassLoader
 
     private val sdkInt: Int
         get() = Build.VERSION.SDK_INT
@@ -74,44 +73,93 @@ object ParasiticActivity {
     }
 
     private fun hookInstrumentation(activityThread: Any) {
-        val base = activityThread.getObject("mInstrumentation") as? Instrumentation ?: return
-        if (base is ProxyInstrumentation) return
+        var base = activityThread.getObject("mInstrumentation") as? Instrumentation ?: return
+        while (isModuleClass(base.javaClass)) {
+            val field = runCatching { base.javaClass.getDeclaredField("base") }.getOrNull()
+                ?: base.javaClass.declaredFields.firstOrNull { it.type == Instrumentation::class.java }
+            if (field != null) {
+                field.isAccessible = true
+                base = field.get(base) as? Instrumentation ?: break
+            } else {
+                break
+            }
+        }
         activityThread.setObject("mInstrumentation", ProxyInstrumentation(base))
+    }
+
+    private class ProxyCallback(val base: Handler.Callback?) : Handler.Callback {
+        override fun handleMessage(msg: android.os.Message): Boolean {
+            when (msg.what) {
+                MSG_LAUNCH_ACTIVITY,
+                MSG_EXECUTE_TRANSACTION -> {
+                    msg.obj?.let { handleLaunchMessage(it, msg.what) }
+                }
+            }
+            return base?.handleMessage(msg) ?: false
+        }
     }
 
     private fun hookMainHandler(activityThread: Any) {
         val handler = activityThread.getObject("mH") as? Handler ?: return
 
-        val oldCallback = runCatching {
+        var oldCallback = runCatching {
             FieldUtils.create(handler)
                 .typed(Handler.Callback::class.java)
                 .inParent(Handler::class.java)
                 .getValue() as? Handler.Callback
         }.getOrNull()
 
+        while (oldCallback != null && isModuleClass(oldCallback.javaClass)) {
+            val field = runCatching { oldCallback.javaClass.getDeclaredField("base") }.getOrNull()
+                ?: oldCallback.javaClass.declaredFields.firstOrNull { it.type == Handler.Callback::class.java }
+            if (field != null) {
+                field.isAccessible = true
+                oldCallback = field.get(oldCallback) as? Handler.Callback
+            } else {
+                break
+            }
+        }
+
         FieldUtils.create(handler)
             .named("mCallback")
             .inParent(Handler::class.java)
             .getField()
-            ?.set(handler, Handler.Callback { msg ->
-                when (msg.what) {
-                    MSG_LAUNCH_ACTIVITY,
-                    MSG_EXECUTE_TRANSACTION -> {
-                        msg.obj?.let { handleLaunchMessage(it, msg.what) }
-                    }
-                }
-                oldCallback?.handleMessage(msg) ?: false
-            })
+            ?.set(handler, ProxyCallback(oldCallback))
+    }
+
+    private class ActivityManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler {
+        override fun invoke(proxy: Any, method: Method, args: Array<Any?>?): Any? {
+            if (method.name == "startActivity") {
+                rewriteStartActivityIntent(args)
+            }
+            return invokeOriginal(base, method, args)
+        }
     }
 
     private fun hookIActivityManager() {
         val singleton = resolveActivityManagerSingleton() ?: return
         val singletonClass = "android.util.Singleton".toHostClass()
 
-        val base = FieldUtils.create(singleton)
+        var base = FieldUtils.create(singleton)
             .named("mInstance")
             .inParent(singletonClass)
             .getValue() ?: return
+
+        while (Proxy.isProxyClass(base.javaClass)) {
+            val ih = Proxy.getInvocationHandler(base)
+            if (isModuleClass(ih.javaClass)) {
+                val field = runCatching { ih.javaClass.getDeclaredField("base") }.getOrNull()
+                    ?: ih.javaClass.declaredFields.firstOrNull { it.type == Any::class.java }
+                if (field != null) {
+                    field.isAccessible = true
+                    base = field.get(ih) ?: break
+                } else {
+                    break
+                }
+            } else {
+                break
+            }
+        }
 
         val interfaceClass = if (isAtLeastQ) {
             "android.app.IActivityTaskManager".toHostClass()
@@ -121,13 +169,9 @@ object ParasiticActivity {
 
         val proxy = Proxy.newProxyInstance(
             interfaceClass.classLoader,
-            arrayOf(interfaceClass)
-        ) { _, method, args ->
-            if (method.name == "startActivity") {
-                rewriteStartActivityIntent(args)
-            }
-            invokeOriginal(base, method, args)
-        }
+            arrayOf(interfaceClass),
+            ActivityManagerInvocationHandler(base)
+        )
 
         FieldUtils.create(singleton)
             .named("mInstance")
@@ -154,22 +198,42 @@ object ParasiticActivity {
         }
     }
 
-    private fun hookIPackageManager(ctx: Context, activityThread: Any) {
-        val base = activityThread.getObject("sPackageManager")
-        val interfaceClass = "android.content.pm.IPackageManager".toHostClass()
-
-        val proxy = Proxy.newProxyInstance(
-            interfaceClass.classLoader,
-            arrayOf(interfaceClass)
-        ) { _, method, args ->
+    private class PackageManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler {
+        override fun invoke(proxy: Any, method: Method, args: Array<Any?>?): Any? {
             if (method.name == "getActivityInfo" && !args.isNullOrEmpty()) {
                 val fake = maybeFakeActivityInfo(args)
                 if (fake != null) {
-                    return@newProxyInstance fake
+                    return fake
                 }
             }
-            invokeOriginal(base, method, args)
+            return invokeOriginal(base, method, args)
         }
+    }
+
+    private fun hookIPackageManager(ctx: Context, activityThread: Any) {
+        var base = activityThread.getObjectOrNull("sPackageManager") ?: return
+        while (Proxy.isProxyClass(base.javaClass)) {
+            val ih = Proxy.getInvocationHandler(base)
+            if (isModuleClass(ih.javaClass)) {
+                val field = runCatching { ih.javaClass.getDeclaredField("base") }.getOrNull()
+                    ?: ih.javaClass.declaredFields.firstOrNull { it.type == Any::class.java }
+                if (field != null) {
+                    field.isAccessible = true
+                    base = field.get(ih) ?: break
+                } else {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+
+        val interfaceClass = "android.content.pm.IPackageManager".toHostClass()
+        val proxy = Proxy.newProxyInstance(
+            interfaceClass.classLoader,
+            arrayOf(interfaceClass),
+            PackageManagerInvocationHandler(base)
+        )
 
         activityThread.setObject("sPackageManager", proxy)
         runCatching {
@@ -294,8 +358,19 @@ object ParasiticActivity {
         }
     }
 
+    private fun isModuleClass(clazz: Class<*>): Boolean {
+        val loader = clazz.classLoader ?: return false
+        val hostLoader = HookEnv.hostClassLoader
+        var current: ClassLoader? = hostLoader
+        while (current != null) {
+            if (loader == current) return false
+            current = current.parent
+        }
+        return true
+    }
+
     private class ProxyInstrumentation(
-        private val base: Instrumentation
+        val base: Instrumentation
     ) : Instrumentation() {
 
         override fun newActivity(cl: ClassLoader, className: String, intent: Intent): Activity {

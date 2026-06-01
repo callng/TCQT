@@ -58,7 +58,7 @@ internal object ModuleLoader {
             }
         }
 
-        errors.forEach { (className, th) ->
+        if (errors.size >= 2) errors.forEach { (className, th) ->
             Log.e("nextInit Failure: $className", th)
         }
         errors.clear()
@@ -112,6 +112,21 @@ internal object ModuleLoader {
                 if (isInit.compareAndSet(false, true)) {
                     val app = param.thisObject as Application
                     HookSteps.initContext(app)
+                    System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
+
+                    // Force load Kotlin coroutines Main dispatcher under the module ClassLoader
+                    runCatching {
+                        val oldTCCL = Thread.currentThread().contextClassLoader
+                        Thread.currentThread().contextClassLoader = this.javaClass.classLoader
+                        try {
+                            val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
+                            Log.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
+                        } finally {
+                            Thread.currentThread().contextClassLoader = oldTCCL
+                        }
+                    }.onFailure {
+                        Log.e("Failed to pre-initialize coroutines Main dispatcher", it)
+                    }
 
                     if (DexKitCache.initCache()) {
                         HookSteps.initHooks(app)
