@@ -53,4 +53,6 @@ object HookEngineManager {
 
     val isInitialized: Boolean
         get() = this::engine.isInitialized
+
+    val currentTag = ThreadLocal<String>()
 }

@@ -22,6 +22,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 @RegisterAction
 class AIOViewUpdate : AlwaysRunAction() {
 
+    override val key: String = "AIOViewUpdate"
     private val vbClass by lazy { "com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB".toHostClass() }
     private val mviStateClass by lazy { "com.tencent.mvi.base.mvi.MviUIState".toHostClass() }
 

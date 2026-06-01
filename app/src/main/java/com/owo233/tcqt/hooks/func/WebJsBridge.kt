@@ -21,6 +21,7 @@ import java.net.URL
 @RegisterAction
 class WebJsBridge : AlwaysRunAction() {
 
+    override val key: String = "WebJsBridge"
     override val processes: Set<ActionProcess> = setOf(ActionProcess.TOOL)
 
     override fun onRun(app: Application, process: ActionProcess) {

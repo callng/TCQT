@@ -15,6 +15,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 @RegisterAction
 class AIOSendMsgBefore : AlwaysRunAction() {
 
+    override val key: String = "AIOSendMsgBefore"
     private val decorators: Array<out OnAIOSendMsgBefore> = arrayOf(
         RenameBaseApk()
     )

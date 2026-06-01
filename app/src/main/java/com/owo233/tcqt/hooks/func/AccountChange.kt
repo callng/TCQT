@@ -15,6 +15,7 @@ import com.owo233.tcqt.utils.log.Log
 @RegisterAction
 class AccountChange : AlwaysRunAction() {
 
+    override val key: String = "AccountChange"
     override val processes: Set<ActionProcess> = setOf(ActionProcess.MSF)
 
     private val receiver = object : BroadcastReceiver() {

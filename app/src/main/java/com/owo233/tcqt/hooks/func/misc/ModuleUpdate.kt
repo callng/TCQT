@@ -10,12 +10,13 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.loader.api.HookEngineManager
 
 @RegisterAction
 class ModuleUpdate : IAction {
 
     override val name: String get() = "模块更新干掉宿主"
-    override val defaultEnabled: Boolean get() = false
+    override val defaultEnabled: Boolean get() = HookEngineManager.engine.apiLevel < 102
     override val desc: String get() = "每次本模块更新后将自动重启（杀死）宿主进程。"
     override val uiTab: String get() = "杂项"
 

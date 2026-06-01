@@ -53,6 +53,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     override val name: String get() = "显示附加工具入口"
     override val desc: String get() = "在宿主设置页面额外显示模块附加工具入口"
     override val uiTab: String get() = "高级"
+    override val hidden: Boolean get() = false
 
     private var cachedProcessorInfo: ProcessorInfo? = null
 

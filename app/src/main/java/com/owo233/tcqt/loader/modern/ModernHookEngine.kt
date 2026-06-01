@@ -1,5 +1,6 @@
 package com.owo233.tcqt.loader.modern
 
+import android.annotation.SuppressLint
 import com.owo233.tcqt.loader.api.Chain
 import com.owo233.tcqt.loader.api.HookParam
 import com.owo233.tcqt.loader.api.IHookEngine
@@ -14,10 +15,15 @@ class ModernHookEngine(
     private val oldHookHandles: List<XposedInterface.HookHandle> = emptyList()
 ) : IHookEngine {
 
-    private val oldHookHandlesMap = oldHookHandles
-        .filter { it.id != null }
-        .associateBy { it.id!! }
-        .toMutableMap()
+    @SuppressLint("XposedNewApi")
+    private val oldHookHandlesMap = if (base.apiVersion >= 102) {
+        oldHookHandles
+            .filter { it.id != null }
+            .associateBy { it.id!! }
+            .toMutableMap()
+    } else {
+        mutableMapOf()
+    }
 
     override val apiLevel: Int = base.apiVersion
     override val frameworkName: String = base.frameworkName
@@ -26,6 +32,8 @@ class ModernHookEngine(
     override val bridgeClass: Class<*>? = null
 
     private fun getHookId(method: Member, priority: Int, type: String): String {
+        val tag = com.owo233.tcqt.loader.api.HookEngineManager.currentTag.get()
+        val tagPrefix = if (!tag.isNullOrEmpty()) "$tag->" else ""
         val methodSig = when (method) {
             is java.lang.reflect.Method -> {
                 "${method.declaringClass.name}#${method.name}(${method.parameterTypes.joinToString(",") { it.name }}):${method.returnType.name}"
@@ -35,9 +43,10 @@ class ModernHookEngine(
             }
             else -> method.toString()
         }
-        return "$methodSig@$priority@$type"
+        return "$tagPrefix$methodSig@$priority@$type"
     }
 
+    @SuppressLint("XposedNewApi")
     private fun registerOrReplaceHook(
         method: Member,
         priority: Int,
@@ -46,16 +55,24 @@ class ModernHookEngine(
     ): Unhook {
         val hookId = getHookId(method, priority, type)
         val oldHandle = oldHookHandlesMap.remove(hookId)
-        val handle = if (oldHandle != null) {
+        val handle = if (oldHandle != null && base.apiVersion >= 102) {
             try {
                 oldHandle.replaceHook(hooker)
                 oldHandle
             } catch (t: Throwable) {
                 log(3, "ModernHookEngine", "Failed to replace hook $hookId: ${t.message}", t)
-                base.hook(method as Executable).setId(hookId).setPriority(priority).intercept(hooker)
+                var builder = base.hook(method as Executable)
+                if (base.apiVersion >= 102) {
+                    builder = builder.setId(hookId)
+                }
+                builder.setPriority(priority).intercept(hooker)
             }
         } else {
-            base.hook(method as Executable).setId(hookId).setPriority(priority).intercept(hooker)
+            var builder = base.hook(method as Executable)
+            if (base.apiVersion >= 102) {
+                builder = builder.setId(hookId)
+            }
+            builder.setPriority(priority).intercept(hooker)
         }
         return Unhook { handle.unhook() }
     }
@@ -93,12 +110,14 @@ class ModernHookEngine(
         }
     }
 
+    @SuppressLint("XposedNewApi")
     fun cleanUpOldHooks() {
         oldHookHandlesMap.values.forEach { handle ->
             runCatching {
                 handle.unhook()
             }.onFailure { t ->
-                log(3, "ModernHookEngine", "Failed to unhook obsolete hook ${handle.id}: ${t.message}", t)
+                val idStr = if (base.apiVersion >= 102) " ${handle.id}" else ""
+                log(3, "ModernHookEngine", "Failed to unhook obsolete hook$idStr: ${t.message}", t)
             }
         }
         oldHookHandlesMap.clear()

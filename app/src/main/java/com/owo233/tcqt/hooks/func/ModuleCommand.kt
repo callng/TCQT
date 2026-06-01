@@ -69,4 +69,6 @@ class ModuleCommand : AlwaysRunAction() {
     }
 
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+
+    override val key: String get() = "ModuleCommand"
 }

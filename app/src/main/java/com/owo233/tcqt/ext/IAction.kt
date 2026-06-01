@@ -34,7 +34,14 @@ interface IAction {
 
     operator fun invoke(app: Application, process: ActionProcess) {
         runCatching {
-            if (canRun() && onInit()) onRun(app, process) else return@runCatching
+            if (canRun() && onInit()) {
+                com.owo233.tcqt.loader.api.HookEngineManager.currentTag.set(key)
+                try {
+                    onRun(app, process)
+                } finally {
+                    com.owo233.tcqt.loader.api.HookEngineManager.currentTag.remove()
+                }
+            } else return@runCatching
         }.onFailure {
             Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
         }
@@ -65,8 +72,9 @@ interface IAction {
  */
 abstract class AlwaysRunAction : IAction {
 
-    override val key: String = ""
+    override val key: String = "not_empty"
     override val name: String = ""
+    override val hidden: Boolean = true
     override val processes: Set<ActionProcess> = IAction.DEFAULT_PROCESSES
     override fun canRun(): Boolean = true
 }

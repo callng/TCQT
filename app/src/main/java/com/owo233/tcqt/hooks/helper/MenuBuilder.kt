@@ -17,6 +17,7 @@ import com.owo233.tcqt.utils.log.Log
 @RegisterAction
 class MenuBuilder : AlwaysRunAction() {
 
+    override val key: String = "MenuBuilder"
     private val decorators: Array<out OnMenuBuilder> = arrayOf(
         PttForward()
     )
