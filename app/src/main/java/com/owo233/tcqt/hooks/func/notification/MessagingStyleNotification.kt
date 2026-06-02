@@ -114,7 +114,7 @@ class MessagingStyleNotification : IAction {
         return runCatching {
             val notificationManager = app.getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannelGroup(
-                NotificationChannelGroup("qq_evolution", "QQ通知进化 Plus")
+                NotificationChannelGroup("qq_evolution", "TCQT 通知优化")
             )
             createQAuxNotificationChannels(notificationManager)
         }.onFailure {
