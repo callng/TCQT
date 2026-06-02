@@ -7,6 +7,7 @@ import com.owo233.tcqt.activity.SettingFeature
 import com.owo233.tcqt.activity.TextAreaField
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.ext.BooleanSetting
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.IntSetting
@@ -104,13 +105,13 @@ internal object ActionManager {
 
     fun getEnabledActionCount(): Int {
         return getAllFeatures().count {
-            TCQTSetting.getBoolean(it.key)
+            it.uiType == ActionUiType.SWITCH && TCQTSetting.getBoolean(it.key)
         }
     }
 
     fun getDisabledActionCount(): Int {
         return getAllFeatures().count {
-            !TCQTSetting.getBoolean(it.key)
+            it.uiType == ActionUiType.SWITCH && !TCQTSetting.getBoolean(it.key)
         }
     }
 
@@ -137,7 +138,7 @@ internal object ActionManager {
     fun registerAllSettings(map: HashMap<String, TCQTSetting.Setting<out Any>>) {
         FIRST_ACTION.forEach { actionClass ->
             val action = instanceOf(actionClass) ?: return@forEach
-            if (action.key.isNotBlank()) {
+            if (action.key.isNotBlank() && action.uiType == ActionUiType.SWITCH) {
                 map[action.key] = TCQTSetting.Setting(
                     action.key,
                     TCQTSetting.SettingType.BOOLEAN,
@@ -187,7 +188,8 @@ internal object ActionManager {
                     fallbackValue = s.defaultValue as Int,
                     options = options.mapIndexed { i, label ->
                         OptionItem(label = label, value = i + 1)
-                    }
+                    },
+                    forcedSelections = (s as? MultiIntSetting)?.forcedSelections.orEmpty()
                 )
             }
 
@@ -203,6 +205,7 @@ internal object ActionManager {
                     order = action.uiOrder,
                     tab = action.uiTab.ifBlank { "基础" },
                     categoryPath = categoryPath,
+                    uiType = action.uiType,
                     textAreas = textAreas,
                     optionGroup = optionGroup
                 )

@@ -1,6 +1,7 @@
 package com.owo233.tcqt.activity
 
 import androidx.compose.runtime.Immutable
+import com.owo233.tcqt.ext.ActionUiType
 
 @Immutable
 data class CategoryNode(
@@ -23,6 +24,7 @@ data class SettingFeature(
     val order: Int,
     val tab: String,
     val categoryPath: List<String>,
+    val uiType: ActionUiType,
     val textAreas: List<TextAreaField>,
     val optionGroup: FeatureOptionGroup?
 ) {
@@ -49,7 +51,8 @@ data class FeatureItemUiState(
     val hasPending: Boolean,
     val optionGroup: FeatureOptionGroup?,
     val optionValue: Int?,
-    val textAreas: List<TextAreaUiState>
+    val textAreas: List<TextAreaUiState>,
+    val uiType: ActionUiType
 )
 
 @Immutable
@@ -72,7 +75,8 @@ data class FeatureOptionGroup(
     val key: String,
     val isMulti: Boolean,
     val fallbackValue: Int,
-    val options: List<OptionItem>
+    val options: List<OptionItem>,
+    val forcedSelections: Map<Int, List<Int>> = emptyMap()
 ) {
 
     private val useOptionValueAsMask: Boolean by lazy(LazyThreadSafetyMode.NONE) {
@@ -84,6 +88,27 @@ data class FeatureOptionGroup(
     fun resolveMask(option: OptionItem, index: Int): Int {
         if (!isMulti) return option.value
         return if (useOptionValueAsMask) option.value else (1 shl index)
+    }
+
+    fun normalizeValue(value: Int): Int {
+        if (!isMulti || forcedSelections.isEmpty()) return value
+
+        var normalized = value
+        for ((selectedIndex, requiredIndexes) in forcedSelections) {
+            val selectedMask = maskAt(selectedIndex) ?: continue
+            if ((normalized and selectedMask) == 0) continue
+
+            for (requiredIndex in requiredIndexes) {
+                val requiredMask = maskAt(requiredIndex) ?: continue
+                normalized = normalized or requiredMask
+            }
+        }
+        return normalized
+    }
+
+    private fun maskAt(index: Int): Int? {
+        val option = options.getOrNull(index) ?: return null
+        return resolveMask(option, index)
     }
 }
 

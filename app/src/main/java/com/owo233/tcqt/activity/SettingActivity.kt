@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.hooks.base.Toasts
@@ -529,6 +530,14 @@ class SettingActivity : BaseComposeActivity() {
                         },
                         onBackupRestoreClick = {
                             showBackupDialog = true
+                        },
+                        onFeatureClick = { key ->
+                            val handled = ActionManager.getActionByKey(key)?.onUiClick(this@SettingActivity) == true
+                            if (!handled) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("该功能没有可打开的页面")
+                                }
+                            }
                         }
                     )
                 }
