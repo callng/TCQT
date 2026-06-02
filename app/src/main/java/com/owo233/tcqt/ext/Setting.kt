@@ -51,5 +51,6 @@ class MultiIntSetting(
     override val name: String,
     override val defaultValue: Int = 0,
     override val desc: String = "",
-    val options: List<String>
+    val options: List<String>,
+    val forcedSelections: Map<Int, List<Int>> = emptyMap()
 ) : Setting<Int>()

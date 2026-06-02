@@ -87,6 +87,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.data.TCQTBuild
+import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.utils.PlatformTools
 
 private const val PageTransitionDurationMillis = 380
@@ -153,7 +154,8 @@ fun SettingScreen(
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onBackupRestoreClick: () -> Unit
+    onBackupRestoreClick: () -> Unit,
+    onFeatureClick: (String) -> Unit
 ) {
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
     val isSearchActive = viewModel.isSearchActive
@@ -234,7 +236,8 @@ fun SettingScreen(
                 viewModel = viewModel,
                 innerPadding = innerPadding,
                 onIssueClick = onIssueClick,
-                onIssueLongClick = onIssueLongClick
+                onIssueLongClick = onIssueLongClick,
+                onFeatureClick = onFeatureClick
             )
         }
     }
@@ -248,7 +251,8 @@ private fun PageContent(
     viewModel: SettingViewModel,
     innerPadding: PaddingValues,
     onIssueClick: () -> Unit,
-    onIssueLongClick: () -> Unit
+    onIssueLongClick: () -> Unit,
+    onFeatureClick: (String) -> Unit
 ) {
     val categories = pageState.categories
     val features = pageState.features
@@ -367,6 +371,7 @@ private fun PageContent(
                     onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
                     onOptionValueChange = { item.optionGroup?.let { g -> viewModel.setOptionValue(g.key, it) } },
                     onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
+                    onFeatureClick = { onFeatureClick(item.key) },
                     forceExpanded = isSearchActive
                 )
             }
@@ -1085,6 +1090,7 @@ private fun FeatureCard(
     onFeatureEnabledChange: (Boolean) -> Unit,
     onOptionValueChange: (Int) -> Unit,
     onTextValueChange: (String, String) -> Unit,
+    onFeatureClick: () -> Unit,
     forceExpanded: Boolean = false
 ) {
     val effectivelyExpanded = item.expanded || forceExpanded
@@ -1111,6 +1117,10 @@ private fun FeatureCard(
                     .clip(RoundedCornerShape(22.dp))
                     .clickable(
                         onClick = {
+                            if (item.uiType == ActionUiType.ENTRY) {
+                                onFeatureClick()
+                                return@clickable
+                            }
                             if (feature.expandable) {
                                 onToggleExpanded()
                             } else {
@@ -1141,7 +1151,7 @@ private fun FeatureCard(
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatusPill(
+                        if (item.uiType != ActionUiType.ENTRY) StatusPill(
                             text = if (item.enabled) "已启用" else "未启用",
                             containerColor = if (item.enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (item.enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1161,9 +1171,25 @@ private fun FeatureCard(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (item.uiType == ActionUiType.ENTRY) StatusPill(
+                            text = "入口",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
                 }
-                Switch(checked = item.enabled, onCheckedChange = onFeatureEnabledChange, modifier = Modifier.padding(start = 12.dp))
+                if (item.uiType == ActionUiType.ENTRY) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(24.dp)
+                    )
+                } else {
+                    Switch(checked = item.enabled, onCheckedChange = onFeatureEnabledChange, modifier = Modifier.padding(start = 12.dp))
+                }
             }
 
             AnimatedVisibility(visible = effectivelyExpanded && feature.expandable) {

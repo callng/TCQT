@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 
@@ -40,6 +41,10 @@ class SettingViewModel : ViewModel() {
 
     private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
+    private val optionGroupByKey: Map<String, FeatureOptionGroup> = allFeatures
+        .mapNotNull { it.optionGroup }
+        .associateBy { it.key }
+
     // ───── Category tree ─────
 
     private val rootNodes: List<CategoryNode> = CategoryTreeBuilder.buildCategoryTree(allFeatures)
@@ -67,11 +72,11 @@ class SettingViewModel : ViewModel() {
     // ───── Stats (computed dynamically using derivedStateOf) ─────
 
     val enabledCount: Int by derivedStateOf {
-        allFeatures.count { effectiveBoolean(it.key) }
+        allFeatures.count { it.uiType == ActionUiType.SWITCH && effectiveBoolean(it.key) }
     }
 
     val disabledCount: Int by derivedStateOf {
-        (allFeatures.size - enabledCount).coerceAtLeast(0)
+        allFeatures.count { it.uiType == ActionUiType.SWITCH && !effectiveBoolean(it.key) }
     }
 
     // ───── Pending ─────
@@ -172,6 +177,9 @@ class SettingViewModel : ViewModel() {
     }
 
     fun setFeatureEnabled(key: String, value: Boolean) {
+        val feature = featureByKey[key]
+        if (feature?.uiType == ActionUiType.ENTRY) return
+
         val persisted = persistedBooleans[key] ?: false
 
         if (value == persisted) {
@@ -182,11 +190,12 @@ class SettingViewModel : ViewModel() {
     }
 
     fun setOptionValue(key: String, value: Int) {
+        val normalizedValue = optionGroupByKey[key]?.normalizeValue(value) ?: value
         val persisted = persistedInts[key] ?: 0
-        if (value == persisted) {
+        if (normalizedValue == persisted) {
             pendingInts.remove(key)
         } else {
-            pendingInts[key] = value
+            pendingInts[key] = normalizedValue
         }
     }
 
@@ -415,7 +424,8 @@ class SettingViewModel : ViewModel() {
                     placeholder = area.placeholder,
                     value = effectiveString(area.key)
                 )
-            }
+            },
+            uiType = feature.uiType
         )
     }
 
@@ -428,6 +438,7 @@ class SettingViewModel : ViewModel() {
     }
 
     private fun effectiveBoolean(key: String): Boolean {
+        if (featureByKey[key]?.uiType == ActionUiType.ENTRY) return false
         return pendingBooleans[key] ?: persistedBooleans[key] ?: false
     }
 
@@ -440,15 +451,13 @@ class SettingViewModel : ViewModel() {
     }
 
     private fun currentOptionValue(group: FeatureOptionGroup): Int {
-        val baseValue = effectiveInt(group.key, group.fallbackValue)
+        val baseValue = group.normalizeValue(effectiveInt(group.key, group.fallbackValue))
         return if (group.isMulti) {
             baseValue
         } else {
             group.options.firstOrNull { it.value == baseValue }?.value ?: group.fallbackValue
         }
     }
-
-    // ───── Internal: conversion ─────
 
 }
 

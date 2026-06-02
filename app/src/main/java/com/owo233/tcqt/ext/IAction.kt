@@ -1,9 +1,14 @@
 package com.owo233.tcqt.ext
 
 import android.app.Application
+import android.content.Context
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
+
+enum class ActionUiType {
+    SWITCH, ENTRY
+}
 
 enum class ActionProcess {
 
@@ -20,6 +25,7 @@ interface IAction {
     val uiOrder: Int get() = 1000
     val hidden: Boolean get() = false
     val defaultEnabled: Boolean get() = false
+    val uiType: ActionUiType get() = ActionUiType.SWITCH
 
     val settings: List<Setting<*>> get() = emptyList()
 
@@ -49,11 +55,16 @@ interface IAction {
 
     fun onRun(app: Application, process: ActionProcess)
 
-    fun canRun(): Boolean = runCatching {
-        TCQTSetting.getValue<Boolean>(key) ?: defaultEnabled
-    }.getOrElse { e ->
-        Log.e("功能 [${ActionManager.resolve(this)}] 开关检查异常", e)
-        defaultEnabled
+    fun onUiClick(context: Context): Boolean = false
+
+    fun canRun(): Boolean {
+        if (uiType == ActionUiType.ENTRY) return false
+        return runCatching {
+            TCQTSetting.getValue<Boolean>(key) ?: defaultEnabled
+        }.getOrElse { e ->
+            Log.e("功能 [${ActionManager.resolve(this)}] 开关检查异常", e)
+            defaultEnabled
+        }
     }
 
     /**
