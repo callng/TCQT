@@ -12,6 +12,7 @@ import com.owo233.tcqt.loader.legacy.LegacyHookEngine
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.log.LogAndroid
 import com.owo233.tcqt.utils.reflect.callMethod
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.setObject
@@ -138,7 +139,7 @@ class ModernHookEntry : XposedModule {
                 Thread.currentThread().contextClassLoader = this.javaClass.classLoader
                 try {
                     val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
-                    Log.d("Successfully pre-initialized coroutines Main dispatcher on hot reload: $mainDispatcher")
+                    LogAndroid.i("Successfully pre-initialized coroutines Main dispatcher on hot reload: $mainDispatcher")
                 } finally {
                     Thread.currentThread().contextClassLoader = oldTCCL
                 }

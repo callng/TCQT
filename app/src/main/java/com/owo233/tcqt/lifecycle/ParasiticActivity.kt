@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.PersistableBundle
+import androidx.annotation.Keep
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.activity.BaseComposeActivity
@@ -27,6 +28,11 @@ import com.owo233.tcqt.utils.reflect.setObject
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
+import java.util.Collections.newSetFromMap
+import java.util.IdentityHashMap
+
+@Keep
+interface TCQTProxyMarker
 
 @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
 @Suppress("DEPRECATION")
@@ -73,21 +79,12 @@ object ParasiticActivity {
     }
 
     private fun hookInstrumentation(activityThread: Any) {
-        var base = activityThread.getObject("mInstrumentation") as? Instrumentation ?: return
-        while (isModuleClass(base.javaClass)) {
-            val field = runCatching { base.javaClass.getDeclaredField("base") }.getOrNull()
-                ?: base.javaClass.declaredFields.firstOrNull { it.type == Instrumentation::class.java }
-            if (field != null) {
-                field.isAccessible = true
-                base = field.get(base) as? Instrumentation ?: break
-            } else {
-                break
-            }
-        }
-        activityThread.setObject("mInstrumentation", ProxyInstrumentation(base))
+        val base = activityThread.getObject("mInstrumentation") as? Instrumentation ?: return
+        val cleaned = cleanOurProxy(base) as? Instrumentation ?: base
+        activityThread.setObject("mInstrumentation", ProxyInstrumentation(cleaned))
     }
 
-    private class ProxyCallback(val base: Handler.Callback?) : Handler.Callback {
+    private class ProxyCallback(val base: Handler.Callback?) : Handler.Callback, TCQTProxyMarker {
         override fun handleMessage(msg: android.os.Message): Boolean {
             when (msg.what) {
                 MSG_LAUNCH_ACTIVITY,
@@ -102,32 +99,23 @@ object ParasiticActivity {
     private fun hookMainHandler(activityThread: Any) {
         val handler = activityThread.getObject("mH") as? Handler ?: return
 
-        var oldCallback = runCatching {
+        val oldCallback = runCatching {
             FieldUtils.create(handler)
                 .typed(Handler.Callback::class.java)
                 .inParent(Handler::class.java)
                 .getValue() as? Handler.Callback
         }.getOrNull()
 
-        while (oldCallback != null && isModuleClass(oldCallback.javaClass)) {
-            val field = runCatching { oldCallback.javaClass.getDeclaredField("base") }.getOrNull()
-                ?: oldCallback.javaClass.declaredFields.firstOrNull { it.type == Handler.Callback::class.java }
-            if (field != null) {
-                field.isAccessible = true
-                oldCallback = field.get(oldCallback) as? Handler.Callback
-            } else {
-                break
-            }
-        }
+        val cleaned = cleanOurProxy(oldCallback) as? Handler.Callback
 
         FieldUtils.create(handler)
             .named("mCallback")
             .inParent(Handler::class.java)
             .getField()
-            ?.set(handler, ProxyCallback(oldCallback))
+            ?.set(handler, ProxyCallback(cleaned))
     }
 
-    private class ActivityManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler {
+    private class ActivityManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler, TCQTProxyMarker {
         override fun invoke(proxy: Any, method: Method, args: Array<Any?>?): Any? {
             if (method.name == "startActivity") {
                 rewriteStartActivityIntent(args)
@@ -140,26 +128,12 @@ object ParasiticActivity {
         val singleton = resolveActivityManagerSingleton() ?: return
         val singletonClass = "android.util.Singleton".toHostClass()
 
-        var base = FieldUtils.create(singleton)
+        val base = FieldUtils.create(singleton)
             .named("mInstance")
             .inParent(singletonClass)
             .getValue() ?: return
 
-        while (Proxy.isProxyClass(base.javaClass)) {
-            val ih = Proxy.getInvocationHandler(base)
-            if (isModuleClass(ih.javaClass)) {
-                val field = runCatching { ih.javaClass.getDeclaredField("base") }.getOrNull()
-                    ?: ih.javaClass.declaredFields.firstOrNull { it.type == Any::class.java }
-                if (field != null) {
-                    field.isAccessible = true
-                    base = field.get(ih) ?: break
-                } else {
-                    break
-                }
-            } else {
-                break
-            }
-        }
+        val cleaned = cleanOurProxy(base) ?: base
 
         val interfaceClass = if (isAtLeastQ) {
             "android.app.IActivityTaskManager".toHostClass()
@@ -170,7 +144,7 @@ object ParasiticActivity {
         val proxy = Proxy.newProxyInstance(
             interfaceClass.classLoader,
             arrayOf(interfaceClass),
-            ActivityManagerInvocationHandler(base)
+            ActivityManagerInvocationHandler(cleaned)
         )
 
         FieldUtils.create(singleton)
@@ -198,7 +172,7 @@ object ParasiticActivity {
         }
     }
 
-    private class PackageManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler {
+    private class PackageManagerInvocationHandler(val base: Any) : java.lang.reflect.InvocationHandler, TCQTProxyMarker {
         override fun invoke(proxy: Any, method: Method, args: Array<Any?>?): Any? {
             if (method.name == "getActivityInfo" && !args.isNullOrEmpty()) {
                 val fake = maybeFakeActivityInfo(args)
@@ -211,28 +185,14 @@ object ParasiticActivity {
     }
 
     private fun hookIPackageManager(ctx: Context, activityThread: Any) {
-        var base = activityThread.getObjectOrNull("sPackageManager") ?: return
-        while (Proxy.isProxyClass(base.javaClass)) {
-            val ih = Proxy.getInvocationHandler(base)
-            if (isModuleClass(ih.javaClass)) {
-                val field = runCatching { ih.javaClass.getDeclaredField("base") }.getOrNull()
-                    ?: ih.javaClass.declaredFields.firstOrNull { it.type == Any::class.java }
-                if (field != null) {
-                    field.isAccessible = true
-                    base = field.get(ih) ?: break
-                } else {
-                    break
-                }
-            } else {
-                break
-            }
-        }
+        val base = activityThread.getObjectOrNull("sPackageManager") ?: return
+        val cleaned = cleanOurProxy(base) ?: base
 
         val interfaceClass = "android.content.pm.IPackageManager".toHostClass()
         val proxy = Proxy.newProxyInstance(
             interfaceClass.classLoader,
             arrayOf(interfaceClass),
-            PackageManagerInvocationHandler(base)
+            PackageManagerInvocationHandler(cleaned)
         )
 
         activityThread.setObject("sPackageManager", proxy)
@@ -358,20 +318,77 @@ object ParasiticActivity {
         }
     }
 
-    private fun isModuleClass(clazz: Class<*>): Boolean {
-        val loader = clazz.classLoader ?: return false
-        val hostLoader = HookEnv.hostClassLoader
-        var current: ClassLoader? = hostLoader
+    private fun getBaseValue(obj: Any): Any? {
+        val field = runCatching { obj.javaClass.getDeclaredField("base") }.getOrNull()
+            ?: obj.javaClass.declaredFields.firstOrNull { it.name == "base" }
+            ?: return null
+        field.isAccessible = true
+        return field.get(obj)
+    }
+
+    private fun isOurProxyClass(clazz: Class<*>): Boolean {
+        var current: Class<*>? = clazz
+        val markerName = TCQTProxyMarker::class.java.name
         while (current != null) {
-            if (loader == current) return false
-            current = current.parent
+            for (iface in current.interfaces) {
+                if (iface.name == markerName) {
+                    return true
+                }
+            }
+            current = current.superclass
         }
-        return true
+        return false
+    }
+
+    private fun cleanOurProxy(obj: Any?, visited: MutableSet<Any> = newSetFromMap(IdentityHashMap())): Any? {
+        if (obj == null) return null
+        if (!visited.add(obj)) return obj
+
+        if (isOurProxyClass(obj.javaClass)) {
+            val baseValue = getBaseValue(obj)
+            return if (baseValue != null) cleanOurProxy(baseValue, visited) else obj
+        }
+
+        if (Proxy.isProxyClass(obj.javaClass)) {
+            val ih = Proxy.getInvocationHandler(obj)
+            if (isOurProxyClass(ih.javaClass)) {
+                val baseValue = getBaseValue(ih)
+                return if (baseValue != null) cleanOurProxy(baseValue, visited) else obj
+            }
+            cleanFields(ih, visited)
+            return obj
+        }
+
+        cleanFields(obj, visited)
+        return obj
+    }
+
+    private fun cleanFields(obj: Any, visited: MutableSet<Any>) {
+        var clazz: Class<*>? = obj.javaClass
+        while (clazz != null && clazz != Any::class.java) {
+            for (field in clazz.declaredFields) {
+                if (java.lang.reflect.Modifier.isStatic(field.modifiers)) continue
+                field.isAccessible = true
+                val value = runCatching { field.get(obj) }.getOrNull() ?: continue
+
+                val className = value.javaClass.name
+                if (!className.startsWith("java.") &&
+                    !className.startsWith("android.") &&
+                    !className.startsWith("kotlin.")
+                ) {
+                    val cleaned = cleanOurProxy(value, visited)
+                    if (cleaned !== value) {
+                        runCatching { field.set(obj, cleaned) }
+                    }
+                }
+            }
+            clazz = clazz.superclass
+        }
     }
 
     private class ProxyInstrumentation(
         val base: Instrumentation
-    ) : Instrumentation() {
+    ) : Instrumentation(), TCQTProxyMarker {
 
         override fun newActivity(cl: ClassLoader, className: String, intent: Intent): Activity {
             DynamicActivityRegistry.getActivityClass(className)?.let { activityClass ->
