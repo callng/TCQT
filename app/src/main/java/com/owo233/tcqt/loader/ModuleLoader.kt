@@ -11,6 +11,7 @@ import com.owo233.tcqt.utils.dexkit.DexKitFinder
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.log.LogAndroid
 import com.owo233.tcqt.utils.reflect.allConstructors
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
@@ -120,7 +121,7 @@ internal object ModuleLoader {
                         Thread.currentThread().contextClassLoader = this.javaClass.classLoader
                         try {
                             val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
-                            Log.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
+                            LogAndroid.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
                         } finally {
                             Thread.currentThread().contextClassLoader = oldTCCL
                         }
