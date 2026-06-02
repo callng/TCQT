@@ -1,5 +1,7 @@
 package com.owo233.tcqt.hooks.func.notification
 
+// 思路参考自 QAuxiliary: https://github.com/cinit/QAuxiliary
+
 import android.app.Application
 import android.content.Context
 import android.content.Intent
