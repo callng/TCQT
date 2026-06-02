@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && !startsWith(github.event.head_commit.message, '[skip ci]') && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, '[skip ci]') && github.ref == 'refs/heads/main') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -77,13 +77,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           path: ${{ env.APK_FILE_RELEASE }}
-          name: TCQT-release-${{ github.event.head_commit.id }}
+          name: TCQT-release-${{ github.sha }}
 
       - name: Upload Artifacts(debug)
         uses: actions/upload-artifact@v7
         with:
           path: ${{ env.APK_FILE_DEBUG }}
-          name: TCQT-debug-${{ github.event.head_commit.id }}
+          name: TCQT-debug-${{ github.sha }}
 
   upload-telegram:
     name: Upload Release
