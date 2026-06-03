@@ -59,19 +59,18 @@ class MenuBuilder : AlwaysRunAction() {
         decoratorMap.keys.forEach { target ->
             val targetClass = load(target)
             if (targetClass == null) {
-                Log.e("MenuBuilder skip missing component: $target")
                 return@forEach
             }
 
             val listMethod = targetClass.declaredMethods
                 .firstOrNull { it.name == listMethodName && it.paramCount == 0 }
             if (listMethod == null) {
-                Log.e("MenuBuilder skip component without menu method: $target")
                 return@forEach
             }
 
             listMethod.hookAfter { param ->
                 val msg = getMsgMethod.invoke(param.thisObject) ?: return@hookAfter
+                normalizeMenuResult(param)
                 decoratorMap[target]?.forEach { decorator ->
                     runCatching {
                         decorator.onGetMenuNt(msg, target, param)
@@ -81,6 +80,13 @@ class MenuBuilder : AlwaysRunAction() {
                 }
             }
         }
+    }
+
+    private fun normalizeMenuResult(param: MethodHookParam) {
+        val items = param.result as? List<*> ?: return
+        if (items is MutableList<*>) return
+
+        param.result = items.toMutableList()
     }
 }
 
