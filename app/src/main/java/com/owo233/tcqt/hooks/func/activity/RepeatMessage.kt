@@ -1,8 +1,11 @@
 package com.owo233.tcqt.hooks.func.activity
 
+// 思路参考自 QAuxiliary: https://github.com/cinit/QAuxiliary
+
 import android.app.Application
 import android.view.View
 import android.widget.ImageView
+import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
@@ -12,9 +15,12 @@ import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.ContactHelper
+import com.owo233.tcqt.hooks.helper.CustomMenu
+import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.log.Log
@@ -30,21 +36,27 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 @RegisterAction
-class RepeatMessage : IAction {
+class RepeatMessage : IAction, OnMenuBuilder {
 
     override val name: String get() = "复读机 +1"
     override val desc: String get() = "人类的本质是什么？不支持修改+1图标，可选触发方式，默认200ms内重复点击触发。"
     override val uiTab: String get() = "界面"
     override val settings: List<Setting<*>>
         get() = listOf(
-            MultiIntSetting("repeat_message.type", "可选触发方式", 0, "", listOf("单击触发复读")),
+            MultiIntSetting(
+                OPTIONS_KEY,
+                "可选项",
+                DISPLAY_ICON,
+                "",
+                listOf("单击触发复读", "显示图标", "显示长按菜单")
+            ),
         )
 
-    private val options: Int by lazy {
-        TCQTSetting.getInt("repeat_message.type")
-    }
+    private val repeatOptions: Int by lazy { resolveRepeatOptions() }
 
     override fun onRun(app: Application, process: ActionProcess) {
+        if (!showIcon) return
+
         val componentClz =
             loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.component.msgfollow.AIOMsgFollowComponent")
 
@@ -96,12 +108,35 @@ class RepeatMessage : IAction {
             }
 
             imageView.setDoubleClickListener(
-                options.isFlagEnabled(0),
+                repeatOptions.isFlagEnabled(OPTION_SINGLE_CLICK_INDEX),
                 200L
             ) {
                 performRepeatMessage(msgRecord)
             }
         }
+    }
+
+    override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
+        if (!showMenu) return
+        if (isInMultiForwardActivity()) return
+
+        val msgRecord = MsgRecordHelper.getMsgRecord(msg)
+        val item = CustomMenu.createItemIconNt(
+            msg = msg,
+            text = "+1",
+            icon = R.drawable.ic_item_repeat_72dp,
+            id = R.id.item_repeat,
+            click = {
+                if (shouldDisableRepeat(msgRecord)) {
+                    Toasts.error("该消息不支持复读")
+                } else {
+                    performRepeatMessage(msgRecord)
+                }
+            }
+        )
+
+        @Suppress("UNCHECKED_CAST")
+        (param.result as? MutableList<Any>)?.add(0, item)
     }
 
     private fun performRepeatMessage(msg: MsgRecord) {
@@ -186,5 +221,37 @@ class RepeatMessage : IAction {
         }
     }
 
+    private val showIcon: Boolean
+        get() = repeatOptions.isFlagEnabled(DISPLAY_ICON_INDEX)
+
+    private val showMenu: Boolean
+        get() = repeatOptions.isFlagEnabled(DISPLAY_MENU_INDEX)
+
+    private fun isInMultiForwardActivity(): Boolean {
+        return runCatching {
+            QQInterfaces.topActivity.javaClass.name.contains("MultiForwardActivity")
+        }.getOrDefault(false)
+    }
+
     override val key: String get() = "repeat_message"
+
+    private fun resolveRepeatOptions(): Int {
+        if (TCQTSetting.containsKey(OPTIONS_KEY)) {
+            return TCQTSetting.getInt(OPTIONS_KEY)
+        }
+
+        val legacySingleClick =
+            TCQTSetting.getInt(LEGACY_TRIGGER_OPTIONS_KEY).isFlagEnabled(OPTION_SINGLE_CLICK_INDEX)
+        return DISPLAY_ICON or if (legacySingleClick) OPTION_SINGLE_CLICK else 0
+    }
+
+    private companion object {
+        const val OPTIONS_KEY = "repeat_message.options"
+        const val LEGACY_TRIGGER_OPTIONS_KEY = "repeat_message.type"
+        const val OPTION_SINGLE_CLICK_INDEX = 0
+        const val DISPLAY_ICON_INDEX = 1
+        const val DISPLAY_MENU_INDEX = 2
+        const val OPTION_SINGLE_CLICK = 1 shl OPTION_SINGLE_CLICK_INDEX
+        const val DISPLAY_ICON = 1 shl DISPLAY_ICON_INDEX
+    }
 }
