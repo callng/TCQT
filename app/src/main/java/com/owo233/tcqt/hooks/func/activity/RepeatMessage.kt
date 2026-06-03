@@ -1,7 +1,5 @@
 package com.owo233.tcqt.hooks.func.activity
 
-// 思路参考自 QAuxiliary: https://github.com/cinit/QAuxiliary
-
 import android.app.Application
 import android.view.View
 import android.widget.ImageView
@@ -53,6 +51,9 @@ class RepeatMessage : IAction, OnMenuBuilder {
         )
 
     private val repeatOptions: Int by lazy { resolveRepeatOptions() }
+
+    override val targetComponentTypes: Array<String>
+        get() = if (showMenu) REPEAT_MENU_COMPONENTS else emptyArray()
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (!showIcon) return
@@ -253,5 +254,29 @@ class RepeatMessage : IAction, OnMenuBuilder {
         const val DISPLAY_MENU_INDEX = 2
         const val OPTION_SINGLE_CLICK = 1 shl OPTION_SINGLE_CLICK_INDEX
         const val DISPLAY_ICON = 1 shl DISPLAY_ICON_INDEX
+        val REPEAT_MENU_COMPONENTS = arrayOf(
+            "com.tencent.mobileqq.aio.msglist.holder.component.text.AIOTextContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.flashpic.AIOFlashPicContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.video.AIOVideoContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.template.AIOTemplateMsgComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.reply.AIOReplyComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.pic.AIOPicContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.multipci.AIOMultiPicContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.AIOMultifowardContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.mix.AIOMixContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.marketface.AIOMarketFaceComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.markdown.AIORichContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.longmsg.AIOLongMsgContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.filtervideo.AIOLiveVideoContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.file.AIOFileContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.file.AIOOnlineFileContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.facebubble.AIOFaceBubbleContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.chain.ChainAniStickerContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.ark.AIOArkContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.ark.AIOCenterArkContentComponent",
+            "com.tencent.mobileqq.aio.msglist.holder.component.anisticker.AIOAniStickerContentComponent",
+            "com.tencent.mobileqq.aio.shop.AIOShopArkContentComponent",
+        )
     }
 }
