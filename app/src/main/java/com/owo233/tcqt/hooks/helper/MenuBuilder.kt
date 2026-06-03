@@ -6,7 +6,9 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
+import com.owo233.tcqt.hooks.func.activity.EditResendTextMessage
 import com.owo233.tcqt.hooks.func.activity.PttForward
+import com.owo233.tcqt.hooks.func.activity.RepeatMessage
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -18,8 +20,10 @@ import com.owo233.tcqt.utils.log.Log
 class MenuBuilder : AlwaysRunAction() {
 
     override val key: String = "MenuBuilder"
-    private val decorators: Array<out OnMenuBuilder> = arrayOf(
-        PttForward()
+    private val decorators: Array<out OnMenuBuilder> = arrayOf<OnMenuBuilder>(
+        PttForward(),
+        RepeatMessage(),
+        EditResendTextMessage()
     )
 
     override fun onRun(app: Application, process: ActionProcess) {
@@ -53,18 +57,29 @@ class MenuBuilder : AlwaysRunAction() {
             .groupBy({ it.first }, { it.second })
 
         decoratorMap.keys.forEach { target ->
-            load(target)?.declaredMethods
-                ?.firstOrNull { it.name == listMethodName && it.paramCount == 0 }
-                ?.hookAfter { param ->
-                    val msg = getMsgMethod.invoke(param.thisObject) ?: return@hookAfter
-                    decoratorMap[target]?.forEach { decorator ->
-                        runCatching {
-                            decorator.onGetMenuNt(msg, target, param)
-                        }.onFailure { e ->
-                            Log.e("MenuBuilder error in ${decorator.javaClass.simpleName}", e)
-                        }
+            val targetClass = load(target)
+            if (targetClass == null) {
+                Log.e("MenuBuilder skip missing component: $target")
+                return@forEach
+            }
+
+            val listMethod = targetClass.declaredMethods
+                .firstOrNull { it.name == listMethodName && it.paramCount == 0 }
+            if (listMethod == null) {
+                Log.e("MenuBuilder skip component without menu method: $target")
+                return@forEach
+            }
+
+            listMethod.hookAfter { param ->
+                val msg = getMsgMethod.invoke(param.thisObject) ?: return@hookAfter
+                decoratorMap[target]?.forEach { decorator ->
+                    runCatching {
+                        decorator.onGetMenuNt(msg, target, param)
+                    }.onFailure { e ->
+                        Log.e("MenuBuilder error in ${decorator.javaClass.simpleName}", e)
                     }
-                } ?: error("MenuBuilder Load $target Error")
+                }
+            }
         }
     }
 }
