@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 object UnreadBadgeHelper {
 
     private const val QUI_BADGE_CLASS = "com.tencent.mobileqq.quibadge.QUIBadge"
+    private val INT_TYPE = Int::class.javaPrimitiveType!!
+    private val BOOLEAN_TYPE = Boolean::class.javaPrimitiveType!!
 
     private val quiBadgeHooked = AtomicBoolean(false)
 
@@ -23,7 +25,7 @@ object UnreadBadgeHelper {
         val updateNum = badgeClass.declaredMethods
             .firstOrNull { method ->
                 method.name == "updateNum" &&
-                    method.parameterTypes.contentEquals(arrayOf(Int::class.java)) &&
+                    method.parameterTypes.contentEquals(arrayOf(INT_TYPE)) &&
                     method.returnType == Void.TYPE
             }
             ?.apply { isAccessible = true }
@@ -52,7 +54,11 @@ object UnreadBadgeHelper {
     ): Boolean {
         val clazz = load(className) ?: return false
         val method = runCatching {
-            clazz.getDeclaredMethod("updateUnreadCount", Int::class.java, Boolean::class.java)
+            clazz.getDeclaredMethod(
+                "updateUnreadCount",
+                INT_TYPE,
+                BOOLEAN_TYPE
+            )
                 .apply { isAccessible = true }
         }.getOrNull() ?: return false
 

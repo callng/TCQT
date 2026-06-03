@@ -36,9 +36,9 @@ class DetailedMessageCount : IAction {
         val method = clazz.declaredMethods.firstOrNull { method ->
             val params = method.parameterTypes
             params.size == 5 &&
-                params[0] == Int::class.java &&
-                params[1] == Int::class.java &&
-                params[2] == Int::class.java &&
+                params[0] == INT_TYPE &&
+                params[1] == INT_TYPE &&
+                params[2] == INT_TYPE &&
                 params[3] == quiBadgeClass &&
                 params[4] == String::class.java
         }?.apply { isAccessible = true } ?: return
@@ -54,7 +54,11 @@ class DetailedMessageCount : IAction {
     private fun hookMiniAppMenuBadge() {
         val clazz = load(MINI_CUSTOM_WIDGET_UTIL) ?: return
         val method = runCatching {
-            clazz.getDeclaredMethod("updateCustomNoteTxt", TextView::class.java, Int::class.java)
+            clazz.getDeclaredMethod(
+                "updateCustomNoteTxt",
+                TextView::class.java,
+                INT_TYPE
+            )
                 .apply { isAccessible = true }
         }.getOrNull() ?: return
 
@@ -73,6 +77,8 @@ class DetailedMessageCount : IAction {
     }
 
     private companion object {
+        val INT_TYPE = Int::class.javaPrimitiveType!!
+
         const val QUI_BADGE_CLASS = "com.tencent.mobileqq.quibadge.QUIBadge"
         const val FRAME_CONTROLLER_INJECT_IMPL =
             "com.tencent.mobileqq.activity.framebusiness.controllerinject.FrameControllerInjectImpl"
