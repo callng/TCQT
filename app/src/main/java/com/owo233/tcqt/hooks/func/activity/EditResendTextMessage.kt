@@ -4,10 +4,13 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.widget.EditText
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.helper.ContactHelper
@@ -15,44 +18,57 @@ import com.owo233.tcqt.hooks.helper.CustomMenu
 import com.owo233.tcqt.hooks.helper.OnMenuBuilder
 import com.owo233.tcqt.hooks.maple.MapleContact
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.MethodHookParam
+import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.reflect.callMethod
-import com.owo233.tcqt.utils.reflect.getMethods
-import com.owo233.tcqt.utils.reflect.new
+import com.owo233.tcqt.utils.reflect.findField
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @RegisterAction
-class EditResendTextMessage : IAction, OnMenuBuilder {
+class EditResendTextMessage : IAction, DexKitTask, OnMenuBuilder {
 
     override val name: String get() = "快捷编辑重发消息"
     override val desc: String get() = "长按自己发送的文本消息显示编辑重发按钮，将原文填入输入框并撤回原消息。"
     override val uiTab: String get() = "界面"
     override val key: String get() = "edit_resend_text_message"
 
-    override val targetComponentTypes: Array<String>
-        get() = arrayOf(TEXT_COMPONENT, MIX_COMPONENT)
+    override fun onRun(app: Application, process: ActionProcess) {
+        val method = if (HookEnv.isTim()) {
+            "com.tencent.tim.aio.inputbar.simpleui.TimAIOInputSimpleUIVBDelegate".toClass.findMethod {
+                name = "B"
+            }
+        } else {
+            requireMethod(INPUT_ROOT_INIT)
+        }
 
-    override fun onRun(app: Application, process: ActionProcess) = Unit
+        method.hookAfter { param ->
+            val editText = runCatching {
+                param.thisObject::class.java.findField { type = EditText::class.java }
+                    .get(param.thisObject) as? EditText
+            }.getOrNull() ?: return@hookAfter
+
+            inputEditText = editText
+        }
+    }
 
     @SuppressLint("SetTextI18n")
     override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
-        val msgRecord = msg.callMethod("getMsgRecord") as? MsgRecord ?: return
+        val msgRecord = MsgRecordHelper.getMsgRecord(msg)
         if (msgRecord.sendType == 0) return
-
-        val text = msgRecord.elements.joinToString(separator = "") { element ->
-            element.textElement?.content.orEmpty()
-        }
+        val text = msgRecord.getTextContent()
         if (text.isBlank()) return
 
-        val component = param.thisObject
         val item = CustomMenu.createItemIconNt(
             msg = msg,
             text = "编辑重发",
             icon = R.drawable.ic_item_edit_72dp,
             id = R.id.item_edit_to_send,
-            click = {
-                if (sendTextToInput(component, text)) {
+            click = click@{
+                if (setTextToInput(text)) {
                     recallMsg(msgRecord)
                 } else {
                     Toasts.error("输入框未就绪")
@@ -64,28 +80,20 @@ class EditResendTextMessage : IAction, OnMenuBuilder {
         (param.result as? MutableList<Any>)?.add(0, item)
     }
 
-    private fun sendTextToInput(component: Any, text: String): Boolean {
-        val intent = runCatching {
-            loadOrThrow(INPUT_SET_TEXT_INTENT).new(text, true)
-        }.getOrElse { e ->
-            Log.e("edit resend failed: create SetTextToEditText intent", e)
-            return false
+    private fun MsgRecord.getTextContent(): String {
+        return elements.joinToString(separator = "") { element ->
+            element.textElement?.content.orEmpty()
         }
+    }
 
-        val method = component.javaClass.getMethods(true).firstOrNull { method ->
-            method.name == "sendIntent" &&
-                    method.parameterTypes.size == 1 &&
-                    method.parameterTypes[0].isAssignableFrom(intent.javaClass)
-        } ?: run {
-            Log.e("edit resend failed: sendIntent method not found")
-            return false
-        }
-
+    private fun setTextToInput(text: String): Boolean {
+        val editText = inputEditText ?: return false
         return runCatching {
-            method.invoke(component, intent)
+            editText.setText(text)
+            editText.setSelection(text.length)
             true
         }.getOrElse { e ->
-            Log.e("edit resend failed: dispatch input intent", e)
+            Log.e("edit resend failed: set input text", e)
             false
         }
     }
@@ -106,10 +114,38 @@ class EditResendTextMessage : IAction, OnMenuBuilder {
         }
     }
 
+    private object MsgRecordHelper {
+
+        private val getMsgRecordMethod by lazy {
+            loadOrThrow("com.tencent.mobileqq.aio.msg.AIOMsgItem")
+                .getDeclaredMethod("getMsgRecord")
+                .apply { isAccessible = true }
+        }
+
+        fun getMsgRecord(msgItem: Any): MsgRecord {
+            return getMsgRecordMethod.invoke(msgItem) as MsgRecord
+        }
+    }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        INPUT_ROOT_INIT to FindMethod().apply {
+            searchPackages("com.tencent.mobileqq.aio.input")
+            matcher {
+                usingEqStrings(
+                    "binding",
+                    "inputRoot",
+                    "findViewById(...)",
+                    "getContext(...)",
+                    "sendBtn"
+                )
+            }
+        }
+    )
+
     private companion object {
-        const val TEXT_COMPONENT = "com.tencent.mobileqq.aio.msglist.holder.component.text.AIOTextContentComponent"
-        const val MIX_COMPONENT = "com.tencent.mobileqq.aio.msglist.holder.component.mix.AIOMixContentComponent"
-        const val INPUT_SET_TEXT_INTENT =
-            "com.tencent.mobileqq.aio.input.edit.InputEditTextMsgIntent\$SetTextToEditText"
+        @Volatile
+        private var inputEditText: EditText? = null
+
+        const val INPUT_ROOT_INIT = "InputRootInit"
     }
 }
