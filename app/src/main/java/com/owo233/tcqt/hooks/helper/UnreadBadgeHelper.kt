@@ -6,7 +6,6 @@ import android.widget.TextView
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.log.Log
 import java.lang.reflect.Field
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -44,7 +43,6 @@ object UnreadBadgeHelper {
             textField.set(param.thisObject, count.toString())
             param.result = null
         }
-        Log.i("$tag: QUIBadge 精确数字 Hook 已启用")
         return true
     }
 
@@ -68,7 +66,6 @@ object UnreadBadgeHelper {
                 ?: return@hookAfter
             showExactCount(textView, count)
         }
-        Log.i("$tag: $className 精确未读数 Hook 已启用")
         return true
     }
 

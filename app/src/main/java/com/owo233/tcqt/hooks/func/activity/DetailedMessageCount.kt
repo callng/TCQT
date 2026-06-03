@@ -11,7 +11,6 @@ import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.UnreadBadgeHelper
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
 class DetailedMessageCount : IAction {
@@ -48,7 +47,6 @@ class DetailedMessageCount : IAction {
                 param.args[2] = Int.MAX_VALUE
             }
         }
-        Log.i("$name: 总消息数量上限 Hook 已启用")
     }
 
     private fun hookMiniAppMenuBadge() {
@@ -67,7 +65,6 @@ class DetailedMessageCount : IAction {
             val count = param.args.getOrNull(1) as? Int ?: return@hookAfter
             UnreadBadgeHelper.showExactCount(textView, count)
         }
-        Log.i("$name: 小程序菜单未读数 Hook 已启用")
     }
 
     private fun hookMiniAioUnreadCount() {
