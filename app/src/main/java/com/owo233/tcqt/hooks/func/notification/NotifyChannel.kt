@@ -45,7 +45,7 @@ private fun buildChannel(
     importance: Int
 ): NotificationChannel {
     val audioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
 

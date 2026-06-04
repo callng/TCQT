@@ -179,7 +179,7 @@ private fun ChannelGroupCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             DeletableHeader(
                 title = "渠道组：${group.name} (${group.id})",
-                desc = group.description?.toString(),
+                desc = group.description,
                 onDelete = onDelete
             )
             group.channels.forEachIndexed { index, channel ->
@@ -214,7 +214,7 @@ private fun ChannelRow(
             channel.parentChannelId?.let { append("父渠道：").append(it) }
             channel.description?.let {
                 if (isNotEmpty()) append('\n')
-                append(it.toString())
+                append(it)
             }
         }.ifBlank { null },
         onDelete = onDelete,

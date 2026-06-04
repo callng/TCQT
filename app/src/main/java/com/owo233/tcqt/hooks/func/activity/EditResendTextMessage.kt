@@ -142,14 +142,18 @@ class EditResendTextMessage : IAction, OnMenuBuilder {
                 ?.apply { isAccessible = true }
                 ?.get(this)
                 ?: return null
-            runtime.invokeNoArg("e")
+            runtime.invokeNoArgOrNull("e")
         }.getOrElse { e ->
             Log.e("edit resend failed: get official event bus", e)
             null
         }
     }
 
-    private fun Any.invokeNoArg(name: String): Any {
+    private fun Any.invokeNoArg(name: String) {
+        invokeNoArgOrNull(name)
+    }
+
+    private fun Any.invokeNoArgOrNull(name: String): Any? {
         val method = javaClass.getMethods(true).first { method ->
             method.name == name && method.parameterTypes.isEmpty()
         }
@@ -168,7 +172,7 @@ class EditResendTextMessage : IAction, OnMenuBuilder {
     }
 
     private fun Any.invokeBoolean(name: String): Boolean {
-        return runCatching { invokeNoArg(name) as? Boolean }.getOrNull() == true
+        return runCatching { invokeNoArgOrNull(name) as? Boolean }.getOrNull() == true
     }
 
     private fun Any.publishOfficialEvent(event: Any) {

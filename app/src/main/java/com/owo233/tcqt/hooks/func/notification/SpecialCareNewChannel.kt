@@ -34,7 +34,7 @@ class SpecialCareNewChannel : IAction {
                 method.isAccessible = true
                 method.hookBefore { param ->
                     val notification = param.args.lastOrNull() as? Notification ?: return@hookBefore
-                    val title = notification.extras.get(Notification.EXTRA_TITLE).toString()
+                    val title = notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
                     if (!title.contains("[特别关心]")) return@hookBefore
 
                     ensureSpecialCareChannel()

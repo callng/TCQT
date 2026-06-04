@@ -5,10 +5,12 @@ package com.owo233.tcqt.hooks.func.notification
 import com.owo233.tcqt.utils.reflect.FieldUtils
 
 internal fun <T> Any.fieldValueByType(type: Class<T>): T? {
-    return FieldUtils.create(this)
+    val value = FieldUtils.create(this)
         .typed(type)
         .recursive(true)
-        .getOrNull() as? T
+        .getOrNull()
+
+    return if (type.isInstance(value)) type.cast(value) else null
 }
 
 internal fun Any.stringField(name: String): String? {
