@@ -18,6 +18,7 @@ import com.owo233.tcqt.utils.reflect.invoke
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import java.lang.reflect.Method
+import java.util.WeakHashMap
 
 @RegisterAction
 class AutoReceiveOriginalPhoto : IAction, DexKitTask {
@@ -100,6 +101,8 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
 
     private object Reflection {
 
+        private val clickedMedia = WeakHashMap<Any, String>()
+
         fun findAutoReceiveEntryMethods(clazz: Class<*>): List<Method> {
             val updateRawPic = clazz.findMethodOrNull {
                 name = "updateRawPic"
@@ -119,24 +122,43 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
 
         fun performShowOriginClick(section: Any) {
             if ((section.fieldValueAs<Int>("mButtonState", false) ?: 0) != BUTTON_STATE_CAN_SHOW_ORIGIN) {
+                clickedMedia.remove(section)
                 return
             }
 
             val originPicLayout = section.fieldValueAs<View>("originPicLayout", false) ?: return
-            if (originPicLayout.visibility != View.VISIBLE) return
+            if (originPicLayout.visibility != View.VISIBLE || !originPicLayout.isShown) return
+
+            val mediaToken = section.mediaToken()
+            if (clickedMedia[section] == mediaToken) return
+            clickedMedia[section] = mediaToken
 
             originPicLayout.post {
                 runCatching {
                     if ((section.fieldValueAs<Int>("mButtonState", false) ?: 0) != BUTTON_STATE_CAN_SHOW_ORIGIN) {
+                        clickedMedia.remove(section)
+                        return@post
+                    }
+                    if (section.mediaToken() != mediaToken) {
+                        clickedMedia.remove(section)
                         return@post
                     }
                     if (originPicLayout.visibility == View.VISIBLE && originPicLayout.isShown) {
                         originPicLayout.performClick()
+                    } else {
+                        clickedMedia.remove(section)
                     }
                 }.onFailure {
                     Log.e("聊天自动接收原图: 自动点击查看原图失败", it)
                 }
             }
+        }
+
+        private fun Any.mediaToken(): String {
+            val mediaData = fieldValueAs<Any>("mData") ?: return "section:${System.identityHashCode(this)}"
+            return runCatching { mediaData.invoke("getMediaId").toString() }
+                .getOrNull()
+                ?: "data:${System.identityHashCode(mediaData)}"
         }
 
         fun findLegacyOnInitView(): Method? {
