@@ -10,7 +10,6 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.helper.UnreadBadgeHelper
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookBefore
 
 @RegisterAction
 class DetailedMessageCount : IAction {
@@ -23,30 +22,10 @@ class DetailedMessageCount : IAction {
 
     override fun onRun(app: Application, process: ActionProcess) {
         UnreadBadgeHelper.hookQuiBadgeExactCount(name)
-        hookTotalMessageBadgeLimit()
+        UnreadBadgeHelper.hookRedTouchExactCount(name)
+        UnreadBadgeHelper.hookFrameControllerBadgeExactCount(name)
         hookMiniAppMenuBadge()
         hookMiniAioUnreadCount()
-    }
-
-    private fun hookTotalMessageBadgeLimit() {
-        val clazz = load(FRAME_CONTROLLER_INJECT_IMPL) ?: return
-        val quiBadgeClass = load(QUI_BADGE_CLASS) ?: return
-
-        val method = clazz.declaredMethods.firstOrNull { method ->
-            val params = method.parameterTypes
-            params.size == 5 &&
-                params[0] == INT_TYPE &&
-                params[1] == INT_TYPE &&
-                params[2] == INT_TYPE &&
-                params[3] == quiBadgeClass &&
-                params[4] == String::class.java
-        }?.apply { isAccessible = true } ?: return
-
-        method.hookBefore { param ->
-            if (param.args.size > 2) {
-                param.args[2] = Int.MAX_VALUE
-            }
-        }
     }
 
     private fun hookMiniAppMenuBadge() {
@@ -76,9 +55,6 @@ class DetailedMessageCount : IAction {
     private companion object {
         val INT_TYPE = Int::class.javaPrimitiveType!!
 
-        const val QUI_BADGE_CLASS = "com.tencent.mobileqq.quibadge.QUIBadge"
-        const val FRAME_CONTROLLER_INJECT_IMPL =
-            "com.tencent.mobileqq.activity.framebusiness.controllerinject.FrameControllerInjectImpl"
         const val MINI_CUSTOM_WIDGET_UTIL = "com.tencent.qqmini.sdk.core.utils.CustomWidgetUtil"
 
         val MINI_AIO_UNREAD_CLASSES = arrayOf(
