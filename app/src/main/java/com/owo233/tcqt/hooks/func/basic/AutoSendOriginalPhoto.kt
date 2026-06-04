@@ -85,7 +85,6 @@ class AutoSendOriginalPhoto : IAction, DexKitTask {
                 }
             }
         ).firstOrNull()?.let { cache[PICKER_BOTTOM_BAR_RAW] = it.descriptor }
-            ?: Log.d("聊天自动发送原图: 未定位 PickerBottomBarPart 原图参数方法")
     }
 
     private object Reflection {

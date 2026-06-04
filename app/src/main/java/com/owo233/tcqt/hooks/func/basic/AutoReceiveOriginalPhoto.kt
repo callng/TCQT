@@ -4,6 +4,7 @@ package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
 import android.view.View
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
@@ -15,6 +16,7 @@ import com.owo233.tcqt.utils.reflect.fieldValueAs
 import com.owo233.tcqt.utils.reflect.findMethodOrNull
 import com.owo233.tcqt.utils.reflect.findMethods
 import com.owo233.tcqt.utils.reflect.invoke
+import com.owo233.tcqt.utils.QQVersion
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import java.lang.reflect.Method
@@ -29,19 +31,25 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
     override val key: String get() = "auto_receive_original_photo"
 
     override fun onRun(app: Application, process: ActionProcess) {
-        hookNewOriginPicSection()
-        hookLegacyOriginLayer()
+        val hooked = if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_95)) {
+            hookNewOriginPicSection() || hookLegacyOriginLayer()
+        } else {
+            hookLegacyOriginLayer() || hookNewOriginPicSection()
+        }
+
+        if (!hooked) {
+            Log.d("聊天自动接收原图: 新旧原图接收逻辑均未定位")
+        }
     }
 
-    private fun hookNewOriginPicSection() {
+    private fun hookNewOriginPicSection(): Boolean {
         val originPicSection = runCatching { requireMethod(NEW_ORIGIN_PIC_SECTION_ON_INIT_VIEW).declaringClass }.getOrNull()
             ?: load(ORIGIN_PIC_SECTION)
-            ?: return
+            ?: return false
 
         val hookMethods = Reflection.findAutoReceiveEntryMethods(originPicSection)
         if (hookMethods.isEmpty()) {
-            Log.d("聊天自动接收原图: 未定位新版原图按钮刷新方法")
-            return
+            return false
         }
 
         hookMethods.forEach { method ->
@@ -53,14 +61,15 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
                 }
             }
         }
+        return true
     }
 
-    private fun hookLegacyOriginLayer() {
+    private fun hookLegacyOriginLayer(): Boolean {
         val onInitView = runCatching { requireMethod(LEGACY_ORIGINAL_LAYER_ON_INIT_VIEW) }.getOrNull()
             ?: Reflection.findLegacyOnInitView()
-            ?: return
+            ?: return false
 
-        if (!Reflection.isLegacyOriginLayer(onInitView.declaringClass)) return
+        if (!Reflection.isLegacyOriginLayer(onInitView.declaringClass)) return false
 
         onInitView.hookAfter { param ->
             if (param.args.getOrNull(0) != ORIGINAL_LAYER_SHOW) return@hookAfter
@@ -73,10 +82,26 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
                 Log.e("聊天自动接收原图: 旧版逻辑自动加载原图失败", it)
             }
         }
+        return true
     }
 
     override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        bridge.findMethod(
+        val cached = if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_95)) {
+            cacheNewOriginPicSection(bridge, cache) || cacheLegacyOriginLayer(bridge, cache)
+        } else {
+            cacheLegacyOriginLayer(bridge, cache) || cacheNewOriginPicSection(bridge, cache)
+        }
+
+        if (!cached) {
+            Log.d("聊天自动接收原图: 新旧原图接收 DexKit 目标均未定位")
+        }
+    }
+
+    private fun cacheNewOriginPicSection(
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>
+    ): Boolean {
+        val method = bridge.findMethod(
             FindMethod().apply {
                 matcher {
                     name = "onInitView"
@@ -84,10 +109,16 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
                     usingStrings("em_bas_view_the_original_picture")
                 }
             }
-        ).firstOrNull()?.let { cache[NEW_ORIGIN_PIC_SECTION_ON_INIT_VIEW] = it.descriptor }
-            ?: Log.d("聊天自动接收原图: 未定位新版原图层初始化方法")
+        ).firstOrNull() ?: return false
+        cache[NEW_ORIGIN_PIC_SECTION_ON_INIT_VIEW] = method.descriptor
+        return true
+    }
 
-        bridge.findMethod(
+    private fun cacheLegacyOriginLayer(
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>
+    ): Boolean {
+        val method = bridge.findMethod(
             FindMethod().apply {
                 matcher {
                     name = "onInitView"
@@ -95,8 +126,9 @@ class AutoReceiveOriginalPhoto : IAction, DexKitTask {
                     usingStrings("rootView", "em_bas_view_the_original_picture")
                 }
             }
-        ).firstOrNull()?.let { cache[LEGACY_ORIGINAL_LAYER_ON_INIT_VIEW] = it.descriptor }
-            ?: Log.d("聊天自动接收原图: 未定位旧版原图层初始化方法")
+        ).firstOrNull() ?: return false
+        cache[LEGACY_ORIGINAL_LAYER_ON_INIT_VIEW] = method.descriptor
+        return true
     }
 
     private object Reflection {
