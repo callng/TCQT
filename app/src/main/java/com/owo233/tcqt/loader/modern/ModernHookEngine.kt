@@ -31,6 +31,8 @@ class ModernHookEngine(
     override val frameworkVersionCode: Long = base.frameworkVersionCode
     override val bridgeClass: Class<*>? = null
 
+    private val hookCounter = mutableMapOf<String, Int>()
+
     private fun getHookId(method: Member, priority: Int, type: String): String {
         val tag = com.owo233.tcqt.loader.api.HookEngineManager.currentTag.get()
         val tagPrefix = if (!tag.isNullOrEmpty()) "$tag->" else ""
@@ -43,7 +45,13 @@ class ModernHookEngine(
             }
             else -> method.toString()
         }
-        return "$tagPrefix$methodSig@$priority@$type"
+        val baseId = "$tagPrefix$methodSig@$priority@$type"
+        val count = synchronized(hookCounter) {
+            val current = hookCounter[baseId] ?: 0
+            hookCounter[baseId] = current + 1
+            current
+        }
+        return if (count == 0) baseId else "$baseId#$count"
     }
 
     @SuppressLint("XposedNewApi")
