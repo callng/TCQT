@@ -123,6 +123,13 @@ extensions.configure<ApplicationExtension> {
         sourceCompatibility = androidSourceCompatibility
         targetCompatibility = androidTargetCompatibility
     }
+
+    sourceSets {
+        val main by getting
+        main.apply {
+            kotlin.directories += "generated/ksp/$name/kotlin"
+        }
+    }
 }
 
 androidComponents {
@@ -146,10 +153,6 @@ extensions.configure(KotlinAndroidProjectExtension::class.java) {
                 "-Xno-receiver-assertions"
             )
         )
-    }
-
-    sourceSets.configureEach {
-        kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$name/kotlin"))
     }
 }
 

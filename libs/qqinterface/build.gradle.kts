@@ -18,8 +18,8 @@ extensions.configure<LibraryExtension> {
 
     defaultConfig {
         minSdk = 27
-        lint.targetSdk = 36
-        buildToolsVersion = "36.1.0"
+        lint.targetSdk = 37
+        buildToolsVersion = "37.0.0"
     }
 
     compileOptions {

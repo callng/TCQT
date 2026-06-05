@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="setting2Activity_settingEntryItem" type="id" />
+    <item name="item_exit" type="id" />
+    <item name="item_reboot" type="id" />
     <item name="item_ptt_forward" type="id" />
     <item name="item_repeat" type="id" />
     <item name="item_edit_to_send" type="id" />
