@@ -18,6 +18,7 @@ import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -26,6 +27,7 @@ import com.owo233.tcqt.utils.reflect.findField
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.mobileqq.msf.core.c0.a as QSign
 import com.tencent.mobileqq.msf.core.d0.a as TSign
+import com.tencent.mobileqq.msf.core.security.a as NSign
 import com.tencent.mobileqq.msf.service.MsfService
 import com.tencent.qphone.base.remote.ToServiceMsg
 import org.luckypray.dexkit.query.FindMethod
@@ -149,8 +151,14 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                         requestSsoSeq = seq
                     }
                     val sign: String = if (HookEnv.isQQ()) {
-                        QSign.c().a(toServiceMsg, cmd).sign.toHexString()
-                    } else TSign.e().a(toServiceMsg, cmd).sign.toHexString()
+                        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_3_0_BETA_36720)) {
+                            NSign.c().a(toServiceMsg, cmd).sign.toHexString()
+                        } else {
+                            QSign.c().a(toServiceMsg, cmd).sign.toHexString()
+                        }
+                    } else {
+                        TSign.e().a(toServiceMsg, cmd).sign.toHexString()
+                    }
 
                     Intent(ACTION_SIGN_RESULT).apply {
                         putExtra("sign", sign)
