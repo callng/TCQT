@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import java.lang.Thread.sleep
 import java.lang.reflect.Method
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.milliseconds
 
 @RegisterAction
 class MultiSelectRecall : IAction {
@@ -81,7 +82,7 @@ class MultiSelectRecall : IAction {
             list.forEachIndexed { index, item ->
                 recallSingleItem(item)
                 if (index >= 10) {
-                    delay(300)
+                    delay(300L.milliseconds)
                 }
             }
         }

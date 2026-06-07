@@ -165,7 +165,7 @@ class ModernHookEntry : XposedModule {
             if (DexKitCache.initCache()) {
                 HookSteps.initHooks(app)
             } else {
-                HookSteps.initHooks(app, excludeDexKitTask = true)
+                HookSteps.initHooks(app, excludeDexKitTask = DexKitCache.cacheMap.isEmpty())
                 DexKitFinder.doFind()
             }
 

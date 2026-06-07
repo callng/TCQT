@@ -460,7 +460,7 @@ class SettingActivity : BaseComposeActivity() {
                                     onClick = {
                                         showDexKitClearDialog = false
                                         DexKitCache.clearCache()
-                                        ModuleCommand.sendCommand(this@SettingActivity, "exitApp")
+                                        ModuleCommand.sendCommand(this@SettingActivity, "restart")
                                     }
                                 ) {
                                     Text("清空")
@@ -489,7 +489,7 @@ class SettingActivity : BaseComposeActivity() {
                                 TextButton(
                                     onClick = {
                                         restartPrompt = null
-                                        ModuleCommand.sendCommand(this@SettingActivity, "exitApp")
+                                        ModuleCommand.sendCommand(this@SettingActivity, "restart")
                                     }
                                 ) {
                                     Text("立即重启")

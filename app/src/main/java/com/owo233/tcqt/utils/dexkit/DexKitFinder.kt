@@ -5,6 +5,7 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.generated.GeneratedActionList
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -17,11 +18,12 @@ import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
+import kotlin.time.Duration.Companion.seconds
 
 internal object DexKitFinder {
 
     fun doFind() {
-        if (initDexKit()) {
+        if (ProcUtil.isMain && initDexKit()) {
             showFindToast()
         }
     }
@@ -46,18 +48,29 @@ internal object DexKitFinder {
                 }
                 .toMutableList()
 
+            val oldCache = DexKitCache.cacheMap.toMap()
+            val newCache = mutableMapOf<String, String>()
+
             DexKitBridge.create(HookEnv.hostApkPath).use { bridge ->
                 tasks.forEach { task ->
                     runCatching {
-                        task.execute(bridge, DexKitCache.cacheMap)
+                        task.execute(bridge, newCache)
                     }.onFailure { Log.e("", it) }
                 }
             }
 
+            val isIdentical = oldCache.isNotEmpty() && oldCache == newCache
+
+            DexKitCache.cacheMap = newCache
             DexKitCache.saveCache()
-            Toasts.success("查找完成，准备重启${HookEnv.appName}")
-            delay(2500L)
-            ModuleCommand.sendCommand(HookEnv.application, "exitApp")
+
+            if (isIdentical) {
+                Toasts.success("查找完成，缓存匹配，无需重启")
+            } else {
+                Toasts.success("查找完成，准备重启${HookEnv.appName}")
+                delay(2.5.seconds)
+                ModuleCommand.sendCommand(HookEnv.application, "restart")
+            }
         }
     }
 

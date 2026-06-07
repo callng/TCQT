@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import top.artmoe.inao.entries.InfoSyncPushOuterClass
 import top.artmoe.inao.entries.MsgPushOuterClass
 import top.artmoe.inao.entries.QQMessageOuterClass
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(DelicateCoroutinesApi::class)
 object AioListener : MessageHandler {
@@ -205,7 +206,7 @@ object AioListener : MessageHandler {
 
     private fun showFlashPicTip(msg: QQMessageOuterClass.QQMessage) {
         GlobalScope.launchWithCatch {
-            delay(300L)
+            delay(300L.milliseconds)
             val operatorUid = msg.messageHead.senderUid
             if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
 

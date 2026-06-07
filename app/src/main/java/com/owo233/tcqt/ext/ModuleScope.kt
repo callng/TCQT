@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal object ModuleScope : CoroutineScope {
 
@@ -30,13 +31,13 @@ internal object ModuleScope : CoroutineScope {
         launch(Dispatchers.Main.immediate, block = block)
 
     fun launchDelayed(delayMillis: Long, block: suspend CoroutineScope.() -> Unit) = launch {
-        delay(delayMillis)
+        delay(delayMillis.milliseconds)
         block()
     }
 
     fun launchMainDelayed(delayMillis: Long, block: suspend CoroutineScope.() -> Unit) =
         launch(Dispatchers.Main.immediate) {
-            delay(delayMillis)
+            delay(delayMillis.milliseconds)
             block()
         }
 

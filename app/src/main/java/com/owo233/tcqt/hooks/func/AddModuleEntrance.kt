@@ -45,6 +45,7 @@ import kotlinx.coroutines.delay
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
+import kotlin.time.Duration.Companion.milliseconds
 
 @RegisterAction
 class AddModuleEntrance : AlwaysRunAction() {
@@ -260,7 +261,7 @@ class AddModuleEntrance : AlwaysRunAction() {
     private suspend fun loginAndCopyTicket(context: Context) {
         val snapshot = try {
             TicketManager.easyLogin()
-            delay(233L)
+            delay(233L.milliseconds)
             TicketManager.getWTLoginRecordSnapshot()
         } catch (_: TimeoutCancellationException) {
             return Toasts.error("easyLogin Timeout")

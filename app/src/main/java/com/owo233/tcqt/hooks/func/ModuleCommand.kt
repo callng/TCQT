@@ -40,11 +40,20 @@ class ModuleCommand : AlwaysRunAction() {
             override fun onReceive(context: Context, intent: Intent) {
                 val cmd = intent.getStringExtra("cmd") ?: return
                 when (cmd) {
-                    "exitApp" -> {
+                    "restart" -> {
                         MobileQQ.getMobileQQ()?.takeIf {
                             it.isRuntimeReady
                         }?.run {
                             HookEnv.resetApp()
+                        }
+                    }
+
+                    "exit" -> {
+                        MobileQQ.getMobileQQ()?.takeIf {
+                            it.isRuntimeReady
+                        }?.run {
+                            otherProcessExit(false)
+                            qqProcessExit(true)
                         }
                     }
 

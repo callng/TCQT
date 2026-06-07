@@ -36,7 +36,7 @@ class ModuleUpdate : IAction {
                     Intent.ACTION_PACKAGE_REPLACED -> {
                         val packageName = intent.data?.schemeSpecificPart
                         if (packageName == TCQTBuild.APP_ID) {
-                            ModuleCommand.sendCommand(app, "exitApp")
+                            ModuleCommand.sendCommand(app, "restart")
                         }
                     }
                 }

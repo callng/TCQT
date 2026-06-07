@@ -25,24 +25,15 @@ internal object DexKitCache {
         val all = kv.all
         if (all.isEmpty()) return false
 
-        val cachedHostVer = all[KEY_HOST_VER]?.toString()?.toLongOrNull() ?: return clearAndReturnFalse()
-        val cachedModuleVer = all[KEY_MODULE_VER]?.toString()?.toLongOrNull() ?: return clearAndReturnFalse()
-
-        if (cachedHostVer != HookEnv.versionCode || cachedModuleVer != TCQTBuild.VER_CODE.toLong()) {
-            return clearAndReturnFalse()
-        }
+        val cachedHostVer = all[KEY_HOST_VER]?.toString()?.toLongOrNull()
+        val cachedModuleVer = all[KEY_MODULE_VER]?.toString()?.toLongOrNull()
 
         cacheMap = all
             .filterKeys { it != KEY_HOST_VER && it != KEY_MODULE_VER }
             .mapValues { it.value.toString() }
             .toMutableMap()
 
-        return true
-    }
-
-    private fun clearAndReturnFalse(): Boolean {
-        kv.clear()
-        return false
+        return cachedHostVer == HookEnv.versionCode && cachedModuleVer == TCQTBuild.VER_CODE.toLong()
     }
 
     fun saveCache() {
