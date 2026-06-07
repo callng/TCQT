@@ -9,9 +9,8 @@ import com.owo233.tcqt.utils.avatar.AvatarUtil
 import com.owo233.tcqt.utils.avatar.toStream
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookBefore
-import com.owo233.tcqt.utils.log.Log
-import org.luckypray.dexkit.DexKitBridge
-import org.luckypray.dexkit.query.enums.StringMatchType
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.io.File
 import java.io.FileOutputStream
 
@@ -21,8 +20,7 @@ class NullAvatar : IAction, DexKitTask {
     override val name: String get() = "上传透明头像"
     override val desc: String get() = "随便从相册选择一张图片上传即可，自动替换为透明头像。"
     override val uiTab: String get() = "杂项"
-    override val key: String
-        get() = "null_avatar"
+    override val key: String get() = "null_avatar"
 
     override fun onRun(app: Application, process: ActionProcess) {
         requireMethod("NullAvatar").hookBefore { param ->
@@ -43,36 +41,18 @@ class NullAvatar : IAction, DexKitTask {
         }
     }
 
-    override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        val nullAvatarMethod = bridge.findClass {
-            matcher {
-                className("com.tencent.mobileqq.util.ProfileCardUtil")
-            }
-        }.findMethod {
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "NullAvatar" to FindMethod().apply {
+            searchPackages("com.tencent.mobileqq.util")
             matcher {
                 usingEqStrings("image illegal, size must be square.")
             }
-        }.singleOrNull()
-        if (nullAvatarMethod != null) {
-            cache["NullAvatar"] = nullAvatarMethod.descriptor
-        } else {
-            Log.e("NullAvatar: No method found matching query")
-        }
-
-        val compressUtilsMethod = bridge.findClass {
+        },
+        "compressUtils" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.pic.compress")
-            matcher {
-                className("com.tencent.mobileqq.pic.compress", StringMatchType.StartsWith)
-            }
-        }.findMethod {
             matcher {
                 usingEqStrings("JpegCompressor.compress() error")
             }
-        }.singleOrNull()
-        if (compressUtilsMethod != null) {
-            cache["compressUtils"] = compressUtilsMethod.descriptor
-        } else {
-            Log.e("compressUtils: No method found matching query")
         }
-    }
+    )
 }
