@@ -11,6 +11,7 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
+import mqq.app.MobileQQ
 
 @RegisterAction
 class MsgAntiRecall : IAction {
@@ -40,6 +41,14 @@ class MsgAntiRecall : IAction {
             // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook
             val service = it.thisObject as IKernelService
             NTServiceFetcher.onFetch(service)
+        }
+
+        runCatching {
+            val runtime = MobileQQ.getMobileQQ().peekAppRuntime()
+            if (runtime != null && runtime.isLogin) {
+                val service = runtime.getRuntimeService(IKernelService::class.java, "all")
+                NTServiceFetcher.onFetch(service)
+            }
         }
 
         return TCQTSetting.getBoolean(key)

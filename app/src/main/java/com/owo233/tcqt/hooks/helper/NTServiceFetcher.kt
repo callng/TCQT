@@ -8,6 +8,7 @@ import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
 import top.artmoe.inao.item.NewPreventRetractingMessageCore
+import mqq.app.MobileQQ
 import java.util.concurrent.atomic.AtomicBoolean
 
 object NTServiceFetcher {
@@ -60,5 +61,16 @@ object NTServiceFetcher {
     }
 
     val kernelService: IKernelService
-        get() = iKernelService
+        get() {
+            if (!::iKernelService.isInitialized) {
+                runCatching {
+                    val runtime = MobileQQ.getMobileQQ().peekAppRuntime()
+                    if (runtime != null) {
+                        val service = runtime.getRuntimeService(IKernelService::class.java, "all")
+                        iKernelService = service
+                    }
+                }
+            }
+            return iKernelService
+        }
 }
