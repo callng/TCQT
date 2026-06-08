@@ -295,6 +295,7 @@ object UnreadBadgeHelper {
                     field.isAccessible = true
                     val value = field.get(this)
                     when (value) {
+                        null -> null
                         is TextView -> value
                         is ViewGroup -> value.findFirstTextView()
                         is View -> (value as? ViewGroup)?.findFirstTextView()
