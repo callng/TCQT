@@ -2,12 +2,15 @@ package com.owo233.tcqt.loader
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.os.Environment
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
+import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
@@ -15,6 +18,7 @@ import com.owo233.tcqt.utils.log.LogAndroid
 import com.owo233.tcqt.utils.reflect.allConstructors
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
+import io.fastkv.FastKV
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -70,6 +74,8 @@ internal object ModuleLoader {
 
         attach.apply {
             hookBefore {
+                tryDisableHotPatchEarly(it)
+
                 BaseDexClassLoader::class.java.allConstructors().forEach { ctor ->
                     val unhook = ctor.hookAfter { param ->
                         val loader = param.thisObject as ClassLoader
@@ -99,6 +105,39 @@ internal object ModuleLoader {
                     doRealStartup(context.classLoader)
                 }
             }
+        }
+    }
+
+    private fun tryDisableHotPatchEarly(param: MethodHookParam) {
+        val context = param.args[0] as Context
+        val settingPath = context.getExternalFilesDir(null)?.parentFile?.let {
+            "${it.absolutePath}/${TCQTBuild.APP_NAME}/global/setting"
+        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${context.packageName}/${TCQTBuild.APP_NAME}/global/setting"
+
+        val kv = FastKV.Builder(settingPath, TCQTBuild.APP_NAME).build()
+        if (!kv.getBoolean("disable_hot_patch", false)) return
+
+        try {
+            val hostClassLoader = param.thisObject.javaClass.classLoader!!
+            val tinkerLoaderClass = hostClassLoader.loadClass("com.tencent.tinker.loader.TinkerLoader")
+            val tinkerAppClass = hostClassLoader.loadClass("com.tencent.tinker.loader.app.TinkerApplication")
+            val tryLoadMethod = tinkerLoaderClass.getDeclaredMethod("tryLoad", tinkerAppClass)
+
+            tryLoadMethod.hookBefore { hookParam ->
+                val th = object : UnsupportedOperationException(
+                    "Fuck Tinker"
+                ) {
+                    override fun fillInStackTrace() = this
+                }
+                val intent = Intent().apply {
+                    putExtra("intent_return_code", -3) // CleanPatch
+                    putExtra("intent_patch_exception", th)
+                    putExtra("intent_patch_interpret_exception", th)
+                }
+                hookParam.result = intent
+            }
+        } catch (th: Throwable) {
+            Log.e("tryDisableHotPatchEarly failed", th)
         }
     }
 
