@@ -107,18 +107,6 @@ object PlatformTools {
         return Settings.Secure.getString(HookEnv.hostAppContext.contentResolver, "android_id")
     }
 
-    @SuppressLint("PrivateApi")
-    fun getDeviceName(): String {
-        val props = Class.forName("android.os.SystemProperties")
-        val get = props.getDeclaredMethod("get", String::class.java, String::class.java)
-
-        fun prop(key: String): String =
-            runCatching { get.invoke(null, key, "") as String }
-                .getOrDefault("")
-
-        return prop("ro.product.marketname").ifEmpty { prop("ro.product.model") }
-    }
-
     fun killSubProcesses(context: Context = HookEnv.hostAppContext) {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val runningAppProcesses = am.runningAppProcesses ?: return

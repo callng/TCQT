@@ -7,6 +7,7 @@ import android.os.Environment
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
+import com.owo233.tcqt.ext.resolveDeviceName
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.lifecycle.ParasiticActivity
 import com.owo233.tcqt.loader.HybridClassLoader
@@ -59,7 +60,7 @@ internal object HookSteps {
 
                     安卓版本: ${Build.VERSION.RELEASE}(${Build.VERSION.SDK_INT})
                     系统指纹: ${Build.FINGERPRINT}
-                    设备名称: ${PlatformTools.getDeviceName()}
+                    设备名称: ${resolveDeviceName()}
                     模块版本: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${if (TCQTBuild.DEBUG) "debug" else "release"}
                     宿主版本: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
 
