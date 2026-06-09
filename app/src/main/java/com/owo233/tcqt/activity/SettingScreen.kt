@@ -24,6 +24,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -289,11 +290,24 @@ private fun PageContent(
             }
         }
 
-        // Search: prompt before typing
+        // Search: prompt before typing or history
         if (isSearchActive && pageState.searchQuery.isBlank()) {
-            item(key = "search_prompt") {
-
-                SearchPromptCard()
+            if (viewModel.searchHistory.isEmpty()) {
+                item(key = "search_prompt") {
+                    SearchPromptCard()
+                }
+            } else {
+                item(key = "search_history") {
+                    SearchHistoryLayout(
+                        history = viewModel.searchHistory,
+                        onTagClick = { tag ->
+                            viewModel.updateSearchQuery(tag)
+                        },
+                        onClearClick = {
+                            viewModel.clearSearchHistory()
+                        }
+                    )
+                }
             }
         }
 
@@ -888,6 +902,75 @@ private fun SearchPromptCard() {
                     modifier = Modifier.size(34.dp)
                 )
             }
+        }
+    }
+}
+
+// ───── Search History ─────
+
+@Composable
+private fun SearchHistoryLayout(
+    history: List<String>,
+    onTagClick: (String) -> Unit,
+    onClearClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "搜索记录",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            history.forEach { tag ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onTagClick(tag) }
+                ) {
+                    Text(
+                        text = tag,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "清除搜索记录",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onClearClick() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
     }
 }

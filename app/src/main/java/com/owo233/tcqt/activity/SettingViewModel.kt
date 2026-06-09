@@ -12,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class SettingViewModel : ViewModel() {
 
@@ -69,6 +71,10 @@ class SettingViewModel : ViewModel() {
     var isSearchActive by mutableStateOf(false)
         private set
 
+    val searchHistory = mutableStateListOf<String>()
+
+    private val pendingKeywordsToSave = mutableSetOf<String>()
+
     // ───── Stats (computed dynamically using derivedStateOf) ─────
 
     val enabledCount: Int by derivedStateOf {
@@ -115,6 +121,7 @@ class SettingViewModel : ViewModel() {
 
     init {
         reloadPersistedSettings()
+        loadSearchHistory()
     }
 
     // ───── Navigation ─────
@@ -170,6 +177,44 @@ class SettingViewModel : ViewModel() {
         searchQuery = ""
     }
 
+    private fun loadSearchHistory() {
+        try {
+            val jsonStr = TCQTSetting.getRawString("search_history")
+            if (jsonStr.isNotBlank()) {
+                val history = Json.decodeFromString<List<String>>(jsonStr)
+                searchHistory.clear()
+                searchHistory.addAll(history)
+            }
+        } catch (e: Exception) {
+            com.owo233.tcqt.utils.log.Log.e("Failed to load search history", e)
+        }
+    }
+
+    private fun saveSearchHistory() {
+        try {
+            val jsonStr = Json.encodeToString(searchHistory.toList())
+            TCQTSetting.putRawString("search_history", jsonStr)
+        } catch (e: Exception) {
+            com.owo233.tcqt.utils.log.Log.e("Failed to save search history", e)
+        }
+    }
+
+    fun addSearchHistory(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return
+        searchHistory.remove(trimmed)
+        searchHistory.add(0, trimmed)
+        while (searchHistory.size > 10) {
+            searchHistory.removeAt(searchHistory.lastIndex)
+        }
+        saveSearchHistory()
+    }
+
+    fun clearSearchHistory() {
+        searchHistory.clear()
+        saveSearchHistory()
+    }
+
     // ───── Feature interaction ─────
 
     fun toggleExpanded(key: String) {
@@ -187,6 +232,10 @@ class SettingViewModel : ViewModel() {
         } else {
             pendingBooleans[key] = value
         }
+
+        if (isSearchActive && searchQuery.isNotBlank()) {
+            pendingKeywordsToSave.add(searchQuery.trim())
+        }
     }
 
     fun setOptionValue(key: String, value: Int) {
@@ -197,6 +246,10 @@ class SettingViewModel : ViewModel() {
         } else {
             pendingInts[key] = normalizedValue
         }
+
+        if (isSearchActive && searchQuery.isNotBlank()) {
+            pendingKeywordsToSave.add(searchQuery.trim())
+        }
     }
 
     fun setTextValue(key: String, value: String) {
@@ -205,6 +258,10 @@ class SettingViewModel : ViewModel() {
             pendingStrings.remove(key)
         } else {
             pendingStrings[key] = value
+        }
+
+        if (isSearchActive && searchQuery.isNotBlank()) {
+            pendingKeywordsToSave.add(searchQuery.trim())
         }
     }
 
@@ -222,6 +279,11 @@ class SettingViewModel : ViewModel() {
             persistedStrings[key] = value
         }
 
+        if (pendingKeywordsToSave.isNotEmpty()) {
+            pendingKeywordsToSave.forEach { addSearchHistory(it) }
+            pendingKeywordsToSave.clear()
+        }
+
         pendingBooleans.clear()
         pendingInts.clear()
         pendingStrings.clear()
@@ -236,6 +298,8 @@ class SettingViewModel : ViewModel() {
         pendingStrings.clear()
         expandedKeys.clear()
         scrollStates.clear()
+        searchHistory.clear()
+        pendingKeywordsToSave.clear()
 
         reloadPersistedSettings()
     }
