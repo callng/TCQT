@@ -1,4 +1,4 @@
-package com.owo233.tcqt.hooks.func.test
+package com.owo233.tcqt.hooks.func.fekit
 
 import android.annotation.SuppressLint
 import android.app.Application

@@ -1,4 +1,4 @@
-package com.owo233.tcqt.hooks.func.test
+package com.owo233.tcqt.hooks.func.fekit
 
 import android.app.Application
 import com.owo233.tcqt.HookEnv.requireMinQQVersion
