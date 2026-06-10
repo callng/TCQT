@@ -4,8 +4,14 @@ import mqq.app.MobileQQ;
 
 public class BaseApplicationImpl extends MobileQQ {
 
+    public static BaseApplicationImpl sApplication;
+
     public static BaseApplicationImpl getApplication() {
-        throw new UnsupportedOperationException("only view.");
+        throw new RuntimeException("Stub!");
+    }
+
+    public String getPublishVersion() {
+        throw new RuntimeException("Stub!");
     }
 
     @Override

@@ -212,4 +212,8 @@ public abstract class AppRuntime {
     public boolean isLogin() {
         throw new RuntimeException("Stub!");
     }
+
+    public void startServlet(NewIntent newIntent) {
+        throw new RuntimeException("Stub!");
+    }
 }

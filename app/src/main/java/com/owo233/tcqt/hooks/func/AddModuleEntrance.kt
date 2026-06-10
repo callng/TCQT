@@ -24,6 +24,7 @@ import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.base.loadOrThrow
+import com.owo233.tcqt.hooks.func.theme.ThemeEngine
 import com.owo233.tcqt.impl.EasyLoginException
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
@@ -316,7 +317,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             setPadding(pad, pad, pad, pad)
         }
 
-        AlertDialog.Builder(context).apply {
+        val dialog = AlertDialog.Builder(context).apply {
             setTitle("Open the card")
             setView(editText)
             setNegativeButton("Cancel") { d, _ -> d.dismiss() }
@@ -328,13 +329,30 @@ class AddModuleEntrance : AlwaysRunAction() {
                 editText.validateUin("请输入QQ号", "请输入正确的账号")
                     ?.let { openUserInfoCard(context, it) }
             }
-        }.create().show()
+        }.create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnLongClickListener {
+            editText.validateUin("请输入主题ID", "请输入正确的主题ID", isThemeId = true)
+                ?.let {
+                    dialog.dismiss()
+                    ThemeEngine.applyThemeLogic(it) { success ->
+                        if (success) {
+                            Toasts.success("应用主题成功")
+                        } else {
+                            Toasts.error("应用主题失败")
+                        }
+                    }
+                }
+            true
+        }
     }
 
-    private fun EditText.validateUin(emptyMsg: String, invalidMsg: String): String? {
+    private fun EditText.validateUin(emptyMsg: String, invalidMsg: String, isThemeId: Boolean = false): String? {
         val uin = text.toString().trim()
         if (uin.isEmpty()) return null.also { Toasts.error(emptyMsg) }
-        if (runCatching { uin.toLong() < 10000 }.getOrDefault(true)) {
+        if (runCatching { uin.toLong() < if (isThemeId) 1000 else 10000 }.getOrDefault(true)) {
             return null.also { Toasts.error(invalidMsg) }
         }
         return uin
