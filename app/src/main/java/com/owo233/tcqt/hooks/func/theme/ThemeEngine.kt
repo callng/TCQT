@@ -41,6 +41,9 @@ internal object ThemeEngine {
             id = themeId.trim(),
             callback = callback ?: IThemeCallback {}
         )
+        if (ThemeSwitcher.getRoamingThemeId() != THEME_SLOT) {
+            setRoamingTheme()
+        }
         dispatchPacket(session, "theme.${session.id}", 101)
     }
 
@@ -194,7 +197,6 @@ internal object ThemeEngine {
                         Log.e("processThemeFiles ThemeSwitcher error on main thread", err)
                     }
                 }
-                setRoamingTheme()
                 session.callback.onFinish(true)
             } catch (e: Exception) {
                 Log.e("processThemeFiles error in thread", e)
