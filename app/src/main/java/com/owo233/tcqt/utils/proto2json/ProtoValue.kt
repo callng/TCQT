@@ -35,6 +35,10 @@ sealed interface ProtoValue {
         error("Instance is not ProtoMap")
     }
 
+    fun remove(tag: Int): Boolean {
+        return false
+    }
+
     fun add(v: ProtoValue) {
         error("Instance is not ProtoList")
     }
@@ -42,4 +46,10 @@ sealed interface ProtoValue {
     fun size(): Int {
         return 0
     }
+
+    val isMap: Boolean get() = this is ProtoMap
+    val isList: Boolean get() = this is ProtoList
+    val isNumber: Boolean get() = this is ProtoNumber
+    val isByteString: Boolean get() = this is ProtoByteString
+    val isBool: Boolean get() = this is ProtoBool
 }

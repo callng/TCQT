@@ -6,10 +6,8 @@ import com.google.protobuf.WireFormat
 import kotlinx.serialization.json.JsonElement
 
 class ProtoMap(
-    val value: HashMap<Int, ProtoValue>
+    val value: HashMap<Int, ProtoValue> = hashMapOf()
 ) : ProtoValue {
-
-    constructor() : this(hashMapOf())
 
     override fun has(vararg tags: Int): Boolean {
         var curMap: ProtoMap = this
@@ -20,7 +18,12 @@ class ProtoMap(
             if (index == tags.size - 1) {
                 return true
             }
-            curMap = curMap[tag].asMap
+            val next = curMap[tag]
+            if (next is ProtoMap) {
+                curMap = next
+            } else {
+                return false
+            }
         }
         return true
     }
@@ -29,7 +32,7 @@ class ProtoMap(
         return value.containsKey(tag)
     }
 
-    override fun set(tag: Int, v: ProtoValue) {
+    override operator fun set(tag: Int, v: ProtoValue) {
         if (!contains(tag)) {
             value[tag] = v
         } else {
@@ -42,7 +45,7 @@ class ProtoMap(
         }
     }
 
-    override fun set(tag: Int, v: Number) {
+    override operator fun set(tag: Int, v: Number) {
         if (!contains(tag)) {
             value[tag] = ProtoNumber(v)
         } else {
@@ -55,26 +58,48 @@ class ProtoMap(
         }
     }
 
-    override fun get(vararg tags: Int): ProtoValue {
+    override operator fun get(vararg tags: Int): ProtoValue {
         var curMap = value
         tags.forEachIndexed { index, tag ->
+            val v = curMap[tag] ?: error("Tag $tag not found")
             if (index == tags.size - 1) {
-                return curMap[tag] ?: error("Tag $tag not found")
+                return v
             }
-            curMap[tag]?.let { v ->
-                if (v is ProtoMap) {
-                    curMap = v.value
-                } else {
-                    return v
-                }
-            } ?: error("Tag $tag not found")
+            if (v is ProtoMap) {
+                curMap = v.value
+            } else {
+                return v
+            }
         }
         error("Instance is not ProtoMap")
+    }
+
+    override fun remove(tag: Int): Boolean {
+        return value.remove(tag) != null
+    }
+
+    fun remove(vararg tags: Int): Boolean {
+        if (tags.isEmpty()) return false
+        if (tags.size == 1) return remove(tags[0])
+
+        var curMap: ProtoMap = this
+        for (i in 0 until tags.size - 1) {
+            val next = curMap.value[tags[i]]
+            if (next !is ProtoMap) return false
+            curMap = next
+        }
+        return curMap.value.remove(tags.last()) != null
     }
 
     override fun size(): Int {
         return value.size
     }
+
+    val keys: Set<Int> get() = value.keys
+
+    val entries: Set<Map.Entry<Int, ProtoValue>> get() = value.entries
+
+    val values: Collection<ProtoValue> get() = value.values
 
     operator fun set(vararg tags: Int, v: ProtoValue) {
         var curProtoMap: ProtoMap = this
@@ -83,7 +108,7 @@ class ProtoMap(
                 return@forEachIndexed
             }
             if (!curProtoMap.contains(tag)) {
-                val tmp = ProtoMap(hashMapOf())
+                val tmp = ProtoMap()
                 curProtoMap[tag] = tmp
                 curProtoMap = tmp
             } else {
@@ -111,6 +136,20 @@ class ProtoMap(
         set(*tags, v = v.proto)
     }
 
+    @Suppress("NOTHING_TO_INLINE")
+    inline operator fun set(vararg tags: Int, v: UInt) {
+        set(*tags, v = ProtoNumber(v.toInt(), isUnsigned = true))
+    }
+
+    @Suppress("NOTHING_TO_INLINE")
+    inline operator fun set(vararg tags: Int, v: ULong) {
+        set(*tags, v = ProtoNumber(v.toLong(), isUnsigned = true))
+    }
+
+    operator fun set(vararg tags: Int, v: Boolean) {
+        set(*tags, v = v.proto)
+    }
+
     operator fun set(vararg tags: Int, v: ByteString) {
         set(*tags, v = v.proto)
     }
@@ -128,11 +167,9 @@ class ProtoMap(
     }
 
     override fun computeSize(tag: Int): Int {
-        var size = CodedOutputStream.computeTagSize(tag)
+        val size = CodedOutputStream.computeTagSize(tag)
         val dataSize = computeSizeDirectly()
-        size += ProtoUtils.computeRawVarint32Size(dataSize)
-        size += dataSize
-        return size
+        return size + ProtoUtils.computeRawVarint32Size(dataSize) + dataSize
     }
 
     override fun writeTo(output: CodedOutputStream, tag: Int) {
@@ -158,5 +195,25 @@ class ProtoMap(
 
     fun toByteArray(): ByteArray {
         return ProtoUtils.encodeToByteArray(this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ProtoMap) return false
+        return value == other.value
+    }
+
+    override fun hashCode(): Int = value.hashCode()
+
+    fun deepCopy(): ProtoMap {
+        val copy = ProtoMap()
+        value.forEach { (tag, v) ->
+            copy[tag] = when (v) {
+                is ProtoMap -> v.deepCopy()
+                is ProtoList -> v.deepCopy()
+                else -> v
+            }
+        }
+        return copy
     }
 }
