@@ -51,7 +51,7 @@ internal object DexKitFinder {
             val oldCache = DexKitCache.cacheMap.toMap()
             val newCache = mutableMapOf<String, String>()
 
-            DexKitBridge.create(HookEnv.hostApkPath).use { bridge ->
+            DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
                 tasks.forEach { task ->
                     runCatching {
                         task.execute(bridge, newCache)
