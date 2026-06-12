@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,21 +65,13 @@ class NotificationChannelManagerActivity : BaseComposeActivity() {
 private fun NotificationChannelManagerScreen(onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val notificationManager = remember { NotificationManagerCompat.from(context) }
-    var refreshToken by rememberSaveable { mutableStateOf(0) }
+    var refreshToken by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<DeleteTarget?>(null) }
     val groups = remember(refreshToken) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationManager.notificationChannelGroupsCompat
-        } else {
-            emptyList()
-        }
+        notificationManager.notificationChannelGroupsCompat
     }
     val channels = remember(refreshToken) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationManager.notificationChannelsCompat
-        } else {
-            emptyList()
-        }
+        notificationManager.notificationChannelsCompat
     }
 
     pendingDelete?.let { target ->
@@ -127,38 +120,34 @@ private fun NotificationChannelManagerScreen(onBack: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            BoxMessage("当前系统不支持通知渠道")
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (groups.isEmpty() && channels.isEmpty()) {
-                    item { BoxMessage("暂无通知渠道") }
-                }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (groups.isEmpty() && channels.isEmpty()) {
+                item { BoxMessage("暂无通知渠道") }
+            }
 
-                items(groups, key = { "group_${it.id}" }) { group ->
-                    ChannelGroupCard(
-                        group = group,
-                        onDelete = { pendingDelete = DeleteTarget.Group(group.id, group.name.toString()) },
-                        onDeleteChannel = { channel ->
-                            pendingDelete = DeleteTarget.Channel(channel.id, channel.name.toString())
-                        }
-                    )
-                }
+            items(groups, key = { "group_${it.id}" }) { group ->
+                ChannelGroupCard(
+                    group = group,
+                    onDelete = { pendingDelete = DeleteTarget.Group(group.id, group.name.toString()) },
+                    onDeleteChannel = { channel ->
+                        pendingDelete = DeleteTarget.Channel(channel.id, channel.name.toString())
+                    }
+                )
+            }
 
-                val groupedIds = groups.flatMap { it.channels.map { channel -> channel.id } }.toSet()
-                val ungrouped = channels.filterNot { it.id in groupedIds }
-                items(ungrouped, key = { "channel_${it.id}" }) { channel ->
-                    ChannelCard(
-                        channel = channel,
-                        onDelete = { pendingDelete = DeleteTarget.Channel(channel.id, channel.name.toString()) }
-                    )
-                }
+            val groupedIds = groups.flatMap { it.channels.map { channel -> channel.id } }.toSet()
+            val ungrouped = channels.filterNot { it.id in groupedIds }
+            items(ungrouped, key = { "channel_${it.id}" }) { channel ->
+                ChannelCard(
+                    channel = channel,
+                    onDelete = { pendingDelete = DeleteTarget.Channel(channel.id, channel.name.toString()) }
+                )
             }
         }
     }

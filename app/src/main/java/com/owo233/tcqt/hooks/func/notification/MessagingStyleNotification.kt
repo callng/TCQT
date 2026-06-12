@@ -60,7 +60,6 @@ class MessagingStyleNotification : IAction {
         get() = options.isFlagEnabled(OPTION_AUTO_CLEAR_SUB_CHANNEL)
 
     override fun onRun(app: Application, process: ActionProcess) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (!createNotificationChannels(app)) return
 
         val notificationFacade = load("com.tencent.qqnt.notification.NotificationFacade")
@@ -111,7 +110,6 @@ class MessagingStyleNotification : IAction {
             }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannels(app: Application): Boolean {
         return runCatching {
             val notificationManager = app.getSystemService(NotificationManager::class.java)

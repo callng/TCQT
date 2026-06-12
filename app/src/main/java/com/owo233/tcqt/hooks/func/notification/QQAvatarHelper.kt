@@ -16,6 +16,7 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.utils.reflect.callStaticMethod
 import java.io.File
+import androidx.core.graphics.createBitmap
 
 internal class QQAvatarHelper {
 
@@ -54,7 +55,7 @@ internal class QQAvatarHelper {
 
     private fun getCroppedBitmap(bitmap: Bitmap): Bitmap {
         val radius = bitmap.width.coerceAtMost(bitmap.height)
-        val output = Bitmap.createBitmap(radius, radius, Bitmap.Config.ARGB_8888)
+        val output = createBitmap(radius, radius)
         val canvas = Canvas(output)
         val paint = Paint().apply {
             isAntiAlias = true

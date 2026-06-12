@@ -6,8 +6,6 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
@@ -18,16 +16,12 @@ import com.owo233.tcqt.utils.hook.hookBefore
 class SpecialCareNewChannel : IAction {
 
     override val name: String get() = "特别关心通知单独分组"
-    override val desc: String
-        get() = "将特别关心发送的消息通知移动到单独的通知渠道" +
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) "" else " 仅支持 Android O 及以上"
+    override val desc: String get() = "将特别关心发送的消息通知移动到单独的通知渠道"
     override val uiTab: String get() = "通知"
     override val key: String get() = "special_care_new_channel"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 
     override fun onRun(app: Application, process: ActionProcess) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         NotificationManager::class.java.declaredMethods
             .filter { it.name == "notify" && it.parameterTypes.lastOrNull() == Notification::class.java }
             .forEach { method ->
@@ -44,7 +38,6 @@ class SpecialCareNewChannel : IAction {
             }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun ensureSpecialCareChannel() {
         val notificationManager = HookEnv.application.getSystemService(NotificationManager::class.java)
         if (notificationManager.getNotificationChannel(CHANNEL_ID_SPECIALLY_CARE) != null) return

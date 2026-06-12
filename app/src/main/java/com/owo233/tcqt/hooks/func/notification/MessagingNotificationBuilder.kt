@@ -8,7 +8,6 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.MessagingStyle
 import androidx.core.app.Person
@@ -33,7 +32,6 @@ internal class MessagingNotificationBuilder(
         historyMessage.clear()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun createNotification(
         recentInfo: Any,
         shortcutIntent: Intent,
@@ -73,11 +71,10 @@ internal class MessagingNotificationBuilder(
         return builder.build()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun clearRedundantConversationChannels() {
         runCatching {
             val notificationManager = HookEnv.application.getSystemService(NotificationManager::class.java)
-            val baseChannelIds = NotifyChannel.values().mapTo(mutableSetOf()) { it.channelId() }
+            val baseChannelIds = NotifyChannel.entries.mapTo(mutableSetOf()) { it.channelId() }
             notificationManager.notificationChannels
                 .filter { it.group == "qq_evolution" && it.id !in baseChannelIds }
                 .forEach { notificationManager.deleteNotificationChannel(it.id) }
@@ -161,7 +158,6 @@ internal class MessagingNotificationBuilder(
         return if (target.isGroupConversation) "group_${target.mainUin}" else "private_${target.mainUin}"
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun ensureConversationChannel(
         target: ConversationTarget,
         shortcut: ShortcutInfoCompat
@@ -190,7 +186,6 @@ internal class MessagingNotificationBuilder(
     }
 
     private fun iconFromNotification(notification: Notification): IconCompat? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
         return runCatching {
             notification.getLargeIcon()?.let { IconCompat.createFromIcon(HookEnv.application, it) }
         }.getOrNull()
