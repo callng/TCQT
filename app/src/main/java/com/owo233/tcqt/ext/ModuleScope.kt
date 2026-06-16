@@ -18,8 +18,17 @@ internal object ModuleScope : CoroutineScope {
         Log.e("ModuleScope", throwable)
     }
 
-    override val coroutineContext: CoroutineContext =
-        SupervisorJob() + Dispatchers.Default + exceptionHandler
+    @Volatile
+    private var job = SupervisorJob()
+
+    override val coroutineContext: CoroutineContext
+        get() = job + Dispatchers.Default + exceptionHandler
+
+    fun cancelAll() {
+        val old = job
+        job = SupervisorJob()
+        old.cancel()
+    }
 
     fun launchIO(tag: String = "IO", block: suspend CoroutineScope.() -> Unit) =
         launch(

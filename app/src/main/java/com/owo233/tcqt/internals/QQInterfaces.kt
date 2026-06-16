@@ -9,6 +9,7 @@ import com.owo233.tcqt.hooks.maple.Maple
 import com.owo233.tcqt.internals.helper.GuidHelper
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.TIMVersion
+import com.owo233.tcqt.utils.context.ContextUtils
 import com.tencent.mobileqq.app.QBaseActivity
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
@@ -35,7 +36,7 @@ open class QQInterfaces {
         val topActivity: Activity
             get() = QBaseActivity.sTopActivity
                 ?: Foreground.getTopActivity()
-                ?: error("activity is null!")
+                ?: ContextUtils.getCurrentActivity()
 
         val maple by lazy {
             val usePublic =

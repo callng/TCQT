@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.helper
 
 import com.google.protobuf.ByteString
+import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.internals.QQInterfaces
@@ -10,7 +11,6 @@ import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import top.artmoe.inao.entries.InfoSyncPushOuterClass
 import top.artmoe.inao.entries.MsgPushOuterClass
@@ -137,7 +137,7 @@ object AioListener : MessageHandler {
     }
 
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
-        GlobalScope.launchWithCatch {
+        ModuleScope.launchWithCatch {
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
             LocalGrayTips.addLocalGrayTip(
                 contact,
@@ -153,7 +153,7 @@ object AioListener : MessageHandler {
 
     private fun showInterceptedC2CTips(list: List<Pair<String, Long>>) {
         if (list.isEmpty()) return
-        GlobalScope.launchWithCatch {
+        ModuleScope.launchWithCatch {
             list.forEach { (senderUid, msgSeq) ->
                 val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, senderUid)
                 LocalGrayTips.addLocalGrayTip(
@@ -170,7 +170,7 @@ object AioListener : MessageHandler {
     }
 
     private fun showGroupRecallTip(operationInfo: QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo) {
-        GlobalScope.launchWithCatch {
+        ModuleScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId
             val msgInfo = operationInfo.info.msgInfo
             val targetUid = msgInfo.senderUid
@@ -205,7 +205,7 @@ object AioListener : MessageHandler {
     }
 
     private fun showFlashPicTip(msg: QQMessageOuterClass.QQMessage) {
-        GlobalScope.launchWithCatch {
+        ModuleScope.launchWithCatch {
             delay(300L.milliseconds)
             val operatorUid = msg.messageHead.senderUid
             if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch

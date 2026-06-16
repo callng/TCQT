@@ -67,10 +67,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import com.owo233.tcqt.hooks.base.Toasts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -282,7 +286,7 @@ private fun PageContent(
                     hostName = PlatformTools.getHostName(),
                     hostVersion = "${PlatformTools.getHostVersion()} (${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}",
                     moduleName = TCQTBuild.APP_NAME,
-                    moduleVersion = TCQTBuild.VER_NAME,
+                    moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
                     enabledCount = pageState.enabledCount,
                     disabledCount = pageState.disabledCount
                 )
@@ -666,6 +670,9 @@ private fun CompactHeaderCard(
     enabledCount: Int,
     disabledCount: Int
 ) {
+    var clickCount by remember { mutableStateOf(0) }
+    var lastClickTime by remember { mutableStateOf(0L) }
+
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -678,7 +685,24 @@ private fun CompactHeaderCard(
         ) {
             Text(
                 text = "${TCQTBuild.APP_NAME} 模块配置",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastClickTime < 500) {
+                            clickCount++
+                        } else {
+                            clickCount = 1
+                        }
+                        lastClickTime = currentTime
+                        if (clickCount >= 5) {
+                            clickCount = 0
+                            Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
+                        }
+                    },
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,

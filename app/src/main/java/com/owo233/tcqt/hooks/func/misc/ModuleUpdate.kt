@@ -10,6 +10,7 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.loader.ReceiverRegistry
 import com.owo233.tcqt.loader.api.HookEngineManager
 
 @RegisterAction
@@ -43,7 +44,7 @@ class ModuleUpdate : IAction {
             }
         }
 
-        app.registerReceiver(receiver, filter)
+        ReceiverRegistry.register(app, receiver, filter, exported = true)
     }
 
     override val key: String get() = "module_update"

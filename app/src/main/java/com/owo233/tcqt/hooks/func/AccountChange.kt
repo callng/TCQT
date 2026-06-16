@@ -5,11 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
-import com.owo233.tcqt.utils.SyncUtils
+import com.owo233.tcqt.loader.ReceiverRegistry
 import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
@@ -31,14 +30,7 @@ class AccountChange : AlwaysRunAction() {
         val filter = IntentFilter().apply {
             getActions().forEach(::addAction)
         }
-
-        SyncUtils.post {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                app.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                app.registerReceiver(receiver, filter)
-            }
-        }
+        ReceiverRegistry.register(app, receiver, filter)
     }
 
     private fun handleAction(action: String, intent: Intent) {

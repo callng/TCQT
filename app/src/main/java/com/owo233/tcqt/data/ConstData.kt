@@ -17,6 +17,7 @@ object BuildWrapper {
 object TCQTBuild {
 
     val DEBUG = BuildConfig.DEBUG
+    const val BUILD_TIME = BuildTime.TIMESTAMP
     const val APP_ID = BuildWrapper.APPLICATION_ID
     const val APP_NAME = BuildWrapper.APP_NAME
     const val VER_CODE = BuildWrapper.VERSION_CODE

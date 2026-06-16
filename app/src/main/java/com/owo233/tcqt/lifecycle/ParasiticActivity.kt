@@ -395,6 +395,13 @@ object ParasiticActivity {
                 return activityClass.getDeclaredConstructor().newInstance()
             }
 
+            if (isTargetActivity(className)) {
+                return ParasiticActivity::class.java.classLoader!!
+                    .loadClass(className)
+                    .getDeclaredConstructor()
+                    .newInstance() as Activity
+            }
+
             return runCatching {
                 base.newActivity(cl, className, intent)
             }.getOrElse {

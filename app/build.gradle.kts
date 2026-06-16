@@ -1,8 +1,13 @@
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.SigningConfig
 import com.android.build.api.variant.impl.VariantOutputImpl
 import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 plugins {
     alias(libs.plugins.android.application)
@@ -21,6 +26,36 @@ val appVersionName: String by rootProject.extra
 val appVersionCode: Int by rootProject.extra
 val kotlinJvmTarget: JvmTarget by rootProject.extra
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
+
+val buildTimeDir = layout.buildDirectory.dir("generated/source/buildtime/main")
+
+val generateBuildTimeSource by tasks.registering {
+    description = "BuildTime"
+    outputs.upToDateWhen { false }
+    val outputFile = buildTimeDir.get().file("com/owo233/tcqt/data/BuildTime.kt").asFile
+    outputs.file(outputFile)
+    doLast {
+        outputFile.parentFile.mkdirs()
+        val formattedTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA).apply {
+            timeZone = TimeZone.getTimeZone("GMT+8")
+        }.format(Date())
+        outputFile.writeText(
+            """
+            package com.owo233.tcqt.data
+
+            object BuildTime {
+                const val TIMESTAMP = "$formattedTime"
+            }
+            """.trimIndent()
+        )
+    }
+}
+
+tasks.configureEach {
+    if (name.contains("Kotlin", ignoreCase = true) || name.contains("ksp", ignoreCase = true)) {
+        dependsOn(generateBuildTimeSource)
+    }
+}
 
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
@@ -49,7 +84,7 @@ extensions.configure<ApplicationExtension> {
         buildConfigField("String", "TG_GROUP", "\"astcqt\"")
     }
 
-    fun com.android.build.api.dsl.SigningConfig.applyEnvKeystore() {
+    fun SigningConfig.applyEnvKeystore() {
         if (!keystorePath.isNullOrBlank()) {
             storeFile = file(keystorePath)
             storePassword = System.getenv("KEYSTORE_PASSWORD")
@@ -128,6 +163,7 @@ extensions.configure<ApplicationExtension> {
         val main by getting
         main.apply {
             kotlin.directories += "generated/ksp/$name/kotlin"
+            kotlin.directories += buildTimeDir.get().asFile.absolutePath
         }
     }
 }

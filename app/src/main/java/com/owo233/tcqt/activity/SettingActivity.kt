@@ -34,7 +34,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -212,11 +212,14 @@ class SettingActivity : BaseComposeActivity() {
                 var showBackupDialog by rememberSaveable { mutableStateOf(false) }
                 var showDexKitClearDialog by rememberSaveable { mutableStateOf(false) }
 
-                LaunchedEffect(Unit) {
+                DisposableEffect(viewModel) {
                     onRestoreSuccessCallback = {
                         viewModel.reloadPersistedSettings()
                         viewModel.recalculateStats()
                         restartPrompt = RestartPrompt.Restore
+                    }
+                    onDispose {
+                        onRestoreSuccessCallback = null
                     }
                 }
 

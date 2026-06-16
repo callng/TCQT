@@ -7,7 +7,10 @@ import android.os.Environment
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
+import com.owo233.tcqt.hooks.base.ProcUtil
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.Unhook
+import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -141,7 +144,6 @@ internal object ModuleLoader {
         }
     }
 
-    @Synchronized
     private fun doRealStartup(reClassLoader: ClassLoader) {
         if (isInit.get()) return
         HookEnv.setHostClassLoader(reClassLoader)
@@ -178,6 +180,52 @@ internal object ModuleLoader {
             }
         } catch (th: Throwable) {
             Log.e("doRealStartup Failure", th)
+        }
+    }
+
+    fun reload(state: Map<*, *>) {
+        HookSteps.initModulePath(state["moduleApkPath"] as String)
+        HookSteps.initHandleLoadPackage(
+            state["hostProcessName"] as String,
+            state["hostAppPackageName"] as String
+        )
+        HookEnv.setHostClassLoader(state["hostClassLoader"] as ClassLoader)
+        HookSteps.injectClassLoader(state["hostClassLoader"] as ClassLoader)
+        HookSteps.initContext(state["hostApplication"] as Application)
+
+        System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
+
+        runCatching {
+            val oldTCCL = Thread.currentThread().contextClassLoader
+            Thread.currentThread().contextClassLoader = this.javaClass.classLoader
+            try {
+                val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
+                LogAndroid.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
+            } finally {
+                Thread.currentThread().contextClassLoader = oldTCCL
+            }
+        }.onFailure {
+            Log.e("Failed to pre-initialize coroutines Main dispatcher", it)
+        }
+
+        if (ProcUtil.isMain) {
+            SyncUtils.runOnUiThread {
+                val topActivity = QQInterfaces.topActivity
+                val activityName = topActivity.javaClass.name
+                if (activityName.contains("SettingActivity")) {
+                    topActivity.recreate()
+                }
+            }
+        }
+
+        if (DexKitCache.initCache()) {
+            HookSteps.initHooks(state["hostApplication"] as Application)
+        } else {
+            HookSteps.initHooks(
+                state["hostApplication"] as Application,
+                excludeDexKitTask = DexKitCache.cacheMap.isEmpty()
+            )
+            DexKitFinder.doFind()
         }
     }
 }

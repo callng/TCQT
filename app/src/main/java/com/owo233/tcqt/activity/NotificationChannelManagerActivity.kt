@@ -2,7 +2,6 @@ package com.owo233.tcqt.activity
 
 // 思路参考自 QAuxiliary: https://github.com/cinit/QAuxiliary
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent

@@ -27,8 +27,8 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernel.nativeinterface.PttElement
 import com.tencent.qqnt.msg.api.IMsgService
+import com.owo233.tcqt.ext.ModuleScope
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import java.io.File
 
 @RegisterAction
@@ -83,7 +83,7 @@ class PttForward : IAction, OnMenuBuilder {
 
                     val msgService = QRoute.api(IMsgService::class.java)
 
-                    GlobalScope.launchWithCatch {
+                    ModuleScope.launchWithCatch {
                         try {
                             data.getString("Uid")?.let { uid ->
                                 val uinType = data.getInt("uintype", -1)

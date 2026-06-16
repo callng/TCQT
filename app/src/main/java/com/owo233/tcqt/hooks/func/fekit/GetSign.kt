@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -18,6 +17,7 @@ import com.owo233.tcqt.ext.hex2ByteArray
 import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.loader.ReceiverRegistry
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
@@ -111,13 +111,7 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
             }
         }
         val filter = IntentFilter(ACTION_SIGN_RESULT)
-        SyncUtils.post {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                app.registerReceiver(resultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                app.registerReceiver(resultReceiver, filter)
-            }
-        }
+        ReceiverRegistry.register(app, resultReceiver, filter)
     }
 
     @SuppressLint("SetTextI18n")
@@ -179,13 +173,7 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         }
 
         val filter = IntentFilter(ACTION_REQUEST_SIGN)
-        SyncUtils.post {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                app.registerReceiver(requestReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                app.registerReceiver(requestReceiver, filter)
-            }
-        }
+        ReceiverRegistry.register(app, requestReceiver, filter)
     }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
