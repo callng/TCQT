@@ -2,9 +2,11 @@ package com.owo233.tcqt.loader.modern
 
 import android.content.pm.ApplicationInfo
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
 import com.owo233.tcqt.loader.ModuleLoader
+import com.owo233.tcqt.loader.ReceiverRegistry
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.legacy.LegacyHookEngine
 import com.owo233.tcqt.utils.log.Log
@@ -85,6 +87,9 @@ class ModernHookEntry : XposedModule {
     }
 
     override fun onHotReloading(param: XposedModuleInterface.HotReloadingParam): Boolean {
+        ModuleScope.cancelAll()
+        ReceiverRegistry.unregisterAll()
+
         val state = HashMap<String, Any>().apply {
             this["hostApplication"] = HookEnv.application
             this["hostClassLoader"] = HookEnv.hostClassLoader

@@ -14,6 +14,7 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
+import com.owo233.tcqt.activity.SettingActivity
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
@@ -404,7 +405,7 @@ class AddModuleEntrance : AlwaysRunAction() {
             runCatching {
                 val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader
                     ?: this.javaClass.classLoader
-                val settingActivityClass = latestLoader.loadClass("com.owo233.tcqt.activity.SettingActivity")
+                val settingActivityClass = latestLoader.loadClass(SettingActivity::class.java.name)
                 activity.startActivity(Intent(activity, settingActivityClass))
             }.onFailure {
                 Toasts.error("需要重新启动${HookEnv.appName}")

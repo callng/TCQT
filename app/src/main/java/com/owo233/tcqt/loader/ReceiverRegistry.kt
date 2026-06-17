@@ -14,7 +14,6 @@ internal object ReceiverRegistry {
 
     @Synchronized
     fun register(app: Application, receiver: BroadcastReceiver, filter: IntentFilter, exported: Boolean = false) {
-        runCatching { app.unregisterReceiver(receiver) }
         SyncUtils.post {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val flag = if (exported) Context.RECEIVER_EXPORTED else Context.RECEIVER_NOT_EXPORTED
