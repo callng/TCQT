@@ -8,6 +8,7 @@ import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.TAG
@@ -22,6 +23,8 @@ import kotlin.time.Duration.Companion.seconds
 
 internal object DexKitFinder {
 
+    private var unhook: Unhook? = null
+
     fun doFind() {
         if (ProcUtil.isMain && initDexKit()) {
             showFindToast()
@@ -34,10 +37,12 @@ internal object DexKitFinder {
             .hookAfter {
                 Toasts.info("开始查找混淆方法")
                 startFind()
-            }
+            }.also { unhook = it }
     }
 
     private fun startFind() {
+        unhook?.unhook().also { unhook = null }
+
         ModuleScope.launchIO(TAG) {
             val tasks = GeneratedActionList.ACTIONS
                 .filter { clazz -> DexKitTask::class.java.isAssignableFrom(clazz) }
