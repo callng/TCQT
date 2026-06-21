@@ -5,10 +5,12 @@ import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
 import com.tencent.biz.ProtoServlet
 import com.tencent.common.app.BaseApplicationImpl
+import com.tencent.mobileqq.data.troop.TroopInfo
 import com.tencent.mobileqq.pb.ByteStringMicro
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.mobileqq.troop.api.IBizTroopMemberInfoService
+import com.tencent.mobileqq.troop.api.ITroopInfoService
 import com.tencent.qqnt.kernel.nativeinterface.GroupMemberShutUpInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
 import com.tencent.relation.common.api.IRelationNTUinAndUidApi
@@ -112,14 +114,18 @@ internal object GroupService {
             this.putExtra("data", oIDBSSOPkg.toByteArray())
             this.setObserver { _, isSuccess, extras ->
                 if (isSuccess && extras != null) {
-                    Log.d("setMemberTag data: ${extras.getByteArray("data").toHexString()}")
+                    Log.d("setMemberTitle data: ${extras.getByteArray("data").toHexString()}")
                 } else {
-                    Log.e("setMemberTag: 设置群成员头衔失败")
+                    Log.e("setMemberTitle: 设置群成员头衔失败")
                 }
             }
         }
 
         QQInterfaces.appRuntime.startServlet(newIntent)
+    }
+
+    fun getGroupInfo(groupId: String): TroopInfo {
+        return runtime<ITroopInfoService>().getTroopInfo(groupId)
     }
 
     fun getUidFromUin(uin: String): String {
