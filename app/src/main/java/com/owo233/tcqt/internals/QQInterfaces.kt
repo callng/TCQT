@@ -13,6 +13,7 @@ import com.owo233.tcqt.utils.context.ContextUtils
 import com.tencent.mobileqq.app.QBaseActivity
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
+import com.tencent.qqnt.kernel.nativeinterface.IKernelGroupService
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import mqq.app.AppRuntime
 import mqq.app.Foreground
@@ -49,6 +50,11 @@ open class QQInterfaces {
             get() = NTServiceFetcher.kernelService
                 .wrapperSession
                 .msgService
+
+        val groupService: IKernelGroupService
+            get() = NTServiceFetcher.kernelService
+                .wrapperSession
+                .groupService
 
         fun getServiceTime(): Long = runCatching {
             loadOrThrow("com.tencent.mobileqq.msf.core.NetConnInfoCenter")
