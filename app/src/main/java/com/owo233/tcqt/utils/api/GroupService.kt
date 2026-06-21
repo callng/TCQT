@@ -1,8 +1,7 @@
 package com.owo233.tcqt.utils.api
 
-import com.owo233.tcqt.ext.toHexString
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.log.Log
 import com.tencent.biz.ProtoServlet
 import com.tencent.common.app.BaseApplicationImpl
 import com.tencent.mobileqq.data.troop.TroopInfo
@@ -25,8 +24,12 @@ internal object GroupService {
 
     fun setGroupShutUp(groupId: String, isEnable: Boolean) {
         service.setGroupShutUp(groupId.toLong(), isEnable) { errCode, errMsg ->
+            val sucMsg = if (isEnable) "已开启全员禁言" else "已关闭全员禁言"
+            val failMsg = if (isEnable) "开启全员禁言失败" else "关闭全员禁言失败"
             if (errCode != 0) {
-                Log.e("setGroupShutUp: errCode: $errCode, errMsg: $errMsg")
+                Toasts.error("$failMsg, $errMsg ($errCode)")
+            } else {
+                Toasts.success(sucMsg)
             }
         }
     }
@@ -40,8 +43,12 @@ internal object GroupService {
         )
 
         service.setMemberShutUp(groupId.toLong(), info) { errCode, errMsg ->
+            val sucMsg = if (time > 0) "设置禁言成功" else "取消禁言成功"
+            val failMsg = if (time > 0) "设置禁言失败" else "取消禁言失败"
             if (errCode != 0) {
-                Log.e("setMemberShutUp: errCode: $errCode, errMsg: $errMsg")
+                Toasts.error("$failMsg, $errMsg ($errCode)")
+            } else {
+                Toasts.success(sucMsg)
             }
         }
     }
@@ -53,8 +60,12 @@ internal object GroupService {
             getUidFromUin(uin),
             role
         ) { errCode, errMsg ->
+            val sucMsg = if (isEnable) "设置管理员身份成功" else "取消管理员身份成功"
+            val failMsg = if (isEnable) "设置管理员身份失败" else "取消管理员身份失败"
             if (errCode != 0) {
-                Log.e("modifyMemberRole: errCode: $errCode, errMsg: $errMsg")
+                Toasts.error("$failMsg, $errMsg ($errCode)")
+            } else {
+                Toasts.success(sucMsg)
             }
         }
     }
@@ -68,8 +79,12 @@ internal object GroupService {
             isBlock,
             ""
         ) { errCode, errMsg, _ ->
+            val sucMsg = if (isBlock) "已踢出并拉黑" else "已踢出"
+            val failMsg = if (isBlock) "踢出并拉黑失败" else "踢出失败"
             if (errCode != 0) {
-                Log.e("kickMember: errCode: $errCode, errMsg: $errMsg")
+                Toasts.error("$failMsg, $errMsg ($errCode)")
+            } else {
+                Toasts.success(sucMsg)
             }
         }
     }
@@ -80,8 +95,12 @@ internal object GroupService {
             getUidFromUin(uin),
             name
         ) { errCode, errMsg ->
+            val sucMsg = "修改名片成功"
+            val failMsg = "修改名片失败"
             if (errCode != 0) {
-                Log.e("modifyMemberCardName: errCode: $errCode, errMsg: $errMsg")
+                Toasts.error("$failMsg, $errMsg ($errCode)")
+            } else {
+                Toasts.success(sucMsg)
             }
         }
     }
@@ -113,10 +132,12 @@ internal object GroupService {
             this.putExtra("cmd", "OidbSvc.0x8fc_2")
             this.putExtra("data", oIDBSSOPkg.toByteArray())
             this.setObserver { _, isSuccess, extras ->
-                if (isSuccess && extras != null) {
-                    Log.d("setMemberTitle data: ${extras.getByteArray("data").toHexString()}")
+                val sucMsg = "设置头衔成功"
+                val failMsg = "设置头衔失败"
+                if (isSuccess && extras != null && extras.getByteArray("data") != null) {
+                    Toasts.success(sucMsg)
                 } else {
-                    Log.e("setMemberTitle: 设置群成员头衔失败")
+                    Toasts.error(failMsg)
                 }
             }
         }
