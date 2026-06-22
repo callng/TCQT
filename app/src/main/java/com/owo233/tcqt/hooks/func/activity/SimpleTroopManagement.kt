@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -164,7 +166,9 @@ class SimpleTroopManagement : IAction, DexKitTask {
     ) {
         val troopUin = msgRecord.peerUin.toString()
         val memberUin = msgRecord.senderUin.toString()
+        val memberUid = msgRecord.senderUid.toString()
         val nick = msgRecord.sendMemberName.ifEmpty { msgRecord.sendNickName }
+        val uniqueTitle = msgRecord.msgAttrs[2]?.groupHonor?.uniqueTitle ?: ""
 
         fun dismissAndRun(dismiss: () -> Unit, action: () -> Unit) {
             dismiss()
@@ -175,6 +179,8 @@ class SimpleTroopManagement : IAction, DexKitTask {
             TroopManagementContent(
                 memberUin = memberUin,
                 memberNick = nick,
+                uniqueTitle = uniqueTitle,
+                memberUid = memberUid,
                 currentUserIsOwner = currentUserIsOwner,
                 currentUserIsAdmin = currentUserIsAdmin,
                 isTargetOwner = isTargetOwner,
@@ -477,6 +483,8 @@ sealed interface MenuState {
 internal fun TroopManagementContent(
     memberUin: String,
     memberNick: String,
+    uniqueTitle: String,
+    memberUid: String,
     currentUserIsOwner: Boolean,
     currentUserIsAdmin: Boolean,
     isTargetOwner: Boolean,
@@ -516,6 +524,7 @@ internal fun TroopManagementContent(
                 MainMenuView(
                     memberUin = memberUin,
                     memberNick = memberNick,
+                    memberUid = memberUid,
                     currentUserIsOwner = currentUserIsOwner,
                     currentUserIsAdmin = currentUserIsAdmin,
                     isTargetOwner = isTargetOwner,
@@ -540,7 +549,7 @@ internal fun TroopManagementContent(
                             title = "设置群头衔",
                             label = "专属头衔",
                             hint = "请输入专属头衔",
-                            initialValue = "",
+                            initialValue = uniqueTitle,
                             keyboardType = KeyboardType.Text,
                             onConfirm = onSetTitle
                         )
@@ -606,6 +615,7 @@ internal fun TroopManagementContent(
 private fun MainMenuView(
     memberUin: String,
     memberNick: String,
+    memberUid: String,
     currentUserIsOwner: Boolean,
     currentUserIsAdmin: Boolean,
     isTargetOwner: Boolean,
@@ -698,14 +708,19 @@ private fun MainMenuView(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        InfoRow(label = "QQ", value = memberUin) {
+        InfoRow(label = "senderUin", value = memberUin) {
             context.copyToClipboard(memberUin, false)
-            Toasts.success("已复制QQ: $memberUin")
+            Toasts.success("已复制senderUin")
         }
         Spacer(modifier = Modifier.height(8.dp))
-        InfoRow(label = "昵称", value = memberNick) {
+        InfoRow(label = "senderUid", value = memberUid) {
+            context.copyToClipboard(memberUid, false)
+            Toasts.success("senderUid")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        InfoRow(label = "sendNickName", value = memberNick) {
             context.copyToClipboard(memberNick, false)
-            Toasts.success("已复制昵称: $memberNick")
+            Toasts.success("已复制sendNickName")
         }
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -747,19 +762,24 @@ private fun InputMenuView(
     onConfirm: (String) -> Unit
 ) {
     var text by remember { mutableStateOf(initialValue) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp)
             .navigationBarsPadding()
+            .imePadding()
+            .padding(24.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(
-                onClick = onBack,
+                onClick = {
+                    keyboardController?.hide()
+                    onBack()
+                },
                 contentPadding = PaddingValues(horizontal = 8.dp)
             ) {
                 Text("返回", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -794,7 +814,10 @@ private fun InputMenuView(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { onConfirm(text) },
+            onClick = {
+                keyboardController?.hide()
+                onConfirm(text)
+            },
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
