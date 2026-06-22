@@ -1,22 +1,31 @@
 package com.owo233.tcqt.utils.api
 
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.Toasts
+import com.owo233.tcqt.hooks.base.hostFunction2
+import com.owo233.tcqt.hooks.base.hostUnit
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.hook.paramCount
 import com.tencent.biz.ProtoServlet
 import com.tencent.common.app.BaseApplicationImpl
-import com.tencent.mobileqq.data.troop.TroopInfo
 import com.tencent.mobileqq.pb.ByteStringMicro
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.mobileqq.troop.api.IBizTroopMemberInfoService
-import com.tencent.mobileqq.troop.api.ITroopInfoService
 import com.tencent.qqnt.kernel.nativeinterface.GroupMemberShutUpInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
+import com.tencent.qqnt.troopmemberlist.ITroopMemberExtInfoRepoApi
+import com.tencent.qqnt.troopmemberlist.impl.TroopMemberExtInfoRepoApiImpl
 import com.tencent.relation.common.api.IRelationNTUinAndUidApi
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import mqq.app.NewIntent
 import mqq.app.api.IRuntimeService
 import tencent.im.oidb.cmd0x8fc.Oidb_0x8fc
 import tencent.im.oidb.oidb_sso
+import java.lang.reflect.Proxy
+import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.seconds
 
 internal object GroupService {
 
@@ -145,16 +154,74 @@ internal object GroupService {
         QQInterfaces.appRuntime.startServlet(newIntent)
     }
 
-    fun getGroupInfo(groupId: String): TroopInfo {
-        return runtime<ITroopInfoService>().getTroopInfo(groupId)
+    suspend fun isOwnerOrAdmin(groupId: String, uin: String): Boolean {
+        return fetchTroopAdmin(groupId).contains(uin)
+    }
+
+    suspend fun isOwner(groupId: String, uin: String): Boolean {
+        return fetchTroopOwner(groupId).contains(uin)
+    }
+
+    suspend fun isAdmin(groupId: String, uin: String): Boolean {
+        val adminList = fetchTroopAdmin(groupId)
+        val ownerList = fetchTroopOwner(groupId)
+        val pureAdminList = adminList - ownerList.toSet()
+        return pureAdminList.contains(uin)
+    }
+
+    suspend fun fetchTroopAdmin(groupId: String) =
+        fetchTroopMemberList(groupId, "fetchTroopAdmin")
+
+    suspend fun fetchTroopOwner(groupId: String) =
+        fetchTroopMemberList(groupId, "fetchTroopOwner")
+
+    private suspend fun fetchTroopMemberList(
+        groupId: String,
+        methodName: String
+    ): List<String> {
+        val result = withTimeoutOrNull(5.seconds) {
+            suspendCancellableCoroutine { cont ->
+                val callback = Proxy.newProxyInstance(
+                    HookEnv.hostClassLoader,
+                    arrayOf(hostFunction2)
+                ) { _, method, args ->
+                    if (method.name == "invoke" && args?.isNotEmpty() == true) {
+                        @Suppress("UNCHECKED_CAST")
+                        if (args[0] as? Boolean == true) {
+                            (args[1] as? List<String>)
+                                ?.takeIf { cont.isActive }
+                                ?.also { cont.resume(it) }
+                        } else {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    }
+                    hostUnit
+                }
+
+                runCatching {
+                    TroopMemberExtInfoRepoApiImpl::class.java
+                        .declaredMethods.first { it.name == methodName && it.paramCount == 3 }
+                        .invoke(
+                            api<ITroopMemberExtInfoRepoApi>(),
+                            groupId,
+                            null,
+                            callback
+                        )
+                }.onFailure {
+                    if (cont.isActive) cont.resume(null)
+                }
+            }
+        }
+
+        return result ?: listOf()
     }
 
     fun getUidFromUin(uin: String): String {
-        return api<IRelationNTUinAndUidApi>().getUinFromUid(uin)
+        return api<IRelationNTUinAndUidApi>().getUidFromUin(uin)
     }
 
     fun getUinFromUid(uid: String): String {
-        return api<IRelationNTUinAndUidApi>().getUidFromUin(uid)
+        return api<IRelationNTUinAndUidApi>().getUinFromUid(uid)
     }
 
     private inline fun <reified T : QRouteApi> api(): T {

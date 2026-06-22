@@ -3,6 +3,7 @@
 package com.owo233.tcqt.hooks.base
 
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.utils.reflect.field
 import com.tencent.common.app.BaseApplicationImpl
 import com.tencent.mobileqq.pluginsdk.PluginStatic
 
@@ -64,3 +65,9 @@ val String.clazz: Class<*>?
 
 val String.toClass: Class<*>
     get() = loadOrThrow(this)
+
+val hostUnit: Any = "kotlin.Unit".toClass.field("INSTANCE", false)!!.get(null)!!
+
+val hostFunction1 = "kotlin.jvm.functions.Function1".toClass
+
+val hostFunction2 = "kotlin.jvm.functions.Function2".toClass

@@ -78,6 +78,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.ext.copyToClipboard
+import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.Chain
@@ -118,14 +119,34 @@ class SimpleTroopManagement : IAction, DexKitTask {
 
             if (msgRecord.chatType != 2) return@hookReplace param.invokeOriginal()
 
-            /*
-            val groupId = msgRecord.peerUin.toString()
-            val troopInfo = GroupService.getGroupInfo(groupId)
-            if (!troopInfo.isOwnerOrAdmin) return@hookReplace param.invokeOriginal()
-            */
+            ModuleScope.launchWithCatch {
+                val currentUin = QQInterfaces.currentUin
+                val groupId = msgRecord.peerUin.toString()
+                val senderUin = msgRecord.senderUin.toString()
 
-            ModuleScope.launchMain {
-                showManagementSheet(view.context as Activity, msgRecord, param)
+                val adminList = GroupService.fetchTroopAdmin(groupId)
+                if (!adminList.contains(currentUin)) {
+                    param.invokeOriginal()
+                } else {
+                    val ownerList = GroupService.fetchTroopOwner(groupId)
+
+                    val currentUserIsOwner = ownerList.contains(currentUin)
+                    val currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
+                    val isTargetOwner = ownerList.contains(senderUin)
+                    val isTargetAdmin = adminList.contains(senderUin) && !isTargetOwner
+
+                    ModuleScope.launchMain {
+                        showManagementSheet(
+                            view.context as Activity,
+                            msgRecord,
+                            param,
+                            currentUserIsOwner,
+                            currentUserIsAdmin,
+                            isTargetOwner,
+                            isTargetAdmin
+                        )
+                    }
+                }
             }
 
             return@hookReplace null
@@ -135,7 +156,11 @@ class SimpleTroopManagement : IAction, DexKitTask {
     private fun showManagementSheet(
         activity: Activity,
         msgRecord: MsgRecord,
-        param: Chain
+        param: Chain,
+        currentUserIsOwner: Boolean,
+        currentUserIsAdmin: Boolean,
+        isTargetOwner: Boolean,
+        isTargetAdmin: Boolean,
     ) {
         val troopUin = msgRecord.peerUin.toString()
         val memberUin = msgRecord.senderUin.toString()
@@ -150,6 +175,10 @@ class SimpleTroopManagement : IAction, DexKitTask {
             TroopManagementContent(
                 memberUin = memberUin,
                 memberNick = nick,
+                currentUserIsOwner = currentUserIsOwner,
+                currentUserIsAdmin = currentUserIsAdmin,
+                isTargetOwner = isTargetOwner,
+                isTargetAdmin = isTargetAdmin,
                 onEnterProfile = {
                     dismissAndRun(dismiss) {
                         param.invokeOriginal()
@@ -262,8 +291,9 @@ abstract class CompatibleComposeDialog(
 ) : Dialog(context.toCompatibleContext(), android.R.style.Theme_Material_Light_NoActionBar) {
 
     private val dialogLifecycleOwner = TCQTDialogLifecycleOwner()
-    protected var isVisible by mutableStateOf(true)
+    protected var isVisible by mutableStateOf(false)
     private var composeView: ComposeView? = null
+    private var isDismissing = false
 
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -289,8 +319,13 @@ abstract class CompatibleComposeDialog(
             setBackgroundDrawable(AndroidColor.TRANSPARENT.toDrawable())
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setGravity(Gravity.CENTER)
-            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setDimAmount(0.4f)
+            
+            // Clear default window dimming to draw and fade the dim background ourselves in Compose
+            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            
+            // Remove default window animations to prevent conflicts with Compose transitions
+            setWindowAnimations(0)
+            
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
     }
@@ -314,6 +349,9 @@ abstract class CompatibleComposeDialog(
         composeView?.setContent {
             CompositionLocalProvider(LocalLifecycleOwner provides dialogLifecycleOwner) {
                 SettingTheme(darkTheme = HookEnv.isNightMode(), dynamicColor = false) {
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        isVisible = true
+                    }
                     DialogContent()
                 }
             }
@@ -324,10 +362,7 @@ abstract class CompatibleComposeDialog(
     protected abstract fun DialogContent()
 
     protected fun dismissWithAnimation() {
-        isVisible = false
-        window?.decorView?.postDelayed({
-            dismiss()
-        }, 200)
+        dismiss()
     }
 
     override fun onStart() {
@@ -344,8 +379,16 @@ abstract class CompatibleComposeDialog(
     }
 
     override fun dismiss() {
-        composeView = null
-        super.dismiss()
+        if (!isDismissing) {
+            isDismissing = true
+            isVisible = false
+            window?.decorView?.postDelayed({
+                super.dismiss()
+            }, 300)
+        } else {
+            composeView = null
+            super.dismiss()
+        }
     }
 }
 
@@ -377,12 +420,13 @@ private fun TCQTBottomDialogWrapper(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(200)),
-        exit = fadeOut(tween(200))
+        enter = fadeIn(tween(300)),
+        exit = fadeOut(tween(250))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -393,7 +437,7 @@ private fun TCQTBottomDialogWrapper(
             AnimatedVisibility(
                 visible = visible,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(200)),
-                exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(150))
+                exit = slideOutVertically(tween(280)) { it } + fadeOut(tween(150))
             ) {
                 Box(
                     modifier = Modifier
@@ -433,6 +477,10 @@ sealed interface MenuState {
 internal fun TroopManagementContent(
     memberUin: String,
     memberNick: String,
+    currentUserIsOwner: Boolean,
+    currentUserIsAdmin: Boolean,
+    isTargetOwner: Boolean,
+    isTargetAdmin: Boolean,
     onEnterProfile: () -> Unit,
     onRecall: () -> Unit,
     onSetAdmin: () -> Unit,
@@ -468,6 +516,10 @@ internal fun TroopManagementContent(
                 MainMenuView(
                     memberUin = memberUin,
                     memberNick = memberNick,
+                    currentUserIsOwner = currentUserIsOwner,
+                    currentUserIsAdmin = currentUserIsAdmin,
+                    isTargetOwner = isTargetOwner,
+                    isTargetAdmin = isTargetAdmin,
                     onEnterProfile = onEnterProfile,
                     onRecall = onRecall,
                     onSetAdmin = onSetAdmin,
@@ -554,6 +606,10 @@ internal fun TroopManagementContent(
 private fun MainMenuView(
     memberUin: String,
     memberNick: String,
+    currentUserIsOwner: Boolean,
+    currentUserIsAdmin: Boolean,
+    isTargetOwner: Boolean,
+    isTargetAdmin: Boolean,
     onEnterProfile: () -> Unit,
     onRecall: () -> Unit,
     onSetAdmin: () -> Unit,
@@ -577,21 +633,54 @@ private fun MainMenuView(
     val managementButtons = remember(
         customPrimary,
         customError,
-        customGreen
+        customGreen,
+        currentUserIsOwner,
+        currentUserIsAdmin,
+        isTargetOwner,
+        isTargetAdmin
     ) {
         buildList {
             add(ManagementButtonData("打开资料页", customPrimary, onEnterProfile))
-            add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
-            add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
-            add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
-            add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
-            add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
-            add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
-            add(ManagementButtonData("修改名片", customPrimary, onSetCard))
-            add(ManagementButtonData("踢出本群", customError, onKick))
-            add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
-            add(ManagementButtonData("全员禁言", customError, onMuteAll))
-            add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
+
+            val canRecall = currentUserIsOwner || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
+            if (canRecall) {
+                add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
+            }
+
+            if (currentUserIsOwner && !isTargetOwner) {
+                if (isTargetAdmin) {
+                    add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
+                } else {
+                    add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
+                }
+            }
+
+            val canMute = (currentUserIsOwner && !isTargetOwner) || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
+            if (canMute) {
+                add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
+                add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
+            }
+
+            if (currentUserIsOwner) {
+                add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
+            }
+
+            val canEditCard = currentUserIsOwner || currentUserIsAdmin
+            if (canEditCard) {
+                add(ManagementButtonData("修改名片", customPrimary, onSetCard))
+            }
+
+            val canKick = (currentUserIsOwner && !isTargetOwner) || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
+            if (canKick) {
+                add(ManagementButtonData("踢出本群", customError, onKick))
+                add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
+            }
+
+            val canShutUp = currentUserIsOwner || currentUserIsAdmin
+            if (canShutUp) {
+                add(ManagementButtonData("全员禁言", customError, onMuteAll))
+                add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
+            }
         }
     }
 
