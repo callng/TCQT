@@ -6,12 +6,13 @@ import com.owo233.tcqt.hooks.base.hostFunction2
 import com.owo233.tcqt.hooks.base.hostUnit
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.paramCount
-import com.tencent.biz.ProtoServlet
-import com.tencent.common.app.BaseApplicationImpl
-import com.tencent.mobileqq.pb.ByteStringMicro
+import com.owo233.tcqt.utils.proto2json.ProtoMap
+import com.tencent.mobileqq.data.troop.TroopInfo
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.mobileqq.troop.api.IBizTroopMemberInfoService
+import com.tencent.mobileqq.troop.api.ITroopInfoService
+import com.tencent.qphone.base.remote.ToServiceMsg
 import com.tencent.qqnt.kernel.nativeinterface.GroupMemberShutUpInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
 import com.tencent.qqnt.troopmemberlist.ITroopMemberExtInfoRepoApi
@@ -19,11 +20,10 @@ import com.tencent.qqnt.troopmemberlist.impl.TroopMemberExtInfoRepoApiImpl
 import com.tencent.relation.common.api.IRelationNTUinAndUidApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import mqq.app.NewIntent
 import mqq.app.api.IRuntimeService
-import tencent.im.oidb.cmd0x8fc.Oidb_0x8fc
-import tencent.im.oidb.oidb_sso
+import java.io.ByteArrayOutputStream
 import java.lang.reflect.Proxy
+import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
@@ -63,7 +63,38 @@ internal object GroupService {
     }
 
     fun modifyMemberRole(groupId: String, uin: String, isEnable: Boolean) {
+        if (HookEnv.isTim()) {
+            ToServiceMsg(
+                "mobileqq.service",
+                QQInterfaces.currentUin,
+                "OidbSvc.0x55c_1"
+            ).apply {
+                putWupBuffer(ByteArrayOutputStream().apply {
+                    write(0x08)
+                    write(0xDC)
+                    write(0x0A)
+                    write(0x10)
+                    write(0x01)
+                    write(0x22)
+                    write(0x09)
+                    write(ByteBuffer.allocate(9).apply {
+                        putInt(groupId.toLong().toInt())
+                        putInt(uin.toLong().toInt())
+                        put((if (isEnable) 1 else 0).toByte())
+                    }.array())
+                }.toByteArray())
+                addAttribute("req_pb_protocol_flag", true)
+            }.also {
+                QQInterfaces.appRuntime.sendToService(it)
+                val sucMsg = if (isEnable) "设置管理员身份成功" else "取消管理员身份成功"
+                Toasts.success(sucMsg)
+            }
+
+            return
+        }
+
         val role = if (isEnable) MemberRole.ADMIN else MemberRole.MEMBER
+
         service.modifyMemberRole(
             groupId.toLong(),
             getUidFromUin(uin),
@@ -118,55 +149,29 @@ internal object GroupService {
         val troopMemberNickNoEmpty =
             runtime<IBizTroopMemberInfoService>().getTroopMemberNickNoEmpty(groupId, uin)
 
-        val reqBody = Oidb_0x8fc.ReqBody().apply {
-            this.uint64_group_code.set(groupId.toLong())
-            this.rpt_mem_level_info.add(
-                Oidb_0x8fc.MemberInfo().apply {
-                    this.uint64_uin.set(uin.toLong())
-                    this.bytes_uin_name.set(ByteStringMicro.copyFromUtf8(troopMemberNickNoEmpty))
-                    this.bytes_special_title.set(ByteStringMicro.copyFromUtf8(title))
-                    this.uint32_special_title_expire_time.set(-1) // 过期时间 -1 表示永久有效
-                }
-            )
-        }
-        val oIDBSSOPkg = oidb_sso.OIDBSSOPkg().apply {
-            this.uint32_command.set(2300)
-            this.uint32_service_type.set(2)
-            this.bytes_bodybuffer.set(ByteStringMicro.copyFrom(reqBody.toByteArray()))
-        }
-        val newIntent = NewIntent(
-            BaseApplicationImpl.sApplication,
-            ProtoServlet::class.java
+        ToServiceMsg(
+            "mobileqq.service",
+            QQInterfaces.currentUin,
+            "OidbSvc.0x8fc_2"
         ).apply {
-            this.putExtra("cmd", "OidbSvc.0x8fc_2")
-            this.putExtra("data", oIDBSSOPkg.toByteArray())
-            this.setObserver { _, isSuccess, extras ->
-                val sucMsg = "设置头衔成功"
-                val failMsg = "设置头衔失败"
-                if (isSuccess && extras != null && extras.getByteArray("data") != null) {
-                    Toasts.success(sucMsg)
-                } else {
-                    Toasts.error(failMsg)
-                }
-            }
+            putWupBuffer(ProtoMap().apply {
+                this[1] = 2300
+                this[2] = 2
+                this[4, 1] = groupId.toLong()
+                this[4, 3, 1] = uin.toLong()
+                this[4, 3, 5] = title
+                this[4, 3, 6] = 4294967295L
+                this[4, 3, 7] = troopMemberNickNoEmpty
+            }.toByteArray())
+            addAttribute("req_pb_protocol_flag", true)
+        }.also {
+            QQInterfaces.appRuntime.sendToService(it)
+            Toasts.success("设置头衔成功")
         }
-
-        QQInterfaces.appRuntime.startServlet(newIntent)
     }
 
-    suspend fun isOwnerOrAdmin(groupId: String, uin: String): Boolean {
-        return fetchTroopAdmin(groupId).contains(uin)
-    }
-
-    suspend fun isOwner(groupId: String, uin: String): Boolean {
-        return fetchTroopOwner(groupId).contains(uin)
-    }
-
-    suspend fun isAdmin(groupId: String, uin: String): Boolean {
-        val adminList = fetchTroopAdmin(groupId)
-        val ownerList = fetchTroopOwner(groupId)
-        val pureAdminList = adminList - ownerList.toSet()
-        return pureAdminList.contains(uin)
+    fun getGroupInfo(groupId: String): TroopInfo {
+        return runtime<ITroopInfoService>().getTroopInfo(groupId)
     }
 
     suspend fun fetchTroopAdmin(groupId: String) =

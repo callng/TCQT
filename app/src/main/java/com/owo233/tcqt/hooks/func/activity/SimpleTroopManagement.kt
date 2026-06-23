@@ -112,10 +112,8 @@ class SimpleTroopManagement : IAction, DexKitTask {
             "onClick",
             View::class.java
         ).hookReplace { param ->
-            val thisObject = param.thisObject
             val view = param.args[0] as View
-
-            val component = thisObject.getObjectByType<AIOAvatarContentComponent>()
+            val component = param.thisObject.getObjectByType<AIOAvatarContentComponent>()
             val msgItem = component.getObjectByType<AIOMsgItem>()
             val msgRecord = msgItem.msgRecord
 
@@ -126,28 +124,56 @@ class SimpleTroopManagement : IAction, DexKitTask {
                 val groupId = msgRecord.peerUin.toString()
                 val senderUin = msgRecord.senderUin.toString()
 
-                val adminList = GroupService.fetchTroopAdmin(groupId)
-                if (!adminList.contains(currentUin)) {
-                    param.invokeOriginal()
-                } else {
-                    val ownerList = GroupService.fetchTroopOwner(groupId)
+                val currentUserIsOwner: Boolean
+                val currentUserIsAdmin: Boolean
+                val isTargetOwner: Boolean
+                val isTargetAdmin: Boolean
 
-                    val currentUserIsOwner = ownerList.contains(currentUin)
-                    val currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
-                    val isTargetOwner = ownerList.contains(senderUin)
-                    val isTargetAdmin = adminList.contains(senderUin) && !isTargetOwner
+                val hasPermission = when {
+                    HookEnv.isQQ() -> {
+                        val adminList = GroupService.fetchTroopAdmin(groupId)
+                        val ownerList = GroupService.fetchTroopOwner(groupId)
 
-                    ModuleScope.launchMain {
-                        showManagementSheet(
-                            view.context as Activity,
-                            msgRecord,
-                            param,
-                            currentUserIsOwner,
-                            currentUserIsAdmin,
-                            isTargetOwner,
-                            isTargetAdmin
-                        )
+                        currentUserIsOwner = ownerList.contains(currentUin)
+                        currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
+                        isTargetOwner = ownerList.contains(senderUin)
+                        isTargetAdmin = adminList.contains(senderUin) && !isTargetOwner
+
+                        adminList.contains(currentUin)
                     }
+
+                    HookEnv.isTim() -> {
+                        val groupInfo = GroupService.getGroupInfo(groupId)
+
+                        currentUserIsOwner = true
+                        currentUserIsAdmin = false
+                        isTargetOwner = false
+                        isTargetAdmin = false
+
+                        groupInfo.isOwnerOrAdmin
+                    }
+
+                    else -> {
+                        param.invokeOriginal()
+                        return@launchWithCatch
+                    }
+                }
+
+                if (!hasPermission) {
+                    param.invokeOriginal()
+                    return@launchWithCatch
+                }
+
+                ModuleScope.launchMain {
+                    showManagementSheet(
+                        view.context as Activity,
+                        msgRecord,
+                        param,
+                        currentUserIsOwner,
+                        currentUserIsAdmin,
+                        isTargetOwner,
+                        isTargetAdmin
+                    )
                 }
             }
 
@@ -658,11 +684,11 @@ private fun MainMenuView(
             }
 
             if (currentUserIsOwner && !isTargetOwner) {
-                if (isTargetAdmin) {
-                    add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
-                } else {
-                    add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
-                }
+                val showSetAdmin = if (HookEnv.isQQ()) !isTargetAdmin else true
+                val showCancelAdmin = if (HookEnv.isQQ()) isTargetAdmin else true
+
+                if (showSetAdmin) add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
+                if (showCancelAdmin) add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
             }
 
             val canMute = (currentUserIsOwner && !isTargetOwner) || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)

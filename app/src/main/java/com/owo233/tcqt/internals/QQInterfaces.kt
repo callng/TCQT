@@ -10,19 +10,20 @@ import com.owo233.tcqt.internals.helper.GuidHelper
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.context.ContextUtils
+import com.tencent.common.app.AppInterface
 import com.tencent.mobileqq.app.QBaseActivity
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.IKernelGroupService
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
-import mqq.app.AppRuntime
 import mqq.app.Foreground
 import mqq.app.MobileQQ
 
 open class QQInterfaces {
 
     companion object {
-        val appRuntime: AppRuntime get() = MobileQQ.getMobileQQ().waitAppRuntime(null)
+        val appRuntime: AppInterface
+            get() = MobileQQ.getMobileQQ().waitAppRuntime(null) as AppInterface
 
         val context: Context get() = QRoute.api(IAccountRuntime::class.java).applicationContext
 

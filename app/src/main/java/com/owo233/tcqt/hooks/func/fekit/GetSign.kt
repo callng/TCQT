@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -101,10 +102,13 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                 val sign = intent.getStringExtra("sign") ?: return
                 val error = intent.getStringExtra("error")
                 SyncUtils.runOnUiThread {
-                    if (error != null) {
-                        pendingEditText?.setText("签名获取失败: $error")
-                    } else {
-                        pendingEditText?.setText("${HookEnv.versionName} $sign")
+                    val target = pendingEditText ?: getActiveEditText()
+                    if (target != null) {
+                        if (error != null) {
+                            target.setText("签名获取失败: $error")
+                        } else {
+                            target.setText("${HookEnv.versionName} $sign")
+                        }
                     }
                     pendingEditText = null
                 }
@@ -186,6 +190,26 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
             }
         }
     )
+
+    private fun getActiveEditText(): EditText? {
+        val activity = runCatching { QQInterfaces.topActivity }.getOrNull() ?: return null
+        val decorView = activity.window?.decorView ?: return null
+        return findAioEditText(decorView)
+    }
+
+    private fun findAioEditText(view: View): EditText? {
+        if (view is EditText && view.isShown) {
+            return view
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val child = view.getChildAt(i)
+                val res = findAioEditText(child)
+                if (res != null) return res
+            }
+        }
+        return null
+    }
 
     private fun createToServiceMsg(cmd: String = "MessageSvc.PbSendMsg", uin: String): ToServiceMsg {
         return ToServiceMsg("mobileqq.service", uin, cmd)

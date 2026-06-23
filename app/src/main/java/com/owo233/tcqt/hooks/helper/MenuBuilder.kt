@@ -55,11 +55,9 @@ class MenuBuilder : AlwaysRunAction() {
             .groupBy({ it.first }, { it.second })
 
         decoratorMap.keys.forEach { target ->
-            val targetClass = load(target)
-            if (targetClass == null) {
-                Log.e("MenuBuilder skip missing component: $target")
+            val targetClass =
+                load(target) ?: // Log.e("MenuBuilder skip missing component: $target")
                 return@forEach
-            }
 
             val listMethod = targetClass.declaredMethods
                 .firstOrNull { it.name == listMethodName && it.paramCount == 0 }

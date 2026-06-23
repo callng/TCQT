@@ -7,6 +7,7 @@
 package com.owo233.tcqt.hooks.func.theme
 
 import android.os.Build
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.proto2json.ProtoByteString
@@ -37,14 +38,18 @@ internal object ThemeEngine {
     }
 
     fun applyThemeLogic(themeId: String, callback: IThemeCallback?) {
-        val session = ThemeSession(
-            id = themeId.trim(),
-            callback = callback ?: IThemeCallback {}
-        )
-        if (ThemeSwitcher.getRoamingThemeId() != THEME_SLOT) {
-            setRoamingTheme()
+        if (HookEnv.isQQ()) {
+            val session = ThemeSession(
+                id = themeId.trim(),
+                callback = callback ?: IThemeCallback {}
+            )
+            if (ThemeSwitcher.getRoamingThemeId() != THEME_SLOT) {
+                setRoamingTheme()
+            }
+            dispatchPacket(session, "theme.${session.id}", 101)
+        } else {
+            callback?.onFinish(false)
         }
-        dispatchPacket(session, "theme.${session.id}", 101)
     }
 
     private fun setRoamingTheme(tid: String = THEME_SLOT) {
