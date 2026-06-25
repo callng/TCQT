@@ -6,8 +6,12 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.utils.hook.hookBefore
+import com.owo233.tcqt.utils.hook.paramCount
 import com.owo233.tcqt.utils.reflect.findMethod
+import com.owo233.tcqt.utils.reflect.getObjectByType
+import com.owo233.tcqt.utils.reflect.setObjectByType
 import com.tencent.mobileqq.data.troop.TroopInfo
+import com.tencent.mobileqq.troop.troopsetting.vm.TroopSettingViewModel
 
 @RegisterAction
 class AllowOpenBlockedGroup : IAction {
@@ -34,6 +38,17 @@ class AllowOpenBlockedGroup : IAction {
                 returnType = boolean
             }.hookBefore { param ->
                 param.result = false
+            }
+        }
+
+        TroopSettingViewModel::class.java.declaredMethods.single { m ->
+            m.paramCount == 3 &&
+            m.parameterTypes[0] == m.declaringClass &&
+            m.parameterTypes[1] == String::class.java &&
+            m.parameterTypes[2].simpleName != "TroopSearchWay"
+        }.hookBefore { param ->
+            if (param.args[2]!!.getObjectByType<Int>() == 72) { // 群已解散/已不是群成员
+                param.args[2]!!.setObjectByType<Int>(0)
             }
         }
     }
