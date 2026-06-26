@@ -25,9 +25,39 @@ internal object DexKitFinder {
 
     private var unhook: Unhook? = null
 
+    private val allTasks: List<DexKitTask> by lazy {
+        GeneratedActionList.ACTIONS
+            .filter { DexKitTask::class.java.isAssignableFrom(it) }
+            .mapNotNull { clazz ->
+                runCatching { clazz.new() as? DexKitTask }.getOrNull()
+            }
+    }
+
     fun doFind() {
         if (ProcUtil.isMain && initDexKit()) {
             showFindToast()
+        }
+    }
+
+    fun needsFind(): Boolean {
+        return getMissingKeys().isNotEmpty()
+    }
+
+    fun getMissingKeys(): Set<String> {
+        val allKeys = getAllTaskKeys()
+        return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
+    }
+
+    private fun getAllTaskKeys(): Set<String> {
+        return allTasks
+            .flatMap { it.getQueryMap().keys }
+            .toSet()
+    }
+
+    private fun getTasks(missingKeys: Set<String>? = null): List<DexKitTask> {
+        return allTasks.let { allTasks ->
+            if (missingKeys.isNullOrEmpty()) allTasks
+            else allTasks.filter { task -> task.getQueryMap().keys.any { it in missingKeys } }
         }
     }
 
@@ -44,17 +74,11 @@ internal object DexKitFinder {
         unhook?.unhook().also { unhook = null }
 
         ModuleScope.launchIO(TAG) {
-            val tasks = GeneratedActionList.ACTIONS
-                .filter { clazz -> DexKitTask::class.java.isAssignableFrom(clazz) }
-                .mapNotNull { clazz ->
-                    runCatching {
-                        clazz.new() as? DexKitTask
-                    }.getOrNull()
-                }
-                .toMutableList()
+            val missingKeys = getAllTaskKeys().filter { it !in DexKitCache.cacheMap }.toSet()
+            val tasks = getTasks(missingKeys)
 
             val oldCache = DexKitCache.cacheMap.toMap()
-            val newCache = mutableMapOf<String, String>()
+            val newCache = DexKitCache.cacheMap.toMutableMap()
 
             DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
                 tasks.forEach { task ->

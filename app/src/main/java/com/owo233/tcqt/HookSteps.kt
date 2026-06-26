@@ -53,7 +53,7 @@ internal object HookSteps {
         ResourcesUtils.injectResourcesToContext(app.resources)
     }
 
-    fun initHooks(app: Application, excludeDexKitTask: Boolean = false) {
+    fun initHooks(app: Application, missingDexKitKeys: Set<String>? = null) {
         if (ProcUtil.isMain) {
             Log.i(
                 """
@@ -79,7 +79,7 @@ internal object HookSteps {
                 ProcUtil.isQQFav -> ActionProcess.QQFAV
                 else -> ActionProcess.OTHER
             },
-            excludeDexKitTask
+            missingDexKitKeys
         )
     }
 

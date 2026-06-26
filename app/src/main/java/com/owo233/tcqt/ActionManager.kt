@@ -65,7 +65,7 @@ internal object ActionManager {
     fun runFirst(
         app: Application,
         proc: ActionProcess,
-        excludeDexKitTask: Boolean = false
+        missingDexKitKeys: Set<String>? = null
     ) {
         val baseProcs = setOf(
             ActionProcess.MSF,
@@ -77,8 +77,13 @@ internal object ActionManager {
         )
 
         FIRST_ACTION.forEach { actionClass ->
-            if (excludeDexKitTask && DexKitTask::class.java.isAssignableFrom(actionClass)) {
-                return@forEach
+            if (missingDexKitKeys != null && DexKitTask::class.java.isAssignableFrom(actionClass)) {
+                val dexKitTask = runCatching {
+                    instanceOf(actionClass) as? DexKitTask
+                }.getOrNull()
+                if (dexKitTask != null && dexKitTask.getQueryMap().keys.any { it in missingDexKitKeys }) {
+                    return@forEach
+                }
             }
 
             runCatching {
@@ -100,18 +105,6 @@ internal object ActionManager {
             }.onFailure { e ->
                 throw RuntimeException(e)
             }
-        }
-    }
-
-    fun getEnabledActionCount(): Int {
-        return getAllFeatures().count {
-            it.uiType == ActionUiType.SWITCH && TCQTSetting.getBoolean(it.key)
-        }
-    }
-
-    fun getDisabledActionCount(): Int {
-        return getAllFeatures().count {
-            it.uiType == ActionUiType.SWITCH && !TCQTSetting.getBoolean(it.key)
         }
     }
 

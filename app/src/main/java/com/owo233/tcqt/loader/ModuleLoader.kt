@@ -170,10 +170,13 @@ internal object ModuleLoader {
                         Log.e("Failed to pre-initialize coroutines Main dispatcher", it)
                     }
 
-                    if (DexKitCache.initCache()) {
+                    val cacheValid = DexKitCache.initCache()
+                    val needFind = !cacheValid || DexKitFinder.needsFind()
+
+                    if (!needFind) {
                         HookSteps.initHooks(app)
                     } else {
-                        HookSteps.initHooks(app, excludeDexKitTask = DexKitCache.cacheMap.isEmpty())
+                        HookSteps.initHooks(app, missingDexKitKeys = DexKitFinder.getMissingKeys())
                         DexKitFinder.doFind()
                     }
                 }
@@ -218,12 +221,15 @@ internal object ModuleLoader {
             }
         }
 
-        if (DexKitCache.initCache()) {
+        val cacheValid = DexKitCache.initCache()
+        val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
+
+        if (!needDexKitFind) {
             HookSteps.initHooks(state["hostApplication"] as Application)
         } else {
             HookSteps.initHooks(
                 state["hostApplication"] as Application,
-                excludeDexKitTask = DexKitCache.cacheMap.isEmpty()
+                missingDexKitKeys = DexKitFinder.getMissingKeys()
             )
             DexKitFinder.doFind()
         }
