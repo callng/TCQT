@@ -10,12 +10,13 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.ModuleScope
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.getObject
-import com.owo233.tcqt.utils.reflect.new
+import com.owo233.tcqt.utils.reflect.getStaticObject
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -70,24 +71,31 @@ class MultiSelectRecall : IAction {
     @OptIn(DelicateCoroutinesApi::class)
     @Suppress("UNCHECKED_CAST", "DEPRECATION")
     private fun performBatchRecall() {
-        val vm = multiSelectBarVM ?: return
-        val forward = Reflection.multiForwardClass.new()
-        val context = Reflection.getContext.invoke(vm)
-        val msgList = Reflection.getMsgList.invoke(forward, context) as List<AIOMsgItem>
+        runCatching {
+            val vm = multiSelectBarVM
+            val forward = Reflection.multiForwardClass.getStaticObject("a")
+            val context = Reflection.getContext.invoke(vm)
+            val msgList = Reflection.getMsgList.invoke(forward, context) as List<AIOMsgItem>
 
-        if (msgList.isEmpty()) return
+            if (msgList.isEmpty()) {
+                Toasts.error("AIOMsgItem is empty")
+                return
+            }
 
-        ModuleScope.launchIO {
-            val list = CopyOnWriteArrayList(msgList)
-            list.forEachIndexed { index, item ->
-                recallSingleItem(item)
-                if (index >= 10) {
-                    delay(300L.milliseconds)
+            ModuleScope.launchIO {
+                val list = CopyOnWriteArrayList(msgList)
+                list.forEachIndexed { index, item ->
+                    recallSingleItem(item)
+                    if (index >= 10) {
+                        delay(300L.milliseconds)
+                    }
                 }
             }
-        }
 
-        QQInterfaces.topActivity.onBackPressed()
+            QQInterfaces.topActivity.onBackPressed()
+        }.onFailure {
+            Log.e("performBatchRecall", it)
+        }
     }
 
     private fun recallSingleItem(msg: AIOMsgItem) {

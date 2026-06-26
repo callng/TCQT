@@ -41,13 +41,8 @@ interface IAction {
     operator fun invoke(app: Application, process: ActionProcess) {
         runCatching {
             if (canRun() && onInit()) {
-                com.owo233.tcqt.loader.api.HookEngineManager.currentTag.set(key)
-                try {
-                    onRun(app, process)
-                } finally {
-                    com.owo233.tcqt.loader.api.HookEngineManager.currentTag.remove()
-                }
-            } else return@runCatching
+                onRun(app, process)
+            }
         }.onFailure {
             Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
         }
