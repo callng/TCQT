@@ -11,6 +11,9 @@ internal object DexKitCache {
 
     var cacheMap = mutableMapOf<String, String>()
 
+    var isVersionMatched = false
+        private set
+
     private const val KEY_HOST_VER = "__host_ver"
     private const val KEY_MODULE_VER = "__module_ver"
 
@@ -33,7 +36,9 @@ internal object DexKitCache {
             .mapValues { it.value.toString() }
             .toMutableMap()
 
-        return cachedHostVer == HookEnv.versionCode && cachedModuleVer == TCQTBuild.VER_CODE.toLong()
+        val matched = cachedHostVer == HookEnv.versionCode && cachedModuleVer == TCQTBuild.VER_CODE.toLong()
+        isVersionMatched = matched
+        return matched
     }
 
     fun saveCache() {

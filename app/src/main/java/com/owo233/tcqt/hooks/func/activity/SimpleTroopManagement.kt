@@ -32,14 +32,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -48,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,9 +80,7 @@ import com.owo233.tcqt.activity.SettingTheme
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
-import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.ext.copyToClipboard
-import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.Chain
@@ -119,63 +119,23 @@ class SimpleTroopManagement : IAction, DexKitTask {
 
             if (msgRecord.chatType != 2) return@hookReplace param.invokeOriginal()
 
-            ModuleScope.launchWithCatch {
-                val currentUin = QQInterfaces.currentUin
-                val groupId = msgRecord.peerUin.toString()
-                val senderUin = msgRecord.senderUin.toString()
-
-                val currentUserIsOwner: Boolean
-                val currentUserIsAdmin: Boolean
-                val isTargetOwner: Boolean
-                val isTargetAdmin: Boolean
-
-                val hasPermission = when {
-                    HookEnv.isQQ() -> {
-                        val adminList = GroupService.fetchTroopAdmin(groupId)
-                        val ownerList = GroupService.fetchTroopOwner(groupId)
-
-                        currentUserIsOwner = ownerList.contains(currentUin)
-                        currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
-                        isTargetOwner = ownerList.contains(senderUin)
-                        isTargetAdmin = adminList.contains(senderUin) && !isTargetOwner
-
-                        adminList.contains(currentUin)
-                    }
-
-                    HookEnv.isTim() -> {
-                        val groupInfo = GroupService.getGroupInfo(groupId)
-
-                        currentUserIsOwner = true
-                        currentUserIsAdmin = false
-                        isTargetOwner = false
-                        isTargetAdmin = false
-
-                        groupInfo.isOwnerOrAdmin
-                    }
-
-                    else -> {
-                        param.invokeOriginal()
-                        return@launchWithCatch
-                    }
-                }
-
-                if (!hasPermission) {
-                    param.invokeOriginal()
-                    return@launchWithCatch
-                }
-
-                ModuleScope.launchMain {
-                    showManagementSheet(
-                        view.context as Activity,
-                        msgRecord,
-                        param,
-                        currentUserIsOwner,
-                        currentUserIsAdmin,
-                        isTargetOwner,
-                        isTargetAdmin
-                    )
-                }
+            val groupId = msgRecord.peerUin.toString()
+            val groupInfo = runCatching { GroupService.getGroupInfo(groupId) }.getOrNull()
+            val hasPermission = when {
+                HookEnv.isQQ() -> groupInfo?.isOwnerOrAdmin == true
+                HookEnv.isTim() -> groupInfo?.isOwnerOrAdmin == true
+                else -> false
             }
+
+            if (!hasPermission) {
+                return@hookReplace param.invokeOriginal()
+            }
+
+            showManagementSheet(
+                view.context as Activity,
+                msgRecord,
+                param
+            )
 
             return@hookReplace null
         }
@@ -185,10 +145,6 @@ class SimpleTroopManagement : IAction, DexKitTask {
         activity: Activity,
         msgRecord: MsgRecord,
         param: Chain,
-        currentUserIsOwner: Boolean,
-        currentUserIsAdmin: Boolean,
-        isTargetOwner: Boolean,
-        isTargetAdmin: Boolean,
     ) {
         val troopUin = msgRecord.peerUin.toString()
         val memberUin = msgRecord.senderUin.toString()
@@ -203,15 +159,17 @@ class SimpleTroopManagement : IAction, DexKitTask {
 
         TCQTBottomDialog(activity) { dismiss ->
             TroopManagementContent(
+                groupId = troopUin,
                 memberUin = memberUin,
                 memberNick = nick,
                 uniqueTitle = uniqueTitle,
                 memberUid = memberUid,
-                currentUserIsOwner = currentUserIsOwner,
-                currentUserIsAdmin = currentUserIsAdmin,
-                isTargetOwner = isTargetOwner,
-                isTargetAdmin = isTargetAdmin,
                 onEnterProfile = {
+                    dismissAndRun(dismiss) {
+                        param.invokeOriginal()
+                    }
+                },
+                onNoPermission = {
                     dismissAndRun(dismiss) {
                         param.invokeOriginal()
                     }
@@ -507,15 +465,13 @@ sealed interface MenuState {
 
 @Composable
 internal fun TroopManagementContent(
+    groupId: String,
     memberUin: String,
     memberNick: String,
     uniqueTitle: String,
     memberUid: String,
-    currentUserIsOwner: Boolean,
-    currentUserIsAdmin: Boolean,
-    isTargetOwner: Boolean,
-    isTargetAdmin: Boolean,
     onEnterProfile: () -> Unit,
+    onNoPermission: () -> Unit,
     onRecall: () -> Unit,
     onSetAdmin: () -> Unit,
     onCancelAdmin: () -> Unit,
@@ -531,6 +487,51 @@ internal fun TroopManagementContent(
     onDismiss: () -> Unit
 ) {
     var menuState by remember { mutableStateOf<MenuState>(MenuState.MainMenu) }
+
+    var roles by remember { mutableStateOf<TroopMemberRoles?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(groupId, memberUin) {
+        isLoading = true
+        try {
+            val currentUin = QQInterfaces.currentUin
+            if (HookEnv.isQQ()) {
+                val adminList = GroupService.fetchTroopAdmin(groupId)
+                val ownerList = GroupService.fetchTroopOwner(groupId)
+
+                if (ownerList.isNotEmpty() && adminList.isNotEmpty()) {
+                    val currentUserIsOwner = ownerList.contains(currentUin)
+                    val currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
+
+                    if (!currentUserIsOwner && !currentUserIsAdmin) {
+                        onNoPermission()
+                        return@LaunchedEffect
+                    }
+
+                    val isTargetOwner = ownerList.contains(memberUin)
+                    val isTargetAdmin = adminList.contains(memberUin) && !isTargetOwner
+
+                    roles = TroopMemberRoles(
+                        currentUserIsOwner = currentUserIsOwner,
+                        currentUserIsAdmin = currentUserIsAdmin,
+                        isTargetOwner = isTargetOwner,
+                        isTargetAdmin = isTargetAdmin
+                    )
+                }
+            } else if (HookEnv.isTim()) {
+                roles = TroopMemberRoles(
+                    currentUserIsOwner = true,
+                    currentUserIsAdmin = false,
+                    isTargetOwner = false,
+                    isTargetAdmin = false
+                )
+            }
+        } catch (_: Exception) {
+            // 静默异常
+        } finally {
+            isLoading = false
+        }
+    }
 
     AnimatedContent(
         targetState = menuState,
@@ -551,10 +552,8 @@ internal fun TroopManagementContent(
                     memberUin = memberUin,
                     memberNick = memberNick,
                     memberUid = memberUid,
-                    currentUserIsOwner = currentUserIsOwner,
-                    currentUserIsAdmin = currentUserIsAdmin,
-                    isTargetOwner = isTargetOwner,
-                    isTargetAdmin = isTargetAdmin,
+                    roles = roles,
+                    isLoading = isLoading,
                     onEnterProfile = onEnterProfile,
                     onRecall = onRecall,
                     onSetAdmin = onSetAdmin,
@@ -642,10 +641,8 @@ private fun MainMenuView(
     memberUin: String,
     memberNick: String,
     memberUid: String,
-    currentUserIsOwner: Boolean,
-    currentUserIsAdmin: Boolean,
-    isTargetOwner: Boolean,
-    isTargetAdmin: Boolean,
+    roles: TroopMemberRoles?,
+    isLoading: Boolean,
     onEnterProfile: () -> Unit,
     onRecall: () -> Unit,
     onSetAdmin: () -> Unit,
@@ -665,60 +662,6 @@ private fun MainMenuView(
     val customPrimary = MaterialTheme.colorScheme.primary
     val customError = MaterialTheme.colorScheme.error
     val customGreen = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
-
-    val managementButtons = remember(
-        customPrimary,
-        customError,
-        customGreen,
-        currentUserIsOwner,
-        currentUserIsAdmin,
-        isTargetOwner,
-        isTargetAdmin
-    ) {
-        buildList {
-            add(ManagementButtonData("打开资料页", customPrimary, onEnterProfile))
-
-            val canRecall = currentUserIsOwner || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
-            if (canRecall) {
-                add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
-            }
-
-            if (currentUserIsOwner && !isTargetOwner) {
-                val showSetAdmin = if (HookEnv.isQQ()) !isTargetAdmin else true
-                val showCancelAdmin = if (HookEnv.isQQ()) isTargetAdmin else true
-
-                if (showSetAdmin) add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
-                if (showCancelAdmin) add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
-            }
-
-            val canMute = (currentUserIsOwner && !isTargetOwner) || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
-            if (canMute) {
-                add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
-                add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
-            }
-
-            if (currentUserIsOwner) {
-                add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
-            }
-
-            val canEditCard = currentUserIsOwner || currentUserIsAdmin
-            if (canEditCard) {
-                add(ManagementButtonData("修改名片", customPrimary, onSetCard))
-            }
-
-            val canKick = (currentUserIsOwner && !isTargetOwner) || (currentUserIsAdmin && !isTargetOwner && !isTargetAdmin)
-            if (canKick) {
-                add(ManagementButtonData("踢出本群", customError, onKick))
-                add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
-            }
-
-            val canShutUp = currentUserIsOwner || currentUserIsAdmin
-            if (canShutUp) {
-                add(ManagementButtonData("全员禁言", customError, onMuteAll))
-                add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
-            }
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -741,7 +684,7 @@ private fun MainMenuView(
         Spacer(modifier = Modifier.height(8.dp))
         InfoRow(label = "senderUid", value = memberUid) {
             context.copyToClipboard(memberUid, false)
-            Toasts.success("senderUid")
+            Toasts.success("已复制senderUid")
         }
         Spacer(modifier = Modifier.height(8.dp))
         InfoRow(label = "sendNickName", value = memberNick) {
@@ -750,27 +693,132 @@ private fun MainMenuView(
         }
         Spacer(modifier = Modifier.height(20.dp))
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val chunks = managementButtons.chunked(2)
-            chunks.forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+        AnimatedContent(
+            targetState = isLoading,
+            transitionSpec = {
+                fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+            },
+            label = "buttons_loading_transition"
+        ) { loading ->
+            if (loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    rowItems.forEach { button ->
-                        ManagementButton(
-                            text = button.text,
-                            color = button.color,
-                            onClick = button.onClick,
-                            modifier = Modifier.weight(1f)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 3.dp,
+                            modifier = Modifier.width(36.dp).height(36.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "正在获取群管列表...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    if (rowItems.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                }
+            } else if (roles != null) {
+                val managementButtons = remember(
+                    roles,
+                    customPrimary,
+                    customError,
+                    customGreen
+                ) {
+                    buildList {
+                        add(ManagementButtonData("打开资料页", customPrimary, onEnterProfile))
+
+                        val canRecall = roles.currentUserIsOwner || (roles.currentUserIsAdmin && !roles.isTargetOwner && !roles.isTargetAdmin)
+                        if (canRecall) {
+                            add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
+                        }
+
+                        if (roles.currentUserIsOwner && !roles.isTargetOwner) {
+                            val showSetAdmin = if (HookEnv.isQQ()) !roles.isTargetAdmin else true
+                            val showCancelAdmin = if (HookEnv.isQQ()) roles.isTargetAdmin else true
+
+                            if (showSetAdmin) add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
+                            if (showCancelAdmin) add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
+                        }
+
+                        val canMute = (roles.currentUserIsOwner && !roles.isTargetOwner) || (roles.currentUserIsAdmin && !roles.isTargetOwner && !roles.isTargetAdmin)
+                        if (canMute) {
+                            add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
+                            add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
+                        }
+
+                        if (roles.currentUserIsOwner) {
+                            add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
+                        }
+
+                        val canEditCard = roles.currentUserIsOwner || roles.currentUserIsAdmin
+                        if (canEditCard) {
+                            add(ManagementButtonData("修改名片", customPrimary, onSetCard))
+                        }
+
+                        val canKick = (roles.currentUserIsOwner && !roles.isTargetOwner) || (roles.currentUserIsAdmin && !roles.isTargetOwner && !roles.isTargetAdmin)
+                        if (canKick) {
+                            add(ManagementButtonData("踢出本群", customError, onKick))
+                            add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
+                        }
+
+                        val canShutUp = roles.currentUserIsOwner || roles.currentUserIsAdmin
+                        if (canShutUp) {
+                            add(ManagementButtonData("全员禁言", customError, onMuteAll))
+                            add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
+                        }
                     }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val chunks = managementButtons.chunked(2)
+                    chunks.forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEach { button ->
+                                ManagementButton(
+                                    text = button.text,
+                                    color = button.color,
+                                    onClick = button.onClick,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (rowItems.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                ) {
+                    ManagementButton(
+                        text = "打开资料页",
+                        color = customPrimary,
+                        onClick = onEnterProfile,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "获取群管列表失败~",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
                 }
             }
         }
@@ -972,3 +1020,10 @@ private fun ManagementButton(
         }
     }
 }
+
+private data class TroopMemberRoles(
+    val currentUserIsOwner: Boolean,
+    val currentUserIsAdmin: Boolean,
+    val isTargetOwner: Boolean,
+    val isTargetAdmin: Boolean
+)

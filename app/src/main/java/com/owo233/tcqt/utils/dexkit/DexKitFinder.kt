@@ -74,8 +74,12 @@ internal object DexKitFinder {
         unhook?.unhook().also { unhook = null }
 
         ModuleScope.launchIO(TAG) {
-            val missingKeys = getAllTaskKeys().filter { it !in DexKitCache.cacheMap }.toSet()
-            val tasks = getTasks(missingKeys)
+            val tasks = if (DexKitCache.isVersionMatched) {
+                val missingKeys = getAllTaskKeys().filter { it !in DexKitCache.cacheMap }.toSet()
+                getTasks(missingKeys)
+            } else {
+                getTasks(null)
+            }
 
             val oldCache = DexKitCache.cacheMap.toMap()
             val newCache = DexKitCache.cacheMap.toMutableMap()
