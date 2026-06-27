@@ -24,15 +24,23 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, '[skip ci]') && github.ref == 'refs/heads/main') }}
-
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'push' &&
+          !startsWith(github.event.head_commit.message, '[skip ci]') &&
+          github.ref == 'refs/heads/main'
+        )
+      }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           submodules: 'true'
           fetch-depth: 0
 
-      - name: set up JDK 21
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           java-version: '21'
@@ -45,79 +53,253 @@ jobs:
           build-scan-terms-of-use-agree: 'yes'
 
       - name: Build with Gradle
+        env:
+          SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
+          KEYSTORE_PATH: '../keystore.jks'
+          KEYSTORE_PASSWORD: ${{ secrets.SIGN_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGN_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
         run: |
-          echo ${{ secrets.SIGN_KEYSTORE_BASE64 }} | base64 -d > keystore.jks
+          set -euo pipefail
+
+          printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > keystore.jks
+
           chmod +x ./gradlew
 
-          ./gradlew :app:assembleRelease :app:assembleDebug \
+          ./gradlew \
+            :app:assembleRelease \
+            :app:assembleDebug \
             --stacktrace \
             --build-cache \
             -Dorg.gradle.vfs.watch=false \
             -Dorg.gradle.configuration-cache=true
 
-          echo "APK_FILE_RELEASE=$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)" >> $GITHUB_ENV
-          echo "APK_FILE_DEBUG=$(find app/build/outputs/apk/debug -name '*.apk' | head -n 1)" >> $GITHUB_ENV
-        env:
-          KEYSTORE_PATH: "../keystore.jks"
-          KEYSTORE_PASSWORD: ${{ secrets.SIGN_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SIGN_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
+          APK_FILE_RELEASE=$(
+            find app/build/outputs/apk/release \
+              -type f \
+              -name '*.apk' \
+              -print \
+              -quit
+          )
+
+          APK_FILE_DEBUG=$(
+            find app/build/outputs/apk/debug \
+              -type f \
+              -name '*.apk' \
+              -print \
+              -quit
+          )
+
+          if [ -z "$APK_FILE_RELEASE" ] || [ ! -f "$APK_FILE_RELEASE" ]; then
+            echo "::error::没有找到 Release APK"
+            exit 1
+          fi
+
+          if [ -z "$APK_FILE_DEBUG" ] || [ ! -f "$APK_FILE_DEBUG" ]; then
+            echo "::error::没有找到 Debug APK"
+            exit 1
+          fi
+
+          echo "APK_FILE_RELEASE=$APK_FILE_RELEASE" >> "$GITHUB_ENV"
+          echo "APK_FILE_DEBUG=$APK_FILE_DEBUG" >> "$GITHUB_ENV"
+
+          echo "Release APK: $APK_FILE_RELEASE"
+          echo "Debug APK: $APK_FILE_DEBUG"
 
       - name: Show Artifacts SHA256
         run: |
-          echo "### Build Success :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "|ABI|SHA256|" >> $GITHUB_STEP_SUMMARY
-          echo "|:--------:|:----------|" >> $GITHUB_STEP_SUMMARY
-          release=($(sha256sum ${{ env.APK_FILE_RELEASE }}))
-          echo "|release|$release" >> $GITHUB_STEP_SUMMARY
-          debug=($(sha256sum ${{ env.APK_FILE_DEBUG }}))
-          echo "|debug|$debug" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
 
-      - name: Upload Artifacts(release)
+          release_sha256=$(sha256sum "$APK_FILE_RELEASE" | cut -d ' ' -f 1)
+          debug_sha256=$(sha256sum "$APK_FILE_DEBUG" | cut -d ' ' -f 1)
+
+          {
+            echo "### Build Success :rocket:"
+            echo
+            echo "| Type | SHA256 |"
+            echo "|:----:|:-------|"
+            echo "| Release | \`$release_sha256\` |"
+            echo "| Debug | \`$debug_sha256\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Release Artifact
         uses: actions/upload-artifact@v7
         with:
           path: ${{ env.APK_FILE_RELEASE }}
           name: TCQT-release-${{ github.sha }}
+          if-no-files-found: error
 
-      - name: Upload Artifacts(debug)
+      - name: Upload Debug Artifact
         uses: actions/upload-artifact@v7
         with:
           path: ${{ env.APK_FILE_DEBUG }}
           name: TCQT-debug-${{ github.sha }}
+          if-no-files-found: error
 
   upload-telegram:
     name: Upload Release
-    if: ${{ success() && github.repository == 'callng/TCQT' }}
     runs-on: ubuntu-latest
     needs:
       - build
+    if: >-
+      ${{
+        success() &&
+        github.repository == 'callng/TCQT'
+      }}
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
 
-      - name: Release
+      - name: Upload Release to Telegram
         env:
-          COMMIT_MESSAGE: |+
-            New push to GitHub\!
-            ```
-            ${{ github.event.head_commit.message }}
-            ```by `${{ github.event.head_commit.author.name }}`
-            See commit detail [here](${{ github.event.head_commit.url }})
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
+          CURRENT_SHA: ${{ github.sha }}
+          CURRENT_ACTOR: ${{ github.actor }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
         run: |
-          ESCAPED=`python3 -c 'import json,os,urllib.parse; msg = json.dumps(os.environ["COMMIT_MESSAGE"]); print(urllib.parse.quote(msg if len(msg) <= 1024 else json.dumps(os.environ["COMMIT_URL"])))'`
-          export release=$(find artifacts -type f -name "*-release.apk" | head -n 1)
+          set -euo pipefail
+
+          release=$(
+            find artifacts \
+              -type f \
+              -name '*-release.apk' \
+              -print \
+              -quit
+          )
 
           echo "Release path: $release"
 
-          if [ -z "$release" ]; then
-            echo "❌ 错误：没找到对应的 apk 文件"
+          if [ -z "$release" ] || [ ! -f "$release" ]; then
+            echo "::error::没找到对应的 Release APK 文件"
             exit 1
           fi
 
-          curl -v "https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup?chat_id=${CHANNEL_ID}&media=%5B%7B%22type%22%3A%22document%22%2C%22media%22%3A%22attach%3A%2F%2Frelease%22%2C%22parse_mode%22%3A%22MarkdownV2%22%2C%22caption%22%3A${ESCAPED}%7D%5D" \
-           -F release="@$release" \
+          python3 > caption.txt <<'PY'
+          import html
+          import os
+
+          message = os.environ.get("COMMIT_MESSAGE", "").strip()
+          author = os.environ.get("COMMIT_AUTHOR", "").strip()
+          commit_url = os.environ.get("COMMIT_URL", "").strip()
+
+          current_sha = os.environ.get("CURRENT_SHA", "").strip()
+          current_actor = os.environ.get("CURRENT_ACTOR", "").strip()
+          repository_url = os.environ.get("REPOSITORY_URL", "").rstrip("/")
+
+          if not message:
+              message = f"Manual build for commit {current_sha}"
+
+          if not author:
+              author = current_actor
+
+          if not commit_url:
+              commit_url = f"{repository_url}/commit/{current_sha}"
+
+          if len(message) > 700:
+              message = message[:697] + "..."
+
+          escaped_message = html.escape(message)
+          escaped_author = html.escape(author)
+          escaped_url = html.escape(commit_url, quote=True)
+
+          caption = (
+              "New push to GitHub!\n"
+              f"<pre>{escaped_message}</pre>\n"
+              f"by <code>{escaped_author}</code>\n"
+              f'See commit detail <a href="{escaped_url}">here</a>'
+          )
+
+          print(caption)
+          PY
+
+          echo "Telegram caption:"
+          cat caption.txt
+          echo
+
+          MAX_RETRIES=5
+          RETRY_DELAY=5
+
+          for attempt in $(seq 1 "$MAX_RETRIES"); do
+            echo "Attempt $attempt/$MAX_RETRIES..."
+
+            : > response.json
+
+            http_code=$(
+              curl \
+                --silent \
+                --show-error \
+                --output response.json \
+                --write-out '%{http_code}' \
+                --form-string "chat_id=${CHANNEL_ID}" \
+                --form "document=@${release};type=application/vnd.android.package-archive" \
+                --form "caption=<caption.txt" \
+                --form-string "parse_mode=HTML" \
+                "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument"
+            ) || http_code='000'
+
+            echo "HTTP Status: $http_code"
+            echo "Response:"
+
+            if [ -s response.json ]; then
+              cat response.json
+            else
+              echo '<empty response>'
+            fi
+
+            echo
+
+            if [ "$http_code" = '200' ]; then
+              if python3 - response.json <<'PY'
+          import json
+          import sys
+
+          response_file = sys.argv[1]
+
+          try:
+              with open(response_file, "r", encoding="utf-8") as file:
+                  response = json.load(file)
+          except Exception as error:
+              print(f"Unable to parse Telegram response: {error}")
+              sys.exit(1)
+
+          if response.get("ok") is True:
+              sys.exit(0)
+
+          print(f"Telegram API returned ok=false: {response}")
+          sys.exit(1)
+          PY
+              then
+                echo "Upload succeeded!"
+                exit 0
+              fi
+
+              echo "::error::Telegram API 返回 ok=false"
+              exit 1
+            fi
+
+            case "$http_code" in
+              429|5??|000)
+                if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+                  echo "Temporary request failure."
+                  echo "Retrying in ${RETRY_DELAY}s..."
+
+                  sleep "$RETRY_DELAY"
+                  RETRY_DELAY=$((RETRY_DELAY * 2))
+                fi
+                ;;
+
+              *)
+                echo "::error::Telegram request failed with HTTP $http_code"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "::error::All $MAX_RETRIES attempts failed"
+          exit 1
