@@ -54,7 +54,7 @@ class RemoveShareLimit : IAction, DexKitTask {
             selectTroopListFragmentCls
         ).forEach { cls ->
             cls.allConstructors().first().hookAfter { param ->
-                param.thisObject.setObjectByType<Map<String, ResultRecord>>(UnlimitedMap())
+                param.thisObject.setObjectByType<Map<String, ResultRecord>>(UnlimitedMap(), cls)
             }
         }
     }

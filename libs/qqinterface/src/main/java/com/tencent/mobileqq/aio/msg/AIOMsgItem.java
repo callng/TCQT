@@ -27,4 +27,8 @@ public class AIOMsgItem {
     public final MsgElement getFirstTypeElement(int i) {
         throw new RuntimeException("Stub!");
     }
+
+    public AIOMsgItem(@NotNull MsgRecord msgRecord) {
+        throw new RuntimeException("Stub!");
+    }
 }
