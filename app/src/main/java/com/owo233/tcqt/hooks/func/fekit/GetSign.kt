@@ -180,16 +180,18 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         ReceiverRegistry.register(app, requestReceiver, filter)
     }
 
-    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
-        "InputRootInit" to FindMethod().apply {
-            searchPackages("com.tencent.mobileqq.aio.input")
-            matcher {
-                usingEqStrings("binding", "inputRoot",
-                    "findViewById(...)", "getContext(...)", "sendBtn"
-                )
+    override fun getQueryMap(): Map<String, BaseMatcher> = buildMap {
+        if (HookEnv.isQQ()) {
+            "InputRootInit" to FindMethod().apply {
+                searchPackages("com.tencent.mobileqq.aio.input")
+                matcher {
+                    usingEqStrings("binding", "inputRoot",
+                        "findViewById(...)", "getContext(...)", "sendBtn"
+                    )
+                }
             }
         }
-    )
+    }
 
     private fun getActiveEditText(): EditText? {
         val activity = runCatching { QQInterfaces.topActivity }.getOrNull() ?: return null
