@@ -6,16 +6,13 @@ import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.delay
 import top.artmoe.inao.entries.InfoSyncPushOuterClass
 import top.artmoe.inao.entries.MsgPushOuterClass
 import top.artmoe.inao.entries.QQMessageOuterClass
-import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(DelicateCoroutinesApi::class)
 object AioListener : MessageHandler {
@@ -25,9 +22,6 @@ object AioListener : MessageHandler {
 
     private const val MSG_TYPE_GROUP = 732
     private const val SUB_TYPE_GROUP_RECALL = 17
-
-    private const val MSG_TYPE_FLASH_PIC = 166
-    private const val SUB_TYPE_FLASH_PIC = 11
 
     private const val GROUP_OP_HEADER_SIZE = 7
     private const val INFO_SYNC_PUSH_FLAG_RECALL = 2
@@ -44,11 +38,6 @@ object AioListener : MessageHandler {
         when (msgType to subType) {
             MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> processC2CRecallPush(msgPush, param)
             MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> processGroupRecallPush(msgPush, param)
-            MSG_TYPE_FLASH_PIC to SUB_TYPE_FLASH_PIC -> {
-                if (TCQTSetting.getBoolean("disable_flash_pic")) {
-                    processFlashPicPush(msgPush)
-                }
-            }
         }
     }
 
@@ -127,15 +116,6 @@ object AioListener : MessageHandler {
         showGroupRecallTip(operationInfo)
     }
 
-    private fun processFlashPicPush(msgPush: MsgPushOuterClass.MsgPush) {
-        val contentList = msgPush.qqMessage.messageBody.richMsg.msgContentList
-        val isFlashPic = contentList.getOrNull(2)?.myCustomField?.mtType == 3
-
-        if (isFlashPic) {
-            showFlashPicTip(msgPush.qqMessage)
-        }
-    }
-
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
         ModuleScope.launchWithCatch {
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
@@ -200,24 +180,6 @@ object AioListener : MessageHandler {
                 text("的")
                 msgRef("消息", msgInfo.msgSeq.toLong())
                 text(", 已拦截")
-            }
-        }
-    }
-
-    private fun showFlashPicTip(msg: QQMessageOuterClass.QQMessage) {
-        ModuleScope.launchWithCatch {
-            delay(300L.milliseconds)
-            val operatorUid = msg.messageHead.senderUid
-            if (operatorUid == QQInterfaces.currentUid) return@launchWithCatch
-
-            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
-            LocalGrayTips.addLocalGrayTip(
-                contact,
-                JsonGrayBusiId.AIO_AV_C2C_NOTICE,
-                LocalGrayTips.Align.CENTER
-            ) {
-                text("对方发送了一条闪照")
-                msgRef("消息", msg.messageContentInfo.msgSeqId.toLong())
             }
         }
     }
