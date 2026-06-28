@@ -37,20 +37,11 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 @RegisterAction
 class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
-    override val key: String
-        get() = "get_sign"
-
-    override val name: String
-        get() = "获取测试签名"
-
-    override val desc: String
-        get() = "本功能仅用于调试，正常情况下无需启用。"
-
-    override val uiTab: String
-        get() = "调试"
-
-    override val processes: Set<ActionProcess>
-        get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
+    override val key: String get() = "get_sign"
+    override val name: String get() = "获取测试签名"
+    override val desc: String get() = "本功能仅用于调试，正常情况下无需启用。"
+    override val uiTab: String get() = "调试"
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 
     override fun onRun(app: Application, process: ActionProcess) {
         when (process) {
@@ -182,7 +173,7 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
     override fun getQueryMap(): Map<String, BaseMatcher> = buildMap {
         if (HookEnv.isQQ()) {
-            "InputRootInit" to FindMethod().apply {
+            this["InputRootInit"] = FindMethod().apply {
                 searchPackages("com.tencent.mobileqq.aio.input")
                 matcher {
                     usingEqStrings("binding", "inputRoot",
