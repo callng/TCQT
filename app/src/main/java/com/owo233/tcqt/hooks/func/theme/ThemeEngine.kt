@@ -9,6 +9,7 @@ package com.owo233.tcqt.hooks.func.theme
 import android.os.Build
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.utils.api.packet.PacketHelper
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.proto2json.ProtoByteString
 import com.owo233.tcqt.utils.proto2json.ProtoMap
@@ -61,7 +62,7 @@ internal object ThemeEngine {
         PacketHelper.sendRequest(
             "MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x942d_0",
             proto.toByteArray()
-        ) { _ -> }
+        )
     }
 
     private fun dispatchPacket(session: ThemeSession, scid: String, ck: Int) {
@@ -107,8 +108,7 @@ internal object ThemeEngine {
         if (session.failed) return
 
         try {
-            val rawProtoBytes = if (data.size > 4) data.copyOfRange(4, data.size) else data
-            val resp = ProtoUtils.decodeFromByteArray(rawProtoBytes)
+            val resp = ProtoUtils.decodeFromByteArray(data)
             val f2 = if (resp.has(6, 2)) resp[6, 2] as? ProtoMap else null
             val code = if (f2 != null && f2.has(11)) f2[11].asInt else 0
 

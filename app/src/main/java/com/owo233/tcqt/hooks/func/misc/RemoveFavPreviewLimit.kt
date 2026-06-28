@@ -6,7 +6,6 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.loadFromPlugin
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -18,16 +17,11 @@ class RemoveFavPreviewLimit : IAction {
     override val name: String get() = "移除收藏预览限制"
     override val desc: String get() = "移除收藏预览限制，它是这样说的。"
     override val uiTab: String get() = "杂项"
-    override val key: String
-        get() = "remove_fav_preview_limit"
+    override val key: String get() = "remove_fav_preview_limit"
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.QQFAV)
 
-    override val processes: Set<ActionProcess>
-        get() = setOf(ActionProcess.QQFAV)
-
-    override fun canRun(): Boolean {
-        return TCQTSetting.getBoolean(key) &&
-                HookEnv.isQQ() &&
-                HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
+    override fun onInit(): Boolean {
+        return HookEnv.isQQ() && HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_85)
     }
 
     override fun onRun(app: Application, process: ActionProcess) {

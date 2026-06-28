@@ -1,10 +1,11 @@
 package com.tencent.mobileqq.data.troop;
 
+import androidx.annotation.Nullable;
+import com.tencent.qqnt.kernel.nativeinterface.GroupMemberNewExtInfo;
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole;
 import java.io.Serializable;
 
 public class TroopMemberInfo implements Serializable {
-
     public static final long VALUE_DISTANCE_TO_SELF_UNKOWN = -100;
     protected static final int VALUE_INVALID = -100;
     public static final long VALUE_MEMBER_CLOSE_SHARE_LBS = -1001;
@@ -15,8 +16,8 @@ public class TroopMemberInfo implements Serializable {
     public long credit_level;
     public String displayedNamePinyinFirst;
 
-    // @Nullable
-    // public TroopMemberInfoExt extInfo;
+    @Nullable
+    public TroopMemberInfoExt extInfo;
     public int flagEx = 0;
 
     @Deprecated(since = "推荐使用TroopMemberNickInfo")
@@ -32,12 +33,15 @@ public class TroopMemberInfo implements Serializable {
     public int mVipType;
     public String memberUid;
     public String memberuin;
+
+    @Nullable
+    public transient GroupMemberNewExtInfo newExtInfo;
     public TroopMemberNickInfo nickInfo;
     public int realLevel;
     public MemberRole role;
 
-    // @Nullable
-    // public TroopMemberSpecialTitleInfo specialTitleInfo;
+    @Nullable
+    public TroopMemberSpecialTitleInfo specialTitleInfo;
     public int titleId;
 
     @Deprecated(since = "推荐使用TroopMemberNickInfo")
@@ -55,8 +59,16 @@ public class TroopMemberInfo implements Serializable {
         this.memberuin = str2;
     }
 
+    public long getLastMsgUpdateHonorRichTime() {
+        throw new RuntimeException("Stub!");
+    }
+
+    @Nullable
+    public String getSpecialTitleStr() {
+        throw new RuntimeException("Stub!");
+    }
+
     public boolean isValidMember() {
-        MemberRole memberRole = this.role;
-        return memberRole != null && memberRole != MemberRole.UNSPECIFIED && memberRole != MemberRole.STRANGER;
+        throw new RuntimeException("Stub!");
     }
 }

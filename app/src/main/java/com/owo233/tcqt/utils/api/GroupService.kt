@@ -2,27 +2,28 @@ package com.owo233.tcqt.utils.api
 
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.Toasts
-import com.owo233.tcqt.hooks.base.hostFunction2
-import com.owo233.tcqt.hooks.base.hostUnit
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.utils.hook.paramCount
+import com.owo233.tcqt.utils.api.packet.PacketHelper
 import com.owo233.tcqt.utils.proto2json.ProtoMap
+import com.owo233.tcqt.utils.proto2json.ProtoUtils
+import com.owo233.tcqt.utils.proto2json.asInt
+import com.owo233.tcqt.utils.proto2json.asList
+import com.owo233.tcqt.utils.proto2json.asLong
+import com.owo233.tcqt.utils.proto2json.asMap
 import com.tencent.mobileqq.data.troop.TroopInfo
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.mobileqq.troop.api.IBizTroopMemberInfoService
 import com.tencent.mobileqq.troop.api.ITroopInfoService
+import com.tencent.mobileqq.troop.api.ITroopMemberInfoService
 import com.tencent.qphone.base.remote.ToServiceMsg
 import com.tencent.qqnt.kernel.nativeinterface.GroupMemberShutUpInfo
 import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
-import com.tencent.qqnt.troopmemberlist.ITroopMemberExtInfoRepoApi
-import com.tencent.qqnt.troopmemberlist.impl.TroopMemberExtInfoRepoApiImpl
 import com.tencent.relation.common.api.IRelationNTUinAndUidApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import mqq.app.api.IRuntimeService
 import java.io.ByteArrayOutputStream
-import java.lang.reflect.Proxy
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
@@ -174,51 +175,78 @@ internal object GroupService {
         return runtime<ITroopInfoService>().getTroopInfo(groupId)
     }
 
-    suspend fun fetchTroopAdmin(groupId: String) =
-        fetchTroopMemberList(groupId, "fetchTroopAdmin")
-
-    suspend fun fetchTroopOwner(groupId: String) =
-        fetchTroopMemberList(groupId, "fetchTroopOwner")
-
-    private suspend fun fetchTroopMemberList(
-        groupId: String,
-        methodName: String
-    ): List<String> {
-        val result = withTimeoutOrNull(5.seconds) {
+    suspend fun getMemberTitle(groupId: String, uin: String): String {
+        return withTimeoutOrNull(5.seconds) {
             suspendCancellableCoroutine { cont ->
-                val callback = Proxy.newProxyInstance(
-                    HookEnv.hostClassLoader,
-                    arrayOf(hostFunction2)
-                ) { _, method, args ->
-                    if (method.name == "invoke" && args?.isNotEmpty() == true) {
-                        @Suppress("UNCHECKED_CAST")
-                        if (args[0] as? Boolean == true) {
-                            (args[1] as? List<String>)
-                                ?.takeIf { cont.isActive }
-                                ?.also { cont.resume(it) }
-                        } else {
-                            if (cont.isActive) cont.resume(null)
+                val cacheInfo = runtime<ITroopMemberInfoService>()
+                    .getTroopMemberFromCacheOrFetchAsync(
+                        groupId, uin, "AIONickBlockApiImpl-level"
+                    ) { info ->
+                        if (cont.isActive) {
+                            cont.resume(info.specialTitleInfo?.specialTitle ?: "")
                         }
                     }
-                    hostUnit
-                }
 
-                runCatching {
-                    TroopMemberExtInfoRepoApiImpl::class.java
-                        .declaredMethods.first { it.name == methodName && it.paramCount == 3 }
-                        .invoke(
-                            api<ITroopMemberExtInfoRepoApi>(),
-                            groupId,
-                            null,
-                            callback
-                        )
-                }.onFailure {
-                    if (cont.isActive) cont.resume(null)
+                if (cacheInfo != null) {
+                    cont.resume(cacheInfo.specialTitleInfo?.specialTitle ?: "")
                 }
             }
-        }
+        } ?: ""
+    }
 
-        return result ?: listOf()
+    suspend fun getGroupAdminList(groupId: String): List<String> {
+        val buffer = ProtoMap().apply {
+            this[1] = 2201
+            this[2] = 0
+            this[4, 1] = groupId.toLong()
+            this[4, 2] = 0
+            this[4, 3] = 2
+            this[4, 5, 1] = 0
+            this[4, 5, 18] = 0
+            this[4, 6] = 24
+            this[4, 7] = 2
+            this[12] = 1
+        }.toByteArray()
+
+        return withTimeoutOrNull(5.seconds) {
+            suspendCancellableCoroutine { cont ->
+                // TIM 用 OidbSvc.0x899_1 会炸掉! QQ 则不会. 为了兼容 TIM 用 OidbSvcTrpcTcp.0x899_0
+                PacketHelper.sendRequest("OidbSvcTrpcTcp.0x899_0", buffer) { onResponse ->
+                    if (onResponse.isEmpty()) {
+                        if (cont.isActive) cont.resume(emptyList())
+                        return@sendRequest
+                    }
+
+                    val resp = ProtoUtils.decodeFromByteArray(onResponse)
+                    if (!resp.has(3) || resp[3].asInt != 0) {
+                        Toasts.error("getGroupAdminList err(${resp[3].asInt})")
+                        if (cont.isActive) cont.resume(emptyList())
+                        return@sendRequest
+                    }
+
+                    if (!resp.has(4, 4)) {
+                        Toasts.error("getGroupAdminList is empty")
+                        if (cont.isActive) cont.resume(emptyList())
+                        return@sendRequest
+                    }
+
+                    val members = resp[4, 4].asList
+                    val owner = mutableListOf<String>()
+                    val admins = mutableListOf<String>()
+
+                    members.forEach { member ->
+                        val map = member.asMap
+                        val uin = map[1].asLong.toString()
+                        when (map[18].asInt) {
+                            1 -> owner.add(uin)
+                            2 -> admins.add(uin)
+                        }
+                    }
+
+                    if (cont.isActive) cont.resume(owner + admins)
+                }
+            }
+        } ?: emptyList()
     }
 
     fun getUidFromUin(uin: String): String {

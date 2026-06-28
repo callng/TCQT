@@ -64,7 +64,7 @@ interface IAction {
 
     /**
      * 初始化逻辑
-     * @return true 表示继续执行后续函数，false 则拦截
+     * @return true 表示继续执行后续 onRun 函数，false 则不执行
      */
     fun onInit(): Boolean = true
 

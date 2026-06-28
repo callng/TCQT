@@ -24,6 +24,7 @@ import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 internal object TicketManager {
 
@@ -79,7 +80,7 @@ internal object TicketManager {
                 val callback = Proxy.newProxyInstance(
                     HookEnv.hostClassLoader,
                     arrayOf(callbackClass)
-                ) { _, method, args ->
+                ) { _, _, args ->
                     runCatching {
                         if (args.size == 2) {
                             Log.e("getSuperKey fail, code: ${args[0]}, msg: ${args[1]}")
@@ -201,7 +202,7 @@ internal object TicketManager {
                 qua = BaseApplication.getContext().qua
             }
 
-            return withTimeout(10000L) {
+            return withTimeout(10000L.milliseconds) {
                 suspendCancellableCoroutine { cont ->
                     val api = QRoute.api(ILoginService::class.java)
                     api.easyLogin(QQInterfaces.currentUin.toLong(), appInfo) { code, msg, result ->

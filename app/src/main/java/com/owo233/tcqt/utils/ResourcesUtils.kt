@@ -11,6 +11,7 @@ import android.os.Looper
 import android.os.ParcelFileDescriptor
 import androidx.annotation.RequiresApi
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.utils.log.Log
 import java.io.File
 
@@ -19,11 +20,13 @@ internal object ResourcesUtils {
     private lateinit var resourcesLoader: ResourcesLoader
 
     fun injectResourcesToContext(res: Resources) {
-        val moduleApkPath = HookEnv.moduleApkPath
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            injectResourcesAboveApi30(res, moduleApkPath)
-        } else {
-            injectResourcesBelowApi30(res, moduleApkPath)
+        if (ProcUtil.isMSF.not()) {
+            val moduleApkPath = HookEnv.moduleApkPath
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                injectResourcesAboveApi30(res, moduleApkPath)
+            } else {
+                injectResourcesBelowApi30(res, moduleApkPath)
+            }
         }
     }
 

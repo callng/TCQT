@@ -120,19 +120,14 @@ class SimpleTroopManagement : IAction, DexKitTask {
             if (msgRecord.chatType != 2) return@hookReplace param.invokeOriginal()
 
             val groupId = msgRecord.peerUin.toString()
-            val groupInfo = runCatching { GroupService.getGroupInfo(groupId) }.getOrNull()
-            val hasPermission = when {
-                HookEnv.isQQ() -> groupInfo?.isOwnerOrAdmin == true
-                HookEnv.isTim() -> groupInfo?.isOwnerOrAdmin == true
-                else -> false
-            }
-
-            if (!hasPermission) {
+            if (!GroupService.getGroupInfo(groupId).isOwnerOrAdmin) {
                 return@hookReplace param.invokeOriginal()
             }
 
+            val activity = view.context as? Activity ?: return@hookReplace param.invokeOriginal()
+
             showManagementSheet(
-                view.context as Activity,
+                activity,
                 msgRecord,
                 param
             )
@@ -150,7 +145,6 @@ class SimpleTroopManagement : IAction, DexKitTask {
         val memberUin = msgRecord.senderUin.toString()
         val memberUid = msgRecord.senderUid.toString()
         val nick = msgRecord.sendMemberName.ifEmpty { msgRecord.sendNickName }
-        val uniqueTitle = msgRecord.msgAttrs[2]?.groupHonor?.uniqueTitle ?: ""
 
         fun dismissAndRun(dismiss: () -> Unit, action: () -> Unit) {
             dismiss()
@@ -162,7 +156,6 @@ class SimpleTroopManagement : IAction, DexKitTask {
                 groupId = troopUin,
                 memberUin = memberUin,
                 memberNick = nick,
-                uniqueTitle = uniqueTitle,
                 memberUid = memberUid,
                 onEnterProfile = {
                     dismissAndRun(dismiss) {
@@ -468,7 +461,6 @@ internal fun TroopManagementContent(
     groupId: String,
     memberUin: String,
     memberNick: String,
-    uniqueTitle: String,
     memberUid: String,
     onEnterProfile: () -> Unit,
     onNoPermission: () -> Unit,
@@ -489,42 +481,40 @@ internal fun TroopManagementContent(
     var menuState by remember { mutableStateOf<MenuState>(MenuState.MainMenu) }
 
     var roles by remember { mutableStateOf<TroopMemberRoles?>(null) }
+    var uniqueTitle by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(groupId, memberUin) {
         isLoading = true
         try {
             val currentUin = QQInterfaces.currentUin
-            if (HookEnv.isQQ()) {
-                val adminList = GroupService.fetchTroopAdmin(groupId)
-                val ownerList = GroupService.fetchTroopOwner(groupId)
+            val adminList = GroupService.getGroupAdminList(groupId)
 
-                if (ownerList.isNotEmpty() && adminList.isNotEmpty()) {
-                    val currentUserIsOwner = ownerList.contains(currentUin)
-                    val currentUserIsAdmin = adminList.contains(currentUin) && !currentUserIsOwner
+            if (adminList.isNotEmpty()) {
+                val owner = adminList.first()
+                val admins = adminList.drop(1)
 
-                    if (!currentUserIsOwner && !currentUserIsAdmin) {
-                        onNoPermission()
-                        return@LaunchedEffect
-                    }
+                val currentUserIsOwner = currentUin == owner
+                val currentUserIsAdmin = admins.contains(currentUin)
 
-                    val isTargetOwner = ownerList.contains(memberUin)
-                    val isTargetAdmin = adminList.contains(memberUin) && !isTargetOwner
-
-                    roles = TroopMemberRoles(
-                        currentUserIsOwner = currentUserIsOwner,
-                        currentUserIsAdmin = currentUserIsAdmin,
-                        isTargetOwner = isTargetOwner,
-                        isTargetAdmin = isTargetAdmin
-                    )
+                if (!currentUserIsOwner && !currentUserIsAdmin) {
+                    onNoPermission()
+                    return@LaunchedEffect
                 }
-            } else if (HookEnv.isTim()) {
+
+                val isTargetOwner = memberUin == owner
+                val isTargetAdmin = admins.contains(memberUin)
+
                 roles = TroopMemberRoles(
-                    currentUserIsOwner = true,
-                    currentUserIsAdmin = false,
-                    isTargetOwner = false,
-                    isTargetAdmin = false
+                    currentUserIsOwner = currentUserIsOwner,
+                    currentUserIsAdmin = currentUserIsAdmin,
+                    isTargetOwner = isTargetOwner,
+                    isTargetAdmin = isTargetAdmin
                 )
+
+                if (currentUserIsOwner) {
+                    uniqueTitle = GroupService.getMemberTitle(groupId, memberUin)
+                }
             }
         } catch (_: Exception) {
             // 静默异常
@@ -677,19 +667,19 @@ private fun MainMenuView(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        InfoRow(label = "senderUin", value = memberUin) {
+        InfoRow(label = "Uin", value = memberUin) {
             context.copyToClipboard(memberUin, false)
-            Toasts.success("已复制senderUin")
+            Toasts.success("已复制Uin")
         }
         Spacer(modifier = Modifier.height(8.dp))
-        InfoRow(label = "senderUid", value = memberUid) {
+        InfoRow(label = "Uid", value = memberUid) {
             context.copyToClipboard(memberUid, false)
-            Toasts.success("已复制senderUid")
+            Toasts.success("已复制Uid")
         }
         Spacer(modifier = Modifier.height(8.dp))
-        InfoRow(label = "sendNickName", value = memberNick) {
+        InfoRow(label = "Name", value = memberNick) {
             context.copyToClipboard(memberNick, false)
-            Toasts.success("已复制sendNickName")
+            Toasts.success("已复制Name")
         }
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -740,8 +730,8 @@ private fun MainMenuView(
                         }
 
                         if (roles.currentUserIsOwner && !roles.isTargetOwner) {
-                            val showSetAdmin = if (HookEnv.isQQ()) !roles.isTargetAdmin else true
-                            val showCancelAdmin = if (HookEnv.isQQ()) roles.isTargetAdmin else true
+                            val showSetAdmin = !roles.isTargetAdmin
+                            val showCancelAdmin = roles.isTargetAdmin
 
                             if (showSetAdmin) add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
                             if (showCancelAdmin) add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
@@ -753,7 +743,7 @@ private fun MainMenuView(
                             add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
                         }
 
-                        if (roles.currentUserIsOwner) {
+                        if (roles.currentUserIsOwner && HookEnv.isQQ()) { // TIM 看不到自定义的头衔
                             add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
                         }
 
