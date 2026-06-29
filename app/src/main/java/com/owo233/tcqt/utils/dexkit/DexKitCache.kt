@@ -51,12 +51,12 @@ internal object DexKitCache {
     }
 
     fun getClass(key: String): Class<*> =
-        cacheMap[key]?.let {
+        cacheMap[key]?.takeIf { it.isNotEmpty() }?.let {
             DexClass(it).getInstance(HookEnv.hostClassLoader)
         } ?: throw ClassNotFoundException(key)
 
     fun getMethod(key: String): Method =
-        cacheMap[key]?.let {
+        cacheMap[key]?.takeIf { it.isNotEmpty() }?.let {
             DexMethod(it).getMethodInstance(HookEnv.hostClassLoader)
         } ?: throw NoSuchMethodException(key)
 

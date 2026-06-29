@@ -15,6 +15,7 @@ import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.getObject
@@ -77,12 +78,19 @@ internal object ActionManager {
         )
 
         FIRST_ACTION.forEach { actionClass ->
-            if (missingDexKitKeys != null && DexKitTask::class.java.isAssignableFrom(actionClass)) {
+            if (DexKitTask::class.java.isAssignableFrom(actionClass)) {
                 val dexKitTask = runCatching {
                     instanceOf(actionClass) as? DexKitTask
                 }.getOrNull()
-                if (dexKitTask != null && dexKitTask.getQueryMap().keys.any { it in missingDexKitKeys }) {
-                    return@forEach
+                if (dexKitTask != null) {
+                    val taskKeys = dexKitTask.getQueryMap().keys
+                    val shouldSkip = taskKeys.any { key ->
+                        (missingDexKitKeys != null && key in missingDexKitKeys) ||
+                                DexKitCache.cacheMap[key]?.isEmpty() == true
+                    }
+                    if (shouldSkip) {
+                        return@forEach
+                    }
                 }
             }
 

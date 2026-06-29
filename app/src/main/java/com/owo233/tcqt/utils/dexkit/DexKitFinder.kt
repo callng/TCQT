@@ -129,16 +129,17 @@ interface DexKitTask {
                         cache[name] = result.descriptor
                     } else {
                         Log.e("$name: No class found matching query")
+                        cache[name] = ""
                     }
                 }
 
                 is FindMethod -> {
-
                     val result = bridge.findMethod(query).singleOrNull()
                     if (result != null) {
                         cache[name] = result.descriptor
                     } else {
                         Log.e("$name: No method found matching query")
+                        cache[name] = ""
                     }
                 }
             }
