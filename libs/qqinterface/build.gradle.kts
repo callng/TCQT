@@ -9,8 +9,7 @@ extensions.configure<LibraryExtension> {
     compileSdk = 36
 
     sourceSets {
-        val main by getting
-        main.apply {
+        named("main") {
             manifest.srcFile("src/main/AndroidManifest.xml")
             java.directories += "src/main/java"
         }

@@ -52,12 +52,12 @@ class AitChameleon : IAction, OnAIOViewUpdate {
 
     override fun onRun(app: Application, process: ActionProcess) = Unit
 
-    override fun onGetViewNt(rootView: ViewGroup, chatMessage: MsgRecord, param: MethodHookParam) {
-        rootView.allChildViews
+    override fun onGetViewNt(view: ViewGroup, msgRecord: MsgRecord, param: MethodHookParam) {
+        view.allChildViews
             .filter { it.javaClass == AIOMsgTextView::class.java }
             .mapNotNull { it as? TextView }
             .forEach { tv ->
-                tv.msgTag = chatMessage
+                tv.msgTag = msgRecord
                 tv.post { injectRealAtIfNeeded(tv) }
             }
     }
@@ -95,7 +95,6 @@ class AitChameleon : IAction, OnAIOViewUpdate {
                     peerId = at.peerId,
                     uid = at.uid,
                     ntUid = at.ntUid,
-                    display = at.display,
                     originalTextColor = originTextColor,
                     bgColor = bgColor,
                     click = ::onRealMentionClick
@@ -141,8 +140,7 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         view: View,
         peerId: String,
         uid: Long,
-        ntUid: String,
-        display: String
+        ntUid: String
     ) {
         val context = view.context
 
@@ -236,13 +234,12 @@ class AitChameleon : IAction, OnAIOViewUpdate {
         val peerId: String,
         val uid: Long,
         val ntUid: String,
-        val display: String,
         val originalTextColor: Int,
         val bgColor: Int,
-        val click: (View, String, Long, String, String) -> Unit
+        val click: (View, String, Long, String) -> Unit
     ) : ClickableSpan() {
 
-        override fun onClick(widget: View) = click(widget, peerId, uid, ntUid, display)
+        override fun onClick(widget: View) = click(widget, peerId, uid, ntUid)
 
         override fun updateDrawState(ds: android.text.TextPaint) {
             ds.isUnderlineText = false

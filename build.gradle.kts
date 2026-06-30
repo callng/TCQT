@@ -16,7 +16,7 @@ plugins {
     alias(libs.plugins.protobuf) apply false
 }
 
-val appBaseVersionName: String by extra("3.6.5")
+val appBaseVersionName = "3.6.5"
 
 abstract class GitCommandValueSource :
     ValueSource<String, GitCommandValueSource.Parameters> {
@@ -76,13 +76,24 @@ val gitInfoProvider: Provider<GitInfo> =
 
 val gitInfo: GitInfo = gitInfoProvider.get()
 
-val androidMinSdkVersion         by extra(27)
-val androidTargetSdkVersion      by extra(37)
-val androidCompileSdkVersion     by extra(37)
-val androidSourceCompatibility   by extra(JavaVersion.VERSION_21)
-val androidTargetCompatibility   by extra(JavaVersion.VERSION_21)
-val kotlinJvmTarget              by extra(JvmTarget.JVM_21)
+val androidMinSdkVersion = 27
+val androidTargetSdkVersion = 37
+val androidCompileSdkVersion = 37
+val androidSourceCompatibility = JavaVersion.VERSION_21
+val androidTargetCompatibility = JavaVersion.VERSION_21
+val kotlinJvmTarget = JvmTarget.JVM_21
 
-val appVersionCode: Int    by extra(gitInfo.commitCount)
-val appVersionName: String by extra(gitInfo.versionName)
-val appGitHash: String     by extra(gitInfo.shortHash)
+val appVersionCode = gitInfo.commitCount
+val appVersionName = gitInfo.versionName
+val appGitHash = gitInfo.shortHash
+
+extra.set("appBaseVersionName", appBaseVersionName)
+extra.set("androidMinSdkVersion", androidMinSdkVersion)
+extra.set("androidTargetSdkVersion", androidTargetSdkVersion)
+extra.set("androidCompileSdkVersion", androidCompileSdkVersion)
+extra.set("androidSourceCompatibility", androidSourceCompatibility)
+extra.set("androidTargetCompatibility", androidTargetCompatibility)
+extra.set("kotlinJvmTarget", kotlinJvmTarget)
+extra.set("appVersionCode", appVersionCode)
+extra.set("appVersionName", appVersionName)
+extra.set("appGitHash", appGitHash)

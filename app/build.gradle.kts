@@ -17,28 +17,51 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val androidMinSdkVersion: Int by rootProject.extra
-val androidTargetSdkVersion: Int by rootProject.extra
-val androidCompileSdkVersion: Int by rootProject.extra
-val androidSourceCompatibility: JavaVersion by rootProject.extra
-val androidTargetCompatibility: JavaVersion by rootProject.extra
-val appVersionName: String by rootProject.extra
-val appVersionCode: Int by rootProject.extra
-val kotlinJvmTarget: JvmTarget by rootProject.extra
+val androidMinSdkVersion =
+    rootProject.extra["androidMinSdkVersion"] as Int
+val androidTargetSdkVersion =
+    rootProject.extra["androidTargetSdkVersion"] as Int
+val androidCompileSdkVersion =
+    rootProject.extra["androidCompileSdkVersion"] as Int
+val androidSourceCompatibility =
+    rootProject.extra["androidSourceCompatibility"] as JavaVersion
+val androidTargetCompatibility =
+    rootProject.extra["androidTargetCompatibility"] as JavaVersion
+val appVersionName =
+    rootProject.extra["appVersionName"] as String
+val appVersionCode =
+    rootProject.extra["appVersionCode"] as Int
+val kotlinJvmTarget =
+    rootProject.extra["kotlinJvmTarget"] as JvmTarget
+
 val keystorePath: String? = System.getenv("KEYSTORE_PATH")
 
-val buildTimeDir = layout.buildDirectory.dir("generated/source/buildtime/main")
+val buildTimeDir =
+    layout.buildDirectory.dir("generated/source/buildtime/main")
 
-val generateBuildTimeSource by tasks.registering {
+val generateBuildTimeSource = tasks.register("generateBuildTimeSource") {
     description = "BuildTime"
+
     outputs.upToDateWhen { false }
-    val outputFile = buildTimeDir.get().file("com/owo233/tcqt/data/BuildTime.kt").asFile
+
+    val outputFile = buildTimeDir
+        .get()
+        .file("com/owo233/tcqt/data/BuildTime.kt")
+        .asFile
+
     outputs.file(outputFile)
+
     doLast {
         outputFile.parentFile.mkdirs()
-        val formattedTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA).apply {
-            timeZone = TimeZone.getTimeZone("GMT+8")
-        }.format(Date())
+
+        val formattedTime =
+            SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss",
+                Locale.CHINA
+            ).apply {
+                timeZone = TimeZone.getTimeZone("GMT+8")
+            }.format(Date())
+
         outputFile.writeText(
             """
             package com.owo233.tcqt.data
@@ -151,20 +174,15 @@ extensions.configure<ApplicationExtension> {
             proto {
                 srcDirs("src/main/proto")
             }
+
+            kotlin.directories += "generated/ksp/$name/kotlin"
+            kotlin.directories += buildTimeDir.get().asFile.absolutePath
         }
     }
 
     compileOptions {
         sourceCompatibility = androidSourceCompatibility
         targetCompatibility = androidTargetCompatibility
-    }
-
-    sourceSets {
-        val main by getting
-        main.apply {
-            kotlin.directories += "generated/ksp/$name/kotlin"
-            kotlin.directories += buildTimeDir.get().asFile.absolutePath
-        }
     }
 }
 
