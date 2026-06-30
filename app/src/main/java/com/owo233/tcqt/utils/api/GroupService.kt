@@ -7,6 +7,7 @@ import com.owo233.tcqt.utils.api.packet.PacketHelper
 import com.owo233.tcqt.utils.proto2json.ProtoMap
 import com.owo233.tcqt.utils.proto2json.ProtoUtils
 import com.owo233.tcqt.utils.proto2json.asInt
+import com.owo233.tcqt.utils.proto2json.ProtoList
 import com.owo233.tcqt.utils.proto2json.asList
 import com.owo233.tcqt.utils.proto2json.asLong
 import com.owo233.tcqt.utils.proto2json.asMap
@@ -230,7 +231,10 @@ internal object GroupService {
                         return@sendRequest
                     }
 
-                    val members = resp[4, 4].asList
+                    val members = when (val item = resp[4, 4]) {
+                        is ProtoList -> item.value
+                        else -> listOf(item)
+                    }
                     val owner = mutableListOf<String>()
                     val admins = mutableListOf<String>()
 

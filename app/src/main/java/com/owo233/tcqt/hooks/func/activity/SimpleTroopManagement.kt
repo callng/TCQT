@@ -124,7 +124,8 @@ class SimpleTroopManagement : IAction, DexKitTask {
         val troopUin = msgRecord.peerUin.toString()
         val memberUin = msgRecord.senderUin.toString()
         val memberUid = msgRecord.senderUid.toString()
-        val nick = msgRecord.sendMemberName.ifEmpty { msgRecord.sendNickName }
+        val nick = msgRecord.sendMemberName.ifEmpty { msgRecord.sendRemarkName }
+            .ifEmpty { msgRecord.sendNickName }
 
         fun dismissAndRun(dismiss: () -> Unit, action: () -> Unit) {
             dismiss()
