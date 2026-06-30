@@ -2,14 +2,9 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Activity
 import android.app.Application
-import android.app.Dialog
 import android.content.Context
-import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.view.Window
-import android.view.WindowManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -48,7 +43,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,25 +52,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toDrawable
-import androidx.core.view.WindowCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.activity.SettingTheme
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
@@ -84,7 +65,7 @@ import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.Chain
-import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
+import com.owo233.tcqt.ui.CompatibleComposeDialog
 import com.owo233.tcqt.utils.api.GroupService
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookReplace
@@ -97,7 +78,6 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
-import android.graphics.Color as AndroidColor
 
 @RegisterAction
 class SimpleTroopManagement : IAction, DexKitTask {
@@ -243,136 +223,6 @@ class SimpleTroopManagement : IAction, DexKitTask {
             }
         }
     )
-}
-
-class TCQTDialogLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
-
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
-
-    init {
-        savedStateRegistryController.performRestore(null)
-    }
-
-    override val lifecycle: Lifecycle
-        get() = lifecycleRegistry
-
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
-
-    fun handleLifecycleEvent(event: Lifecycle.Event) {
-        if (lifecycleRegistry.currentState == Lifecycle.State.DESTROYED) {
-            return
-        }
-        lifecycleRegistry.handleLifecycleEvent(event)
-    }
-}
-
-@Suppress("DEPRECATION")
-abstract class CompatibleComposeDialog(
-    context: Context
-) : Dialog(context.toCompatibleContext(), android.R.style.Theme_Material_Light_NoActionBar) {
-
-    private val dialogLifecycleOwner = TCQTDialogLifecycleOwner()
-    protected var isVisible by mutableStateOf(false)
-    private var composeView: ComposeView? = null
-    private var isDismissing = false
-
-    init {
-        requestWindowFeature(Window.FEATURE_NO_TITLE)
-        setCanceledOnTouchOutside(true)
-        configureWindow()
-    }
-
-    protected open fun configureWindow() {
-        window?.apply {
-            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
-            
-            statusBarColor = AndroidColor.TRANSPARENT
-            navigationBarColor = AndroidColor.TRANSPARENT
-
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                isNavigationBarContrastEnforced = false
-                isStatusBarContrastEnforced = false
-            }
-
-            WindowCompat.setDecorFitsSystemWindows(this, false)
-
-            setBackgroundDrawable(AndroidColor.TRANSPARENT.toDrawable())
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setGravity(Gravity.CENTER)
-            
-            // Clear default window dimming to draw and fade the dim background ourselves in Compose
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            
-            // Remove default window animations to prevent conflicts with Compose transitions
-            setWindowAnimations(0)
-            
-            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-
-        composeView = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(dialogLifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(dialogLifecycleOwner)
-        }
-
-        setContentView(composeView!!)
-
-        window?.decorView?.let { decorView ->
-            decorView.setViewTreeLifecycleOwner(dialogLifecycleOwner)
-            decorView.setViewTreeSavedStateRegistryOwner(dialogLifecycleOwner)
-        }
-
-        composeView?.setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides dialogLifecycleOwner) {
-                SettingTheme(darkTheme = HookEnv.isNightMode(), dynamicColor = false) {
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
-                        isVisible = true
-                    }
-                    DialogContent()
-                }
-            }
-        }
-    }
-
-    @Composable
-    protected abstract fun DialogContent()
-
-    protected fun dismissWithAnimation() {
-        dismiss()
-    }
-
-    override fun onStart() {
-        super.onStart()
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    }
-
-    override fun onStop() {
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        super.onStop()
-    }
-
-    override fun dismiss() {
-        if (!isDismissing) {
-            isDismissing = true
-            isVisible = false
-            window?.decorView?.postDelayed({
-                super.dismiss()
-            }, 300)
-        } else {
-            composeView = null
-            super.dismiss()
-        }
-    }
 }
 
 class TCQTBottomDialog(

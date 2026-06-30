@@ -1,6 +1,5 @@
 package com.owo233.tcqt.utils.dexkit
 
-import android.os.Bundle
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.ext.ModuleScope
@@ -45,25 +44,28 @@ internal object DexKitFinder {
 
     fun getMissingKeys(): Set<String> {
         val allKeys = getAllTaskKeys()
+        if (!DexKitCache.isVersionMatched) {
+            return allKeys
+        }
         return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
     }
 
     private fun getAllTaskKeys(): Set<String> {
         return allTasks
-            .flatMap { it.getQueryMap().keys }
+            .flatMap { it.getCacheKeys() }
             .toSet()
     }
 
     private fun getTasks(missingKeys: Set<String>? = null): List<DexKitTask> {
         return allTasks.let { allTasks ->
             if (missingKeys.isNullOrEmpty()) allTasks
-            else allTasks.filter { task -> task.getQueryMap().keys.any { it in missingKeys } }
+            else allTasks.filter { task -> task.getCacheKeys().any { it in missingKeys } }
         }
     }
 
     private fun showFindToast() {
-        "com.tencent.mobileqq.activity.SplashActivity".toHostClass()
-            .getDeclaredMethod("doOnCreate", Bundle::class.java)
+        "com.tencent.mobileqq.activity.home.MainFragment".toHostClass()
+            .getDeclaredMethod("onResume")
             .hookAfter {
                 Toasts.info("开始查找混淆方法")
                 startFind()
@@ -92,7 +94,7 @@ internal object DexKitFinder {
                 }
             }
 
-            val isIdentical = oldCache.isNotEmpty() && oldCache == newCache
+            val isIdentical = DexKitCache.isVersionMatched && oldCache.isNotEmpty() && oldCache == newCache
 
             DexKitCache.cacheMap = newCache
             DexKitCache.saveCache()
@@ -120,6 +122,14 @@ interface DexKitTask {
 
     fun getQueryMap(): Map<String, BaseMatcher> = emptyMap()
 
+    /**
+     * 通常 getCacheKeys 和 execute 会同时重写
+     */
+    fun getCacheKeys(): Set<String> = getQueryMap().keys
+
+    /**
+     * 重写 execute 方法的同时 必须同时重写 getCacheKeys 方法
+     */
     fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
         getQueryMap().forEach { (name, query) ->
             when (query) {

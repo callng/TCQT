@@ -83,7 +83,7 @@ internal object ActionManager {
                     instanceOf(actionClass) as? DexKitTask
                 }.getOrNull()
                 if (dexKitTask != null) {
-                    val taskKeys = dexKitTask.getQueryMap().keys
+                    val taskKeys = dexKitTask.getCacheKeys()
                     val shouldSkip = taskKeys.any { key ->
                         (missingDexKitKeys != null && key in missingDexKitKeys) ||
                                 DexKitCache.cacheMap[key]?.isEmpty() == true

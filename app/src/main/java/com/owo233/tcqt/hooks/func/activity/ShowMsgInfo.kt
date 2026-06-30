@@ -20,9 +20,11 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.shortClassName
+import com.owo233.tcqt.ext.StringSetting
+import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.ui.CustomDialog
+import com.owo233.tcqt.ui.MsgDetailDialog
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.TIMVersion
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -37,182 +39,181 @@ import java.util.Locale
 @RegisterAction
 class ShowMsgInfo : IAction, OnAIOViewUpdate {
 
-    override val name: String get() = "显示消息Seq与时间"
-    override val desc: String get() = "在每条消息气泡下显示消息Seq和具体发送时间。"
-    override val uiTab: String get() = "界面"
+    override val key get() = "show_msg_info"
+    override val name get() = "显示消息Seq与时间"
+    override val desc get() =  $$"支持占位符: ${msgSeq} (消息Seq), ${formatTime} (发送时间)"
+    override val uiTab get() = "界面"
+    override val settings get() = listOf(
+        StringSetting(
+            key = "show_msg_info.format",
+            name = "显示格式",
+            defaultValue = $$"${msgSeq} ${formatTime}",
+            desc = "如果为空则使用默认格式",
+            placeholder = $$"自定义格式, e.g. ${msgSeq} [${formatTime}]"
+        )
+    )
 
     private val timeFormatter by lazy {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     }
 
+    private val placeholderProviders = mapOf<String, (MsgRecord) -> String>(
+        "msgSeq" to { it.msgSeq.toString() },
+        "formatTime" to { timeFormatter.format(Date(it.msgTime * 1000L)) }
+    )
+
+    private fun formatMessage(msg: MsgRecord, template: String): String {
+        var result = template
+        placeholderProviders.forEach { (name, provider) ->
+            result = result.replace($$"${$$name}", provider(msg))
+        }
+        return result
+    }
+
     override fun onRun(app: Application, process: ActionProcess) = Unit
 
-    override val key: String get() = "show_msg_info"
-
     override fun onGetViewNt(
-        rootView: ViewGroup,
-        chatMessage: MsgRecord,
+        view: ViewGroup,
+        msgRecord: MsgRecord,
         param: MethodHookParam
     ) {
         if (!isVersionSupported()) return
 
-        val layout = ensureInfoLayout(rootView, chatMessage)
-        bindMessageInfo(layout, chatMessage)
+        val infoLayout = view.findViewById(ID_INFO_LAYOUT)
+            ?: createAndAttachInfoLayout(view, msgRecord)
+
+        bindMessageInfo(infoLayout, msgRecord)
     }
 
-    private fun ensureInfoLayout(
-        rootView: ViewGroup,
+    // ── View Creation ────────────────────────────────────────────────
+
+    private fun createAndAttachInfoLayout(
+        view: ViewGroup,
         msg: MsgRecord
     ): LinearLayout {
-        return rootView.findViewById(ID_ADD_LAYOUT)
-            ?: buildInfoLayout(rootView).also {
-                rootView.addView(it)
-                applyConstraints(rootView, msg)
-            }
+        return buildInfoLayout(view.context).also {
+            view.addView(it)
+            applyConstraints(view, msg)
+        }
     }
 
-    private fun buildInfoLayout(rootView: ViewGroup): LinearLayout {
-        val context = rootView.context
+    private fun buildInfoLayout(context: Context): LinearLayout {
         return LinearLayout(context).apply {
-            id = ID_ADD_LAYOUT
-            layoutParams = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
+            id = ID_INFO_LAYOUT
+            layoutParams = ConstraintLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(Color.BLACK)
-                cornerRadius = 10f
+                cornerRadius = 5f
                 alpha = 0x22
             }
-            val px4 = context.dp2px(4f)
-            val px6 = context.dp2px(6f)
-            setPadding(px6, px4, px6, px4)
+            setPadding(context.dp(4f), context.dp(1f), context.dp(4f), context.dp(1f))
             addView(buildInfoTextView(context))
         }
     }
 
     private fun buildInfoTextView(context: Context): TextView {
         return TextView(context).apply {
-            id = ID_ADD_TEXTVIEW
+            id = ID_INFO_TEXT
             setTextColor(Color.WHITE)
-            setOnClickListener {
-                val record = it.tag as MsgRecord
-                showDetailInfoDialog(
-                    context,
-                    record.shortClassName,
-                    record.toJsonString()
-                )
+            textSize = 9.5f
+            setOnClickListener { v ->
+                (v.tag as? MsgRecord)?.let { msg ->
+                    MsgDetailDialog(
+                        context,
+                        msg.shortClassName,
+                        msg.toJsonString(maxDepth = 5, prettyPrint = true)
+                    ).show()
+                }
             }
         }
     }
 
-    private fun applyConstraints(
-        rootView: ViewGroup,
-        msg: MsgRecord
-    ) {
-        val constraintSet = constraintSetClz.new()
-        constraintSet.invoke("clone", rootView)
+    // ── Constraints ──────────────────────────────────────────────────
 
-        val anchorIndex = rootView.children.indexOfFirst {
-            it is LinearLayout && it.id != View.NO_ID
-        }
-        if (anchorIndex < 1) return
+    private fun applyConstraints(view: ViewGroup, msg: MsgRecord) {
+        val cs = constraintSetClz.new() ?: return
+        cs.invoke("clone", view)
 
-        val nameId = rootView.getChildAt(anchorIndex - 1).id
+        val (nameView, verticalAnchor) = findAnchorViews(view) ?: return
 
-        val verticalAnchor = rootView.children.lastOrNull { child ->
-            child.id != View.NO_ID &&
-                    child.id != ID_ADD_LAYOUT &&
-                    child.isVisible
-        } ?: return
-
-        constraintSet.invoke(
+        // 垂直方向：挂在最后一个可见子 View 下方
+        cs.invoke(
             "connect",
-            ID_ADD_LAYOUT,
-            ConstraintSet.TOP,
-            verticalAnchor.id,
-            ConstraintSet.BOTTOM,
-            0
+            ID_INFO_LAYOUT, ConstraintSet.TOP,
+            verticalAnchor.id, ConstraintSet.BOTTOM, 0
         )
 
+        // 水平方向：与名字对齐
         val isSelf = msg.senderUin == QQInterfaces.currentUin.toLong()
+        val side = if (isSelf) ConstraintSet.END else ConstraintSet.START
 
-        if (isSelf) {
-            constraintSet.invoke(
-                "connect",
-                ID_ADD_LAYOUT,
-                ConstraintSet.END,
-                nameId,
-                ConstraintSet.END
+        cs.invoke(
+            "connect",
+            ID_INFO_LAYOUT, side,
+            nameView.id, side
+        )
+
+        // 单聊额外边距
+        if (msg.chatType == 1) {
+            cs.invoke(
+                "setMargin",
+                ID_INFO_LAYOUT, side,
+                view.context.dp(10f)
             )
-            if (msg.chatType == 1) {
-                constraintSet.invoke(
-                    "setMargin",
-                    ID_ADD_LAYOUT,
-                    ConstraintSet.END,
-                    rootView.context.dp2px(10f)
-                )
-            }
-        } else {
-            constraintSet.invoke(
-                "connect",
-                ID_ADD_LAYOUT,
-                ConstraintSet.START,
-                nameId,
-                ConstraintSet.START
-            )
-            val margin = when (msg.chatType) {
-                1 -> 10f
-                /*2 if msg.msgType == MsgConstant.KELEMTYPEFILE -> 55f*/
-                else -> 0f
-            }
-            if (margin > 0) {
-                constraintSet.invoke(
-                    "setMargin",
-                    ID_ADD_LAYOUT,
-                    ConstraintSet.START,
-                    rootView.context.dp2px(margin)
-                )
-            }
         }
 
-        constraintSet.invoke("applyTo", rootView)
+        cs.invoke("applyTo", view)
     }
+
+    /**
+     * @return Pair(名字 View, 垂直锚点 View)；找不到则返回 null
+     */
+    private fun findAnchorViews(view: ViewGroup): Pair<View, View>? {
+        val anchorIdx = view.children.indexOfFirst {
+            it is LinearLayout && it.id != View.NO_ID
+        }
+        if (anchorIdx < 1) return null
+
+        val nameView = view.getChildAt(anchorIdx - 1)
+        val verticalAnchor = view.children.lastOrNull { child ->
+            child.id != View.NO_ID &&
+                    child.id != ID_INFO_LAYOUT &&
+                    child.isVisible
+        } ?: return null
+
+        return nameView to verticalAnchor
+    }
+
+    // ── Data Binding ─────────────────────────────────────────────────
 
     @SuppressLint("SetTextI18n")
     private fun bindMessageInfo(layout: LinearLayout, msg: MsgRecord) {
-        val textView = layout.findViewById<TextView>(ID_ADD_TEXTVIEW)
-        textView.tag = msg
-
-        val time = timeFormatter.format(Date(msg.msgTime * 1000L))
-        textView.text = "${msg.msgSeq} $time"
-
+        layout.findViewById<TextView>(ID_INFO_TEXT).apply {
+            tag = msg
+            val template = TCQTSetting.getString("show_msg_info.format").ifBlank { $$"${msgSeq} ${formatTime}" }
+            text = formatMessage(msg, template)
+        }
         layout.visibility = View.VISIBLE
-        textView.visibility = View.VISIBLE
     }
 
-    private fun isVersionSupported(): Boolean {
-        return requireMinQQVersion(QQVersion.QQ_8_9_63_BETA_11345) ||
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    private fun isVersionSupported(): Boolean =
+        requireMinQQVersion(QQVersion.QQ_8_9_63_BETA_11345) ||
                 requireMinTimVersion(TIMVersion.TIM_4_0_95_BETA)
-    }
-
-    private fun showDetailInfoDialog(context: Context, title: String, msg: String) {
-        CustomDialog.create(context)
-            .setTitle(title)
-            .setMessage(msg)
-            .setCancelable(true)
-            .setMessageSelectable(true)
-            .setPositiveButton("确定", null)
-            .show()
-    }
-
-    private fun Context.dp2px(dp: Float): Int =
-        (dp * resources.displayMetrics.density + 0.5f).toInt()
 
     companion object {
-        private const val ID_ADD_LAYOUT = 0x114510
-        private const val ID_ADD_TEXTVIEW = 0x114511
+        private const val ID_INFO_LAYOUT = 0x114510
+        private const val ID_INFO_TEXT = 0x114511
 
         private val constraintSetClz by lazy {
             "androidx.constraintlayout.widget.ConstraintSet".toHostClass()
         }
     }
 }
+
+private fun Context.dp(value: Float): Int =
+    (value * resources.displayMetrics.density + 0.5f).toInt()
