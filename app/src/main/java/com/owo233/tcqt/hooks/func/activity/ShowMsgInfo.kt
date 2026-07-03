@@ -137,54 +137,42 @@ class ShowMsgInfo : IAction, OnAIOViewUpdate {
         val cs = constraintSetClz.new() ?: return
         cs.invoke("clone", view)
 
-        val (nameView, verticalAnchor) = findAnchorViews(view) ?: return
+        val bubbleView = view.children.firstOrNull {
+            it is LinearLayout && it.id != View.NO_ID
+        } ?: return
 
-        // 垂直方向：挂在最后一个可见子 View 下方
+        val verticalAnchor = view.children.lastOrNull { child ->
+            child.id != View.NO_ID &&
+                    child.id != ID_INFO_LAYOUT &&
+                    child.isVisible
+        } ?: return
+
         cs.invoke(
             "connect",
             ID_INFO_LAYOUT, ConstraintSet.TOP,
             verticalAnchor.id, ConstraintSet.BOTTOM, 0
         )
 
-        // 水平方向：与名字对齐
-        val isSelf = msg.senderUin == QQInterfaces.currentUin.toLong()
+        val isSelf = if (msg.chatType == 8) {
+            msg.sendType == 1
+        } else {
+            msg.senderUin == QQInterfaces.currentUin.toLong()
+        }
         val side = if (isSelf) ConstraintSet.END else ConstraintSet.START
 
         cs.invoke(
             "connect",
             ID_INFO_LAYOUT, side,
-            nameView.id, side
+            bubbleView.id, side
         )
 
-        // 单聊额外边距
-        if (msg.chatType == 1) {
-            cs.invoke(
-                "setMargin",
-                ID_INFO_LAYOUT, side,
-                view.context.dp(10f)
-            )
-        }
+        cs.invoke(
+            "setMargin",
+            ID_INFO_LAYOUT, side,
+            view.context.dp(8f)
+        )
 
         cs.invoke("applyTo", view)
-    }
-
-    /**
-     * @return Pair(名字 View, 垂直锚点 View)；找不到则返回 null
-     */
-    private fun findAnchorViews(view: ViewGroup): Pair<View, View>? {
-        val anchorIdx = view.children.indexOfFirst {
-            it is LinearLayout && it.id != View.NO_ID
-        }
-        if (anchorIdx < 1) return null
-
-        val nameView = view.getChildAt(anchorIdx - 1)
-        val verticalAnchor = view.children.lastOrNull { child ->
-            child.id != View.NO_ID &&
-                    child.id != ID_INFO_LAYOUT &&
-                    child.isVisible
-        } ?: return null
-
-        return nameView to verticalAnchor
     }
 
     // ── Data Binding ─────────────────────────────────────────────────

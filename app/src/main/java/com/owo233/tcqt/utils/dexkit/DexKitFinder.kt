@@ -94,7 +94,7 @@ internal object DexKitFinder {
                 }
             }
 
-            val isIdentical = DexKitCache.isVersionMatched && oldCache.isNotEmpty() && oldCache == newCache
+            val isIdentical = oldCache.isNotEmpty() && oldCache == newCache
 
             DexKitCache.cacheMap = newCache
             DexKitCache.saveCache()
