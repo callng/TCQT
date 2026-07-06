@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Build
 import android.os.Environment
+import android.os.Process
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionProcess
@@ -15,6 +16,7 @@ import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.log.Log
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import java.io.File
 
 internal object HookSteps {
 
@@ -32,22 +34,40 @@ internal object HookSteps {
         HookEnv.setModuleApkPath(path)
     }
 
+    @SuppressLint("SdCardPath")
     fun initContext(app: Application) {
-        val packageManager = app.packageManager
-        val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
-        val appName = packageManager.getApplicationLabel(app.applicationInfo).toString()
+        val appName = TCQTBuild.APP_NAME
+        val packageInfo = app.packageManager.getPackageInfo(app.packageName, 0)
 
-        val dirPath = app.getExternalFilesDir(null)?.parentFile?.let {
-            "${it.absolutePath}/${TCQTBuild.APP_NAME}/"
-        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${app.packageName}/${TCQTBuild.APP_NAME}/"
+        val oldDirPath = app.getExternalFilesDir(null)?.parentFile?.let {
+            "${it.absolutePath}/$appName"
+        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${app.packageName}/$appName"
 
-        HookEnv.setModuleDataPath(dirPath)
-        HookEnv.setHostAppContext(app)
-        HookEnv.setApplication(app)
-        HookEnv.setHostApkPath(app.applicationInfo.sourceDir)
-        HookEnv.setAppName(appName)
-        HookEnv.setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
-        HookEnv.setVersionName(packageInfo.versionName ?: "unknown")
+        val newDirPath = (app.filesDir?.let { File(it, "5463306EE50FE3AA/$appName") }
+            ?: File("/data/user/${Process.myUserHandle().hashCode()}/${app.packageName}/files/5463306EE50FE3AA/$appName"))
+            .also { it.mkdirs() }
+            .absolutePath
+
+        // 将在后续的几个版本更新中移除迁移逻辑
+        if (ProcUtil.isMain) {
+            File(oldDirPath).takeIf { it.isDirectory }?.let { oldDir ->
+                val newDir = File(newDirPath)
+                if (!oldDir.renameTo(newDir)) {
+                    oldDir.copyRecursively(newDir, overwrite = true)
+                    oldDir.deleteRecursively()
+                }
+            }
+        }
+
+        HookEnv.apply {
+            setModuleDataPath(newDirPath)
+            setHostAppContext(app)
+            setApplication(app)
+            setHostApkPath(app.applicationInfo.sourceDir)
+            setAppName(app.packageManager.getApplicationLabel(app.applicationInfo).toString())
+            setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
+            setVersionName(packageInfo.versionName ?: "unknown")
+        }
 
         ParasiticActivity.initForStubActivity(app)
         ResourcesUtils.injectResourcesToContext(app.resources)

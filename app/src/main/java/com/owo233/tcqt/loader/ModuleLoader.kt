@@ -1,9 +1,11 @@
 package com.owo233.tcqt.loader
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.os.Environment
+import android.os.Process
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
@@ -22,6 +24,7 @@ import com.owo233.tcqt.utils.reflect.allConstructors
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
 import io.fastkv.FastKV
+import java.io.File
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -111,33 +114,51 @@ internal object ModuleLoader {
         }
     }
 
+    @SuppressLint("SdCardPath")
     private fun tryDisableHotPatchEarly(param: MethodHookParam) {
         val context = param.args[0] as Context
-        val settingPath = context.getExternalFilesDir(null)?.parentFile?.let {
-            "${it.absolutePath}/${TCQTBuild.APP_NAME}/global/setting"
-        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${context.packageName}/${TCQTBuild.APP_NAME}/global/setting"
+        val appName = TCQTBuild.APP_NAME
 
-        val kv = FastKV.Builder(settingPath, TCQTBuild.APP_NAME).build()
-        if (!kv.getBoolean("disable_hot_patch", false)) return
+        val oldPath = context.getExternalFilesDir(null)?.parentFile?.let {
+            "${it.absolutePath}/$appName"
+        } ?: "${Environment.getExternalStorageDirectory().absolutePath}/Android/data/${context.packageName}/$appName"
+
+        val newPath = (context.filesDir?.let { File(it, "5463306EE50FE3AA/$appName") }
+            ?: File("/data/user/${Process.myUserHandle().hashCode()}/${context.packageName}/files/5463306EE50FE3AA/$appName"))
+            .also { it.mkdirs() }
+            .absolutePath
+
+        // 将在后续的几个版本更新中移除迁移逻辑
+        val settingPath = if (File(oldPath).exists()) {
+            val kvOld = FastKV.Builder("$oldPath/global/setting", appName).build()
+            val kvNew = FastKV.Builder("$newPath/global/setting", appName).build()
+            kvNew.putBoolean("disable_hot_patch", kvOld.getBoolean("disable_hot_patch", false))
+            oldPath
+        } else newPath
+
+        if (!FastKV.Builder("$settingPath/global/setting", appName).build()
+                .getBoolean("disable_hot_patch", false)
+        ) return
 
         try {
-            val hostClassLoader = param.thisObject.javaClass.classLoader!!
-            val tinkerLoaderClass = hostClassLoader.loadClass("com.tencent.tinker.loader.TinkerLoader")
-            val tinkerAppClass = hostClassLoader.loadClass("com.tencent.tinker.loader.app.TinkerApplication")
-            val tryLoadMethod = tinkerLoaderClass.getDeclaredMethod("tryLoad", tinkerAppClass)
+            val classLoader = param.thisObject.javaClass.classLoader!!
+            val tryLoadMethod = classLoader
+                .loadClass("com.tencent.tinker.loader.TinkerLoader")
+                .getDeclaredMethod(
+                    "tryLoad",
+                    classLoader.loadClass("com.tencent.tinker.loader.app.TinkerApplication")
+                )
 
-            tryLoadMethod.hookBefore { hookParam ->
-                val th = object : UnsupportedOperationException(
-                    "Fuck Tinker"
-                ) {
-                    override fun fillInStackTrace() = this
+            val stubException = object : UnsupportedOperationException("Fuck Tinker") {
+                override fun fillInStackTrace() = this
+            }
+
+            tryLoadMethod.hookBefore {
+                it.result = Intent().apply {
+                    putExtra("intent_return_code", -3)
+                    putExtra("intent_patch_exception", stubException)
+                    putExtra("intent_patch_interpret_exception", stubException)
                 }
-                val intent = Intent().apply {
-                    putExtra("intent_return_code", -3) // CleanPatch
-                    putExtra("intent_patch_exception", th)
-                    putExtra("intent_patch_interpret_exception", th)
-                }
-                hookParam.result = intent
             }
         } catch (th: Throwable) {
             Log.e("tryDisableHotPatchEarly failed", th)
