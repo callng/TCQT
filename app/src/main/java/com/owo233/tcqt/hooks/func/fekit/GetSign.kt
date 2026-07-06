@@ -132,11 +132,16 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                         requestSsoSeq = seq
                     }
 
-                    val (instance, method) = signer
-                    val sign = instance
-                        .invokeAs<QQSecuritySign.SignResult>(method, toServiceMsg, cmd)
-                        .sign
-                        .toHexString()
+                    val sign = if (HookEnv.isQQ()) {
+                        val (instance, method) = signer
+                        instance.invokeAs<QQSecuritySign.SignResult>(method, toServiceMsg, cmd)
+                            .sign
+                            .toHexString()
+                    } else {
+                        com.tencent.mobileqq.msf.core.d0.a.e().a(toServiceMsg, cmd)
+                            .sign
+                            .toHexString()
+                    }
 
                     Intent(ACTION_SIGN_RESULT).apply {
                         putExtra("sign", sign)
@@ -161,11 +166,12 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
     }
 
     override fun getCacheKeys(): Set<String> {
+        if (HookEnv.isTim()) return emptySet()
         return setOf(TASK_INPUT_ROOT_INIT, TASK_GET_SIGN)
     }
 
     override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        if (!HookEnv.isQQ()) return
+        if (HookEnv.isTim()) return
 
         with(bridge) {
             findAndCache(cache, TASK_GET_SIGN) {
@@ -184,7 +190,6 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                     )
                 }
             }).singleOrNull()?.descriptor
-
             cache[TASK_INPUT_ROOT_INIT] = found ?: findMethod(FindMethod().apply {
                 searchPackages("com.tencent.mobileqq.aio.input.simpleui")
                 matcher {

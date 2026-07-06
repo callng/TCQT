@@ -7,7 +7,7 @@ androidx-core = "1.19.0"
 androidx-browser = "1.10.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
-compose-bom = "2026.06.00"
+compose-bom = "2026.06.01"
 activity-compose = "1.13.0"
 lifecycle = "2.11.0"
 
