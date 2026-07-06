@@ -11,45 +11,41 @@ sealed interface ProtoValue {
 
     fun writeTo(output: CodedOutputStream, tag: Int)
 
-    fun computeSizeDirectly(): Int {
-        return 0
-    }
+    fun computeSizeDirectly(): Int =
+        throw UnsupportedOperationException("${this::class.simpleName} is not a message container")
 
-    fun has(vararg tags: Int): Boolean {
-        return false
-    }
+    fun has(vararg tags: Int): Boolean = false
 
-    operator fun contains(tag: Int): Boolean {
-        return false
-    }
+    operator fun contains(tag: Int): Boolean = false
 
     operator fun set(tag: Int, v: ProtoValue) {
-        return
+        throw UnsupportedOperationException("${this::class.simpleName} does not support field assignment")
     }
 
     operator fun set(tag: Int, v: Number) {
-        return
+        set(tag, v.proto)
     }
 
-    operator fun get(vararg tags: Int): ProtoValue {
-        error("Instance is not ProtoMap")
-    }
+    operator fun get(vararg tags: Int): ProtoValue =
+        throw UnsupportedOperationException("${this::class.simpleName} is not a message container")
 
-    fun remove(tag: Int): Boolean {
-        return false
-    }
+    fun remove(tag: Int): Boolean = false
 
     fun add(v: ProtoValue) {
-        error("Instance is not ProtoList")
+        throw UnsupportedOperationException("${this::class.simpleName} is not a repeated field")
     }
 
-    fun size(): Int {
-        return 0
-    }
+    fun size(): Int =
+        throw UnsupportedOperationException("${this::class.simpleName} has no collection size")
+
+    fun deepCopy(): ProtoValue = this
 
     val isMap: Boolean get() = this is ProtoMap
     val isList: Boolean get() = this is ProtoList
     val isNumber: Boolean get() = this is ProtoNumber
     val isByteString: Boolean get() = this is ProtoByteString
+    val isString: Boolean get() = this is ProtoString
     val isBool: Boolean get() = this is ProtoBool
+    val isGroup: Boolean get() = this is ProtoGroup
+    val isPacked: Boolean get() = this is ProtoPacked
 }

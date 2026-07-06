@@ -1,202 +1,298 @@
 package com.owo233.tcqt.utils.proto2json
 
 import com.google.protobuf.ByteString
-import com.google.protobuf.CodedInputStream
 import com.google.protobuf.CodedOutputStream
-import com.google.protobuf.WireFormat
 import com.google.protobuf.UnknownFieldSet
+
+/**
+ * Controls how schema-free length-delimited fields are represented.
+ *
+ * [COMPATIBLE] restores the convenient behavior used by the original library:
+ * printable UTF-8 data remains [ProtoByteString], while non-text payloads that
+ * are valid protobuf messages are recursively decoded as [ProtoMap]. This lets
+ * existing code keep using paths such as `message[6, 2]` and runtime checks such
+ * as `value is ProtoMap`.
+ *
+ * [WIRE_PRESERVING] never guesses the logical meaning of a length-delimited
+ * field. Every such field remains [ProtoByteString], because strings, bytes,
+ * embedded messages and packed repeated fields share the same wire type.
+ */
+enum class ProtoDecodeMode {
+    COMPATIBLE,
+    WIRE_PRESERVING
+}
 
 object ProtoUtils {
 
-    fun decodeFromByteArray(data: ByteArray): ProtoMap {
-        val unknownFieldSet = UnknownFieldSet.parseFrom(data)
-        val dest = ProtoMap()
-        convertUnknownFieldSet(unknownFieldSet, dest)
-        return dest
-    }
+    /**
+     * Decodes a protobuf stream without a descriptor.
+     *
+     * The default [ProtoDecodeMode.COMPATIBLE] mode preserves the original
+     * proto2json API experience by recursively decoding likely embedded
+     * messages. Use [ProtoDecodeMode.WIRE_PRESERVING] for wire inspection or
+     * whenever automatic message detection is undesirable.
+     *
+     * Scalar wire types are always preserved with RAW_* number types.
+     */
+    @JvmOverloads
+    fun decodeFromByteArray(
+        data: ByteArray,
+        mode: ProtoDecodeMode = ProtoDecodeMode.COMPATIBLE
+    ): ProtoMap = decodeUnknownFieldSet(
+        UnknownFieldSet.parseFrom(data),
+        mode,
+        depth = 0
+    )
+
+    @JvmOverloads
+    fun decodeFromByteString(
+        data: ByteString,
+        mode: ProtoDecodeMode = ProtoDecodeMode.COMPATIBLE
+    ): ProtoMap = decodeUnknownFieldSet(
+        UnknownFieldSet.parseFrom(data),
+        mode,
+        depth = 0
+    )
+
+    @JvmOverloads
+    fun decodeEmbeddedMessage(
+        data: ProtoByteString,
+        mode: ProtoDecodeMode = ProtoDecodeMode.COMPATIBLE
+    ): ProtoMap = decodeFromByteString(data.value, mode)
+
+    fun decodePacked(data: ProtoByteString, type: ProtoPackedType): ProtoPacked =
+        ProtoPacked.decode(data.value, type)
 
     fun encodeToByteArray(protoMap: ProtoMap): ByteArray {
         val size = protoMap.computeSizeDirectly()
-        val dest = ByteArray(size)
-        val output = CodedOutputStream.newInstance(dest)
-        protoMap.value.forEach { (tag, proto) ->
-            proto.writeTo(output, tag)
-        }
+        val destination = ByteArray(size)
+        val output = CodedOutputStream.newInstance(destination)
+        protoMap.writeFieldsTo(output)
         output.checkNoSpaceLeft()
-        return dest
+        return destination
     }
 
-    internal fun computeRawVarint32Size(size: Int): Int {
-        if (size and -128 == 0) return 1
-        if (size and -16384 == 0) return 2
-        if (-2097152 and size == 0) return 3
-        return if (size and -268435456 == 0) 4 else 5
+    fun encodePacked(values: List<ProtoValue>, tag: Int): ByteArray =
+        encodeSingleField(ProtoPacked(values), tag)
+
+    fun encodePacked(values: List<ProtoValue>, tag: Int, type: ProtoPackedType): ByteArray =
+        encodeSingleField(ProtoPacked(type, ProtoList(values.toMutableList())), tag)
+
+    fun encodeSingleField(value: ProtoValue, tag: Int): ByteArray {
+        requireValidTag(tag)
+        val destination = ByteArray(value.computeSize(tag))
+        val output = CodedOutputStream.newInstance(destination)
+        value.writeTo(output, tag)
+        output.checkNoSpaceLeft()
+        return destination
     }
 
-    internal fun any2proto(any: Any): ProtoValue {
-        return when (any) {
-            is ProtoValue -> any
-            is Boolean -> ProtoBool(any)
-            is Number -> any.proto
-            is ByteArray -> any.proto
-            is String -> any.proto
-            is ByteString -> any.proto
-            is Array<*> -> ProtoList(arrayListOf(*any.map { any2proto(it!!) }.toTypedArray()))
-            is Collection<*> -> ProtoList(arrayListOf(*any.map { any2proto(it!!) }.toTypedArray()))
-            is Map<*, *> -> ProtoMap(hashMapOf(*any.map { (k, v) ->
-                k as Int to any2proto(v!!)
-            }.toTypedArray()))
-
-            is Pair<*, *> -> {
-                val (tag, v) = any
-                val value = any2proto(v!!)
-                when (tag) {
-                    is Pair<*, *> -> ProtoMap().apply {
-                        val tags = walkPairTags(tag)
-                        set(*tags.toIntArray(), v = value)
-                    }
-
-                    is Number -> ProtoMap(hashMapOf(tag.toInt() to value))
-                    else -> error("Not support type for tag: ${tag.toString()}")
-                }
+    internal fun any2proto(any: Any?): ProtoValue = when (any) {
+        null -> throw IllegalArgumentException(
+            "Protocol Buffers cannot represent null without a schema wrapper"
+        )
+        is ProtoValue -> any
+        is Boolean -> any.proto
+        is Number -> any.proto
+        is UByte -> protoUInt32Of(any.toUInt())
+        is UShort -> protoUInt32Of(any.toUInt())
+        is UInt -> protoUInt32Of(any)
+        is ULong -> protoUInt64Of(any)
+        is ByteArray -> any.proto
+        is String -> any.proto
+        is ByteString -> any.proto
+        is Array<*> -> ProtoList(any.mapTo(arrayListOf()) { any2proto(it) })
+        is BooleanArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is ShortArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is IntArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is LongArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is FloatArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is DoubleArray -> ProtoList(any.mapTo(arrayListOf()) { it.proto })
+        is Collection<*> -> ProtoList(any.mapTo(arrayListOf()) { any2proto(it) })
+        is Map<*, *> -> ProtoMap(linkedMapOf<Int, ProtoValue>().apply {
+            any.forEach { (key, value) ->
+                val tag = key.toFieldNumber()
+                put(tag, any2proto(value))
             }
-
-            else -> error("Not support type: ${any::class.simpleName}")
-        }
-    }
-
-    fun walkPairTags(pair: Pair<*, *>, tags: MutableList<Int> = mutableListOf()): List<Int> {
-        val (k, v) = pair
-        if (k is Number) {
-            tags.add(k.toInt())
-        } else {
-            walkPairTags(k as Pair<*, *>, tags)
-        }
-        tags.add(v as Int)
-        return tags
-    }
-
-    private fun isPrintableString(bs: ByteString): Boolean {
-        if (bs.isEmpty) return true
-        val bytes = bs.toByteArray()
-        val decoder = java.nio.charset.StandardCharsets.UTF_8.newDecoder()
-        try {
-            val charBuffer = decoder.decode(java.nio.ByteBuffer.wrap(bytes))
-            for (i in 0 until charBuffer.length) {
-                val c = charBuffer[i]
-                if (c.code < 32 && c != '\t' && c != '\n' && c != '\r') {
-                    return false
-                }
+        })
+        is Pair<*, *> -> {
+            val path = when (val key = any.first) {
+                is Number, is UByte, is UShort, is UInt, is ULong ->
+                    intArrayOf(key.toFieldNumber())
+                is Pair<*, *> -> walkPairTags(key).toIntArray()
+                else -> throw IllegalArgumentException("Unsupported protobuf tag path: $key")
             }
-            return true
-        } catch (_: Exception) {
-            return false
+            ProtoMap().apply { set(*path, v = any2proto(any.second)) }
+        }
+        else -> throw IllegalArgumentException(
+            "Unsupported protobuf value: ${any::class.qualifiedName}"
+        )
+    }
+
+    fun walkPairTags(pair: Pair<*, *>): List<Int> = buildList {
+        fun appendPath(node: Any?) {
+            when (node) {
+                is Pair<*, *> -> {
+                    appendPath(node.first)
+                    appendPath(node.second)
+                }
+                is Number, is UByte, is UShort, is UInt, is ULong ->
+                    add(node.toFieldNumber())
+                else -> throw IllegalArgumentException(
+                    "Tag path contains a non-numeric value: $node"
+                )
+            }
+        }
+        appendPath(pair)
+    }
+
+    internal fun Any?.toFieldNumber(): Int {
+        val value = when (this) {
+            is Byte -> toLong()
+            is Short -> toLong()
+            is Int -> toLong()
+            is Long -> this
+            is Float -> {
+                require(isFinite() && this % 1f == 0f) {
+                    "Field number must be an integer: $this"
+                }
+                toLong()
+            }
+            is Double -> {
+                require(isFinite() && this % 1.0 == 0.0) {
+                    "Field number must be an integer: $this"
+                }
+                toLong()
+            }
+            is UByte -> toLong()
+            is UShort -> toLong()
+            is UInt -> toLong()
+            is ULong -> {
+                require(this <= Long.MAX_VALUE.toULong()) {
+                    "Field number is too large: $this"
+                }
+                toLong()
+            }
+            is Number -> {
+                val decimal = toDouble()
+                require(decimal.isFinite() && decimal % 1.0 == 0.0) {
+                    "Field number must be an integer: $this"
+                }
+                require(decimal in 1.0..MAX_FIELD_NUMBER.toDouble()) {
+                    "Invalid protobuf field number $this; expected 1..$MAX_FIELD_NUMBER"
+                }
+                decimal.toLong()
+            }
+            else -> throw IllegalArgumentException(
+                "Protobuf field tag must be numeric: $this"
+            )
+        }
+        require(value in 1L..MAX_FIELD_NUMBER.toLong()) {
+            "Invalid protobuf field number $value; expected 1..$MAX_FIELD_NUMBER"
+        }
+        return value.toInt()
+    }
+
+    internal fun requireValidTag(tag: Int) {
+        require(tag in 1..MAX_FIELD_NUMBER) {
+            "Invalid protobuf field number $tag; expected 1..$MAX_FIELD_NUMBER"
         }
     }
 
-    private fun convertUnknownFieldSet(set: UnknownFieldSet, dest: ProtoMap) {
+    private fun decodeUnknownFieldSet(
+        set: UnknownFieldSet,
+        mode: ProtoDecodeMode,
+        depth: Int
+    ): ProtoMap {
+        val destination = ProtoMap()
         set.asMap().forEach { (tag, field) ->
-            // varint fields (wire type 0): int32, int64, uint32, uint64, sint32, sint64, bool, enum
             field.varintList.forEach { value ->
-                dest.append(tag, value)
+                destination.append(
+                    tag,
+                    ProtoNumber(value, type = ProtoNumberType.RAW_VARINT)
+                )
             }
-            // fixed32 fields (wire type 5): fixed32, sfixed32, float
             field.fixed32List.forEach { value ->
-                dest.append(tag, value)
+                destination.append(
+                    tag,
+                    ProtoNumber(value, type = ProtoNumberType.RAW_FIXED32)
+                )
             }
-            // fixed64 fields (wire type 1): fixed64, sfixed64, double
             field.fixed64List.forEach { value ->
-                dest.append(tag, value)
+                destination.append(
+                    tag,
+                    ProtoNumber(value, type = ProtoNumberType.RAW_FIXED64)
+                )
             }
-            // length-delimited fields (wire type 2): string, bytes, embedded messages, packed repeated
-            field.lengthDelimitedList.forEach { bs ->
-                if (isPrintableString(bs)) {
-                    dest.append(tag, ProtoByteString(bs))
-                } else {
-                    // Try to parse as embedded message first
-                    try {
-                        val nestedSet = UnknownFieldSet.parseFrom(bs)
-                        val nestedMap = ProtoMap()
-                        convertUnknownFieldSet(nestedSet, nestedMap)
-                        dest.append(tag, nestedMap)
-                    } catch (_: Throwable) {
-                        // Not a valid message — try to decode as packed repeated field
-                        val packedList = tryDecodePackedField(bs)
-                        if (!packedList.isNullOrEmpty()) {
-                            packedList.forEach { dest.append(tag, it) }
-                        } else {
-                            // Store as raw bytes
-                            dest.append(tag, ProtoByteString(bs))
-                        }
-                    }
-                }
+            field.lengthDelimitedList.forEach { value ->
+                destination.append(
+                    tag,
+                    decodeLengthDelimited(value, mode, depth)
+                )
             }
-            // group fields (wire type 3/4): groups (deprecated, rarely used)
-            field.groupList.forEach { groupSet ->
-                val groupMap = ProtoMap()
-                convertUnknownFieldSet(groupSet, groupMap)
-                dest.append(tag, groupMap)
+            field.groupList.forEach { group ->
+                destination.append(
+                    tag,
+                    ProtoGroup(decodeUnknownFieldSet(group, mode, depth + 1))
+                )
             }
+        }
+        return destination
+    }
+
+    private fun decodeLengthDelimited(
+        value: ByteString,
+        mode: ProtoDecodeMode,
+        depth: Int
+    ): ProtoValue {
+        if (mode == ProtoDecodeMode.WIRE_PRESERVING) {
+            return ProtoByteString(value)
+        }
+
+        // Keep text as bytes so existing asUtf8String calls and string/bytes
+        // semantics remain stable. Embedded message payloads normally contain
+        // non-printable tag bytes, so they proceed to recursive parsing below.
+        if (value.isPrintableUtf8()) {
+            return ProtoByteString(value)
+        }
+
+        if (depth >= MAX_COMPATIBLE_NESTING_DEPTH) {
+            return ProtoByteString(value)
+        }
+
+        val nestedSet = runCatching {
+            UnknownFieldSet.parseFrom(value)
+        }.getOrNull() ?: return ProtoByteString(value)
+
+        // Empty input and some non-message payloads can parse as an empty set.
+        // Treating those as a message would break ordinary bytes fields.
+        if (nestedSet.asMap().isEmpty()) {
+            return ProtoByteString(value)
+        }
+
+        return decodeUnknownFieldSet(nestedSet, mode, depth + 1)
+    }
+
+    private fun ByteString.isPrintableUtf8(): Boolean {
+        if (isEmpty) return true
+        if (!isValidUtf8) return false
+
+        return toStringUtf8().all { char ->
+            !char.isISOControl() || char == '\t' || char == '\n' || char == '\r'
         }
     }
 
-    /**
-     * Attempts to decode a length-delimited blob as a packed repeated field.
-     * Returns null if the blob is not a valid packed field.
-     */
-    private fun tryDecodePackedField(data: ByteString): List<ProtoValue>? {
-        if (data.size() == 0) return null
-        val input = CodedInputStream.newInstance(data.asReadOnlyByteBuffer())
-        val values = mutableListOf<ProtoValue>()
-        try {
-            while (!input.isAtEnd) {
-                val tag = input.readTag()
-                val wireType = WireFormat.getTagWireType(tag)
-                val value = when (wireType) {
-                    WireFormat.WIRETYPE_VARINT -> ProtoNumber(input.readUInt64())
-                    WireFormat.WIRETYPE_FIXED64 -> ProtoNumber(input.readDouble())
-                    WireFormat.WIRETYPE_FIXED32 -> ProtoNumber(input.readFloat())
-                    else -> {
-                        // Not a valid packed scalar field
-                        return null
-                    }
-                }
-                values.add(value)
-            }
-        } catch (_: Throwable) {
-            return null
-        }
-        return values.ifEmpty { null }
-    }
+    private const val MAX_FIELD_NUMBER = (1 shl 29) - 1
+    private const val MAX_COMPATIBLE_NESTING_DEPTH = 100
+}
 
-    /**
-     * Encodes a list of scalar values as a packed repeated field.
-     */
-    fun encodePacked(values: List<ProtoValue>, tag: Int): ByteArray {
-        var size = 0
-        values.forEach { v ->
-            size += v.computeSize(0) // compute without tag
-        }
-        val totalSize = CodedOutputStream.computeTagSize(tag) +
-                computeRawVarint32Size(size) + size
-        val dest = ByteArray(totalSize)
-        val output = CodedOutputStream.newInstance(dest)
-        output.writeTag(tag, WireFormat.WIRETYPE_LENGTH_DELIMITED)
-        output.writeUInt32NoTag(size)
-        values.forEach { v ->
-            when (v) {
-                is ProtoNumber -> {
-                    when (v.value) {
-                        is Float -> output.writeFloatNoTag(v.toFloat())
-                        is Double -> output.writeDoubleNoTag(v.toDouble())
-                        else -> output.writeInt64NoTag(v.toLong())
-                    }
-                }
-                is ProtoBool -> output.writeBoolNoTag(v.value)
-                else -> v.writeTo(output, 0)
-            }
-        }
-        output.checkNoSpaceLeft()
-        return dest
+internal fun ByteArray.toHexString(): String {
+    val chars = CharArray(size * 2)
+    val alphabet = "0123456789abcdef"
+    for (index in indices) {
+        val byte = this[index].toInt() and 0xFF
+        chars[index * 2] = alphabet[byte ushr 4]
+        chars[index * 2 + 1] = alphabet[byte and 0x0F]
     }
+    return String(chars)
 }

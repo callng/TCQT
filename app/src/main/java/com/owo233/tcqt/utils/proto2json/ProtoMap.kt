@@ -4,76 +4,66 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.CodedOutputStream
 import com.google.protobuf.WireFormat
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
 
 class ProtoMap(
-    val value: HashMap<Int, ProtoValue> = hashMapOf()
+    value: Map<Int, ProtoValue> = emptyMap()
 ) : ProtoValue {
 
-    override fun has(vararg tags: Int): Boolean {
-        var curMap: ProtoMap = this
-        tags.forEachIndexed { index, tag ->
-            if (tag !in curMap) {
-                return false
-            }
-            if (index == tags.size - 1) {
-                return true
-            }
-            val next = curMap[tag]
-            if (next is ProtoMap) {
-                curMap = next
-            } else {
-                return false
-            }
-        }
-        return true
+    val value: MutableMap<Int, ProtoValue> = LinkedHashMap(value)
+
+    init {
+        this.value.keys.forEach(ProtoUtils::requireValidTag)
     }
 
-    override fun contains(tag: Int): Boolean {
+    override fun has(vararg tags: Int): Boolean = getOrNull(*tags) != null
+
+    override operator fun contains(tag: Int): Boolean {
+        ProtoUtils.requireValidTag(tag)
         return value.containsKey(tag)
     }
 
     override operator fun set(tag: Int, v: ProtoValue) {
+        ProtoUtils.requireValidTag(tag)
         value[tag] = v
     }
 
     override operator fun set(tag: Int, v: Number) {
-        value[tag] = ProtoNumber(v)
+        this[tag] = v.proto
     }
 
     fun append(tag: Int, v: ProtoValue) {
-        if (!contains(tag)) {
-            value[tag] = v
-        } else {
-            val oldValue = value[tag]!!
-            if (oldValue is ProtoList) {
-                oldValue.add(v)
-            } else {
-                value[tag] = ProtoList(arrayListOf(oldValue, v))
-            }
+        ProtoUtils.requireValidTag(tag)
+        when (val oldValue = value[tag]) {
+            null -> value[tag] = v
+            is ProtoList -> oldValue.add(v)
+            else -> value[tag] = ProtoList(arrayListOf(oldValue, v))
         }
     }
 
-    fun append(tag: Int, v: Number) {
-        append(tag, ProtoNumber(v))
-    }
+    fun append(tag: Int, v: Number) = append(tag, v.proto)
+    fun append(tag: Int, v: String) = append(tag, v.proto)
+    fun append(tag: Int, v: Boolean) = append(tag, v.proto)
+    fun append(tag: Int, v: ByteArray) = append(tag, v.proto)
+    fun append(tag: Int, v: ByteString) = append(tag, v.proto)
 
-    override operator fun get(vararg tags: Int): ProtoValue {
-        var curMap = value
+    override operator fun get(vararg tags: Int): ProtoValue = getOrNull(*tags)
+        ?: throw NoSuchElementException("Tag path ${tags.contentToString()} not found")
+
+    fun getOrNull(vararg tags: Int): ProtoValue? {
+        if (tags.isEmpty()) return null
+        var current: ProtoMap = this
         tags.forEachIndexed { index, tag ->
-            val v = curMap[tag] ?: error("Tag $tag not found")
-            if (index == tags.size - 1) {
-                return v
-            }
-            if (v is ProtoMap) {
-                curMap = v.value
-            } else {
-                return v
-            }
+            ProtoUtils.requireValidTag(tag)
+            val field = current.value[tag] ?: return null
+            if (index == tags.lastIndex) return field
+            current = field.containerMapOrNull() ?: return null
         }
-        error("Instance is not ProtoMap")
+        return null
     }
 
     override fun remove(tag: Int): Boolean {
+        ProtoUtils.requireValidTag(tag)
         return value.remove(tag) != null
     }
 
@@ -81,138 +71,97 @@ class ProtoMap(
         if (tags.isEmpty()) return false
         if (tags.size == 1) return remove(tags[0])
 
-        var curMap: ProtoMap = this
-        for (i in 0 until tags.size - 1) {
-            val next = curMap.value[tags[i]]
-            if (next !is ProtoMap) return false
-            curMap = next
+        var current = this
+        for (index in 0 until tags.lastIndex) {
+            ProtoUtils.requireValidTag(tags[index])
+            current = current.value[tags[index]]?.containerMapOrNull() ?: return false
         }
-        return curMap.value.remove(tags.last()) != null
+        return current.remove(tags.last())
     }
 
-    override fun size(): Int {
-        return value.size
-    }
+    override fun size(): Int = value.size
+    fun isEmpty(): Boolean = value.isEmpty()
+    fun isNotEmpty(): Boolean = value.isNotEmpty()
+    fun clear() = value.clear()
 
     val keys: Set<Int> get() = value.keys
-
     val entries: Set<Map.Entry<Int, ProtoValue>> get() = value.entries
-
     val values: Collection<ProtoValue> get() = value.values
 
     operator fun set(vararg tags: Int, v: ProtoValue) {
-        var curProtoMap: ProtoMap = this
-        tags.forEachIndexed { index, tag ->
-            if (index == tags.size - 1) {
-                return@forEachIndexed
-            }
-            if (!curProtoMap.contains(tag)) {
-                val tmp = ProtoMap()
-                curProtoMap[tag] = tmp
-                curProtoMap = tmp
-            } else {
-                curProtoMap = curProtoMap[tag].asMap
+        require(tags.isNotEmpty()) { "Tag path cannot be empty" }
+        tags.forEach(ProtoUtils::requireValidTag)
+
+        var current = this
+        for (index in 0 until tags.lastIndex) {
+            val tag = tags[index]
+            val existing = current.value[tag]
+            current = when (existing) {
+                null -> ProtoMap().also { current[tag] = it }
+                is ProtoMap -> existing
+                is ProtoGroup -> existing.value
+                else -> throw IllegalStateException(
+                    "Tag $tag in path ${tags.contentToString()} is ${existing::class.simpleName}, not a message"
+                )
             }
         }
-        curProtoMap[tags.last()] = v
+        current[tags.last()] = v
     }
 
-    operator fun set(vararg tags: Int, struct: (ProtoMap) -> Unit) {
-        val map = ProtoMap()
-        struct.invoke(map)
-        set(*tags, v = map)
+    operator fun set(vararg tags: Int, struct: ProtoMap.() -> Unit) {
+        set(*tags, v = ProtoMap().apply(struct))
     }
 
-    operator fun set(vararg tags: Int, v: String) {
-        set(*tags, v = v.proto)
-    }
+    operator fun set(vararg tags: Int, v: String) = set(*tags, v = v.proto)
+    operator fun set(vararg tags: Int, v: ByteArray) = set(*tags, v = v.proto)
+    operator fun set(vararg tags: Int, v: Number) = set(*tags, v = v.proto)
+    operator fun set(vararg tags: Int, v: UInt) = set(*tags, v = protoUInt32Of(v))
+    operator fun set(vararg tags: Int, v: ULong) = set(*tags, v = protoUInt64Of(v))
+    operator fun set(vararg tags: Int, v: Boolean) = set(*tags, v = v.proto)
+    operator fun set(vararg tags: Int, v: ByteString) = set(*tags, v = v.proto)
+    operator fun set(vararg tags: Int, v: Any) = set(*tags, v = ProtoUtils.any2proto(v))
 
-    operator fun set(vararg tags: Int, v: ByteArray) {
-        set(*tags, v = v.proto)
-    }
-
-    operator fun set(vararg tags: Int, v: Number) {
-        set(*tags, v = v.proto)
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    inline operator fun set(vararg tags: Int, v: UInt) {
-        set(*tags, v = ProtoNumber(v.toInt(), isUnsigned = true))
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    inline operator fun set(vararg tags: Int, v: ULong) {
-        set(*tags, v = ProtoNumber(v.toLong(), isUnsigned = true))
-    }
-
-    operator fun set(vararg tags: Int, v: Boolean) {
-        set(*tags, v = v.proto)
-    }
-
-    operator fun set(vararg tags: Int, v: ByteString) {
-        set(*tags, v = v.proto)
-    }
-
-    operator fun set(vararg tags: Int, v: Any) {
-        set(*tags, v = ProtoUtils.any2proto(v))
-    }
-
-    override fun toJson(): JsonElement {
-        val hashMap = hashMapOf<String, JsonElement>()
-        value.forEach { (tag, field) ->
-            hashMap[tag.toString()] = field.toJson()
+    override fun toJson(): JsonElement = buildJsonObject {
+        value.toSortedMap().forEach { (tag, field) ->
+            put(tag.toString(), field.toJson())
         }
-        return hashMap.jsonObject
     }
 
     override fun computeSize(tag: Int): Int {
-        val size = CodedOutputStream.computeTagSize(tag)
+        ProtoUtils.requireValidTag(tag)
         val dataSize = computeSizeDirectly()
-        return size + ProtoUtils.computeRawVarint32Size(dataSize) + dataSize
+        return CodedOutputStream.computeTagSize(tag) +
+            CodedOutputStream.computeUInt32SizeNoTag(dataSize) + dataSize
     }
 
     override fun writeTo(output: CodedOutputStream, tag: Int) {
+        ProtoUtils.requireValidTag(tag)
         output.writeTag(tag, WireFormat.WIRETYPE_LENGTH_DELIMITED)
-        val dataSize = computeSizeDirectly()
-        output.writeUInt32NoTag(dataSize)
-        value.forEach { (tag, proto) ->
-            proto.writeTo(output, tag)
-        }
+        output.writeUInt32NoTag(computeSizeDirectly())
+        writeFieldsTo(output)
     }
 
-    override fun computeSizeDirectly(): Int {
-        var size = 0
-        value.forEach { (tag, proto) ->
-            size += proto.computeSize(tag)
-        }
-        return size
+    override fun computeSizeDirectly(): Int = value.entries.sumOf { (tag, proto) ->
+        proto.computeSize(tag)
     }
 
-    override fun toString(): String {
-        return toJson().toString()
+    internal fun writeFieldsTo(output: CodedOutputStream) {
+        value.forEach { (tag, proto) -> proto.writeTo(output, tag) }
     }
 
-    fun toByteArray(): ByteArray {
-        return ProtoUtils.encodeToByteArray(this)
-    }
+    fun toByteArray(): ByteArray = ProtoUtils.encodeToByteArray(this)
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is ProtoMap) return false
-        return value == other.value
-    }
+    override fun deepCopy(): ProtoMap = ProtoMap(
+        value.mapValuesTo(linkedMapOf()) { (_, field) -> field.deepCopy() }
+    )
 
+    override fun equals(other: Any?): Boolean = other is ProtoMap && value == other.value
     override fun hashCode(): Int = value.hashCode()
+    override fun toString(): String = toJson().toString()
 
-    fun deepCopy(): ProtoMap {
-        val copy = ProtoMap()
-        value.forEach { (tag, v) ->
-            copy[tag] = when (v) {
-                is ProtoMap -> v.deepCopy()
-                is ProtoList -> v.deepCopy()
-                else -> v
-            }
-        }
-        return copy
+    private fun ProtoValue.containerMapOrNull(): ProtoMap? = when (this) {
+        is ProtoMap -> this
+        is ProtoGroup -> value
+        else -> null
     }
 }

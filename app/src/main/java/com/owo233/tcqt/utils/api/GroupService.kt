@@ -155,10 +155,10 @@ internal object GroupService {
             putWupBuffer(ProtoMap().apply {
                 this[1] = 2300
                 this[2] = 2
-                this[4, 1] = groupId.toLong()
-                this[4, 3, 1] = uin.toLong()
+                this[4, 1] = groupId.toULong()
+                this[4, 3, 1] = uin.toULong()
                 this[4, 3, 5] = title
-                this[4, 3, 6] = 4294967295L
+                this[4, 3, 6] = UInt.MAX_VALUE
                 this[4, 3, 7] = troopMemberNickNoEmpty
             }.toByteArray())
             addAttribute("req_pb_protocol_flag", true)
@@ -195,7 +195,7 @@ internal object GroupService {
         val buffer = ProtoMap().apply {
             this[1] = 2201
             this[2] = 0
-            this[4, 1] = groupId.toLong()
+            this[4, 1] = groupId.toULong()
             this[4, 2] = 0
             this[4, 3] = 2
             this[4, 5, 1] = 0
