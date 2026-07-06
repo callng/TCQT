@@ -14,10 +14,12 @@ import com.tencent.common.app.AppInterface
 import com.tencent.mobileqq.app.QBaseActivity
 import com.tencent.mobileqq.mqq.api.IAccountRuntime
 import com.tencent.mobileqq.qroute.QRoute
+import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.qqnt.kernel.nativeinterface.IKernelGroupService
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import mqq.app.Foreground
 import mqq.app.MobileQQ
+import mqq.app.api.IRuntimeService
 
 open class QQInterfaces {
 
@@ -47,11 +49,13 @@ open class QQInterfaces {
             if (usePublic) Maple.PublicKernel else Maple.Kernel
         }
 
+        /** Initially, `getWrapperSession` may be null. */
         val msgService: IKernelMsgService
             get() = NTServiceFetcher.kernelService
                 .wrapperSession
                 .msgService
 
+        /** Initially, `getWrapperSession` may be null. */
         val groupService: IKernelGroupService
             get() = NTServiceFetcher.kernelService
                 .wrapperSession
@@ -62,5 +66,13 @@ open class QQInterfaces {
                 .getDeclaredMethod("getServerTimeMillis").apply { isAccessible = true }
                 .invoke(null) as Long
         }.getOrDefault(0L)
+
+        inline fun <reified T : QRouteApi> api(): T {
+            return QRoute.api(T::class.java)
+        }
+
+        inline fun <reified T : IRuntimeService> runtime(): T {
+            return appRuntime.getRuntimeService(T::class.java, "all")
+        }
     }
 }

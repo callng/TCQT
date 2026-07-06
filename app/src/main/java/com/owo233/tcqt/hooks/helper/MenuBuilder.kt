@@ -32,7 +32,7 @@ class MenuBuilder : AlwaysRunAction() {
 
         val activeDecorators = decorators
             .filterIsInstance<IAction>()
-            .filter { it.canRun() }
+            .filter { it.canRun() && it.onInit() }
             .filterIsInstance<OnMenuBuilder>()
             .takeIf { it.isNotEmpty() } ?: return
 

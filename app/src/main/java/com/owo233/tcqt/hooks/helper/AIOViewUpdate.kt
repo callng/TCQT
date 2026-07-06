@@ -35,7 +35,7 @@ class AIOViewUpdate : AlwaysRunAction() {
     override fun onRun(app: Application, process: ActionProcess) {
         val activeDecorators = decorators
             .filterIsInstance<IAction>()
-            .filter { it.canRun() }
+            .filter { it.canRun() && it.onInit() }
             .filterIsInstance<OnAIOViewUpdate>()
             .takeIf { it.isNotEmpty() } ?: return
 

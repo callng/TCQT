@@ -4,16 +4,13 @@ import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.api.packet.PacketHelper
+import com.owo233.tcqt.utils.proto2json.ProtoList
 import com.owo233.tcqt.utils.proto2json.ProtoMap
 import com.owo233.tcqt.utils.proto2json.ProtoUtils
 import com.owo233.tcqt.utils.proto2json.asInt
-import com.owo233.tcqt.utils.proto2json.ProtoList
-import com.owo233.tcqt.utils.proto2json.asList
 import com.owo233.tcqt.utils.proto2json.asLong
 import com.owo233.tcqt.utils.proto2json.asMap
 import com.tencent.mobileqq.data.troop.TroopInfo
-import com.tencent.mobileqq.qroute.QRoute
-import com.tencent.mobileqq.qroute.QRouteApi
 import com.tencent.mobileqq.troop.api.IBizTroopMemberInfoService
 import com.tencent.mobileqq.troop.api.ITroopInfoService
 import com.tencent.mobileqq.troop.api.ITroopMemberInfoService
@@ -23,7 +20,6 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
 import com.tencent.relation.common.api.IRelationNTUinAndUidApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import mqq.app.api.IRuntimeService
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
@@ -149,7 +145,7 @@ internal object GroupService {
 
     fun setMemberTitle(groupId: String, uin: String, title: String) {
         val troopMemberNickNoEmpty =
-            runtime<IBizTroopMemberInfoService>().getTroopMemberNickNoEmpty(groupId, uin)
+            QQInterfaces.runtime<IBizTroopMemberInfoService>().getTroopMemberNickNoEmpty(groupId, uin)
 
         ToServiceMsg(
             "mobileqq.service",
@@ -173,13 +169,13 @@ internal object GroupService {
     }
 
     fun getGroupInfo(groupId: String): TroopInfo {
-        return runtime<ITroopInfoService>().getTroopInfo(groupId)
+        return QQInterfaces.runtime<ITroopInfoService>().getTroopInfo(groupId)
     }
 
     suspend fun getMemberTitle(groupId: String, uin: String): String {
         return withTimeoutOrNull(5.seconds) {
             suspendCancellableCoroutine { cont ->
-                val cacheInfo = runtime<ITroopMemberInfoService>()
+                val cacheInfo = QQInterfaces.runtime<ITroopMemberInfoService>()
                     .getTroopMemberFromCacheOrFetchAsync(
                         groupId, uin, "AIONickBlockApiImpl-level"
                     ) { info ->
@@ -254,18 +250,10 @@ internal object GroupService {
     }
 
     fun getUidFromUin(uin: String): String {
-        return api<IRelationNTUinAndUidApi>().getUidFromUin(uin)
+        return QQInterfaces.api<IRelationNTUinAndUidApi>().getUidFromUin(uin)
     }
 
     fun getUinFromUid(uid: String): String {
-        return api<IRelationNTUinAndUidApi>().getUinFromUid(uid)
-    }
-
-    private inline fun <reified T : QRouteApi> api(): T {
-        return QRoute.api(T::class.java)
-    }
-
-    private inline fun <reified T : IRuntimeService> runtime(): T {
-        return QQInterfaces.appRuntime.getRuntimeService(T::class.java, "all")
+        return QQInterfaces.api<IRelationNTUinAndUidApi>().getUinFromUid(uid)
     }
 }

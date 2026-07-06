@@ -33,6 +33,14 @@ class ProtoMap(
     }
 
     override operator fun set(tag: Int, v: ProtoValue) {
+        value[tag] = v
+    }
+
+    override operator fun set(tag: Int, v: Number) {
+        value[tag] = ProtoNumber(v)
+    }
+
+    fun append(tag: Int, v: ProtoValue) {
         if (!contains(tag)) {
             value[tag] = v
         } else {
@@ -45,17 +53,8 @@ class ProtoMap(
         }
     }
 
-    override operator fun set(tag: Int, v: Number) {
-        if (!contains(tag)) {
-            value[tag] = ProtoNumber(v)
-        } else {
-            val oldValue = value[tag]!!
-            if (oldValue is ProtoList) {
-                oldValue.add(v.proto)
-            } else {
-                value[tag] = ProtoList(arrayListOf(oldValue, v.proto))
-            }
-        }
+    fun append(tag: Int, v: Number) {
+        append(tag, ProtoNumber(v))
     }
 
     override operator fun get(vararg tags: Int): ProtoValue {

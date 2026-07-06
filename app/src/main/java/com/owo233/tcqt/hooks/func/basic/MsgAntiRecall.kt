@@ -7,19 +7,20 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
-import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
-import mqq.app.MobileQQ
 
 @RegisterAction
 class MsgAntiRecall : IAction {
 
+    override val key: String get() = "msg_anti_recall"
     override val name: String get() = "消息防撤回"
     override val desc: String get() = "防止消息被撤回，添加灰条提示。"
     override val uiTab: String get() = "基础"
     override val uiOrder: Int get() = 1
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
     override val settings: List<Setting<*>>
         get() = listOf(
             MultiIntSetting(
@@ -33,10 +34,7 @@ class MsgAntiRecall : IAction {
 
     override fun onRun(app: Application, process: ActionProcess) = Unit
 
-    override val key: String get() = "msg_anti_recall"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
-
-    override fun canRun(): Boolean {
+    override fun onInit(): Boolean {
         KernelServiceImpl::class.java.hookMethodAfter("initService") {
             // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook
             val service = it.thisObject as IKernelService
@@ -44,13 +42,12 @@ class MsgAntiRecall : IAction {
         }
 
         runCatching {
-            val runtime = MobileQQ.getMobileQQ().peekAppRuntime()
-            if (runtime != null && runtime.isLogin) {
-                val service = runtime.getRuntimeService(IKernelService::class.java, "all")
+            if (QQInterfaces.appRuntime.isLogin) {
+                val service = QQInterfaces.appRuntime.getRuntimeService(IKernelService::class.java, "all")
                 NTServiceFetcher.onFetch(service)
             }
         }
 
-        return TCQTSetting.getBoolean(key)
+        return super.onInit()
     }
 }

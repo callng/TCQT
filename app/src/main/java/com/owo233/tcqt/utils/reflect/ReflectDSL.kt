@@ -28,6 +28,7 @@ class MethodSearcher(private val clazz: Class<*>) {
     val byte: Class<*> get() = java.lang.Byte.TYPE
     val short: Class<*> get() = java.lang.Short.TYPE
     val int: Class<*> get() = Integer.TYPE
+    val intent: Class<*> get() = android.content.Intent::class.java
     val long: Class<*> get() = java.lang.Long.TYPE
     val float: Class<*> get() = java.lang.Float.TYPE
     val double: Class<*> get() = java.lang.Double.TYPE

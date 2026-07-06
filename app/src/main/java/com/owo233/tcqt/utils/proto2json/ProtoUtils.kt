@@ -76,36 +76,58 @@ object ProtoUtils {
         return tags
     }
 
+    private fun isPrintableString(bs: ByteString): Boolean {
+        if (bs.isEmpty) return true
+        val bytes = bs.toByteArray()
+        val decoder = java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+        try {
+            val charBuffer = decoder.decode(java.nio.ByteBuffer.wrap(bytes))
+            for (i in 0 until charBuffer.length) {
+                val c = charBuffer[i]
+                if (c.code < 32 && c != '\t' && c != '\n' && c != '\r') {
+                    return false
+                }
+            }
+            return true
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
     private fun convertUnknownFieldSet(set: UnknownFieldSet, dest: ProtoMap) {
         set.asMap().forEach { (tag, field) ->
             // varint fields (wire type 0): int32, int64, uint32, uint64, sint32, sint64, bool, enum
             field.varintList.forEach { value ->
-                dest[tag] = value
+                dest.append(tag, value)
             }
             // fixed32 fields (wire type 5): fixed32, sfixed32, float
             field.fixed32List.forEach { value ->
-                dest[tag] = value
+                dest.append(tag, value)
             }
             // fixed64 fields (wire type 1): fixed64, sfixed64, double
             field.fixed64List.forEach { value ->
-                dest[tag] = value
+                dest.append(tag, value)
             }
             // length-delimited fields (wire type 2): string, bytes, embedded messages, packed repeated
             field.lengthDelimitedList.forEach { bs ->
-                // Try to parse as embedded message first
-                try {
-                    val nestedSet = UnknownFieldSet.parseFrom(bs)
-                    val nestedMap = ProtoMap()
-                    convertUnknownFieldSet(nestedSet, nestedMap)
-                    dest[tag] = nestedMap
-                } catch (_: Throwable) {
-                    // Not a valid message — try to decode as packed repeated field
-                    val packedList = tryDecodePackedField(bs)
-                    if (!packedList.isNullOrEmpty()) {
-                        packedList.forEach { dest[tag] = it }
-                    } else {
-                        // Store as raw bytes
-                        dest[tag] = ProtoByteString(bs)
+                if (isPrintableString(bs)) {
+                    dest.append(tag, ProtoByteString(bs))
+                } else {
+                    // Try to parse as embedded message first
+                    try {
+                        val nestedSet = UnknownFieldSet.parseFrom(bs)
+                        val nestedMap = ProtoMap()
+                        convertUnknownFieldSet(nestedSet, nestedMap)
+                        dest.append(tag, nestedMap)
+                    } catch (_: Throwable) {
+                        // Not a valid message — try to decode as packed repeated field
+                        val packedList = tryDecodePackedField(bs)
+                        if (!packedList.isNullOrEmpty()) {
+                            packedList.forEach { dest.append(tag, it) }
+                        } else {
+                            // Store as raw bytes
+                            dest.append(tag, ProtoByteString(bs))
+                        }
                     }
                 }
             }
@@ -113,7 +135,7 @@ object ProtoUtils {
             field.groupList.forEach { groupSet ->
                 val groupMap = ProtoMap()
                 convertUnknownFieldSet(groupSet, groupMap)
-                dest[tag] = groupMap
+                dest.append(tag, groupMap)
             }
         }
     }

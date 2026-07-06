@@ -12,10 +12,17 @@ import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.hooks.helper.OnAIOSendMsgBefore
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.hook.hookMethodBefore
+import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.proto2json.ProtoUtils
+import com.owo233.tcqt.utils.proto2json.asUtf8String
+import com.owo233.tcqt.utils.reflect.findMethod
 import com.owo233.tcqt.utils.reflect.getObject
 import com.owo233.tcqt.utils.reflect.setObject
 import com.tencent.qqnt.kernel.nativeinterface.FileElement
+import com.tencent.qqnt.kernel.nativeinterface.IQQNTWrapperSession
+import com.tencent.qqnt.kernel.nativeinterface.MsfRspInfo
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import java.io.File
 
@@ -43,6 +50,7 @@ class RenameBaseApk : IAction, OnAIOSendMsgBefore {
     override val key: String get() = "rename_base_apk"
 
     override fun onRun(app: Application, process: ActionProcess) {
+        hookC2CSendFile()
         hookFile()
     }
 
@@ -60,6 +68,41 @@ class RenameBaseApk : IAction, OnAIOSendMsgBefore {
                     }
                 }
             }
+    }
+
+    private fun hookC2CSendFile() {
+        IQQNTWrapperSession.CppProxy::class.java.findMethod {
+            name = "onSendSSOReply"
+            paramTypes(long, string, int, string, MsfRspInfo::class.java)
+        }.hookBefore { param ->
+            val cmd = param.args[1] as String
+            val result = param.args[2] as Int
+            if (cmd == "OidbSvcTrpcTcp.0xe37_800" && result == 0) {
+                val msfRspInfo = param.args[4] as MsfRspInfo
+                try {
+                    val protoMap = ProtoUtils.decodeFromByteArray(msfRspInfo.pbBuffer)
+                    if (protoMap.has(4, 10, 40, 1, 5)) {
+                        val oldFileName = protoMap[4, 10, 40, 1, 5].asUtf8String
+                        val newFileName = fixSuffix(oldFileName)
+                        if (newFileName != oldFileName) {
+                            protoMap[4, 10, 40, 1, 5] = newFileName
+                            msfRspInfo.pbBuffer = ProtoUtils.encodeToByteArray(protoMap)
+                        }
+                    }
+                } catch (e: Throwable) {
+                    Log.e("RenameBaseApk hookC2CSendFile error", e)
+                }
+            }
+        }
+    }
+
+    private fun fixSuffix(str: String): String {
+        val base = str.removeSuffix(".1")
+        return if (base.endsWith(".apk", ignoreCase = true)) {
+            base.dropLast(4) + ".APK"
+        } else {
+            base
+        }
     }
 
     private fun hookFile() {
