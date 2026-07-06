@@ -3,6 +3,7 @@ package com.owo233.tcqt.internals
 import android.app.Activity
 import android.content.Context
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.ext.runRetry
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
 import com.owo233.tcqt.hooks.maple.Maple
@@ -25,7 +26,12 @@ open class QQInterfaces {
 
     companion object {
         val appRuntime: AppInterface
-            get() = MobileQQ.getMobileQQ().waitAppRuntime(null) as AppInterface
+            get() = runRetry(
+                retryNum = 50,
+                sleepMs = 100L,
+            ) {
+                MobileQQ.getMobileQQ().peekAppRuntime() as? AppInterface
+            } ?: throw IllegalStateException("QQInterfaces appRuntime: peekAppRuntime is null")
 
         val context: Context get() = QRoute.api(IAccountRuntime::class.java).applicationContext
 

@@ -7,10 +7,10 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.helper.NTServiceFetcher
-import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
+import mqq.app.MobileQQ
 
 @RegisterAction
 class MsgAntiRecall : IAction {
@@ -42,8 +42,9 @@ class MsgAntiRecall : IAction {
         }
 
         runCatching {
-            if (QQInterfaces.appRuntime.isLogin) {
-                val service = QQInterfaces.appRuntime.getRuntimeService(IKernelService::class.java, "all")
+            val runtime = MobileQQ.getMobileQQ().peekAppRuntime()
+            if (runtime != null && runtime.isLogin) {
+                val service = runtime.getRuntimeService(IKernelService::class.java, "all")
                 NTServiceFetcher.onFetch(service)
             }
         }

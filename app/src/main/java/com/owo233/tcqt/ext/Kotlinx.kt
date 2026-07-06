@@ -150,6 +150,7 @@ fun <T> runRetry(
     sleepMs: Long = 0,
     exponentialBackoff: Boolean = false,
     jitter: Boolean = false,
+    maxSleepMs: Long = 30_000L,
     onError: ((Exception, attempt: Int) -> Unit)? = null,
     block: () -> T?
 ): T? {
@@ -158,25 +159,22 @@ fun <T> runRetry(
 
     for (i in 1..retryNum) {
         lastException = null
-
         try {
             val result = block()
-            if (result != null) {
-                return result
-            }
+            if (result != null) return result
         } catch (e: Exception) {
             lastException = e
             onError?.invoke(e, i)
-            // logE(msg = "runRetry failed on attempt $i: ${e.message}", cause = e)
         }
 
         if (i < retryNum) {
-            val sleepTime = when {
-                exponentialBackoff -> (currentSleep * 2).also { currentSleep = it }
-                else -> currentSleep
-            } + if (jitter) (Math.random() * 50).toLong() else 0
-
+            val jitterMs = if (jitter) (currentSleep * Math.random() * 0.2).toLong() else 0
+            val sleepTime = currentSleep + jitterMs
             if (sleepTime > 0) Thread.sleep(sleepTime)
+
+            if (exponentialBackoff) {
+                currentSleep = minOf(currentSleep * 2, maxSleepMs)
+            }
         }
     }
 

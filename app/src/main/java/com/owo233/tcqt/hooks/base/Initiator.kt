@@ -3,7 +3,6 @@
 package com.owo233.tcqt.hooks.base
 
 import com.owo233.tcqt.HookEnv
-import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.reflect.field
 import com.tencent.mobileqq.pluginsdk.PluginStatic
 
@@ -52,12 +51,12 @@ fun loadOrThrow(
 }
 
 fun loadFromPlugin(pluginName: String, className: String): Class<*> {
-    val pluginClassLoader = PluginStatic.getOrCreateClassLoader(QQInterfaces.appRuntime.app, pluginName)
+    val pluginClassLoader = PluginStatic.getOrCreateClassLoader(HookEnv.hostAppContext, pluginName)
     return pluginClassLoader.loadClass(className)
 }
 
 fun loadClassLoaderFromPlugin(pluginName: String): ClassLoader {
-    return PluginStatic.getOrCreateClassLoader(QQInterfaces.appRuntime.app, pluginName)
+    return PluginStatic.getOrCreateClassLoader(HookEnv.hostAppContext, pluginName)
 }
 
 val String.clazz: Class<*>?
