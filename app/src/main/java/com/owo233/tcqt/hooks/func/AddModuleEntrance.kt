@@ -7,11 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Parcelable
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.R
 import com.owo233.tcqt.activity.SettingActivity
@@ -31,6 +26,8 @@ import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
+import com.owo233.tcqt.ui.CopyTicketDialog
+import com.owo233.tcqt.ui.InfoCardDialog
 import com.owo233.tcqt.utils.CalculationUtils
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.ResourcesUtils
@@ -227,37 +224,9 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     private fun copyTicket(ctx: Context) {
         val context = ctx.toCompatibleContext()
-        val view = LayoutInflater.from(context).inflate(R.layout.dialog_copy_ticket_warning, null)
-        val etConfirm = view.findViewById<EditText>(R.id.et_confirm_input)
-        val btnCancel = view.findViewById<Button>(R.id.btn_cancel)
-        val btnCopy = view.findViewById<Button>(R.id.btn_copy)
-
-        val dialog = AlertDialog.Builder(context)
-            .setView(view)
-            .setCancelable(true)
-            .create()
-
-        btnCancel.setOnClickListener { dialog.dismiss() }
-
-        btnCopy.setOnClickListener {
-            val userInput = etConfirm.text.toString().trim()
-            val expectedText = "我已知晓风险"
-
-            if (userInput != expectedText) {
-                etConfirm.error = "请输入“${expectedText}”以确认操作"
-                return@setOnClickListener
-            }
-
-            dialog.dismiss()
+        CopyTicketDialog(context) {
             ModuleScope.launchIO { loginAndCopyTicket(context) }
-        }
-
-        dialog.show()
-
-        dialog.window?.setLayout(
-            (context.resources.displayMetrics.widthPixels * 0.9).toInt(),
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        }.show()
     }
 
     private suspend fun loginAndCopyTicket(context: Context) {
@@ -310,53 +279,20 @@ class AddModuleEntrance : AlwaysRunAction() {
 
     private fun showInfoCardDialog(ctx: Context) {
         val context = ctx.toCompatibleContext()
-
-        val editText = EditText(context).apply {
-            hint = "输入QQ号或群号"
-            setSingleLine()
-            val pad = (16 * resources.displayMetrics.density).toInt()
-            setPadding(pad, pad, pad, pad)
-        }
-
-        val dialog = AlertDialog.Builder(context).apply {
-            setTitle("Open the card")
-            setView(editText)
-            setNegativeButton("Cancel") { d, _ -> d.dismiss() }
-            setNeutralButton("Group") { _, _ ->
-                editText.validateUin("请输入群号", "请输入正确的群号")
-                    ?.let { openGroupInfoCard(context, it) }
-            }
-            setPositiveButton("User") { _, _ ->
-                editText.validateUin("请输入QQ号", "请输入正确的账号")
-                    ?.let { openUserInfoCard(context, it) }
-            }
-        }.create()
-
-        dialog.show()
-
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnLongClickListener {
-            editText.validateUin("请输入主题ID", "请输入正确的主题ID", isThemeId = true)
-                ?.let {
-                    dialog.dismiss()
-                    ThemeEngine.applyThemeLogic(it) { success ->
-                        if (success) {
-                            Toasts.success("应用主题成功")
-                        } else {
-                            Toasts.error("应用主题失败")
-                        }
+        InfoCardDialog(
+            context = context,
+            onOpenUser = { uin -> openUserInfoCard(context, uin) },
+            onOpenGroup = { uin -> openGroupInfoCard(context, uin) },
+            onApplyTheme = { themeId ->
+                ThemeEngine.applyThemeLogic(themeId) { success ->
+                    if (success) {
+                        Toasts.success("应用主题成功")
+                    } else {
+                        Toasts.error("应用主题失败")
                     }
                 }
-            true
-        }
-    }
-
-    private fun EditText.validateUin(emptyMsg: String, invalidMsg: String, isThemeId: Boolean = false): String? {
-        val uin = text.toString().trim()
-        if (uin.isEmpty()) return null.also { Toasts.error(emptyMsg) }
-        if (runCatching { uin.toLong() < if (isThemeId) 1000 else 10000 }.getOrDefault(true)) {
-            return null.also { Toasts.error(invalidMsg) }
-        }
-        return uin
+            }
+        ).show()
     }
 
     private fun openUserInfoCard(context: Context, uin: String) {

@@ -70,11 +70,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
-import com.owo233.tcqt.hooks.base.Toasts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,9 +91,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionUiType
+import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.PlatformTools
 
 private const val PageTransitionDurationMillis = 380
@@ -670,8 +674,8 @@ private fun CompactHeaderCard(
     enabledCount: Int,
     disabledCount: Int
 ) {
-    var clickCount by remember { mutableStateOf(0) }
-    var lastClickTime by remember { mutableStateOf(0L) }
+    var clickCount by remember { mutableIntStateOf(0) }
+    var lastClickTime by remember { mutableLongStateOf(0L) }
 
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -1012,6 +1016,24 @@ private fun SearchBar(
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
+    var textFieldValueState by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = query,
+                selection = TextRange(query.length)
+            )
+        )
+    }
+
+    LaunchedEffect(query) {
+        if (query != textFieldValueState.text) {
+            textFieldValueState = TextFieldValue(
+                text = query,
+                selection = TextRange(query.length)
+            )
+        }
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -1027,8 +1049,11 @@ private fun SearchBar(
         Spacer(modifier = Modifier.width(4.dp))
 
         TextField(
-            value = query,
-            onValueChange = onQueryChange,
+            value = textFieldValueState,
+            onValueChange = { newValue ->
+                textFieldValueState = newValue
+                onQueryChange(newValue.text)
+            },
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(focusRequester),
