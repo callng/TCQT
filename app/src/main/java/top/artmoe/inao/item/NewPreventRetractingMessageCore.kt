@@ -12,8 +12,10 @@ package top.artmoe.inao.item
 import com.owo233.tcqt.ext.ifNullOrEmpty
 import com.owo233.tcqt.ext.launchWithCatch
 import com.owo233.tcqt.hooks.helper.ContactHelper
+import com.owo233.tcqt.hooks.helper.AntiRecallConfig
 import com.owo233.tcqt.hooks.helper.LocalGrayTips
 import com.owo233.tcqt.hooks.helper.MessageHandler
+import com.owo233.tcqt.hooks.helper.RecallManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.helper.GroupHelper
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -113,6 +115,12 @@ object NewPreventRetractingMessageCore : MessageHandler {
             )
         )
         param.args[1] = ProtoBuf.encodeToByteArray(newInfoSyncPush)
+        friendList.forEach { recall ->
+            RecallManager.markC2C(recall.peerUid, recall.msgSeq.toLong())
+        }
+        troopList.forEach { recall ->
+            RecallManager.markGroup(recall.groupUin, recall.msgSeq.toLong())
+        }
         showInterceptedC2CTips(friendList)
         // showInterceptedGroupRecalls(troopList)
     }
@@ -170,6 +178,7 @@ object NewPreventRetractingMessageCore : MessageHandler {
         )
 
         param.args[1] = ProtoBuf.encodeToByteArray(newMsgPush)
+        RecallManager.markC2C(operatorUid, recallMsgSeq.toLong())
         showC2CRecallTip(operatorUid, recallMsgSeq)
     }
 
@@ -207,6 +216,7 @@ object NewPreventRetractingMessageCore : MessageHandler {
         )
 
         param.args[1] = ProtoBuf.encodeToByteArray(newMsgPush)
+        RecallManager.markGroup(operationInfo.peerId.toString(), operationInfo.info.msgInfo.msgSeq.toLong())
         showGroupRecallTip(operationInfo)
     }
 
@@ -215,13 +225,15 @@ object NewPreventRetractingMessageCore : MessageHandler {
     // ═══════════════════════════════════════════════════════════
 
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
+        if (!AntiRecallConfig.isGrayTipEnabled()) return
+
         GlobalScope.launchWithCatch {
             showC2CRecallTipInternal(operatorUid, msgSeq)
         }
     }
 
     private fun showInterceptedC2CTips(list: List<FriendChatMessageRecall>) {
-        if (list.isEmpty()) return
+        if (list.isEmpty() || !AntiRecallConfig.isGrayTipEnabled()) return
         GlobalScope.launchWithCatch {
             list.forEach { showC2CRecallTipInternal(it.peerUid, it.msgSeq) }
         }
@@ -245,6 +257,8 @@ object NewPreventRetractingMessageCore : MessageHandler {
     // ═══════════════════════════════════════════════════════════
 
     private fun showGroupRecallTip(operationInfo: QQMessage.MessageBody.GroupRecallOperationInfo) {
+        if (!AntiRecallConfig.isGrayTipEnabled()) return
+
         GlobalScope.launchWithCatch {
             showGroupRecallTipInternal(
                 groupUin = operationInfo.peerId.toString(),

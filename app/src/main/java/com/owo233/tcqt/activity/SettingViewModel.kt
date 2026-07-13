@@ -10,10 +10,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.owo233.tcqt.ext.ActionUiType
+import com.owo233.tcqt.hooks.helper.AntiRecallConfig
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 class SettingViewModel : ViewModel() {
 
@@ -120,6 +120,7 @@ class SettingViewModel : ViewModel() {
     }
 
     init {
+        AntiRecallConfig.migrateLegacyOptions()
         reloadPersistedSettings()
         loadSearchHistory()
     }
@@ -291,6 +292,7 @@ class SettingViewModel : ViewModel() {
 
     fun clearAllSettings() {
         TCQTSetting.clearAll()
+        AntiRecallConfig.migrateLegacyOptions()
         DexKitCache.clearCache()
 
         pendingBooleans.clear()

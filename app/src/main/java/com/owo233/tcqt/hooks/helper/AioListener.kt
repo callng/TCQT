@@ -49,6 +49,7 @@ object AioListener : MessageHandler {
         if (infoSyncPush.pushFlag != INFO_SYNC_PUSH_FLAG_RECALL) return
 
         val interceptedC2CRecalls = mutableListOf<Pair<String, Long>>()
+        val interceptedGroupRecalls = mutableListOf<Pair<String, Long>>()
 
         val newInfoSyncPush = infoSyncPush.toBuilder().apply {
             syncMsgRecall = syncMsgRecall.toBuilder().apply {
@@ -58,7 +59,9 @@ object AioListener : MessageHandler {
 
                     bodyBuilder.msgList.forEach { msg ->
                         when (msg.messageContentInfo.msgType to msg.messageContentInfo.subSeq) {
-                            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> Unit // 直接丢弃
+                            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> {
+                                extractGroupRecallInfo(msg)?.let(interceptedGroupRecalls::add)
+                            }
                             MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> {
                                 extractC2CRecallInfo(msg)?.let { interceptedC2CRecalls.add(it) }
                             }
@@ -73,6 +76,12 @@ object AioListener : MessageHandler {
         }.build()
 
         param.args[1] = newInfoSyncPush.toByteArray()
+        interceptedC2CRecalls.forEach { (peerUid, msgSeq) ->
+            RecallManager.markC2C(peerUid, msgSeq)
+        }
+        interceptedGroupRecalls.forEach { (groupPeerId, msgSeq) ->
+            RecallManager.markGroup(groupPeerId, msgSeq)
+        }
         showInterceptedC2CTips(interceptedC2CRecalls)
     }
 
@@ -90,6 +99,7 @@ object AioListener : MessageHandler {
         }.build().toByteArray()
 
         param.args[1] = msgPush.updateOperationInfo(newOpInfoBytes).toByteArray()
+        RecallManager.markC2C(operatorUid, operationInfo.info.msgSeq.toLong())
         showC2CRecallTip(operatorUid, operationInfo.info.msgSeq)
     }
 
@@ -113,10 +123,13 @@ object AioListener : MessageHandler {
         }.build().toByteArray()
 
         param.args[1] = msgPush.updateOperationInfo(headerBytes + modifiedBodyBytes).toByteArray()
+        RecallManager.markGroup(operationInfo.peerId.toString(), operationInfo.info.msgInfo.msgSeq.toLong())
         showGroupRecallTip(operationInfo)
     }
 
     private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
+        if (!AntiRecallConfig.isGrayTipEnabled()) return
+
         ModuleScope.launchWithCatch {
             val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
             LocalGrayTips.addLocalGrayTip(
@@ -132,7 +145,7 @@ object AioListener : MessageHandler {
     }
 
     private fun showInterceptedC2CTips(list: List<Pair<String, Long>>) {
-        if (list.isEmpty()) return
+        if (list.isEmpty() || !AntiRecallConfig.isGrayTipEnabled()) return
         ModuleScope.launchWithCatch {
             list.forEach { (senderUid, msgSeq) ->
                 val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, senderUid)
@@ -150,6 +163,8 @@ object AioListener : MessageHandler {
     }
 
     private fun showGroupRecallTip(operationInfo: QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo) {
+        if (!AntiRecallConfig.isGrayTipEnabled()) return
+
         ModuleScope.launchWithCatch {
             val groupPeerId = operationInfo.peerId
             val msgInfo = operationInfo.info.msgInfo
@@ -199,6 +214,19 @@ object AioListener : MessageHandler {
             val c2cRecall =
                 QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfo)
             qqMessage.messageHead.senderUid to c2cRecall.info.msgSeq.toLong()
+        }.getOrNull()
+    }
+
+    private fun extractGroupRecallInfo(qqMessage: QQMessageOuterClass.QQMessage): Pair<String, Long>? {
+        return runCatching {
+            val operationInfo = qqMessage.messageBody.operationInfo.toByteArray()
+            if (operationInfo.size <= GROUP_OP_HEADER_SIZE) return null
+
+            val groupRecall =
+                QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(
+                    operationInfo.copyOfRange(GROUP_OP_HEADER_SIZE, operationInfo.size)
+                )
+            groupRecall.peerId.toString() to groupRecall.info.msgInfo.msgSeq.toLong()
         }.getOrNull()
     }
 

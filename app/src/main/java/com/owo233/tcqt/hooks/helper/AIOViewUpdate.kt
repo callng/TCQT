@@ -8,6 +8,7 @@ import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.activity.AitChameleon
+import com.owo233.tcqt.hooks.func.activity.RecallHeaderTip
 import com.owo233.tcqt.hooks.func.activity.ShowMsgInfo
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -29,6 +30,7 @@ class AIOViewUpdate : AlwaysRunAction() {
 
     private val decorators: Array<OnAIOViewUpdate> = arrayOf(
         ShowMsgInfo(),
+        RecallHeaderTip(),
         AitChameleon()
     )
 

@@ -1,6 +1,5 @@
 package com.owo233.tcqt.hooks.helper
 
-import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.ext.runOnce
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.MethodHookParam
@@ -19,11 +18,12 @@ object NTServiceFetcher {
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
+        if (!TCQTSetting.getBoolean("msg_anti_recall") ||
+            !AntiRecallConfig.hasEnabledReminder()
+        ) return
+
         isMsgHookInitialized.runOnce {
-            val key = "msg_anti_recall"
-            if (TCQTSetting.getBoolean(key)) {
-                msgPushHook()
-            }
+            msgPushHook()
         }
     }
 
@@ -42,11 +42,13 @@ object NTServiceFetcher {
     }
 
     private fun action(cmd: String, buffer: ByteArray, param: MethodHookParam) {
+        if (!TCQTSetting.getBoolean("msg_anti_recall") ||
+            !AntiRecallConfig.hasEnabledReminder()
+        ) return
+
         // 新版与旧版的区别: 核心差异在于 Protobuf 解析方式不同。
         // 旧版使用 Google Protobuf，而新版使用 kotlinx-serialization。
-        val options = TCQTSetting.getInt("msg_anti_recall.type")
-
-        val handler: MessageHandler = if (options.isFlagEnabled(0)) {
+        val handler: MessageHandler = if (AntiRecallConfig.useNewParser()) {
             NewPreventRetractingMessageCore
         } else {
             AioListener

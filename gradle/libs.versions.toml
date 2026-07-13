@@ -1,6 +1,6 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
-agp = "9.4.0-alpha03"
+agp = "9.4.0-alpha04"
 androidx-documentfile = "1.1.0"
 androidx-fragment = "1.8.9"
 androidx-core = "1.19.0"
@@ -13,7 +13,7 @@ lifecycle = "2.11.0"
 
 # Kotlin
 kotlin = "2.4.0"
-ksp = "2.3.9"
+ksp = "2.3.10"
 
 # KotlinX
 kotlinx-coroutines = "1.11.0"
