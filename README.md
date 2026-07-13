@@ -5,6 +5,7 @@
 [![main](https://github.com/callng/TCQT/actions/workflows/android_ci.yml/badge.svg)](https://github.com/callng/TCQT/actions/workflows/android_ci.yml)
 [![Telegram](https://img.shields.io/static/v1?label=Telegram&message=Chat&color=0088cc)](https://t.me/astcqt)
 [![Telegram](https://img.shields.io/static/v1?label=Telegram&message=CI&color=0088cc)](https://t.me/citcqt)
+[![Discord](https://img.shields.io/badge/Discord-%E5%8A%A0%E5%85%A5%E7%BE%A4%E7%BB%84-5865F2?logo=discord&logoColor=white)](https://discord.gg/PjYenv5F9s)
 
 </div>
 
