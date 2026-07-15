@@ -44,10 +44,10 @@ internal object DexKitFinder {
 
     fun getMissingKeys(): Set<String> {
         val allKeys = getAllTaskKeys()
-        if (!DexKitCache.isVersionMatched) {
+        if (!DexKitCache.isHostVersionMatched) {
             return allKeys
         }
-        return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
+        return allKeys.filter { it !in DexKitCache.cacheMap || DexKitCache.cacheMap[it]?.isEmpty() == true }.toSet()
     }
 
     private fun getAllTaskKeys(): Set<String> {
@@ -77,8 +77,7 @@ internal object DexKitFinder {
 
         ModuleScope.launchIO(TAG) {
             val tasks = if (DexKitCache.isVersionMatched) {
-                val missingKeys = getAllTaskKeys().filter { it !in DexKitCache.cacheMap }.toSet()
-                getTasks(missingKeys)
+                getTasks(getMissingKeys())
             } else {
                 getTasks(null)
             }

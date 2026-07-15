@@ -14,6 +14,12 @@ internal object DexKitCache {
     var isVersionMatched = false
         private set
 
+    var isHostVersionMatched = false
+        private set
+
+    var isModuleVersionMatched = false
+        private set
+
     private const val KEY_HOST_VER = "__host_ver"
     private const val KEY_MODULE_VER = "__module_ver"
 
@@ -26,7 +32,12 @@ internal object DexKitCache {
 
     fun initCache(): Boolean {
         val all = kv.all
-        if (all.isEmpty()) return false
+        if (all.isEmpty()) {
+            isVersionMatched = false
+            isHostVersionMatched = false
+            isModuleVersionMatched = false
+            return false
+        }
 
         val cachedHostVer = all[KEY_HOST_VER]?.toString()?.toLongOrNull()
         val cachedModuleVer = all[KEY_MODULE_VER]?.toString()?.toLongOrNull()
@@ -36,9 +47,12 @@ internal object DexKitCache {
             .mapValues { it.value.toString() }
             .toMutableMap()
 
-        val matched = cachedHostVer == HookEnv.versionCode && cachedModuleVer == TCQTBuild.VER_CODE.toLong()
-        isVersionMatched = matched
-        return matched
+        val hostMatched = cachedHostVer == HookEnv.versionCode
+        val moduleMatched = cachedModuleVer == TCQTBuild.VER_CODE.toLong()
+        isHostVersionMatched = hostMatched
+        isModuleVersionMatched = moduleMatched
+        this.isVersionMatched = hostMatched && moduleMatched
+        return isVersionMatched
     }
 
     fun saveCache() {
@@ -48,6 +62,9 @@ internal object DexKitCache {
         cacheMap.forEach { (key, value) ->
             kv.putString(key, value)
         }
+        isHostVersionMatched = true
+        isModuleVersionMatched = true
+        isVersionMatched = true
     }
 
     fun getClass(key: String): Class<*> =
@@ -67,6 +84,10 @@ internal object DexKitCache {
     fun clearCache(): Boolean {
         return runCatching {
             kv.clear()
+            cacheMap.clear()
+            isHostVersionMatched = false
+            isModuleVersionMatched = false
+            isVersionMatched = false
             true
         }.getOrElse { false }
     }
