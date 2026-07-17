@@ -2,6 +2,7 @@ package com.owo233.tcqt
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.content.pm.PackageInfo
 import android.os.Build
 import android.os.Environment
 import android.os.Process
@@ -15,6 +16,7 @@ import com.owo233.tcqt.loader.HybridClassLoader
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.ResourcesUtils
 import com.owo233.tcqt.utils.log.Log
+import cooperation.qzone.QUA
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import java.io.File
 
@@ -65,7 +67,7 @@ internal object HookSteps {
             setApplication(app)
             setHostApkPath(app.applicationInfo.sourceDir)
             setAppName(app.packageManager.getApplicationLabel(app.applicationInfo).toString())
-            setVersionCode(PackageInfoCompat.getLongVersionCode(packageInfo))
+            setVersionCode(getRealVersionCode(packageInfo))
             setVersionName(packageInfo.versionName ?: "unknown")
         }
 
@@ -82,7 +84,7 @@ internal object HookSteps {
                     系统指纹: ${Build.FINGERPRINT}
                     设备名称: ${resolveDeviceName()}
                     模块版本: ${TCQTBuild.VER_NAME}(${TCQTBuild.VER_CODE}) ${if (TCQTBuild.DEBUG) "debug" else "release"}
-                    宿主版本: ${PlatformTools.getHostVersion()}(${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}
+                    宿主版本: ${HookEnv.versionName}(${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}
 
                 """.trimIndent()
             )
@@ -112,5 +114,16 @@ internal object HookSteps {
         }.onFailure {
             Log.e("injectClassLoader failed", it)
         }
+    }
+
+    private fun getRealVersionCode(packageInfo: PackageInfo): Long {
+        val quaVersion = QUA.getQUA3()
+            .split("_")
+            .getOrNull(4)
+            ?.toLongOrNull() ?: 0L
+
+        val contextVersion = PackageInfoCompat.getLongVersionCode(packageInfo)
+
+        return maxOf(contextVersion, quaVersion)
     }
 }

@@ -70,6 +70,7 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
     // 宿主类加载器的类名前缀
     private val HOST_PREFIXES = arrayOf(
         "androidx.constraintlayout.",
+        "cooperation.qzone.",
         "com.tencent.",
         "com.qq.",
         "com.qzone.",

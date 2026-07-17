@@ -12,7 +12,6 @@ import android.os.Process
 import android.provider.Settings
 import android.view.PixelCopy
 import android.view.Window
-import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
 import com.owo233.tcqt.HookEnv
@@ -63,13 +62,6 @@ object PlatformTools {
         val application = ctx.packageManager.getApplicationInfo(ctx.packageName, 128)
         return application.metaData!!.getString("AppSetting_params")!!.split("#")[3]
     }
-
-    fun getHostVersionCode(ctx: Context = HookEnv.hostAppContext): Long {
-        val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
-        return PackageInfoCompat.getLongVersionCode(packageInfo)
-    }
-
-    fun getHostName(): String = HookEnv.appName
 
     fun getClientVersion(ctx: Context = HookEnv.hostAppContext): String =
         "android ${getHostVersion(ctx)}"

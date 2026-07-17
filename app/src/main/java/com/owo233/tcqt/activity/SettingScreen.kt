@@ -94,6 +94,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.hooks.base.Toasts
@@ -287,14 +288,13 @@ private fun PageContent(
         if (!isSearchActive && pageState.isAtRoot) {
             item(key = "header") {
                 CompactHeaderCard(
-                    hostName = PlatformTools.getHostName(),
-                    hostVersion = "${PlatformTools.getHostVersion()} (${PlatformTools.getHostVersionCode()}) ${PlatformTools.getHostChannel()}",
+                    hostName = HookEnv.appName,
+                    hostVersion = "${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
                     moduleName = TCQTBuild.APP_NAME,
                     moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
                     enabledCount = pageState.enabledCount,
                     disabledCount = pageState.disabledCount
                 )
-
             }
         }
 
