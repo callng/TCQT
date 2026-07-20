@@ -13,6 +13,7 @@ import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.hooks.helper.AntiRecallConfig
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.dexkit.DexKitCache
+import com.owo233.tcqt.utils.log.ActionErrorStore
 import kotlinx.serialization.json.Json
 
 class SettingViewModel : ViewModel() {
@@ -34,6 +35,7 @@ class SettingViewModel : ViewModel() {
     private val pendingStrings = mutableStateMapOf<String, String>()
 
     private val expandedKeys = mutableStateMapOf<String, Boolean>()
+    private val actionErrors = mutableStateMapOf<String, FeatureErrorUiState>()
 
     // ───── All features (flat) ─────
 
@@ -122,6 +124,7 @@ class SettingViewModel : ViewModel() {
     init {
         AntiRecallConfig.migrateLegacyOptions()
         reloadPersistedSettings()
+        reloadActionErrors()
         loadSearchHistory()
     }
 
@@ -220,6 +223,26 @@ class SettingViewModel : ViewModel() {
 
     fun toggleExpanded(key: String) {
         expandedKeys[key] = !(expandedKeys[key] ?: false)
+    }
+
+    fun reloadActionErrors() {
+        actionErrors.clear()
+        actionErrors.putAll(
+            ActionErrorStore.readAll().mapValues { (_, record) ->
+                FeatureErrorUiState(
+                    occurredAt = record.occurredAt,
+                    processName = record.processName,
+                    stage = record.stage,
+                    summary = record.summary,
+                    details = record.details
+                )
+            }
+        )
+    }
+
+    fun clearActionError(key: String) {
+        ActionErrorStore.clear(key)
+        actionErrors.remove(key)
     }
 
     fun setFeatureEnabled(key: String, value: Boolean) {
@@ -491,7 +514,8 @@ class SettingViewModel : ViewModel() {
                     value = effectiveString(area.key)
                 )
             },
-            uiType = feature.uiType
+            uiType = feature.uiType,
+            error = actionErrors[feature.key]
         )
     }
 

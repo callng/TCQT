@@ -5,6 +5,7 @@ import android.content.Context
 import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.log.ActionErrorStore
 
 enum class ActionUiType {
     SWITCH, ENTRY
@@ -39,12 +40,15 @@ interface IAction {
     fun getSettingDesc(key: String): String? = null
 
     operator fun invoke(app: Application, process: ActionProcess) {
-        runCatching {
-            if (canRun() && onInit()) {
-                onRun(app, process)
+        ActionErrorStore.withAction(key) {
+            runCatching {
+                if (canRun() && onInit()) {
+                    onRun(app, process)
+                }
+            }.onFailure {
+                ActionErrorStore.report(key, "功能初始化", it)
+                Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
             }
-        }.onFailure {
-            Log.e("功能 [${ActionManager.resolve(this)}] 执行异常", it)
         }
     }
 
@@ -57,6 +61,7 @@ interface IAction {
         return runCatching {
             TCQTSetting.getValue<Boolean>(key) ?: defaultEnabled
         }.getOrElse { e ->
+            ActionErrorStore.report(key, "开关检查", e)
             Log.e("功能 [${ActionManager.resolve(this)}] 开关检查异常", e)
             defaultEnabled
         }

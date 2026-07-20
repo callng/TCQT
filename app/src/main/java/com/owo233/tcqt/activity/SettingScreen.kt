@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ToggleOn
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,6 +66,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -99,6 +102,9 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.utils.PlatformTools
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val PageTransitionDurationMillis = 380
 private const val TopBarTransitionDurationMillis = 340
@@ -169,6 +175,10 @@ fun SettingScreen(
 ) {
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
     val isSearchActive = viewModel.isSearchActive
+
+    LaunchedEffect(Unit) {
+        viewModel.reloadActionErrors()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -393,6 +403,7 @@ private fun PageContent(
                     onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
                     onOptionValueChange = { item.optionGroup?.let { g -> viewModel.setOptionValue(g.key, it) } },
                     onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
+                    onClearError = { viewModel.clearActionError(item.key) },
                     onFeatureClick = { onFeatureClick(item.key) },
                     forceExpanded = isSearchActive
                 )
@@ -1222,13 +1233,16 @@ private fun FeatureCard(
     onFeatureEnabledChange: (Boolean) -> Unit,
     onOptionValueChange: (Int) -> Unit,
     onTextValueChange: (String, String) -> Unit,
+    onClearError: () -> Unit,
     onFeatureClick: () -> Unit,
     forceExpanded: Boolean = false
 ) {
     val effectivelyExpanded = item.expanded || forceExpanded
     val feature = item.feature
+    val isExpandable = feature.expandable || item.error != null
     val query = searchQuery.trim()
     val borderColor = when {
+        item.error != null -> MaterialTheme.colorScheme.error.copy(alpha = if (effectivelyExpanded) 0.72f else 0.48f)
         effectivelyExpanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
         item.hasPending -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
         item.enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
@@ -1253,7 +1267,7 @@ private fun FeatureCard(
                                 onFeatureClick()
                                 return@clickable
                             }
-                            if (feature.expandable) {
+                            if (isExpandable) {
                                 onToggleExpanded()
                             } else {
                                 onFeatureEnabledChange(!item.enabled)
@@ -1269,20 +1283,25 @@ private fun FeatureCard(
                             text = rememberHighlightedText(feature.label, query),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (feature.expandable) {
+                        if (isExpandable) {
                             Icon(
                                 imageVector = if (effectivelyExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (item.error != null) StatusPill(
+                            text = "运行异常",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
                         if (item.uiType != ActionUiType.ENTRY) StatusPill(
                             text = if (item.enabled) "已启用" else "未启用",
                             containerColor = if (item.enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
@@ -1324,7 +1343,7 @@ private fun FeatureCard(
                 }
             }
 
-            AnimatedVisibility(visible = effectivelyExpanded && feature.expandable) {
+            AnimatedVisibility(visible = effectivelyExpanded && isExpandable) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -1337,8 +1356,14 @@ private fun FeatureCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    item.error?.let { error ->
+                        if (feature.desc.isBlank()) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.error.copy(alpha = 0.24f))
+                        }
+                        FeatureErrorPanel(error = error, onClear = onClearError)
+                    }
                     item.optionGroup?.let { group ->
-                        if (feature.desc.isBlank())
+                        if (feature.desc.isBlank() && item.error == null)
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                         OptionGroup(group = group, currentValue = item.optionValue ?: group.fallbackValue, onValueChange = onOptionValueChange)
                     }
@@ -1353,6 +1378,74 @@ private fun FeatureCard(
                             shape = RoundedCornerShape(14.dp)
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureErrorPanel(error: FeatureErrorUiState, onClear: () -> Unit) {
+    val occurredAt = remember(error.occurredAt) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(error.occurredAt))
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.58f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.24f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "异常日志",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "$occurredAt · ${error.processName} · ${error.stage}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.72f)
+                    )
+                }
+                TextButton(onClick = onClear) {
+                    Text("清除")
+                }
+            }
+            Text(
+                text = error.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            SelectionContainer {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = error.details,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }

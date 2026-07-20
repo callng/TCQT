@@ -52,7 +52,17 @@ data class FeatureItemUiState(
     val optionGroup: FeatureOptionGroup?,
     val optionValue: Int?,
     val textAreas: List<TextAreaUiState>,
-    val uiType: ActionUiType
+    val uiType: ActionUiType,
+    val error: FeatureErrorUiState?
+)
+
+@Immutable
+data class FeatureErrorUiState(
+    val occurredAt: Long,
+    val processName: String,
+    val stage: String,
+    val summary: String,
+    val details: String
 )
 
 @Immutable

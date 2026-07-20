@@ -5,6 +5,7 @@ import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.api.HookParam
 import com.owo233.tcqt.loader.api.Unhook
 import com.owo233.tcqt.utils.log.Log
+import com.owo233.tcqt.utils.log.ActionErrorStore
 import com.owo233.tcqt.utils.reflect.MethodSearcher
 import com.owo233.tcqt.utils.reflect.callOriginal
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -15,26 +16,43 @@ import java.lang.reflect.Method
 fun Member.hookBefore(
     block: (HookParam) -> Unit
 ): Unhook {
+    val actionKey = ActionErrorStore.currentActionKey()
     return HookEngineManager.engine.hookBefore(this) { param ->
-        runCatching { block(param) }.onFailure { Log.e("HookBeforeError", it) }
+        runCatching {
+            if (actionKey == null) block(param)
+            else ActionErrorStore.withAction(actionKey) { block(param) }
+        }.onFailure {
+            actionKey?.let { key -> ActionErrorStore.report(key, "Hook Before 回调", it) }
+            Log.e("HookBeforeError", it)
+        }
     }
 }
 
 fun Member.hookAfter(
     block: (HookParam) -> Unit
 ): Unhook {
+    val actionKey = ActionErrorStore.currentActionKey()
     return HookEngineManager.engine.hookAfter(this) { param ->
-        runCatching { block(param) }.onFailure { Log.e("HookAfterError", it) }
+        runCatching {
+            if (actionKey == null) block(param)
+            else ActionErrorStore.withAction(actionKey) { block(param) }
+        }.onFailure {
+            actionKey?.let { key -> ActionErrorStore.report(key, "Hook After 回调", it) }
+            Log.e("HookAfterError", it)
+        }
     }
 }
 
 fun Member.hookReplace(
     block: (Chain) -> Any?
 ): Unhook {
+    val actionKey = ActionErrorStore.currentActionKey()
     return HookEngineManager.engine.hookReplace(this) { chain ->
         try {
-            block(chain)
+            if (actionKey == null) block(chain)
+            else ActionErrorStore.withAction(actionKey) { block(chain) }
         } catch (t: Throwable) {
+            actionKey?.let { key -> ActionErrorStore.report(key, "Hook Replace 回调", t) }
             Log.e("HookReplaceError", t)
             chain.proceed()
         }

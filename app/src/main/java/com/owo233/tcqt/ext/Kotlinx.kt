@@ -120,11 +120,15 @@ fun CoroutineScope.launchWithCatch(
     onError: suspend (Throwable) -> Unit = { e -> Log.e("launchWithCatch 异常", e) },
     block: suspend CoroutineScope.() -> Unit
 ): Job {
+    val actionKey = com.owo233.tcqt.utils.log.ActionErrorStore.currentActionKey()
     return launch(context, start) {
         try {
             block()
         } catch (e: Throwable) {
             if (e !is CancellationException) {
+                actionKey?.let {
+                    com.owo233.tcqt.utils.log.ActionErrorStore.report(it, "异步任务", e)
+                }
                 launch(errorDispatcher + NonCancellable) {
                     onError(e)
                 }
