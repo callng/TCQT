@@ -55,7 +55,7 @@ class RestoreMessageBadgePosition : IAction, DexKitTask {
             matcher {
                 paramCount = 3
                 paramTypes(null, ROLLING_TEXT_VIEW, "android.widget.ImageView")
-                usingEqStrings("item", "view", "summaryRightView", "icon_tertiary")
+                usingEqStrings("item", "view", "summaryRightView")
             }
         }
     )

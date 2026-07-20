@@ -47,7 +47,8 @@ internal object DexKitFinder {
         if (!DexKitCache.isHostVersionMatched) {
             return allKeys
         }
-        return allKeys.filter { it !in DexKitCache.cacheMap || DexKitCache.cacheMap[it]?.isEmpty() == true }.toSet()
+        //  || DexKitCache.cacheMap[it]?.isEmpty() == true
+        return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
     }
 
     private fun getAllTaskKeys(): Set<String> {
