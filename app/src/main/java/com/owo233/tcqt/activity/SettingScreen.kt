@@ -129,20 +129,26 @@ private data class SettingsPageContentState(
     val path: String,
     val isAtRoot: Boolean,
     val isSearchActive: Boolean,
+    val isErrorOverviewActive: Boolean,
     val searchQuery: String,
     val categories: List<CategoryUiState>,
     val features: List<FeatureItemUiState>,
     val enabledCount: Int,
     val disabledCount: Int,
+    val errorCount: Int,
     val hasPending: Boolean,
     val currentCategoryLabel: String
 ) {
 
     val animationKey: String
-        get() = if (isSearchActive) "search" else path
+        get() = when {
+            isErrorOverviewActive -> "errors"
+            isSearchActive -> "search"
+            else -> path
+        }
 }
 
-private enum class SettingsTopBarMode { Search, SubPage, Root }
+private enum class SettingsTopBarMode { Search, ErrorOverview, SubPage, Root }
 
 private data class SettingsTopBarState(
     val mode: SettingsTopBarMode,
@@ -154,6 +160,7 @@ private data class SettingsTopBarState(
     val animationKey: String
         get() = when (mode) {
             SettingsTopBarMode.Search -> "search"
+            SettingsTopBarMode.ErrorOverview -> "errors"
             SettingsTopBarMode.SubPage -> "sub_$path"
             SettingsTopBarMode.Root -> "root"
         }
@@ -218,16 +225,20 @@ fun SettingScreen(
     ) { innerPadding ->
         val categories by viewModel.currentCategories
         val features by viewModel.currentFeatures
+        val errorFeatures by viewModel.errorFeatures
         val currentPath = viewModel.currentPath
+        val isErrorOverviewActive = viewModel.isErrorOverviewActive
         val pageState = SettingsPageContentState(
             path = currentPath,
             isAtRoot = viewModel.isAtRoot,
             isSearchActive = isSearchActive,
+            isErrorOverviewActive = isErrorOverviewActive,
             searchQuery = viewModel.searchQuery,
-            categories = categories,
-            features = features,
+            categories = if (isErrorOverviewActive) emptyList() else categories,
+            features = if (isErrorOverviewActive) errorFeatures else features,
             enabledCount = viewModel.enabledCount,
             disabledCount = viewModel.disabledCount,
+            errorCount = viewModel.errorCount,
             hasPending = hasPending,
             currentCategoryLabel = viewModel.currentCategoryLabel.value
         )
@@ -237,7 +248,8 @@ fun SettingScreen(
             modifier = Modifier.fillMaxSize(),
             contentKey = { it.animationKey },
             transitionSpec = {
-                val forward = targetState.path.navigationDepth() >= initialState.path.navigationDepth()
+                val forward = targetState.isErrorOverviewActive ||
+                        targetState.path.navigationDepth() >= initialState.path.navigationDepth()
                 softFadeScaleIn(
                     initialScale = if (forward) 0.96f else 1.015f,
                     durationMillis = PageTransitionDurationMillis
@@ -277,6 +289,7 @@ private fun PageContent(
     val categories = pageState.categories
     val features = pageState.features
     val isSearchActive = pageState.isSearchActive
+    val isErrorOverviewActive = pageState.isErrorOverviewActive
     val lazyListState = remember(pageState.animationKey) {
         viewModel.getScrollState(pageState.animationKey)
     }
@@ -295,7 +308,7 @@ private fun PageContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Header (root only)
-        if (!isSearchActive && pageState.isAtRoot) {
+        if (!isSearchActive && !isErrorOverviewActive && pageState.isAtRoot) {
             item(key = "header") {
                 CompactHeaderCard(
                     hostName = HookEnv.appName,
@@ -303,8 +316,16 @@ private fun PageContent(
                     moduleName = TCQTBuild.APP_NAME,
                     moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
                     enabledCount = pageState.enabledCount,
-                    disabledCount = pageState.disabledCount
+                    disabledCount = pageState.disabledCount,
+                    errorCount = pageState.errorCount,
+                    onErrorClick = viewModel::openErrorOverview
                 )
+            }
+        }
+
+        if (isErrorOverviewActive) {
+            item(key = "error_overview_intro") {
+                ErrorOverviewHeader(errorCount = pageState.errorCount)
             }
         }
 
@@ -349,7 +370,7 @@ private fun PageContent(
         }
 
         // Sub-category title (non-root, non-search)
-        if (!isSearchActive && !pageState.isAtRoot && categories.isNotEmpty()) {
+        if (!isSearchActive && !isErrorOverviewActive && !pageState.isAtRoot && categories.isNotEmpty()) {
             item(key = "subcat_title") {
                 Text(
                     text = pageState.currentCategoryLabel,
@@ -362,7 +383,7 @@ private fun PageContent(
         }
 
         // Category cards
-        if (!isSearchActive) {
+        if (!isSearchActive && !isErrorOverviewActive) {
             items(
                 items = categories,
                 key = { "cat_${it.fullPath}" },
@@ -386,7 +407,7 @@ private fun PageContent(
         }
 
         // Feature cards
-        if (features.isEmpty() && categories.isEmpty() && !isSearchActive) {
+        if (features.isEmpty() && categories.isEmpty() && !isSearchActive && !isErrorOverviewActive) {
             item(key = "empty") {
                 EmptyStateCard()
             }
@@ -410,7 +431,7 @@ private fun PageContent(
             }
         }
 
-        if (!isSearchActive) {
+        if (!isSearchActive && !isErrorOverviewActive) {
             item(key = "footer") {
                 FooterCard(onIssueClick = onIssueClick, onIssueLongClick = onIssueLongClick)
             }
@@ -435,6 +456,7 @@ private fun TopBar(
     val topBarState = SettingsTopBarState(
         mode = when {
             isSearchActive -> SettingsTopBarMode.Search
+            viewModel.isErrorOverviewActive -> SettingsTopBarMode.ErrorOverview
             !viewModel.isAtRoot -> SettingsTopBarMode.SubPage
             else -> SettingsTopBarMode.Root
         },
@@ -475,6 +497,41 @@ private fun TopBar(
                     onBackClick = onSearchClosed,
                     onClearClick = onClearQuery
                 )
+
+                SettingsTopBarMode.ErrorOverview -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.navigateUp() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "功能异常",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        StatusPill(
+                            text = "${viewModel.errorCount} 项",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
 
                 SettingsTopBarMode.SubPage -> {
                     // ─── Sub-page: back + breadcrumbs + search ───
@@ -683,7 +740,9 @@ private fun CompactHeaderCard(
     moduleName: String,
     moduleVersion: String,
     enabledCount: Int,
-    disabledCount: Int
+    disabledCount: Int,
+    errorCount: Int,
+    onErrorClick: () -> Unit
 ) {
     var clickCount by remember { mutableIntStateOf(0) }
     var lastClickTime by remember { mutableLongStateOf(0L) }
@@ -745,6 +804,13 @@ private fun CompactHeaderCard(
                     title = "未启用",
                     value = disabledCount.toString(),
                     accent = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                SmallStatCard(
+                    title = "异常数",
+                    value = errorCount.toString(),
+                    accent = if (errorCount > 0) MaterialTheme.colorScheme.error else Color(0xFF1E8E3E),
+                    onClick = if (errorCount > 0) onErrorClick else null,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -841,10 +907,19 @@ private fun SmallStatCard(
     title: String,
     value: String,
     accent: Color,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.then(
+            if (onClick != null) {
+                Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(onClick = onClick)
+            } else {
+                Modifier
+            }
+        ),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -867,6 +942,53 @@ private fun SmallStatCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun ErrorOverviewHeader(errorCount: Int) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.48f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.24f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.size(46.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = "$errorCount 个功能存在异常",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = "点击下方功能可展开查看异常阶段与完整日志",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.78f)
+                )
+            }
         }
     }
 }

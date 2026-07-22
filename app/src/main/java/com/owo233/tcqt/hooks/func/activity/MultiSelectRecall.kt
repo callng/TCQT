@@ -144,17 +144,18 @@ class MultiSelectRecall : IAction {
                 "com.tencent.mobileqq.aio.msglist.holder.component.multifoward.b".toHostClass()
 
             getMsgList = multiForwardClass.findMethod {
-                returnType = List::class.java
+                ambiguityStrategy = first
+                returnType = list
                 paramCount = 1
             }
 
             getContext = "com.tencent.mvi.mvvm.framework.FrameworkVM".toHostClass().findMethod {
+                ambiguityStrategy = first
                 returnType = getMsgList.parameterTypes[0].superclass
                 paramCount = 0
             }
 
             makeView = barVB.findMethod {
-
                 returnType = view
                 paramCount = 4
                 paramTypes = arrayOf(barVB, int, int, View.OnClickListener::class.java)

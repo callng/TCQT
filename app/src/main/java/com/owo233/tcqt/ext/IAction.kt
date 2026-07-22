@@ -41,6 +41,10 @@ interface IAction {
 
     operator fun invoke(app: Application, process: ActionProcess) {
         ActionErrorStore.withAction(key) {
+            // A host restart starts a fresh health check for this feature in
+            // this process. Any failure below (or in a later hook callback)
+            // writes the error back immediately.
+            ActionErrorStore.clear(key, com.owo233.tcqt.HookEnv.processName)
             runCatching {
                 if (canRun() && onInit()) {
                     onRun(app, process)

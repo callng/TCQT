@@ -20,6 +20,7 @@ internal object ActionErrorStore {
 
     private const val DIRECTORY_NAME = "tcqt_action_errors"
     private const val MAX_DETAILS_LENGTH = 32 * 1024
+    private const val CURRENT_SCHEMA_VERSION = 2
 
     private val json = Json { ignoreUnknownKeys = true }
     private val currentActionKey = ThreadLocal<String?>()
@@ -32,7 +33,8 @@ internal object ActionErrorStore {
         val stage: String,
         val summary: String,
         val details: String,
-        val moduleVersionCode: Long
+        val moduleVersionCode: Long,
+        val schemaVersion: Int = 1
     )
 
     fun currentActionKey(): String? = currentActionKey.get()
@@ -61,7 +63,8 @@ internal object ActionErrorStore {
                 stage = stage,
                 summary = buildSummary(throwable),
                 details = throwable.stackTraceToString().take(MAX_DETAILS_LENGTH),
-                moduleVersionCode = TCQTBuild.VER_CODE.toLong()
+                moduleVersionCode = TCQTBuild.VER_CODE.toLong(),
+                schemaVersion = CURRENT_SCHEMA_VERSION
             )
             writeRecord(record)
         }
@@ -72,16 +75,39 @@ internal object ActionErrorStore {
         return directory.listFiles { file -> file.isFile && file.extension == "json" }
             .orEmpty()
             .mapNotNull { file -> readRecord(file) }
-            .filter { it.moduleVersionCode == TCQTBuild.VER_CODE.toLong() }
-            .associateBy { it.actionKey }
+            .filter {
+                it.schemaVersion == CURRENT_SCHEMA_VERSION &&
+                        it.moduleVersionCode == TCQTBuild.VER_CODE.toLong()
+            }
+            .groupBy { it.actionKey }
+            .mapValues { (_, records) -> records.maxBy { it.occurredAt } }
     }
 
     fun clear(actionKey: String) {
-        runCatching { recordFile(actionKey)?.delete() }
+        clear(actionKey, processName = null)
+    }
+
+    /** Clears only one host process, or every process when [processName] is null. */
+    fun clear(actionKey: String, processName: String?) {
+        if (actionKey.isBlank()) return
+        runCatching {
+            val directory = errorDirectory() ?: return
+            val encodedActionKey = encode(actionKey)
+            if (processName != null) {
+                File(directory, "${encodedActionKey}.${encode(processName)}.json").delete()
+                return@runCatching
+            }
+            directory.listFiles { file -> file.isFile && file.extension == "json" }
+                .orEmpty()
+                .filter { file ->
+                    file.name == "$encodedActionKey.json" || readRecord(file)?.actionKey == actionKey
+                }
+                .forEach { it.delete() }
+        }
     }
 
     private fun writeRecord(record: Record) {
-        val file = recordFile(record.actionKey) ?: return
+        val file = recordFile(record.actionKey, record.processName) ?: return
         val bytes = json.encodeToString(Record.serializer(), record)
             .toByteArray(StandardCharsets.UTF_8)
         RandomAccessFile(file, "rw").use { raf ->
@@ -103,11 +129,12 @@ internal object ActionErrorStore {
         }
     }.getOrNull()
 
-    private fun recordFile(actionKey: String): File? {
-        val encodedKey = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString(actionKey.toByteArray(StandardCharsets.UTF_8))
-        return errorDirectory()?.let { File(it, "$encodedKey.json") }
+    private fun recordFile(actionKey: String, processName: String): File? {
+        return errorDirectory()?.let { File(it, "${encode(actionKey)}.${encode(processName)}.json") }
     }
+
+    private fun encode(value: String): String = Base64.getUrlEncoder().withoutPadding()
+        .encodeToString(value.toByteArray(StandardCharsets.UTF_8))
 
     private fun errorDirectory(): File? = runCatching {
         File(HookEnv.hostAppContext.filesDir, DIRECTORY_NAME).apply {

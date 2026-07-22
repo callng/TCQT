@@ -73,6 +73,9 @@ class SettingViewModel : ViewModel() {
     var isSearchActive by mutableStateOf(false)
         private set
 
+    var isErrorOverviewActive by mutableStateOf(false)
+        private set
+
     val searchHistory = mutableStateListOf<String>()
 
     private val pendingKeywordsToSave = mutableSetOf<String>()
@@ -85,6 +88,10 @@ class SettingViewModel : ViewModel() {
 
     val disabledCount: Int by derivedStateOf {
         allFeatures.count { it.uiType == ActionUiType.SWITCH && !effectiveBoolean(it.key) }
+    }
+
+    val errorCount: Int by derivedStateOf {
+        allFeatures.count { actionErrors.containsKey(it.key) }
     }
 
     // ───── Pending ─────
@@ -105,6 +112,13 @@ class SettingViewModel : ViewModel() {
     /** Features shown at the current level (only when it's a leaf / has direct features). */
     val currentFeatures: State<List<FeatureItemUiState>> = derivedStateOf {
         computeVisibleFeatureUiStates()
+    }
+
+    val errorFeatures: State<List<FeatureItemUiState>> = derivedStateOf {
+        allFeatures
+            .filter { actionErrors.containsKey(it.key) }
+            .sortedByDescending { actionErrors[it.key]?.occurredAt ?: 0L }
+            .map(::toFeatureItemUiState)
     }
 
     /** Breadcrumb trail for the top bar. */
@@ -135,13 +149,25 @@ class SettingViewModel : ViewModel() {
     }
 
     fun navigateUp(): Boolean {
+        if (isErrorOverviewActive) {
+            isErrorOverviewActive = false
+            return true
+        }
         if (_navStack.isEmpty()) return false
         popNavStack()
         return true
     }
 
     fun navigateToRoot() {
+        isErrorOverviewActive = false
         _navStack.clear()
+    }
+
+    fun openErrorOverview() {
+        if (errorCount == 0) return
+        isSearchActive = false
+        searchQuery = ""
+        isErrorOverviewActive = true
     }
 
     fun navigateToBreadcrumb(fullPath: String) {
@@ -238,11 +264,17 @@ class SettingViewModel : ViewModel() {
                 )
             }
         )
+        if (actionErrors.keys.none(featureByKey::containsKey)) {
+            isErrorOverviewActive = false
+        }
     }
 
     fun clearActionError(key: String) {
         ActionErrorStore.clear(key)
         actionErrors.remove(key)
+        if (actionErrors.keys.none(featureByKey::containsKey)) {
+            isErrorOverviewActive = false
+        }
     }
 
     fun setFeatureEnabled(key: String, value: Boolean) {

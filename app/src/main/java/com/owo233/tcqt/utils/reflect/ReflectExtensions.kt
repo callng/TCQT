@@ -46,7 +46,7 @@ private fun Class<*>.findMethodAndCall(
 fun Any.getObjectByTypeOrNull(type: Class<*>, inParent: Class<*>? = null): Any? {
     return this::class.java.findFieldOrNull {
         this.type = type
-        this.inParent = inParent
+        this.declaredIn = inParent
     }?.get(this)
 }
 
@@ -62,7 +62,8 @@ inline fun <reified T> Any.getObjectByType(inParent: Class<*>? = null): T {
 fun Any.getObjectOrNull(name: String, inParent: Class<*>? = null): Any? {
     return this::class.java.findFieldOrNull {
         this.name = name
-        this.inParent = inParent
+        this.declaredIn = inParent
+        this.includeSynthetic = true
     }?.get(this)
 }
 
@@ -74,14 +75,14 @@ fun Any.getObject(name: String, inParent: Class<*>? = null): Any {
 fun Any.setObject(name: String, value: Any?, inParent: Class<*>? = null) {
     this::class.java.findField {
         this.name = name
-        this.inParent = inParent
+        this.declaredIn = inParent
     }.set(this, value)
 }
 
 inline fun <reified T> Any.setObjectByType(value: T?, inParent: Class<*>? = null) {
     this::class.java.findField {
         this.type = T::class.java
-        this.inParent = inParent
+        this.declaredIn = inParent
     }.set(this, value)
 }
 

@@ -226,6 +226,7 @@ class SettingActivity : BaseComposeActivity() {
                 BackHandler {
                     when {
                         viewModel.isSearchActive -> viewModel.exitSearch()
+                        viewModel.isErrorOverviewActive -> viewModel.navigateUp()
                         !viewModel.isAtRoot -> viewModel.navigateUp()
                         else -> finish()
                     }
