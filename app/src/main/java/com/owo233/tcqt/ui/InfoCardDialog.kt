@@ -25,12 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +39,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import com.owo233.tcqt.ui.miuix.TextButton
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 
 class InfoCardDialog(
     context: Context,
@@ -105,7 +104,7 @@ class InfoCardDialog(
                             ),
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp
+                        shadowElevation = 6.dp
                     ) {
                         Column(
                             modifier = Modifier
@@ -128,15 +127,20 @@ class InfoCardDialog(
                                     text = newValue.filter { it.isDigit() }
                                     errorText = null
                                 },
-                                label = { Text("QQ号 / 群号") },
-                                placeholder = { Text("输入QQ号或群号") },
-                                isError = errorText != null,
-                                supportingText = errorText?.let { { Text(it) } },
+                                label = "QQ号 / 群号",
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                cornerRadius = 12.dp,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            errorText?.let {
+                                Text(
+                                    text = it,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
@@ -160,7 +164,7 @@ class InfoCardDialog(
 
                                 Box(
                                     modifier = Modifier
-                                        .clip(ButtonDefaults.textShape)
+                                        .clip(RoundedCornerShape(16.dp))
                                         .background(MaterialTheme.colorScheme.primary)
                                         .combinedClickable(
                                             onClick = {

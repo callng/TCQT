@@ -47,6 +47,7 @@ fun Any.getObjectByTypeOrNull(type: Class<*>, inParent: Class<*>? = null): Any? 
     return this::class.java.findFieldOrNull {
         this.type = type
         this.declaredIn = inParent
+        this.includeSynthetic = true
     }?.get(this)
 }
 
@@ -76,6 +77,7 @@ fun Any.setObject(name: String, value: Any?, inParent: Class<*>? = null) {
     this::class.java.findField {
         this.name = name
         this.declaredIn = inParent
+        this.includeSynthetic = true
     }.set(this, value)
 }
 
@@ -83,6 +85,7 @@ inline fun <reified T> Any.setObjectByType(value: T?, inParent: Class<*>? = null
     this::class.java.findField {
         this.type = T::class.java
         this.declaredIn = inParent
+        this.includeSynthetic = true
     }.set(this, value)
 }
 
@@ -90,6 +93,7 @@ fun Class<*>.getStaticObject(name: String): Any? {
     return this.findField {
         this.name = name
         this.isStatic = true
+        this.includeSynthetic = true
     }.get(null)
 }
 

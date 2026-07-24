@@ -24,7 +24,6 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.activity.SettingTheme
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import android.graphics.Color as AndroidColor
@@ -115,7 +114,7 @@ abstract class CompatibleComposeDialog(
 
         composeView?.setContent {
             CompositionLocalProvider(LocalLifecycleOwner provides dialogLifecycleOwner) {
-                SettingTheme(darkTheme = HookEnv.isNightMode(), dynamicColor = false) {
+                SettingTheme {
                     androidx.compose.runtime.LaunchedEffect(Unit) {
                         isVisible = true
                     }

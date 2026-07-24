@@ -33,15 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,6 +57,9 @@ import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.Chain
 import com.owo233.tcqt.ui.CompatibleComposeDialog
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import com.owo233.tcqt.ui.miuix.OutlinedButton
+import com.owo233.tcqt.ui.miuix.TextButton
 import com.owo233.tcqt.utils.api.GroupService
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookReplace
@@ -78,6 +72,12 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 
 @RegisterAction
 class SimpleTroopManagement : IAction, DexKitTask {
@@ -553,9 +553,8 @@ private fun MainMenuView(
                         verticalArrangement = Arrangement.Center
                     ) {
                         CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 3.dp,
-                            modifier = Modifier.width(36.dp).height(36.dp)
+                            size = 36.dp,
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
@@ -719,11 +718,11 @@ private fun InputMenuView(
                     it
                 }
             },
-            label = { Text(label) },
-            placeholder = { Text(hint) },
+            label = hint.ifBlank { label },
+            useLabelAsPlaceholder = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            cornerRadius = 12.dp,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -733,7 +732,7 @@ private fun InputMenuView(
                 keyboardController?.hide()
                 onConfirm(text)
             },
-            shape = RoundedCornerShape(14.dp),
+            cornerRadius = 14.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("确定", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
@@ -775,15 +774,14 @@ private fun ConfirmMenuView(
         ) {
             OutlinedButton(
                 onClick = onBack,
-                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 Text("取消", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
             Button(
                 onClick = onConfirm,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                cornerRadius = 14.dp,
+                colors = ButtonDefaults.buttonColors(color = MaterialTheme.colorScheme.error),
                 modifier = Modifier.weight(1f)
             ) {
                 Text("确定", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)

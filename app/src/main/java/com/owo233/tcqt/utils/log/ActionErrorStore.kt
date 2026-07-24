@@ -71,7 +71,18 @@ internal object ActionErrorStore {
     }
 
     fun readAll(): Map<String, Record> {
-        val directory = errorDirectory() ?: return emptyMap()
+        return readAllRecords()
+            .groupBy { it.actionKey }
+            .mapValues { (_, records) -> records.maxBy { it.occurredAt } }
+    }
+
+    /**
+     * Returns every current-version record, including separate host processes
+     * for the same feature. The settings overview may collapse these by key,
+     * while diagnostic exports should retain all of them.
+     */
+    fun readAllRecords(): List<Record> {
+        val directory = errorDirectory() ?: return emptyList()
         return directory.listFiles { file -> file.isFile && file.extension == "json" }
             .orEmpty()
             .mapNotNull { file -> readRecord(file) }
@@ -79,9 +90,10 @@ internal object ActionErrorStore {
                 it.schemaVersion == CURRENT_SCHEMA_VERSION &&
                         it.moduleVersionCode == TCQTBuild.VER_CODE.toLong()
             }
-            .groupBy { it.actionKey }
-            .mapValues { (_, records) -> records.maxBy { it.occurredAt } }
+            .sortedByDescending { it.occurredAt }
     }
+
+    fun reportDirectory(): File? = errorDirectory()
 
     fun clear(actionKey: String) {
         clear(actionKey, processName = null)

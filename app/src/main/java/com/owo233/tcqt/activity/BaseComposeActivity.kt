@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import com.owo233.tcqt.HookEnv
+import com.owo233.tcqt.internals.setting.ThemeSettings
 
 @Suppress("DEPRECATION")
 abstract class BaseComposeActivity : ComponentActivity() {
@@ -37,13 +38,13 @@ abstract class BaseComposeActivity : ComponentActivity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
         isDarkTheme = HookEnv.isNightMode()
-        updateStatusBarAppearance()
+        updateStatusBarAppearance(ThemeSettings.themeMode.resolveDark(isDarkTheme))
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         isDarkTheme = HookEnv.isNightMode()
-        updateStatusBarAppearance()
+        updateStatusBarAppearance(ThemeSettings.themeMode.resolveDark(isDarkTheme))
     }
 
     private fun setupTransparentStatusBar() {
@@ -59,9 +60,9 @@ abstract class BaseComposeActivity : ComponentActivity() {
         }
     }
 
-    private fun updateStatusBarAppearance() {
+    protected fun updateStatusBarAppearance(darkTheme: Boolean = isDarkTheme) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.isAppearanceLightStatusBars = !isDarkTheme
-        controller.isAppearanceLightNavigationBars = !isDarkTheme
+        controller.isAppearanceLightStatusBars = !darkTheme
+        controller.isAppearanceLightNavigationBars = !darkTheme
     }
 }

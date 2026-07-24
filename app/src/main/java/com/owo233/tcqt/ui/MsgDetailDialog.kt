@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,22 +26,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,7 +45,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.copyToClipboard
+import com.owo233.tcqt.ui.miuix.MaterialTheme
 import java.util.Locale
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
+import top.yukonga.miuix.kmp.basic.TextFieldDefaults as OutlinedTextFieldDefaults
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Clear
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Copy
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Search
 
 class MsgDetailDialog(
     context: Context,
@@ -173,7 +174,7 @@ class MsgDetailDialog(
                         ),
                     shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp
+                    shadowElevation = 6.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -204,14 +205,14 @@ class MsgDetailDialog(
                                     context.copyToClipboard(jsonString)
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Default.ContentCopy,
+                                        imageVector = MiuixIcons.Copy,
                                         contentDescription = "复制全部",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 IconButton(onClick = ::dismissWithAnimation) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = MiuixIcons.Close,
                                         contentDescription = "关闭",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -226,10 +227,11 @@ class MsgDetailDialog(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("搜索属性或内容...") },
+                            label = "搜索属性或内容...",
+                            useLabelAsPlaceholder = true,
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    imageVector = MiuixIcons.Search,
                                     contentDescription = "搜索"
                                 )
                             },
@@ -264,7 +266,7 @@ class MsgDetailDialog(
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                imageVector = MiuixIcons.ExpandLess,
                                                 contentDescription = "上一个"
                                             )
                                         }
@@ -279,7 +281,7 @@ class MsgDetailDialog(
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.KeyboardArrowDown,
+                                                imageVector = MiuixIcons.ExpandMore,
                                                 contentDescription = "下一个"
                                             )
                                         }
@@ -289,7 +291,7 @@ class MsgDetailDialog(
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Clear,
+                                                imageVector = MiuixIcons.Clear,
                                                 contentDescription = "清除搜索"
                                             )
                                         }
@@ -297,10 +299,10 @@ class MsgDetailDialog(
                                 }
                             },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            cornerRadius = 12.dp,
+                            colors = OutlinedTextFieldDefaults.textFieldColors(
+                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                borderColor = MaterialTheme.colorScheme.primary,
                             )
                         )
 
@@ -313,7 +315,7 @@ class MsgDetailDialog(
                                 .fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = true)
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             SelectionContainer {
                                 LazyColumn(
@@ -355,7 +357,7 @@ class MsgDetailDialog(
                         ) {
                             Button(
                                 onClick = ::dismissWithAnimation,
-                                shape = RoundedCornerShape(10.dp)
+                                cornerRadius = 10.dp
                             ) {
                                 Text("确定")
                             }

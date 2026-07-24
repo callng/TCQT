@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +19,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 
 class CopyTicketDialog(
     context: Context,
@@ -68,7 +73,7 @@ class CopyTicketDialog(
                             ),
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp
+                        shadowElevation = 6.dp
                     ) {
                         Column(
                             modifier = Modifier
@@ -100,14 +105,20 @@ class CopyTicketDialog(
                                     text = newValue
                                     errorText = null
                                 },
-                                label = { Text("确认输入") },
-                                placeholder = { Text("输入：我已知晓风险") },
-                                isError = errorText != null,
-                                supportingText = errorText?.let { { Text(it) } },
+                                label = "输入：我已知晓风险",
+                                useLabelAsPlaceholder = true,
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                cornerRadius = 12.dp,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            errorText?.let {
+                                Text(
+                                    text = it,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
@@ -128,7 +139,7 @@ class CopyTicketDialog(
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error,
+                                        color = MaterialTheme.colorScheme.error,
                                         contentColor = MaterialTheme.colorScheme.onError
                                     )
                                 ) {

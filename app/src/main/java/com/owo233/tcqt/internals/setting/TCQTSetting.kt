@@ -15,6 +15,7 @@ internal object TCQTSetting {
 
     val settingMap: HashMap<String, Setting<out Any>> by lazy {
         val map = hashMapOf<String, Setting<out Any>>()
+        ThemeSettings.registerSettings(map)
         com.owo233.tcqt.ActionManager.registerAllSettings(map)
         map
     }

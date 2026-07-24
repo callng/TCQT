@@ -18,19 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationChannelGroupCompat
 import androidx.core.app.NotificationManagerCompat
+import com.owo233.tcqt.internals.setting.ThemeSettings
+import com.owo233.tcqt.ui.miuix.AlertDialog
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import com.owo233.tcqt.ui.miuix.TextButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
 
 class NotificationChannelManagerActivity : BaseComposeActivity() {
 
@@ -52,7 +54,16 @@ class NotificationChannelManagerActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SettingTheme(darkTheme = isDarkTheme) {
+            val themeMode = ThemeSettings.themeMode
+            val monetEnabled = ThemeSettings.monetEnabled
+            SideEffect {
+                updateStatusBarAppearance(themeMode.resolveDark(isDarkTheme))
+            }
+            SettingTheme(
+                themeMode = themeMode,
+                monetEnabled = monetEnabled,
+                systemDarkTheme = isDarkTheme,
+            ) {
                 BackHandler { finish() }
                 NotificationChannelManagerScreen(onBack = ::finish)
             }
@@ -107,7 +118,7 @@ private fun NotificationChannelManagerScreen(onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                    Icon(MiuixIcons.Back, contentDescription = "返回")
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -161,7 +172,7 @@ private fun ChannelGroupCard(
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -183,7 +194,7 @@ private fun ChannelCard(channel: NotificationChannelCompat, onDelete: () -> Unit
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         ChannelRow(channel = channel, onDelete = onDelete, modifier = Modifier.padding(16.dp))
@@ -237,7 +248,7 @@ private fun DeletableHeader(
         if (onDelete != null) {
             IconButton(onClick = onDelete) {
                 Icon(
-                    imageVector = Icons.Rounded.Delete,
+                    imageVector = MiuixIcons.Delete,
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.error
                 )

@@ -1,67 +1,36 @@
 package com.owo233.tcqt.activity
 
-import android.os.Build
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.owo233.tcqt.internals.setting.ModuleThemeMode
+import com.owo233.tcqt.internals.setting.ThemeSettings
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
 
 @Composable
-fun SettingTheme(
-    darkTheme: Boolean,
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+internal fun SettingTheme(
+    themeMode: ModuleThemeMode = ThemeSettings.themeMode,
+    monetEnabled: Boolean = ThemeSettings.monetEnabled,
+    systemDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && !darkTheme && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkSettingColors
-        else -> LightSettingColors
+    val darkTheme = themeMode.resolveDark(systemDarkTheme)
+    val mode = when {
+        monetEnabled && darkTheme -> ColorSchemeMode.MonetDark
+        monetEnabled -> ColorSchemeMode.MonetLight
+        darkTheme -> ColorSchemeMode.Dark
+        else -> ColorSchemeMode.Light
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
+    val controller = remember(mode) {
+        ThemeController(
+            colorSchemeMode = mode,
+            isDark = darkTheme,
+        )
+    }
+    MiuixTheme(
+        controller = controller,
+        content = content,
     )
 }
-
-val LightSettingColors = lightColorScheme(
-    primary = Color(0xFF2855D9),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCE6FF),
-    onPrimaryContainer = Color(0xFF0D1B52),
-    secondaryContainer = Color(0xFFE6F0FF),
-    onSecondaryContainer = Color(0xFF17325F),
-    background = Color(0xFFF5F7FB),
-    onBackground = Color(0xFF161C28),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF161C28),
-    surfaceVariant = Color(0xFFECEFF5),
-    onSurfaceVariant = Color(0xFF5B6576),
-    outline = Color(0xFF8D96A7),
-    outlineVariant = Color(0xFFD5DBE6),
-    error = Color(0xFFBA1A1A)
-)
-
-val DarkSettingColors = darkColorScheme(
-    primary = Color(0xFFB5C7FF),
-    onPrimary = Color(0xFF0F286B),
-    primaryContainer = Color(0xFF243E87),
-    onPrimaryContainer = Color(0xFFDCE6FF),
-    secondaryContainer = Color(0xFF22314A),
-    onSecondaryContainer = Color(0xFFD5E4FF),
-    background = Color(0xFF0F1115),
-    onBackground = Color(0xFFE7EAF1),
-    surface = Color(0xFF171A21),
-    onSurface = Color(0xFFE7EAF1),
-    surfaceVariant = Color(0xFF232833),
-    onSurfaceVariant = Color(0xFFC0C7D4),
-    outline = Color(0xFF8A92A1),
-    outlineVariant = Color(0xFF353C49),
-    error = Color(0xFFFFB4AB)
-)

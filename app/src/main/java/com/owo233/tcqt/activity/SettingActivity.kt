@@ -10,40 +10,26 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,10 +38,30 @@ import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.copyToClipboard
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.internals.setting.ThemeSettings
+import com.owo233.tcqt.ui.miuix.AlertDialog
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import com.owo233.tcqt.ui.miuix.TextButton
 import com.owo233.tcqt.utils.ConfigBackupManager
 import com.owo233.tcqt.utils.dexkit.DexKitCache
+import com.owo233.tcqt.utils.log.BugReportExporter
 import com.owo233.tcqt.utils.log.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Reset
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 class SettingActivity : BaseComposeActivity() {
 
@@ -202,7 +208,19 @@ class SettingActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SettingTheme(darkTheme = isDarkTheme) {
+            var moduleThemeMode by remember { mutableStateOf(ThemeSettings.themeMode) }
+            var monetEnabled by remember { mutableStateOf(ThemeSettings.monetEnabled) }
+            val resolvedDarkTheme = moduleThemeMode.resolveDark(isDarkTheme)
+
+            SideEffect {
+                updateStatusBarAppearance(resolvedDarkTheme)
+            }
+
+            SettingTheme(
+                themeMode = moduleThemeMode,
+                monetEnabled = monetEnabled,
+                systemDarkTheme = isDarkTheme,
+            ) {
                 val viewModel: SettingViewModel = viewModel()
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
@@ -211,11 +229,15 @@ class SettingActivity : BaseComposeActivity() {
                 var showClearDialog by rememberSaveable { mutableStateOf(false) }
                 var showBackupDialog by rememberSaveable { mutableStateOf(false) }
                 var showDexKitClearDialog by rememberSaveable { mutableStateOf(false) }
+                var showBugReportDialog by rememberSaveable { mutableStateOf(false) }
+                var isExportingBugReport by remember { mutableStateOf(false) }
 
                 DisposableEffect(viewModel) {
                     onRestoreSuccessCallback = {
                         viewModel.reloadPersistedSettings()
                         viewModel.recalculateStats()
+                        moduleThemeMode = ThemeSettings.themeMode
+                        monetEnabled = ThemeSettings.monetEnabled
                         restartPrompt = RestartPrompt.Restore
                     }
                     onDispose {
@@ -246,6 +268,8 @@ class SettingActivity : BaseComposeActivity() {
                                     onClick = {
                                         showClearDialog = false
                                         viewModel.clearAllSettings()
+                                        moduleThemeMode = ThemeSettings.themeMode
+                                        monetEnabled = ThemeSettings.monetEnabled
                                         restartPrompt = RestartPrompt.Clear
                                     }
                                 ) {
@@ -261,196 +285,28 @@ class SettingActivity : BaseComposeActivity() {
                     }
 
                     if (showBackupDialog) {
-                        AlertDialog(
+                        BackupRestoreDialog(
                             onDismissRequest = { showBackupDialog = false },
-                            title = {
-                                Text(
-                                    "备份/还原",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                )
+                            onBackup = {
+                                showBackupDialog = false
+                                startBackup()
                             },
-                            text = {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        "请选择你要执行的操作",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .combinedClickable(
-                                                onClick = {
-                                                    showBackupDialog = false
-                                                    startBackup()
-                                                },
-                                                onLongClick = {
-                                                    showBackupDialog = false
-                                                    startBackup(forceChooseDirectory = true)
-                                                }
-                                            )
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Backup,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column {
-                                                Text(
-                                                    "备份模块设置",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                                Text(
-                                                    "导出模块设置到外部存储文件（长按可重新选择目录）",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .clickable {
-                                                showBackupDialog = false
-                                                restoreFilePicker.launch(arrayOf("application/json"))
-                                            }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Restore,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column {
-                                                Text(
-                                                    "还原模块设置",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.secondary
-                                                )
-                                                Text(
-                                                    "读取配置文件并覆盖当前设置",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .clickable {
-                                                showBackupDialog = false
-                                                showDexKitClearDialog = true
-                                            }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Refresh,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column {
-                                                Text(
-                                                    "清空 DexKit 缓存",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                                Text(
-                                                    "重新识别宿主方法（若Hook失效请尝试此项）",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.errorContainer,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .clickable {
-                                                showBackupDialog = false
-                                                showClearDialog = true
-                                            }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Delete,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column {
-                                                Text(
-                                                    "清空模块设置",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.error
-                                                )
-                                                Text(
-                                                    "清空全部配置并恢复默认行为",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                            onBackupWithNewDirectory = {
+                                showBackupDialog = false
+                                startBackup(forceChooseDirectory = true)
                             },
-                            confirmButton = {
-                                TextButton(onClick = { showBackupDialog = false }) {
-                                    Text(
-                                        "取消",
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
-                                }
-                            }
+                            onRestore = {
+                                showBackupDialog = false
+                                restoreFilePicker.launch(arrayOf("application/json"))
+                            },
+                            onClearDexKit = {
+                                showBackupDialog = false
+                                showDexKitClearDialog = true
+                            },
+                            onClearSettings = {
+                                showBackupDialog = false
+                                showClearDialog = true
+                            },
                         )
                     }
 
@@ -472,6 +328,82 @@ class SettingActivity : BaseComposeActivity() {
                             },
                             dismissButton = {
                                 TextButton(onClick = { showDexKitClearDialog = false }) {
+                                    Text("取消")
+                                }
+                            }
+                        )
+                    }
+
+                    if (showBugReportDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showBugReportDialog = false },
+                            title = { Text("导出异常报告") },
+                            text = {
+                                Text(
+                                    "将打包当前 ${viewModel.errorCount} 个异常功能的全部进程日志，" +
+                                        "并附带宿主版本、模块版本、Android 版本、设备型号和系统指纹等诊断信息。" +
+                                        "\n\n异常堆栈可能包含运行路径或上下文信息。是否继续并打开系统分享面板？"
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showBugReportDialog = false
+                                        isExportingBugReport = true
+                                        scope.launch {
+                                            val result = runCatching {
+                                                withContext(Dispatchers.IO) {
+                                                    BugReportExporter.export()
+                                                }
+                                            }
+                                            isExportingBugReport = false
+
+                                            val report = result.getOrNull()
+                                            if (report == null) {
+                                                val message = result.exceptionOrNull()
+                                                    ?.message
+                                                    ?.lineSequence()
+                                                    ?.firstOrNull()
+                                                    ?.takeIf(String::isNotBlank)
+                                                    ?: "未知错误"
+                                                snackbarHostState.showSnackbar("异常报告打包失败：$message")
+                                                return@launch
+                                            }
+
+                                            runCatching {
+                                                val shareIntent =
+                                                    BugReportExporter.createShareIntent(report)
+                                                BugReportExporter.grantSharePermissions(
+                                                    this@SettingActivity,
+                                                    shareIntent,
+                                                    report.shareUri,
+                                                )
+                                                startActivity(
+                                                    Intent.createChooser(
+                                                        shareIntent,
+                                                        "分享异常报告",
+                                                    ),
+                                                )
+                                            }.onFailure { throwable ->
+                                                val message = throwable.message
+                                                    ?.lineSequence()
+                                                    ?.firstOrNull()
+                                                    ?.takeIf(String::isNotBlank)
+                                                    ?: "没有可用的分享应用"
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        "报告已生成，但无法打开分享：$message"
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text("继续")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showBugReportDialog = false }) {
                                     Text("取消")
                                 }
                             }
@@ -517,6 +449,16 @@ class SettingActivity : BaseComposeActivity() {
                     SettingScreen(
                         viewModel = viewModel,
                         snackbarHostState = snackbarHostState,
+                        themeMode = moduleThemeMode,
+                        monetEnabled = monetEnabled,
+                        onThemeModeChange = { mode ->
+                            ThemeSettings.setThemeMode(mode)
+                            moduleThemeMode = mode
+                        },
+                        onMonetEnabledChange = { enabled ->
+                            ThemeSettings.monetEnabled = enabled
+                            monetEnabled = enabled
+                        },
                         onSearchRequested = viewModel::enterSearch,
                         onSearchClosed = viewModel::exitSearch,
                         onIssueClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, false) },
@@ -535,6 +477,12 @@ class SettingActivity : BaseComposeActivity() {
                         onBackupRestoreClick = {
                             showBackupDialog = true
                         },
+                        isExportingBugReport = isExportingBugReport,
+                        onExportBugReportClick = {
+                            if (!isExportingBugReport) {
+                                showBugReportDialog = true
+                            }
+                        },
                         onFeatureClick = { key ->
                             val handled = ActionManager.getActionByKey(key)?.onUiClick(this@SettingActivity) == true
                             if (!handled) {
@@ -548,4 +496,130 @@ class SettingActivity : BaseComposeActivity() {
             }
         }
     }
+}
+
+@Composable
+private fun BackupRestoreDialog(
+    onDismissRequest: () -> Unit,
+    onBackup: () -> Unit,
+    onBackupWithNewDirectory: () -> Unit,
+    onRestore: () -> Unit,
+    onClearDexKit: () -> Unit,
+    onClearSettings: () -> Unit,
+) {
+    WindowDialog(
+        show = true,
+        onDismissRequest = onDismissRequest,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "备份与还原",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "配置管理",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    BackupActionRow(
+                        icon = MiuixIcons.Backup,
+                        title = "备份模块设置",
+                        summary = "导出当前配置；长按可重选目录",
+                        onClick = onBackup,
+                        onLongClick = onBackupWithNewDirectory,
+                    )
+                    BackupActionDivider()
+                    BackupActionRow(
+                        icon = MiuixIcons.Reset,
+                        title = "还原模块设置",
+                        summary = "从备份文件覆盖当前配置",
+                        onClick = onRestore,
+                    )
+                    BackupActionDivider()
+                    BackupActionRow(
+                        icon = MiuixIcons.Refresh,
+                        title = "清空 DexKit 缓存",
+                        summary = "Hook 失效时重新识别宿主方法",
+                        onClick = onClearDexKit,
+                    )
+                    BackupActionDivider()
+                    BackupActionRow(
+                        icon = MiuixIcons.Delete,
+                        title = "清空模块设置",
+                        summary = "删除全部配置并恢复默认行为",
+                        onClick = onClearSettings,
+                        destructive = true,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupActionRow(
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    destructive: Boolean = false,
+) {
+    val accent = if (destructive) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+
+    ArrowPreference(
+        title = title,
+        summary = summary,
+        titleColor = BasicComponentDefaults.titleColor(
+            color = if (destructive) accent else MaterialTheme.colorScheme.onSurface,
+        ),
+        startAction = {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = accent.copy(alpha = 0.12f),
+                contentColor = accent,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
+    )
+}
+
+@Composable
+private fun BackupActionDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 70.dp, end = 16.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
+    )
 }

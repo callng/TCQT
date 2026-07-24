@@ -4,14 +4,10 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
-import android.text.InputFilter
-import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
@@ -23,7 +19,7 @@ import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.hooks.helper.GuidHelper
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
+import com.owo233.tcqt.ui.GuidEditorDialog
 import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodAfter
 
@@ -75,8 +71,7 @@ class ChangeGuid : IAction {
                     setOnLongClickListener {
                         ensureDefaultGuidInitialized()
 
-                        val context = activity.toCompatibleContext()
-                        showGuidDialog(context)
+                        showGuidDialog(activity)
                         true
                     }
                 }
@@ -100,75 +95,13 @@ class ChangeGuid : IAction {
             GuidConfig.defaultGuid.ifEmpty { "无法获取原始GUID" }
         }
 
-        val density = context.resources.displayMetrics.density
-        val hPad = (16 * density).toInt()
-        val vPad = (14 * density).toInt()
-
-        val input = EditText(context).apply {
-            hint = "32 位 GUID（可为空）"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            filters = arrayOf(InputFilter.LengthFilter(32))
-            textSize = 14f
-            typeface = android.graphics.Typeface.MONOSPACE
-            isSingleLine = true
-            setHorizontallyScrolling(true)
-            setPadding(hPad, vPad, hPad, vPad)
-            setText(currentDisplayGuid)
-            setSelectAllOnFocus(true)
-        }
-
-        val randomButton = Button(context).apply {
-            text = "随机生成"
-            textSize = 13f
-            isAllCaps = false
-            setBackgroundResource(android.R.color.transparent)
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            setOnClickListener {
-                val randomGuid = buildString(32) {
-                    val hex = "0123456789abcdef"
-                    repeat(32) { append(hex.random()) }
-                }
-                input.setText(randomGuid)
-                input.selectAll()
-            }
-        }
-
-        val container = android.widget.LinearLayout(context).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            val margin = (20 * density).toInt()
-            setPadding(margin, margin, margin, margin)
-            addView(input, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ))
-            addView(randomButton, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ))
-        }
-
-        val dialog = AlertDialog.Builder(context)
-            .setTitle("设置自定义 GUID")
-            .setView(container)
-            .setPositiveButton("保存") { _, _ ->
-                handleSaveGuid(context, input.text.toString().trim())
-            }
-            .setNeutralButton("恢复") { _, _ -> handleRestoreGuid(context) }
-            .setNegativeButton("取消", null)
-            .create()
-
-        dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = GuidConfig.isEnabled
-
-        input.requestFocus()
-        input.post {
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
-                    as android.view.inputmethod.InputMethodManager
-            imm.showSoftInput(input, 0)
-        }
+        GuidEditorDialog(
+            context = context,
+            initialGuid = currentDisplayGuid,
+            restoreEnabled = GuidConfig.isEnabled,
+            onSave = { handleSaveGuid(context, it) },
+            onRestore = { handleRestoreGuid(context) },
+        ).show()
     }
 
     private fun handleSaveGuid(context: Context, guid: String) {

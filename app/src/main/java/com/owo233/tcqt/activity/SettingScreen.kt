@@ -5,10 +5,6 @@ package com.owo233.tcqt.activity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +26,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,37 +38,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.ToggleOn
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
@@ -82,26 +56,63 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.hooks.base.Toasts
+import com.owo233.tcqt.internals.setting.ModuleThemeMode
+import com.owo233.tcqt.ui.miuix.MaterialTheme
+import com.owo233.tcqt.ui.miuix.TextButton
 import com.owo233.tcqt.utils.PlatformTools
+import kotlinx.coroutines.delay
+import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.DropdownItem
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Switch
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Backup
+import top.yukonga.miuix.kmp.icon.extended.ChevronForward
+import top.yukonga.miuix.kmp.icon.extended.Clear
+import top.yukonga.miuix.kmp.icon.extended.Folder
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Report
+import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.icon.extended.Share
+import top.yukonga.miuix.kmp.icon.extended.Theme
+import top.yukonga.miuix.kmp.icon.extended.Tune
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -136,7 +147,7 @@ private data class SettingsPageContentState(
     val enabledCount: Int,
     val disabledCount: Int,
     val errorCount: Int,
-    val hasPending: Boolean,
+    val showSaveAction: Boolean,
     val currentCategoryLabel: String
 ) {
 
@@ -169,26 +180,43 @@ private data class SettingsTopBarState(
 // ───── Main Screen ─────
 
 @Composable
-fun SettingScreen(
+internal fun SettingScreen(
     viewModel: SettingViewModel,
     snackbarHostState: SnackbarHostState,
+    themeMode: ModuleThemeMode,
+    monetEnabled: Boolean,
+    onThemeModeChange: (ModuleThemeMode) -> Unit,
+    onMonetEnabledChange: (Boolean) -> Unit,
     onSearchRequested: () -> Unit,
     onSearchClosed: () -> Unit,
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
     onBackupRestoreClick: () -> Unit,
+    isExportingBugReport: Boolean,
+    onExportBugReportClick: () -> Unit,
     onFeatureClick: (String) -> Unit
 ) {
     val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
     val isSearchActive = viewModel.isSearchActive
+    val density = LocalDensity.current
+    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+    val showSaveAction = hasPending && !isImeVisible
+    val isDark = themeMode.resolveDark(isSystemInDarkTheme())
+    val pageColor = if (monetEnabled) {
+        MaterialTheme.colorScheme.background
+    } else if (isDark) {
+        Color(0xFF101010)
+    } else {
+        Color(0xFFF5F5F5)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.reloadActionErrors()
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = pageColor,
         topBar = {
             TopBar(
                 viewModel = viewModel,
@@ -197,26 +225,31 @@ fun SettingScreen(
                 onSearchRequested = onSearchRequested,
                 onSearchClosed = onSearchClosed,
                 onSearchQueryChange = viewModel::updateSearchQuery,
-                onClearQuery = viewModel::clearSearchQuery,
-                onBackupRestoreClick = onBackupRestoreClick
+                onBackupRestoreClick = onBackupRestoreClick,
+                isExportingBugReport = isExportingBugReport,
+                onExportBugReportClick = onExportBugReportClick,
+                themeMode = themeMode,
+                monetEnabled = monetEnabled,
+                onThemeModeChange = onThemeModeChange,
+                onMonetEnabledChange = onMonetEnabledChange,
+                containerColor = pageColor,
             )
         },
         snackbarHost = {
             SnackbarHost(
-                hostState = snackbarHostState,
+                state = snackbarHostState,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = hasPending,
+                visible = showSaveAction,
                 enter = fadeIn(tween(220, easing = FastOutSlowInEasing))
                         + scaleIn(initialScale = 0.85f, animationSpec = tween(220, easing = FastOutSlowInEasing)),
                 exit = fadeOut(tween(180, easing = FastOutSlowInEasing))
                         + scaleOut(targetScale = 0.85f, animationSpec = tween(180, easing = FastOutSlowInEasing))
             ) {
                 SavePill(
-                    hasPendingChanges = hasPending,
                     pendingCount = viewModel.pendingChangeCount,
                     onClick = onSaveClick
                 )
@@ -239,7 +272,7 @@ fun SettingScreen(
             enabledCount = viewModel.enabledCount,
             disabledCount = viewModel.disabledCount,
             errorCount = viewModel.errorCount,
-            hasPending = hasPending,
+            showSaveAction = showSaveAction,
             currentCategoryLabel = viewModel.currentCategoryLabel.value
         )
 
@@ -297,13 +330,14 @@ private fun PageContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding),
+            .padding(innerPadding)
+            .imePadding(),
         state = lazyListState,
         contentPadding = PaddingValues(
             start = 16.dp,
             top = 12.dp,
             end = 16.dp,
-            bottom = if (pageState.hasPending) 112.dp else 24.dp
+            bottom = if (pageState.showSaveAction) 112.dp else 24.dp
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -365,7 +399,11 @@ private fun PageContent(
         // Search: zero results
         if (isSearchActive && pageState.searchQuery.isNotBlank() && features.isEmpty()) {
             item(key = "search_empty") {
-                EmptyStateCard()
+                EmptyStateCard(
+                    icon = MiuixIcons.Search,
+                    title = "未找到相关功能",
+                    summary = "换一个关键词试试",
+                )
             }
         }
 
@@ -409,7 +447,10 @@ private fun PageContent(
         // Feature cards
         if (features.isEmpty() && categories.isEmpty() && !isSearchActive && !isErrorOverviewActive) {
             item(key = "empty") {
-                EmptyStateCard()
+                EmptyStateCard(
+                    icon = MiuixIcons.Folder,
+                    title = "暂无可用内容",
+                )
             }
         } else if (features.isNotEmpty()) {
             items(
@@ -426,7 +467,7 @@ private fun PageContent(
                     onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
                     onClearError = { viewModel.clearActionError(item.key) },
                     onFeatureClick = { onFeatureClick(item.key) },
-                    forceExpanded = isSearchActive
+                    forceExpanded = isSearchActive,
                 )
             }
         }
@@ -449,8 +490,14 @@ private fun TopBar(
     onSearchRequested: () -> Unit,
     onSearchClosed: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onClearQuery: () -> Unit,
-    onBackupRestoreClick: () -> Unit
+    onBackupRestoreClick: () -> Unit,
+    isExportingBugReport: Boolean,
+    onExportBugReportClick: () -> Unit,
+    themeMode: ModuleThemeMode,
+    monetEnabled: Boolean,
+    onThemeModeChange: (ModuleThemeMode) -> Unit,
+    onMonetEnabledChange: (Boolean) -> Unit,
+    containerColor: Color,
 ) {
     val breadcrumbs by viewModel.breadcrumbs
     val topBarState = SettingsTopBarState(
@@ -468,7 +515,7 @@ private fun TopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(containerColor)
             .statusBarsPadding()
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -495,7 +542,6 @@ private fun TopBar(
                     query = state.searchQuery,
                     onQueryChange = onSearchQueryChange,
                     onBackClick = onSearchClosed,
-                    onClearClick = onClearQuery
                 )
 
                 SettingsTopBarMode.ErrorOverview -> {
@@ -505,14 +551,14 @@ private fun TopBar(
                     ) {
                         IconButton(onClick = { viewModel.navigateUp() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
-                            imageVector = Icons.Rounded.Warning,
+                            imageVector = MiuixIcons.Report,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
@@ -530,6 +576,21 @@ private fun TopBar(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = onExportBugReportClick,
+                            enabled = !isExportingBugReport,
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Share,
+                                contentDescription = "导出并分享异常报告",
+                                tint = if (isExportingBugReport) {
+                                    MaterialTheme.colorScheme.outline
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                            )
+                        }
                     }
                 }
 
@@ -541,7 +602,7 @@ private fun TopBar(
                     ) {
                         IconButton(onClick = { viewModel.navigateUp() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = "返回",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -564,7 +625,7 @@ private fun TopBar(
                             state.breadcrumbs.forEachIndexed { index, crumb ->
                                 if (index > 0) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                        imageVector = MiuixIcons.ChevronForward,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.size(16.dp)
@@ -595,7 +656,7 @@ private fun TopBar(
 
                         IconButton(onClick = onSearchRequested) {
                             Icon(
-                                imageVector = Icons.Rounded.Search,
+                                imageVector = MiuixIcons.Search,
                                 contentDescription = "搜索",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -604,41 +665,34 @@ private fun TopBar(
                 }
 
                 SettingsTopBarMode.Root -> {
-                    // ─── Root page: right-aligned search + backup ───
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Spacer(modifier = Modifier.weight(1f))
+
                         IconButton(onClick = onSearchRequested) {
                             Icon(
-                                imageVector = Icons.Rounded.Search,
+                                imageVector = MiuixIcons.Search,
                                 contentDescription = "搜索",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable(onClick = onBackupRestoreClick)
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        IconButton(onClick = onBackupRestoreClick) {
                             Icon(
-                                imageVector = Icons.Rounded.Backup,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "备份/清理",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                imageVector = MiuixIcons.Backup,
+                                contentDescription = "备份与清理",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+
+                        ThemeMenuButton(
+                            themeMode = themeMode,
+                            monetEnabled = monetEnabled,
+                            onThemeModeChange = onThemeModeChange,
+                            onMonetEnabledChange = onMonetEnabledChange,
+                        )
                     }
                 }
             }
@@ -647,87 +701,101 @@ private fun TopBar(
 
 }
 
+@Composable
+private fun ThemeMenuButton(
+    themeMode: ModuleThemeMode,
+    monetEnabled: Boolean,
+    onThemeModeChange: (ModuleThemeMode) -> Unit,
+    onMonetEnabledChange: (Boolean) -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { showMenu = true }) {
+            Icon(
+                imageVector = MiuixIcons.Theme,
+                contentDescription = "主题",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        OverlayListPopup(
+            show = showMenu,
+            alignment = PopupPositionProvider.Align.End,
+            enableWindowDim = false,
+            minWidth = 220.dp,
+            onDismissRequest = { showMenu = false },
+        ) {
+            ListPopupColumn {
+                ModuleThemeMode.entries.forEachIndexed { index, mode ->
+                    val label = when (mode) {
+                        ModuleThemeMode.System -> "跟随系统"
+                        ModuleThemeMode.Light -> "浅色模式"
+                        ModuleThemeMode.Dark -> "深色模式"
+                    }
+                    DropdownImpl(
+                        item = DropdownItem(text = label),
+                        optionSize = ModuleThemeMode.entries.size + 1,
+                        isSelected = themeMode == mode,
+                        index = index,
+                        onSelectedIndexChange = {
+                            showMenu = false
+                            onThemeModeChange(mode)
+                        },
+                    )
+                }
+                DropdownImpl(
+                    item = DropdownItem(
+                        text = "Monet 动态色",
+                    ),
+                    optionSize = ModuleThemeMode.entries.size + 1,
+                    isSelected = monetEnabled,
+                    index = ModuleThemeMode.entries.size,
+                    onSelectedIndexChange = {
+                        showMenu = false
+                        onMonetEnabledChange(!monetEnabled)
+                    },
+                )
+            }
+        }
+    }
+}
+
 // ───── Category Card ─────
 
 @Composable
 private fun CategoryCard(category: CategoryUiState, onClick: () -> Unit) {
-    val accent = if (category.enabledCount > 0) MaterialTheme.colorScheme.primary
-    else MaterialTheme.colorScheme.onSurfaceVariant
-
-    val borderColor = if (category.enabledCount > 0)
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = if (category.enabledCount > 0) 1.dp else 0.dp,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = if (category.enabledCount > 0)
-                    MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (category.isLeaf) Icons.Rounded.ToggleOn
-                        else Icons.Rounded.Folder,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(22.dp)
-                    )
+        ArrowPreference(
+            title = category.label,
+            summary = "已启用 ${category.enabledCount} · 共 ${category.totalFeatureCount} 项",
+            startAction = {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (category.isLeaf) MiuixIcons.Tune else MiuixIcons.Folder,
+                            contentDescription = null,
+                            tint = if (category.enabledCount > 0) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = category.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StatusPill(
-                        text = "已启用 ${category.enabledCount}",
-                        containerColor = if (category.enabledCount > 0)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (category.enabledCount > 0)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    StatusPill(
-                        text = "共 ${category.totalFeatureCount} 项",
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+            },
+            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            onClick = onClick,
+        )
     }
 }
 
@@ -748,202 +816,139 @@ private fun CompactHeaderCard(
     var lastClickTime by remember { mutableLongStateOf(0L) }
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "${TCQTBuild.APP_NAME} 模块配置",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        val currentTime = System.currentTimeMillis()
-                        if (currentTime - lastClickTime < 500) {
-                            clickCount++
-                        } else {
-                            clickCount = 1
-                        }
-                        lastClickTime = currentTime
-                        if (clickCount >= 5) {
-                            clickCount = 0
-                            Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
-                        }
-                    },
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = "已连接 $hostName",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = hostVersion,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "$moduleName $moduleVersion",
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                val currentTime = System.currentTimeMillis()
+                                clickCount = if (currentTime - lastClickTime < 500) clickCount + 1 else 1
+                                lastClickTime = currentTime
+                                if (clickCount >= 5) {
+                                    clickCount = 0
+                                    Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
+                                }
+                            },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
 
-            CombinedInfoCard(
-                hostName = hostName,
-                hostVersion = hostVersion,
-                moduleName = moduleName,
-                moduleVersion = moduleVersion
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SmallStatCard(
+                OverviewStat(
                     title = "已启用",
-                    value = enabledCount.toString(),
-                    accent = Color(0xFF1E8E3E),
-                    modifier = Modifier.weight(1f)
+                    value = enabledCount,
+                    valueColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
                 )
-                SmallStatCard(
+                OverviewDivider()
+                OverviewStat(
                     title = "未启用",
-                    value = disabledCount.toString(),
-                    accent = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
+                    value = disabledCount,
+                    valueColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
                 )
-                SmallStatCard(
-                    title = "异常数",
-                    value = errorCount.toString(),
-                    accent = if (errorCount > 0) MaterialTheme.colorScheme.error else Color(0xFF1E8E3E),
+                OverviewDivider()
+                OverviewStat(
+                    title = "异常",
+                    value = errorCount,
+                    valueColor = if (errorCount > 0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                     onClick = if (errorCount > 0) onErrorClick else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
+
         }
     }
 }
 
 @Composable
-private fun CombinedInfoCard(
-    hostName: String,
-    hostVersion: String,
-    moduleName: String,
-    moduleVersion: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Host info section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-                Text(
-                    text = "宿主($hostName)",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-            }
-            Text(
-                text = hostVersion,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.size(2.dp))
-
-            // Module info section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-                Text(
-                    text = "模块($moduleName)",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-            }
-            Text(
-                text = moduleVersion,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun SmallStatCard(
+private fun OverviewStat(
     title: String,
-    value: String,
-    accent: Color,
+    value: Int,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
-    Surface(
+    Column(
         modifier = modifier.then(
             if (onClick != null) {
                 Modifier
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onClick)
             } else {
                 Modifier
             }
         ),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = accent
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = valueColor,
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+}
+
+@Composable
+private fun OverviewDivider() {
+    Box(
+        modifier = Modifier
+            .size(width = 1.dp, height = 30.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)),
+    )
 }
 
 @Composable
@@ -966,7 +971,7 @@ private fun ErrorOverviewHeader(errorCount: Int) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Rounded.Warning,
+                        imageVector = MiuixIcons.Report,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(24.dp)
@@ -993,78 +998,15 @@ private fun ErrorOverviewHeader(errorCount: Int) {
     }
 }
 
-// ───── Search Prompt (animated) ─────
+// ───── Search Prompt ─────
 
 @Composable
 private fun SearchPromptCard() {
-    val infinite = rememberInfiniteTransition(label = "search_prompt")
-    val iconScale by infinite.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "icon_scale"
+    EmptyStateCard(
+        icon = MiuixIcons.Search,
+        title = "搜索模块功能",
+        summary = "输入功能名称或描述",
     )
-    val ringScale by infinite.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ring_scale"
-    )
-    val ringAlpha by infinite.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ring_alpha"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 80.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Expanding ring
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = ringAlpha),
-            modifier = Modifier
-                .size(80.dp)
-                .graphicsLayer {
-                    scaleX = ringScale
-                    scaleY = ringScale
-                }
-        ) {}
-
-        // Core icon
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-            modifier = Modifier
-                .size(72.dp)
-                .graphicsLayer {
-                    scaleX = iconScale
-                    scaleY = iconScale
-                }
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(34.dp)
-                )
-            }
-        }
-    }
 }
 
 // ───── Search History ─────
@@ -1075,63 +1017,59 @@ private fun SearchHistoryLayout(
     onTagClick: (String) -> Unit,
     onClearClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = "搜索记录",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            history.forEach { tag ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    ),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onTagClick(tag) }
-                ) {
-                    Text(
-                        text = tag,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "最近搜索",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onClearClick) {
+                    Icon(
+                        imageVector = MiuixIcons.Clear,
+                        contentDescription = "清除搜索记录",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "清除搜索记录",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onClearClick() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                history.forEach { tag ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onTagClick(tag) },
+                    ) {
+                        Text(
+                            text = tag,
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1143,37 +1081,14 @@ private fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onBackClick: () -> Unit,
-    onClearClick: () -> Unit
 ) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
-    var textFieldValueState by remember {
-        mutableStateOf(
-            TextFieldValue(
-                text = query,
-                selection = TextRange(query.length)
-            )
-        )
-    }
-
-    LaunchedEffect(query) {
-        if (query != textFieldValueState.text) {
-            textFieldValueState = TextFieldValue(
-                text = query,
-                selection = TextRange(query.length)
-            )
-        }
-    }
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBackClick) {
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                imageVector = MiuixIcons.Back,
                 contentDescription = "返回",
                 tint = MaterialTheme.colorScheme.onSurface
             )
@@ -1181,82 +1096,67 @@ private fun SearchBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        TextField(
-            value = textFieldValueState,
-            onValueChange = { newValue ->
-                textFieldValueState = newValue
-                onQueryChange(newValue.text)
+        InputField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onSearch = {},
+            expanded = true,
+            onExpandedChange = { expanded ->
+                if (!expanded) onBackClick()
             },
             modifier = Modifier
-                .weight(1f)
-                .focusRequester(focusRequester),
-            placeholder = { Text("搜索功能名称或描述") },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
-            ),
-            trailingIcon = {
-                if (query.isNotBlank()) {
-                    Icon(
-                        imageVector = Icons.Rounded.Clear,
-                        contentDescription = "清空",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(onClick = onClearClick)
-                    )
-                }
-            }
+                .weight(1f),
+            label = "搜索功能名称或描述",
         )
     }
 }
 
 @Composable
-private fun EmptyStateCard() {
-    val infinite = rememberInfiniteTransition(label = "empty_state")
-    val bounce by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bounce"
-    )
-
-    Box(
+private fun EmptyStateCard(
+    icon: ImageVector,
+    title: String,
+    summary: String? = null,
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 64.dp),
-        contentAlignment = Alignment.Center
+            .padding(top = 36.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        Column(
             modifier = Modifier
-                .size(76.dp)
-                .graphicsLayer { translationY = bounce }
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "?",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(58.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(27.dp),
+                    )
                 }
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            summary?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -1300,34 +1200,18 @@ private fun FooterCard(onIssueClick: () -> Unit, onIssueLongClick: () -> Unit) {
 // ───── Save Pill ─────
 
 @Composable
-private fun SavePill(hasPendingChanges: Boolean, pendingCount: Int, onClick: () -> Unit) {
+private fun SavePill(pendingCount: Int, onClick: () -> Unit) {
     val hapticFeedback = LocalHapticFeedback.current
-    val pulseScale = if (hasPendingChanges) {
-        val infiniteTransition = rememberInfiniteTransition(label = "savePulse")
-        infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1.04f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(900, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "savePulseValue"
-        )
-    } else null
 
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = if (hasPendingChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (hasPendingChanges) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        shadowElevation = if (hasPendingChanges) 8.dp else 0.dp,
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        shadowElevation = 8.dp,
         modifier = Modifier
-            .graphicsLayer {
-                val scale = pulseScale?.value ?: 1f
-                scaleX = scale; scaleY = scale
-            }
             .clip(RoundedCornerShape(18.dp))
             .clickable {
-                if (hasPendingChanges) hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
             }
     ) {
@@ -1336,7 +1220,7 @@ private fun SavePill(hasPendingChanges: Boolean, pendingCount: Int, onClick: () 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(imageVector = Icons.Rounded.Check, contentDescription = "保存")
+            Icon(imageVector = MiuixIcons.Ok, contentDescription = "保存")
             Text(
                 text = if (pendingCount > 0) "保存配置 · $pendingCount" else "保存配置",
                 fontWeight = FontWeight.Bold
@@ -1357,153 +1241,271 @@ private fun FeatureCard(
     onTextValueChange: (String, String) -> Unit,
     onClearError: () -> Unit,
     onFeatureClick: () -> Unit,
-    forceExpanded: Boolean = false
+    forceExpanded: Boolean = false,
 ) {
-    val effectivelyExpanded = item.expanded || forceExpanded
-    val feature = item.feature
-    val isExpandable = feature.expandable || item.error != null
-    val query = searchQuery.trim()
-    val borderColor = when {
-        item.error != null -> MaterialTheme.colorScheme.error.copy(alpha = if (effectivelyExpanded) 0.72f else 0.48f)
-        effectivelyExpanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-        item.hasPending -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-        item.enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    var searchExpanded by remember(item.key, searchQuery, forceExpanded) {
+        mutableStateOf(forceExpanded)
     }
+    val effectivelyExpanded =
+        (if (forceExpanded) searchExpanded else item.expanded) || item.error != null
+    val toggleDetails = {
+        if (forceExpanded) {
+            searchExpanded = !searchExpanded
+        } else {
+            onToggleExpanded()
+        }
+    }
+    val feature = item.feature
+    val hasDetails = item.error != null || item.optionGroup != null || item.textAreas.isNotEmpty()
+    val query = searchQuery.trim()
+    val featureTitleColor =
+        if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val titleColor = BasicComponentDefaults.titleColor(
+        color = featureTitleColor,
+    )
+    val bottomAction: (@Composable () -> Unit)? =
+        if (item.hasPending || item.error != null || (effectivelyExpanded && hasDetails)) {
+            {
+                FeaturePreferenceDetails(
+                    item = item,
+                    expanded = effectivelyExpanded,
+                    onOptionValueChange = onOptionValueChange,
+                    onTextValueChange = onTextValueChange,
+                    onClearError = onClearError,
+                )
+            }
+        } else {
+            null
+        }
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = if (item.expanded || item.enabled) 1.dp else 0.dp,
-        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(20.dp),
+        color = if (item.error != null) {
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.18f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .clickable(
-                        onClick = {
-                            if (item.uiType == ActionUiType.ENTRY) {
-                                onFeatureClick()
-                                return@clickable
-                            }
-                            if (isExpandable) {
-                                onToggleExpanded()
-                            } else {
-                                onFeatureEnabledChange(!item.enabled)
-                            }
-                        }
-                    )
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = rememberHighlightedText(feature.label, query),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (isExpandable) {
+        if (query.isNotBlank()) {
+            BasicComponent(
+                endActions = {
+                    when (item.uiType) {
+                        ActionUiType.ENTRY -> {
                             Icon(
-                                imageVector = if (effectivelyExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                                imageVector = MiuixIcons.ChevronForward,
                                 contentDescription = null,
-                                tint = if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+
+                        else -> {
+                            if (hasDetails && item.error == null) {
+                                Icon(
+                                    imageVector = MiuixIcons.ChevronForward,
+                                    contentDescription = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .padding(end = 12.dp)
+                                        .size(20.dp)
+                                        .graphicsLayer {
+                                            rotationZ = if (effectivelyExpanded) -90f else 90f
+                                        },
+                                )
+                            }
+                            Switch(
+                                checked = item.enabled,
+                                onCheckedChange = onFeatureEnabledChange,
                             )
                         }
                     }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (item.error != null) StatusPill(
-                            text = "运行异常",
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        if (item.uiType != ActionUiType.ENTRY) StatusPill(
-                            text = if (item.enabled) "已启用" else "未启用",
-                            containerColor = if (item.enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (item.enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (item.hasPending) StatusPill(
-                            text = "未保存",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        if (item.optionGroup != null) StatusPill(
-                            text = "选项",
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (item.textAreas.isNotEmpty()) StatusPill(
-                            text = "文本 ${item.textAreas.size}",
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (item.uiType == ActionUiType.ENTRY) StatusPill(
-                            text = "入口",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-                if (item.uiType == ActionUiType.ENTRY) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .size(24.dp)
+                },
+                bottomAction = bottomAction,
+                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                onClick = when {
+                    item.uiType == ActionUiType.ENTRY -> onFeatureClick
+                    hasDetails && item.error == null -> toggleDetails
+                    hasDetails -> null
+                    else -> { { onFeatureEnabledChange(!item.enabled) } }
+                },
+            ) {
+                Text(
+                    text = rememberHighlightedText(feature.label, query),
+                    fontSize = MiuixTheme.textStyles.headline1.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    color = featureTitleColor,
+                )
+                if (feature.desc.isNotBlank()) {
+                    Text(
+                        text = rememberHighlightedText(feature.desc, query),
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                } else {
-                    Switch(checked = item.enabled, onCheckedChange = onFeatureEnabledChange, modifier = Modifier.padding(start = 12.dp))
                 }
             }
+        } else if (item.uiType == ActionUiType.ENTRY) {
+            ArrowPreference(
+                title = feature.label,
+                summary = feature.desc.takeIf(String::isNotBlank),
+                titleColor = titleColor,
+                bottomAction = bottomAction,
+                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                onClick = onFeatureClick,
+            )
+        } else if (hasDetails) {
+            BasicComponent(
+                title = feature.label,
+                summary = feature.desc.takeIf(String::isNotBlank),
+                titleColor = titleColor,
+                endActions = {
+                    if (item.error == null) {
+                        Icon(
+                            imageVector = MiuixIcons.ChevronForward,
+                            contentDescription = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(20.dp)
+                                .graphicsLayer {
+                                    rotationZ = if (effectivelyExpanded) -90f else 90f
+                                },
+                        )
+                    }
+                    Switch(
+                        checked = item.enabled,
+                        onCheckedChange = onFeatureEnabledChange,
+                    )
+                },
+                bottomAction = bottomAction,
+                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                onClick = if (item.error == null) toggleDetails else null,
+                onClickLabel = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
+            )
+        } else {
+            SwitchPreference(
+                checked = item.enabled,
+                onCheckedChange = onFeatureEnabledChange,
+                title = feature.label,
+                summary = feature.desc.takeIf(String::isNotBlank),
+                titleColor = titleColor,
+                bottomAction = bottomAction,
+                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+            )
+        }
+    }
+}
 
-            AnimatedVisibility(visible = effectivelyExpanded && isExpandable) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    if (feature.desc.isNotBlank()) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                        Text(
-                            text = rememberHighlightedText(feature.desc, query),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    item.error?.let { error ->
-                        if (feature.desc.isBlank()) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.error.copy(alpha = 0.24f))
-                        }
-                        FeatureErrorPanel(error = error, onClear = onClearError)
-                    }
-                    item.optionGroup?.let { group ->
-                        if (feature.desc.isBlank() && item.error == null)
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                        OptionGroup(group = group, currentValue = item.optionValue ?: group.fallbackValue, onValueChange = onOptionValueChange)
-                    }
-                    item.textAreas.forEach { area ->
-                        OutlinedTextField(
-                            value = area.value,
-                            onValueChange = { value -> onTextValueChange(area.key, value) },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(area.label) },
-                            placeholder = { Text(area.placeholder.ifBlank { area.label }) },
-                            minLines = 3,
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                    }
+@Composable
+private fun FeaturePreferenceDetails(
+    item: FeatureItemUiState,
+    expanded: Boolean,
+    onOptionValueChange: (Int) -> Unit,
+    onTextValueChange: (String, String) -> Unit,
+    onClearError: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (item.error != null) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusPill(
+                    text = "运行异常",
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded && (
+                item.error != null ||
+                    item.optionGroup != null ||
+                    item.textAreas.isNotEmpty()
+                ),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                HorizontalDivider(
+                    color = if (item.error != null) {
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.24f)
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                    },
+                )
+                item.error?.let { error ->
+                    FeatureErrorPanel(error = error, onClear = onClearError)
+                }
+                item.optionGroup?.let { group ->
+                    OptionGroup(
+                        group = group,
+                        currentValue = item.optionValue ?: group.fallbackValue,
+                        onValueChange = onOptionValueChange,
+                    )
+                }
+                item.textAreas.forEach { area ->
+                    FeatureTextArea(
+                        area = area,
+                        repositionKey = item.hasPending,
+                        onValueChange = { value -> onTextValueChange(area.key, value) },
+                    )
                 }
             }
         }
+
+        if (item.hasPending) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusPill(
+                    text = "未保存",
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun FeatureTextArea(
+    area: TextAreaUiState,
+    repositionKey: Any?,
+    onValueChange: (String) -> Unit,
+) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    var isFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isFocused, repositionKey) {
+        if (isFocused) {
+            delay(32)
+            bringIntoViewRequester.bringIntoView()
+            delay(288)
+            bringIntoViewRequester.bringIntoView()
+        }
+    }
+
+    OutlinedTextField(
+        value = area.value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+            },
+        label = area.label,
+        useLabelAsPlaceholder = area.value.isBlank(),
+        minLines = 3,
+        cornerRadius = 14.dp,
+    )
 }
 
 @Composable
@@ -1528,7 +1530,7 @@ private fun FeatureErrorPanel(error: FeatureErrorUiState, onClear: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Warning,
+                    imageVector = MiuixIcons.Report,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
@@ -1583,13 +1585,23 @@ private fun rememberHighlightedText(text: String, keyword: String): AnnotatedStr
         val lowerKeyword = keyword.lowercase()
         val highlightBackground = colorScheme.primaryContainer.copy(alpha = 0.9f)
         val highlightColor = colorScheme.primary
+
         buildAnnotatedString {
             var cursor = 0
             while (cursor < text.length) {
                 val index = lowerText.indexOf(lowerKeyword, startIndex = cursor)
-                if (index < 0) { append(text.substring(cursor)); break }
+                if (index < 0) {
+                    append(text.substring(cursor))
+                    break
+                }
                 if (index > cursor) append(text.substring(cursor, index))
-                pushStyle(SpanStyle(color = highlightColor, background = highlightBackground, fontWeight = FontWeight.Bold))
+                pushStyle(
+                    SpanStyle(
+                        color = highlightColor,
+                        background = highlightBackground,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
                 append(text.substring(index, index + keyword.length))
                 pop()
                 cursor = index + keyword.length
@@ -1613,45 +1625,40 @@ private fun StatusPill(text: String, containerColor: Color, contentColor: Color)
 @Composable
 private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueChange: (Int) -> Unit) {
     val hapticFeedback = LocalHapticFeedback.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        group.options.forEachIndexed { index, option ->
-            val mask = group.resolveMask(option, index)
-            val selected = if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onValueChange(if (group.isMulti) currentValue xor mask else option.value)
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (group.isMulti) {
-                        Checkbox(
-                            checked = selected,
-                            onCheckedChange = null, // Handled by row click
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        RadioButton(
-                            selected = selected,
-                            onClick = null, // Handled by row click
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Text(
-                        text = option.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            group.options.forEachIndexed { index, option ->
+                val mask = group.resolveMask(option, index)
+                val selected = if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
+                val changeSelection = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onValueChange(if (group.isMulti) currentValue xor mask else option.value)
+                }
+
+                if (group.isMulti) {
+                    CheckboxPreference(
+                        title = option.label,
+                        checked = selected,
+                        onCheckedChange = { changeSelection() },
+                        insideMargin = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                } else {
+                    RadioButtonPreference(
+                        title = option.label,
+                        selected = selected,
+                        onClick = changeSelection,
+                        insideMargin = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+
+                if (index < group.options.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 48.dp, end = 14.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
                     )
                 }
             }
