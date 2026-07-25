@@ -1,14 +1,17 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
-import com.owo233.tcqt.HookEnv.toHostClass
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
+import com.owo233.tcqt.ext.isFlagEnabled
+import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -45,19 +48,19 @@ class DefaultVASAttributes : IAction {
                     u?.vasMsgInfo?.let { vasInfo ->
 
                         // 隐藏头像挂件
-                        if ((options and (1 shl 2)) == 0) {
+                        if (options.isFlagEnabled(2)) {
                             vasInfo.avatarPendantInfo?.pendantId = 0L
                             vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
                         }
 
                         // 强制默认气泡
-                        if ((options and (1 shl 0)) == 0) {
+                        if (options.isFlagEnabled(0)) {
                             vasInfo.bubbleInfo?.bubbleId = 0
                             vasInfo.bubbleInfo?.subBubbleId = 0
                         }
 
                         // 强制默认字体
-                        if ((options and (1 shl 1)) == 0) {
+                        if (options.isFlagEnabled(1)) {
                             vasInfo.vasFont?.fontId = 0
                             vasInfo.vasFont?.subFontId = 0L
                             vasInfo.vasFont?.magicFontType = 0
@@ -67,18 +70,19 @@ class DefaultVASAttributes : IAction {
             }
         }
 
-        if (options and (1 shl 3) == 0) {
+        if (options.isFlagEnabled(3)) {
             // 新版超级QQ秀 应该是在 9.2.35 版本或以上才有的
-            "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toHostClass().also {
-                it.findMethod {
-                    name = "isQQShowEnableForAIO"
-                    paramTypes(long, int, long)
-                }.hookBefore { param ->
-                    val uin = (param.args[2] as Long).toString()
-                    if (uin != QQInterfaces.currentUin) {
-                        param.result = false
+            if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_35)) {
+                "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toClass
+                    .findMethod {
+                        name = "isQQShowEnableForAIO"
+                        paramTypes(long, int, long)
+                    }.hookBefore { param ->
+                        val uin = (param.args[2] as Long).toString()
+                        if (uin != QQInterfaces.currentUin) {
+                            param.result = false
+                        }
                     }
-                }
             }
         }
     }
