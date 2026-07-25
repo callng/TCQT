@@ -1,7 +1,10 @@
 package com.owo233.tcqt.utils.reflect
 
 import com.owo233.tcqt.loader.api.HookEngineManager
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Member
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 
 val Any.TAG: String
     get() = this.javaClass.simpleName
@@ -11,136 +14,164 @@ fun Member.callOriginal(obj: Any?, vararg args: Any?): Any? {
 }
 
 fun Any.callMethod(methodName: String, vararg args: Any?): Any? {
-    return this::class.java.findMethodAndCall(this, methodName, args)
+    return this.javaClass.findMethodAndCall(
+        receiver = this,
+        methodName = methodName,
+        args = args,
+        isStatic = false
+    )
 }
 
 fun Class<*>.callStaticMethod(methodName: String, vararg args: Any?): Any? {
-    return this.findMethodAndCall(null, methodName, args)
+    return findMethodAndCall(
+        receiver = null,
+        methodName = methodName,
+        args = args,
+        isStatic = true
+    )
 }
 
 private fun Class<*>.findMethodAndCall(
-    obj: Any?,
+    receiver: Any?,
     methodName: String,
+    args: Array<out Any?>,
+    isStatic: Boolean
+): Any? {
+    val method = resolveMethodForArguments(
+        name = methodName,
+        args = args,
+        scope = SearchScope.HIERARCHY,
+        isStatic = isStatic
+    ) ?: throw NoSuchMethodException(
+        "Method $methodName not found in $name with args: ${formatArgumentTypes(args)}"
+    )
+
+    return method.invokeReflectively(receiver, args)
+}
+
+internal fun Method.invokeReflectively(
+    receiver: Any?,
     args: Array<out Any?>
 ): Any? {
-    val argTypes: Array<Class<*>?> = args.map { it?.javaClass }.toTypedArray()
-
-    val method = findMethodOrNull {
-        name = methodName
-        paramCount = args.size
-        paramTypes = argTypes
-    }
-        ?: throw NoSuchMethodException("Method $methodName not found in $name with args: ${args.map { it?.javaClass?.simpleName ?: "null" }}")
+    makeAccessible()
+    val actualReceiver = if (Modifier.isStatic(modifiers)) null else receiver
+    val invocationArgs = prepareInvocationArguments(this, args)
 
     return try {
-        method.invoke(obj, *args)
-    } catch (e: Exception) {
-        try {
-            HookEngineManager.engine.getInvoker(method).invokeOrigin(obj, *args)
-        } catch (_: Exception) {
-            throw e
-        }
+        invoke(actualReceiver, *invocationArgs)
+    } catch (e: InvocationTargetException) {
+        throw e.targetException ?: e
+    } catch (_: IllegalAccessException) {
+        // 部分 Hook 引擎场景下普通反射调用会被访问控制拒绝，此时才尝试引擎调用。
+        HookEngineManager.engine.getInvoker(this).invokeOrigin(actualReceiver, *invocationArgs)
     }
 }
 
 fun Any.getObjectByTypeOrNull(type: Class<*>, inParent: Class<*>? = null): Any? {
-    return this::class.java.findFieldOrNull {
+    val field = this.javaClass.findFieldOrNull {
         this.type = type
-        this.declaredIn = inParent
-        this.includeSynthetic = true
-    }?.get(this)
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
+    } ?: return null
+    return field.get(this)
 }
 
 inline fun <reified T> Any.getObjectByTypeOrNull(inParent: Class<*>? = null): T? {
-    return this.getObjectByTypeOrNull(T::class.java, inParent) as? T
+    return getObjectByTypeOrNull(T::class.java, inParent) as? T
 }
 
 inline fun <reified T> Any.getObjectByType(inParent: Class<*>? = null): T {
-    return getObjectByTypeOrNull<T>(inParent)
-        ?: throw NoSuchFieldException("Field of type ${T::class.java.simpleName} not found in ${this::class.java.name}")
+    val field = this.javaClass.findFieldOrNull {
+        type = T::class.java
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
+    } ?: throw NoSuchFieldException(
+        "Field of type ${T::class.java.name} not found in ${this.javaClass.name}"
+    )
+
+    @Suppress("UNCHECKED_CAST")
+    return field.get(this) as? T
+        ?: throw NullPointerException("Field ${field.name} in ${field.declaringClass.name} is null")
 }
 
 fun Any.getObjectOrNull(name: String, inParent: Class<*>? = null): Any? {
-    return this::class.java.findFieldOrNull {
+    val field = this.javaClass.findFieldOrNull {
         this.name = name
-        this.declaredIn = inParent
-        this.includeSynthetic = true
-    }?.get(this)
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
+    } ?: return null
+    return field.get(this)
 }
 
 fun Any.getObject(name: String, inParent: Class<*>? = null): Any {
-    return getObjectOrNull(name, inParent)
-        ?: throw NoSuchFieldException("Field '$name' not found in ${this::class.java.name}")
+    val field = this.javaClass.findFieldOrNull {
+        this.name = name
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
+    } ?: throw NoSuchFieldException("Field '$name' not found in ${this.javaClass.name}")
+
+    return field.get(this)
+        ?: throw NullPointerException("Field '$name' in ${field.declaringClass.name} is null")
 }
 
 fun Any.setObject(name: String, value: Any?, inParent: Class<*>? = null) {
-    this::class.java.findField {
+    this.javaClass.findField {
         this.name = name
-        this.declaredIn = inParent
-        this.includeSynthetic = true
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
     }.set(this, value)
 }
 
 inline fun <reified T> Any.setObjectByType(value: T?, inParent: Class<*>? = null) {
-    this::class.java.findField {
-        this.type = T::class.java
-        this.declaredIn = inParent
-        this.includeSynthetic = true
+    this.javaClass.findField {
+        type = T::class.java
+        this.inParent = inParent
+        scope = if (inParent == null) SearchScope.HIERARCHY else SearchScope.DECLARED
+        isStatic = false
     }.set(this, value)
 }
 
 fun Class<*>.getStaticObject(name: String): Any? {
-    return this.findField {
+    return findField {
         this.name = name
-        this.isStatic = true
-        this.includeSynthetic = true
+        isStatic = true
+        scope = SearchScope.HIERARCHY
     }.get(null)
 }
 
 fun Class<*>.newInstanceWithArgs(vararg args: Any?): Any {
-    val argTypes: Array<Class<*>?> = args.map { it?.javaClass }.toTypedArray()
-    val cacheKey = ReflectCache.generateMethodKey(this, "<init>", argTypes)
+    val constructor = resolveConstructorForArguments(args)
+        ?: throw NoSuchMethodException(
+            "No constructor found for $name with args: ${formatArgumentTypes(args)}"
+        )
 
-    val constructor = ReflectCache.getConstructor(cacheKey) {
-        this.declaredConstructors.firstOrNull { ctor ->
-            val params = ctor.parameterTypes
-            params.size == argTypes.size && params.zip(argTypes).all { (paramType, argType) ->
-                paramType.isCompatibleWith(argType)
-            }
-        }?.apply { isAccessible = true }
+    val invocationArgs = prepareInvocationArguments(constructor, args)
+    return try {
+        constructor.newInstance(*invocationArgs)
+    } catch (e: InvocationTargetException) {
+        throw e.targetException ?: e
     }
-        ?: throw NoSuchMethodException("No constructor found for ${this.name} with args: ${args.map { it?.javaClass?.simpleName ?: "null" }}")
-
-    return constructor.newInstance(*args)
 }
 
-private val primitiveWrapperMap = mapOf(
-    Int::class.java to Int::class.javaObjectType,
-    Long::class.java to Long::class.javaObjectType,
-    Boolean::class.java to Boolean::class.javaObjectType,
-    Double::class.java to Double::class.javaObjectType,
-    Float::class.java to Float::class.javaObjectType,
-    Short::class.java to Short::class.javaObjectType,
-    Byte::class.java to Byte::class.javaObjectType,
-    Char::class.java to Char::class.javaObjectType
-)
-
+/**
+ * 类型兼容判断，包含引用赋值兼容及基本类型与包装类型的等价关系。
+ * [actualType] 为 null 时保留旧 DSL 语义，表示任意类型。
+ */
 fun Class<*>.isCompatibleWith(actualType: Class<*>?): Boolean {
-    // null 表示任意类型
-    if (actualType == null) return true
+    return actualType == null || ReflectTypeMatcher.isTypeCompatible(this, actualType)
+}
 
-    // 直接赋值兼容（含自身相等）
-    if (this.isAssignableFrom(actualType)) return true
-
-    // 原始类型 → 包装类型（如 int ↔ Integer）
-    if (this.isPrimitive) {
-        return primitiveWrapperMap[this] == actualType
+private fun formatArgumentTypes(args: Array<out Any?>): String {
+    return args.joinToString(prefix = "[", postfix = "]") { value ->
+        when (value) {
+            null -> "null"
+            is TypedNull -> "null:${value.type.name}"
+            else -> value.javaClass.name
+        }
     }
-
-    // 包装类型 → 原始类型（如 Integer ↔ int）
-    if (actualType.isPrimitive) {
-        return primitiveWrapperMap[actualType] == this
-    }
-
-    return false
 }

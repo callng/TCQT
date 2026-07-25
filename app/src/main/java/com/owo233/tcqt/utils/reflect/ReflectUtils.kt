@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.util.SparseArray
 import androidx.core.util.size
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -16,7 +15,6 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.AccessibleObject
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
-import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.net.URI
@@ -38,16 +36,14 @@ private val prettyJson = Json {
 }
 
 private fun AccessibleObject.allowAccess() {
-    if (!isAccessible) {
-        runCatching { isAccessible = true }
-    }
+    makeAccessible()
 }
 
 private fun Class<*>.allFields(withSuper: Boolean): Array<Field> {
     return fieldCache.getOrPut(this to withSuper) {
         buildList {
             var current: Class<*>? = this@allFields
-            while (current != null && current != Any::class.java) {
+            while (current != null) {
                 addAll(current.declaredFields)
                 current = if (withSuper) current.superclass else null
             }
@@ -57,13 +53,11 @@ private fun Class<*>.allFields(withSuper: Boolean): Array<Field> {
 
 private fun Class<*>.allMethods(withSuper: Boolean): Array<Method> {
     return methodCache.getOrPut(this to withSuper) {
-        buildList {
-            var current: Class<*>? = this@allMethods
-            while (current != null && current != Any::class.java) {
-                addAll(current.declaredMethods)
-                current = if (withSuper) current.superclass else null
-            }
-        }.toTypedArray()
+        val scope = if (withSuper) SearchScope.HIERARCHY else SearchScope.DECLARED
+        collectSearchClasses(this, scope)
+            .flatMap { it.declaredMethods.asList() }
+            .distinct()
+            .toTypedArray()
     }
 }
 
@@ -74,54 +68,57 @@ fun Class<*>.allConstructors(): Array<Constructor<*>> {
 }
 
 fun Any.getMethods(withSuper: Boolean = true): Array<Method> {
-    val clazz = (this as? Class<*>) ?: this::class.java
-    return clazz.allMethods(withSuper)
+    val clazz = reflectionTargetClass()
+    return clazz.allMethods(withSuper).clone()
 }
 
 fun Any.getFields(withSuper: Boolean = true): Array<Field> {
-    val clazz = (this as? Class<*>) ?: this::class.java
-    return clazz.allFields(withSuper)
+    val clazz = reflectionTargetClass()
+    return clazz.allFields(withSuper).clone()
 }
 
 fun Any.field(fieldType: Class<*>, withSuper: Boolean = true): Field? {
-    return this.getFields(withSuper).firstOrNull { it.type == fieldType }
-        ?.apply { allowAccess() }
+    return reflectionTargetClass().findFieldOrNull {
+        type = fieldType
+        scope = if (withSuper) SearchScope.SUPERCLASSES else SearchScope.DECLARED
+        isStatic = if (this@field is Class<*>) true else false
+    }
 }
 
 fun Any.field(fieldName: String, withSuper: Boolean = true): Field? {
-    return this.getFields(withSuper).firstOrNull { it.name == fieldName }
-        ?.apply { allowAccess() }
+    return reflectionTargetClass().findFieldOrNull {
+        name = fieldName
+        scope = if (withSuper) SearchScope.SUPERCLASSES else SearchScope.DECLARED
+        isStatic = if (this@field is Class<*>) true else false
+    }
 }
 
 fun Any.fieldValue(fieldType: Class<*>, withSuper: Boolean = true): Any? {
-    return this.field(fieldType, withSuper)?.get(this)
+    val field = field(fieldType, withSuper) ?: return null
+    return field.get(fieldReceiver(field))
 }
 
 fun Any.fieldValue(name: String, withSuper: Boolean = true): Any? {
-    return this.field(name, withSuper)?.get(this)
+    val field = field(name, withSuper) ?: return null
+    return field.get(fieldReceiver(field))
 }
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Any.fieldValueAs(fieldType: Class<*>, withSuper: Boolean = true): T? =
-    this.fieldValue(fieldType, withSuper) as T?
+    fieldValue(fieldType, withSuper) as T?
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Any.fieldValueAs(name: String, withSuper: Boolean = true): T? =
-    this.fieldValue(name, withSuper) as T?
+    fieldValue(name, withSuper) as T?
 
-fun Any.invoke(method: Method, vararg args: Any?): Any {
+fun Any.invoke(method: Method, vararg args: Any?): Any? {
     val receiver = if (this is Class<*>) null else this
-    method.allowAccess()
-    return try {
-        method.invoke(receiver, *args)
-    } catch (e: InvocationTargetException) {
-        throw e.cause ?: e
-    }
+    return method.invokeReflectively(receiver, args)
 }
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Any.invokeAs(method: Method, vararg args: Any?): T {
-    return this.invoke(method, *args) as T
+    return invoke(method, *args) as T
 }
 
 fun <T> Any.invoke(
@@ -130,37 +127,36 @@ fun <T> Any.invoke(
     vararg args: Any?,
     withSuper: Boolean = true
 ): T {
-    val clazz = (this as? Class<*>) ?: this::class.java
-    clazz.allMethods(withSuper).forEach {
-        if (it.name == name
-            && it.returnType == returnType
-            && parametersMatch(it.parameterTypes, args)
-        ) {
-            it.allowAccess()
-            @Suppress("UNCHECKED_CAST")
-            return it.invoke(this, *args) as T
-        }
-    }
-    throw NoSuchMethodException("No matching method found in $name")
+    val clazz = reflectionTargetClass()
+    val method = clazz.resolveMethodForArguments(
+        name = name,
+        args = args,
+        returnType = returnType,
+        scope = if (withSuper) SearchScope.HIERARCHY else SearchScope.DECLARED,
+        isStatic = this is Class<*>
+    ) ?: throw NoSuchMethodException(
+        "No matching method $name found in ${clazz.name}"
+    )
+
+    @Suppress("UNCHECKED_CAST")
+    return method.invokeReflectively(if (this is Class<*>) null else this, args) as T
 }
 
 fun Any.invoke(
     name: String,
     vararg args: Any?,
     withSuper: Boolean = true
-): Any {
-    val clazz = (this as? Class<*>) ?: this::class.java
-    clazz.allMethods(withSuper).forEach {
-        if (it.name == name && parametersMatch(it.parameterTypes, args)) {
-            it.allowAccess()
-            return try {
-                it.invoke(this, *args)
-            } catch (e: InvocationTargetException) {
-                throw e.cause ?: e
-            }
-        }
-    }
-    throw NoSuchMethodException("No matching method found in $name")
+): Any? {
+    val clazz = reflectionTargetClass()
+    val method = clazz.resolveMethodForArguments(
+        name = name,
+        args = args,
+        scope = if (withSuper) SearchScope.HIERARCHY else SearchScope.DECLARED,
+        isStatic = this is Class<*>
+    ) ?: throw NoSuchMethodException(
+        "No matching method $name found in ${clazz.name}"
+    )
+    return method.invokeReflectively(if (this is Class<*>) null else this, args)
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -168,22 +164,16 @@ fun <T> Any.invokeAs(
     name: String,
     vararg args: Any?,
     withSuper: Boolean = true
-): T = this.invoke(name, *args, withSuper = withSuper) as T
+): T = invoke(name, *args, withSuper = withSuper) as T
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Class<T>.new(vararg args: Any?): T {
-    this.allConstructors().forEach { c ->
-        if (parametersMatch(c.parameterTypes, args)) {
-            c.allowAccess()
-            return c.newInstance(*args) as T
-        }
-    }
-    throw NoSuchMethodException("No matching constructor found for ${this.name}")
+    return newInstanceWithArgs(*args) as T
 }
 
-fun Any.setValue(name: String, value: Any): Boolean {
-    val field = this.field(name) ?: return false
-    field.set(this, value)
+fun Any.setValue(name: String, value: Any?): Boolean {
+    val field = field(name) ?: return false
+    field.set(fieldReceiver(field), value)
     return true
 }
 
@@ -191,32 +181,28 @@ fun Any.invokeMethod(
     withSuper: Boolean = false,
     vararg args: Any?,
     predicate: Method.() -> Boolean
-): Any {
-    val clazz = (this as? Class<*>) ?: this::class.java
-    val receiver = if (this is Class<*>) null else this
-
-    clazz.allMethods(withSuper).forEach { method ->
-        if (!method.predicate()) return@forEach
-        if (!parametersMatch(method.parameterTypes, args)) return@forEach
-
-        method.allowAccess()
-        return try {
-            method.invoke(receiver, *args)
-        } catch (e: InvocationTargetException) {
-            throw (e.cause ?: e)
-        }
+): Any? {
+    val clazz = reflectionTargetClass()
+    val expectStatic = this is Class<*>
+    val candidates = clazz.allMethods(withSuper).filter { method ->
+        Modifier.isStatic(method.modifiers) == expectStatic && method.predicate()
     }
+    val method = resolveBestMethodForArguments(candidates, args)
+        ?: throw NoSuchMethodException(
+            buildString {
+                append("No matching method found in ").append(clazz.name)
+                append(", args=")
+                append(args.joinToString(prefix = "[", postfix = "]") {
+                    when (it) {
+                        null -> "null"
+                        is TypedNull -> "null:${it.type.name}"
+                        else -> it.javaClass.name
+                    }
+                })
+            }
+        )
 
-    throw NoSuchMethodException(
-        buildString {
-            append("No matching method found in ")
-            append(clazz.name)
-            append(", args=")
-            append(args.joinToString(prefix = "[", postfix = "]") {
-                it?.javaClass?.name ?: "null"
-            })
-        }
-    )
+    return method.invokeReflectively(if (expectStatic) null else this, args)
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -228,46 +214,17 @@ fun <T> Any.invokeMethodAs(
     return invokeMethod(withSuper, *args, predicate = predicate) as T?
 }
 
-private fun parametersMatch(paramTypes: Array<Class<*>>, args: Array<out Any?>): Boolean {
-    if (paramTypes.size != args.size) return false
-    for (i in paramTypes.indices) {
-        val arg = args[i]
-        val param = paramTypes[i]
-        if (arg == null) {
-            if (param.isPrimitive) return false
-        } else {
-            if (!isAssignable(param, arg.javaClass)) return false
+private fun Any.reflectionTargetClass(): Class<*> =
+    (this as? Class<*>) ?: javaClass
+
+private fun Any.fieldReceiver(field: Field): Any? {
+    return if (Modifier.isStatic(field.modifiers)) null else {
+        if (this is Class<*>) {
+            throw IllegalArgumentException(
+                "Cannot access instance field ${field.declaringClass.name}#${field.name} from Class target"
+            )
         }
-    }
-    return true
-}
-
-private fun wrap(clazz: Class<*>): Class<*> = clazz.kotlin.javaObjectType
-
-private fun isAssignable(param: Class<*>, argClass: Class<*>): Boolean {
-    return when {
-        param == argClass -> true
-        wrap(param).isAssignableFrom(wrap(argClass)) -> true
-        isWideningPrimitive(param, argClass) -> true
-        else -> false
-    }
-}
-
-private fun isWideningPrimitive(param: Class<*>, argClass: Class<*>): Boolean {
-    return when (argClass) {
-        java.lang.Byte.TYPE -> param in arrayOf(
-            java.lang.Short.TYPE, Integer.TYPE, java.lang.Long.TYPE,
-            java.lang.Float.TYPE, java.lang.Double.TYPE
-        )
-        java.lang.Short.TYPE, Character.TYPE -> param in arrayOf(
-            Integer.TYPE, java.lang.Long.TYPE, java.lang.Float.TYPE, java.lang.Double.TYPE
-        )
-        Integer.TYPE -> param in arrayOf(
-            java.lang.Long.TYPE, java.lang.Float.TYPE, java.lang.Double.TYPE
-        )
-        java.lang.Long.TYPE -> param in arrayOf(java.lang.Float.TYPE, java.lang.Double.TYPE)
-        java.lang.Float.TYPE -> param == java.lang.Double.TYPE
-        else -> false
+        this
     }
 }
 

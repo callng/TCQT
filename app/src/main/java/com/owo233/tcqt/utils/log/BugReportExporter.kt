@@ -1,5 +1,6 @@
 package com.owo233.tcqt.utils.log
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
@@ -78,6 +79,7 @@ internal object BugReportExporter {
         }
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     fun grantSharePermissions(context: Context, intent: Intent, uri: Uri) {
         @Suppress("DEPRECATION")
         val targets = context.packageManager.queryIntentActivities(
@@ -130,8 +132,6 @@ internal object BugReportExporter {
         return buildString {
             // UTF-8 BOM keeps the Chinese report readable in basic Windows editors.
             append('\uFEFF')
-            appendLine("TCQT 异常报告")
-            appendLine("==============================")
             appendLine("生成时间: $generatedAt")
             appendLine("时区: ${timezone.id}")
             appendLine("异常功能数: $featureCount")
@@ -164,7 +164,6 @@ internal object BugReportExporter {
             appendLine("语言: ${Locale.getDefault().toLanguageTag()}")
             appendLine("宿主 targetSdk: ${context.applicationInfo.targetSdkVersion}")
             appendLine()
-            appendLine("说明: 本报告不主动收集账号、Android ID 或聊天内容；异常堆栈仍可能包含运行路径及上下文信息。")
 
             records.forEachIndexed { index, record ->
                 val featureName = ActionManager.getActionByKey(record.actionKey)?.name
@@ -180,7 +179,7 @@ internal object BugReportExporter {
                 appendLine("进程: ${record.processName}")
                 appendLine("阶段: ${record.stage}")
                 appendLine("摘要: ${record.summary}")
-                appendLine("模块版本码: ${record.moduleVersionCode}")
+                appendLine("模块版本: ${record.moduleVersionCode}")
                 appendLine()
                 appendLine(record.details.ifBlank { "(无堆栈详情)" })
             }

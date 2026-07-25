@@ -1,9 +1,24 @@
 package com.owo233.tcqt.utils.reflect
 
+import java.lang.reflect.Array as ReflectArray
+import java.lang.reflect.Constructor
+import java.lang.reflect.Executable
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.ArrayDeque
+
+/** 成员搜索范围。 */
+enum class SearchScope {
+    /** 只搜索起始类直接声明的成员。 */
+    DECLARED,
+
+    /** 搜索起始类及其父类，不搜索接口。 */
+    SUPERCLASSES,
+
+    /** 搜索起始类、父类及实现的全部接口。 */
+    HIERARCHY
+}
 
 enum class Visibility {
     PUBLIC,
@@ -12,151 +27,314 @@ enum class Visibility {
     PACKAGE
 }
 
-/**
- * 类型匹配策略。
- */
-enum class TypeMatchMode {
+class AmbiguousMethodException(message: String) : ReflectiveOperationException(message)
 
-    /**
-     * 支持继承、接口以及基本类型装箱匹配。
-     *
-     * 例如：
-     * Number <- Integer
-     * CharSequence <- String
-     * int <-> Integer
-     */
-    COMPATIBLE,
-
-    /**
-     * 严格遵循 Class.isAssignableFrom，不进行基本类型装箱。
-     *
-     * 例如：
-     * Number <- Integer
-     * int 与 Integer 不匹配
-     */
-    ASSIGNABLE,
-
-    /**
-     * JVM 类型必须完全相同。
-     *
-     * int 与 Integer 不匹配。
-     */
-    EXACT,
-
-    /**
-     * 装箱后的类型必须完全相同。
-     *
-     * int 与 Integer 匹配，
-     * Number 与 Integer 不匹配。
-     */
-    BOXED_EXACT
-}
+class AmbiguousFieldException(message: String) : ReflectiveOperationException(message)
 
 /**
- * 成员搜索范围。
+ * 用于在运行时调用中表达带类型的 null，解决多个引用类型重载无法判断的问题。
  */
-enum class SearchScope {
-
-    /**
-     * 只搜索当前类声明的成员。
-     */
-    DECLARED_ONLY,
-
-    /**
-     * 搜索当前类及其所有父类。
-     */
-    SUPERCLASSES,
-
-    /**
-     * 搜索当前类、父类以及接口树。
-     */
-    HIERARCHY
+class TypedNull internal constructor(internal val type: Class<*>) {
+    init {
+        require(!type.isPrimitive) { "Typed null cannot use primitive type: ${type.name}" }
+    }
 }
 
-/**
- * 多个成员同时匹配时的处理方式。
- */
-enum class AmbiguityStrategy {
+fun typedNull(type: Class<*>): TypedNull = TypedNull(type)
 
-    /**
-     * 参数类型存在时选择距离最近的方法。
-     * 如果仍有多个同分候选，则抛出异常。
-     */
-    BEST_MATCH,
+inline fun <reified T> typedNull(): TypedNull = typedNull(T::class.java)
 
-    /**
-     * 直接取稳定排序后的第一个候选。
-     */
-    FIRST,
+/** 清空全部反射搜索缓存。 */
+fun clearReflectCache() = ReflectCache.clear()
 
-    /**
-     * 只要存在多个候选就抛出异常。
-     */
-    FAIL
+/** 只清理以当前类作为搜索入口的缓存。 */
+fun Class<*>.clearReflectCache() = ReflectCache.clear(this)
+
+internal sealed class ArgumentSpec {
+    object AnyType : ArgumentSpec()
+    object NullValue : ArgumentSpec()
+    data class Typed(val type: Class<*>) : ArgumentSpec()
+    data class TypedNullValue(val type: Class<*>) : ArgumentSpec()
 }
 
-class AmbiguousMemberException(
-    message: String
-) : ReflectiveOperationException(message)
+private data class MethodCacheKey(
+    override val owner: Class<*>,
+    val startClass: Class<*>,
+    val name: String?,
+    val returnType: Class<*>?,
+    val arguments: List<ArgumentSpec>?,
+    val parameterCount: Int?,
+    val isStatic: Boolean?,
+    val visibility: Visibility?,
+    val scope: SearchScope,
+    val includeSynthetic: Boolean,
+    val includeBridge: Boolean,
+    val includeVarArgs: Boolean,
+    val sameNameTypeMatch: Boolean,
+    val index: Int,
+    val requireUnique: Boolean
+) : ReflectCache.CacheKey
 
-class MethodSearcher internal constructor(
-    private val ownerClass: Class<*>
-) {
+private data class FieldCacheKey(
+    override val owner: Class<*>,
+    val startClass: Class<*>,
+    val name: String?,
+    val type: Class<*>?,
+    val isStatic: Boolean?,
+    val visibility: Visibility?,
+    val scope: SearchScope,
+    val includeSynthetic: Boolean,
+    val sameNameTypeMatch: Boolean,
+    val preferInstance: Boolean,
+    val index: Int,
+    val requireUnique: Boolean
+) : ReflectCache.CacheKey
+
+private data class ConstructorCacheKey(
+    override val owner: Class<*>,
+    val arguments: List<ArgumentSpec>,
+    val includeVarArgs: Boolean
+) : ReflectCache.CacheKey
+
+private data class ExecutableScore(
+    val totalCost: Int,
+    val maxCost: Int,
+    val varArgsPenalty: Int,
+    val declaringDistance: Int,
+    val syntheticPenalty: Int,
+    val bridgePenalty: Int
+) : Comparable<ExecutableScore> {
+    override fun compareTo(other: ExecutableScore): Int {
+        return compareValuesBy(
+            this,
+            other,
+            ExecutableScore::totalCost,
+            ExecutableScore::maxCost,
+            ExecutableScore::varArgsPenalty,
+            ExecutableScore::declaringDistance,
+            ExecutableScore::syntheticPenalty,
+            ExecutableScore::bridgePenalty
+        )
+    }
+}
+
+private data class ScoredMethod(
+    val method: Method,
+    val score: ExecutableScore
+)
+
+private data class ScoredConstructor(
+    val constructor: Constructor<*>,
+    val score: ExecutableScore
+)
+
+/** Java 调用转换及字段/返回值类型匹配的唯一实现。 */
+internal object ReflectTypeMatcher {
+
+    private val primitiveToWrapper = mapOf(
+        Boolean::class.javaPrimitiveType to Boolean::class.javaObjectType,
+        Byte::class.javaPrimitiveType to Byte::class.javaObjectType,
+        Short::class.javaPrimitiveType to Short::class.javaObjectType,
+        Char::class.javaPrimitiveType to Char::class.javaObjectType,
+        Int::class.javaPrimitiveType to Int::class.javaObjectType,
+        Long::class.javaPrimitiveType to Long::class.javaObjectType,
+        Float::class.javaPrimitiveType to Float::class.javaObjectType,
+        Double::class.javaPrimitiveType to Double::class.javaObjectType,
+        Void::class.javaPrimitiveType to Void::class.javaObjectType
+    )
+
+    private val wrapperToPrimitive = primitiveToWrapper.entries.associate { (primitive, wrapper) ->
+        wrapper to primitive
+    }
+
+    fun boxed(type: Class<*>): Class<*> = primitiveToWrapper[type] ?: type
+
+    fun unboxed(type: Class<*>): Class<*>? = when {
+        type.isPrimitive -> type
+        else -> wrapperToPrimitive[type]
+    }
+
+    fun isTypeCompatible(
+        expected: Class<*>,
+        actual: Class<*>,
+        sameNameFallback: Boolean = false
+    ): Boolean {
+        if (expected === actual || expected == actual) return true
+
+        val boxedExpected = boxed(expected)
+        val boxedActual = boxed(actual)
+        if (boxedExpected == boxedActual) return true
+        if (boxedExpected.isAssignableFrom(boxedActual)) return true
+
+        return sameNameFallback && expected.name == actual.name
+    }
+
+    fun conversionCost(
+        parameterType: Class<*>,
+        argument: ArgumentSpec,
+        sameNameFallback: Boolean = false
+    ): Int? {
+        return when (argument) {
+            ArgumentSpec.AnyType -> 512
+            ArgumentSpec.NullValue -> if (parameterType.isPrimitive) null else 256
+            is ArgumentSpec.TypedNullValue -> {
+                if (parameterType.isPrimitive) return null
+                referenceConversionCost(parameterType, argument.type, sameNameFallback)
+            }
+            is ArgumentSpec.Typed -> invocationConversionCost(
+                parameterType,
+                argument.type,
+                sameNameFallback
+            )
+        }
+    }
+
+    private fun invocationConversionCost(
+        parameterType: Class<*>,
+        argumentType: Class<*>,
+        sameNameFallback: Boolean
+    ): Int? {
+        if (parameterType == argumentType) return 0
+
+        val parameterPrimitive = unboxed(parameterType)
+        val argumentPrimitive = unboxed(argumentType)
+
+        if (parameterPrimitive != null && argumentPrimitive != null) {
+            if (parameterPrimitive == argumentPrimitive) return 1
+            primitiveWideningDistance(argumentPrimitive, parameterPrimitive)?.let {
+                return 2 + it
+            }
+        }
+
+        return referenceConversionCost(parameterType, argumentType, sameNameFallback)
+    }
+
+    private fun referenceConversionCost(
+        parameterType: Class<*>,
+        argumentType: Class<*>,
+        sameNameFallback: Boolean
+    ): Int? {
+        val expected = boxed(parameterType)
+        val actual = boxed(argumentType)
+
+        if (expected == actual) return 1
+        if (expected.isAssignableFrom(actual)) {
+            return 16 + (referenceDistance(actual, expected) ?: 64)
+        }
+        if (sameNameFallback && expected.name == actual.name) return 384
+        return null
+    }
+
+    private fun primitiveWideningDistance(from: Class<*>, to: Class<*>): Int? {
+        if (from == to) return 0
+        val targets = when (from) {
+            java.lang.Byte.TYPE -> listOf(
+                java.lang.Short.TYPE,
+                Integer.TYPE,
+                java.lang.Long.TYPE,
+                java.lang.Float.TYPE,
+                java.lang.Double.TYPE
+            )
+            java.lang.Short.TYPE -> listOf(
+                Integer.TYPE,
+                java.lang.Long.TYPE,
+                java.lang.Float.TYPE,
+                java.lang.Double.TYPE
+            )
+            Character.TYPE -> listOf(
+                Integer.TYPE,
+                java.lang.Long.TYPE,
+                java.lang.Float.TYPE,
+                java.lang.Double.TYPE
+            )
+            Integer.TYPE -> listOf(
+                java.lang.Long.TYPE,
+                java.lang.Float.TYPE,
+                java.lang.Double.TYPE
+            )
+            java.lang.Long.TYPE -> listOf(java.lang.Float.TYPE, java.lang.Double.TYPE)
+            java.lang.Float.TYPE -> listOf(java.lang.Double.TYPE)
+            else -> emptyList()
+        }
+        val index = targets.indexOf(to)
+        return if (index >= 0) index + 1 else null
+    }
+
+    private fun referenceDistance(actual: Class<*>, expected: Class<*>): Int? {
+        if (actual == expected) return 0
+        if (!expected.isAssignableFrom(actual)) return null
+
+        val queue = ArrayDeque<Pair<Class<*>, Int>>()
+        val visited = HashSet<Class<*>>()
+        queue.add(actual to 0)
+
+        while (queue.isNotEmpty()) {
+            val (current, distance) = queue.removeFirst()
+            if (!visited.add(current)) continue
+            if (current == expected) return distance
+
+            current.superclass?.let { queue.add(it to distance + 1) }
+            current.interfaces.forEach { queue.add(it to distance + 1) }
+        }
+        return null
+    }
+}
+
+class MethodSearcher internal constructor(private val ownerClass: Class<*>) {
 
     var name: String? = null
     var returnType: Class<*>? = null
-    var returnTypeMatch: TypeMatchMode = TypeMatchMode.COMPATIBLE
+
+    /** null 元素在 DSL 中表示该位置接受任意参数类型。 */
     var paramTypes: Array<out Class<*>?>? = null
-        set(value) {
-            field = value?.copyOf()
-        }
-    var paramTypeMatch: TypeMatchMode = TypeMatchMode.COMPATIBLE
+
     var paramCount: Int? = null
     var isStatic: Boolean? = null
-    var isFinal: Boolean? = null
-    var isAbstract: Boolean? = null
-    var isNative: Boolean? = null
-    var isSynchronized: Boolean? = null
     var visibility: Visibility? = null
 
-    /**
-     * 默认排除编译器生成的方法。
-     */
-    var includeSynthetic: Boolean = false
-    var includeBridge: Boolean = false
+    /** 默认搜索当前类、父类和接口。 */
+    var scope: SearchScope = SearchScope.HIERARCHY
 
-    var scope: SearchScope = SearchScope.DECLARED_ONLY
-    var ambiguityStrategy: AmbiguityStrategy = AmbiguityStrategy.BEST_MATCH
+    /** 从指定父类或接口开始搜索。 */
+    var inParent: Class<*>? = null
+
+    /** 桥接方法过滤，默认不过滤。 */
+    var includeSynthetic: Boolean = true
+    /** 合成方法过滤，默认过滤。 */
+    var includeBridge: Boolean = false
+    var includeVarArgs: Boolean = true
+
+    /** 允许不同 ClassLoader 中的同名类型弱匹配，默认关闭。 */
+    var sameNameTypeMatch: Boolean = false
+
+    /** 对排序后的候选取第几个，默认第一个。 */
+    var index: Int = 0
+
+    /** 多个候选满足条件时强制抛出歧义异常。 */
+    var requireUnique: Boolean = false
+
+    internal var argumentSpecs: List<ArgumentSpec>? = null
 
     val private get() = Visibility.PRIVATE
     val public get() = Visibility.PUBLIC
     val protected get() = Visibility.PROTECTED
     val pkg get() = Visibility.PACKAGE
 
-    val compatible get() = TypeMatchMode.COMPATIBLE
-    val assignable get() = TypeMatchMode.ASSIGNABLE
-    val exact get() = TypeMatchMode.EXACT
-    val boxedExact get() = TypeMatchMode.BOXED_EXACT
-
-    val declaredOnly get() = SearchScope.DECLARED_ONLY
+    val declared get() = SearchScope.DECLARED
     val superclasses get() = SearchScope.SUPERCLASSES
     val hierarchy get() = SearchScope.HIERARCHY
-
-    val bestMatch get() = AmbiguityStrategy.BEST_MATCH
-    val first get() = AmbiguityStrategy.FIRST
-    val failOnAmbiguous get() = AmbiguityStrategy.FAIL
 
     val void: Class<*> get() = Void.TYPE
     val boolean: Class<*> get() = java.lang.Boolean.TYPE
     val byte: Class<*> get() = java.lang.Byte.TYPE
     val short: Class<*> get() = java.lang.Short.TYPE
     val int: Class<*> get() = Integer.TYPE
+    val intent: Class<*> get() = android.content.Intent::class.java
     val long: Class<*> get() = java.lang.Long.TYPE
     val float: Class<*> get() = java.lang.Float.TYPE
     val double: Class<*> get() = java.lang.Double.TYPE
     val char: Class<*> get() = Character.TYPE
 
-    val intent: Class<*> get() = android.content.Intent::class.java
     val string: Class<*> get() = String::class.java
     val obj: Class<*> get() = Any::class.java
     val map: Class<*> get() = Map::class.java
@@ -176,753 +354,618 @@ class MethodSearcher internal constructor(
     val objArr: Class<*> get() = Array<Any>::class.java
 
     fun paramTypes(vararg types: Class<*>?) {
-        paramTypes = types
+        this.paramTypes = types
+        this.argumentSpecs = null
     }
+
+    fun params(vararg types: Class<*>?) = paramTypes(*types)
+
+    internal val startClass: Class<*>
+        get() = inParent ?: ownerClass
 
     internal fun validate() {
-        require(paramCount == null || paramCount!! >= 0) {
-            "paramCount must be greater than or equal to 0"
-        }
-
-        val types = paramTypes
-        require(paramCount == null || types == null || paramCount == types.size) {
-            "paramCount=$paramCount conflicts with paramTypes.size=${types?.size}"
+        require(index >= 0) { "Method index cannot be negative: $index" }
+        val start = inParent ?: return
+        require(start.isAssignableFrom(ownerClass)) {
+            "${start.name} is not a parent class or interface of ${ownerClass.name}"
         }
     }
 
-    internal fun uniqueKey(): String {
+    internal fun resolvedArguments(): List<ArgumentSpec>? {
+        argumentSpecs?.let { return it }
+        return paramTypes?.map { type ->
+            if (type == null) ArgumentSpec.AnyType else ArgumentSpec.Typed(type)
+        }
+    }
+
+    internal fun cacheKey(): ReflectCache.CacheKey {
         validate()
-
-        return buildString {
-            append(classIdentity(ownerClass))
-            append("#M")
-            append("|name=")
-            append(name ?: "*")
-            append("|return=")
-            append(typeIdentity(returnType))
-            append("|returnMatch=")
-            append(returnTypeMatch)
-            append("|params=")
-            append(
-                paramTypes?.joinToString(
-                    prefix = "[",
-                    postfix = "]"
-                ) { typeIdentity(it) } ?: "*"
-            )
-            append("|paramMatch=")
-            append(paramTypeMatch)
-            append("|count=")
-            append(paramCount ?: "*")
-            append("|static=")
-            append(isStatic ?: "*")
-            append("|final=")
-            append(isFinal ?: "*")
-            append("|abstract=")
-            append(isAbstract ?: "*")
-            append("|native=")
-            append(isNative ?: "*")
-            append("|synchronized=")
-            append(isSynchronized ?: "*")
-            append("|visibility=")
-            append(visibility ?: "*")
-            append("|synthetic=")
-            append(includeSynthetic)
-            append("|bridge=")
-            append(includeBridge)
-            append("|scope=")
-            append(scope)
-            append("|ambiguity=")
-            append(ambiguityStrategy)
-        }
-    }
-
-    internal fun describe(): String {
-        return buildString {
-            append("owner=")
-            append(ownerClass.name)
-            append(", name=")
-            append(name ?: "*")
-            append(", returnType=")
-            append(returnType?.typeName ?: "*")
-            append(" [")
-            append(returnTypeMatch)
-            append(']')
-            append(", parameterTypes=")
-            append(
-                paramTypes?.joinToString(
-                    prefix = "(",
-                    postfix = ")"
-                ) { it?.typeName ?: "*" } ?: "*"
-            )
-            append(" [")
-            append(paramTypeMatch)
-            append(']')
-            append(", scope=")
-            append(scope)
-        }
-    }
-
-    internal fun match(method: Method): Boolean {
-        if (!includeSynthetic && method.isSynthetic) return false
-        if (!includeBridge && method.isBridge) return false
-
-        if (name != null && method.name != name) return false
-
-        if (
-            returnType != null &&
-            !matchReturnType(
-                expected = returnType!!,
-                actual = method.returnType,
-                mode = returnTypeMatch
-            )
-        ) {
-            return false
-        }
-
-        if (paramCount != null && method.parameterCount != paramCount) {
-            return false
-        }
-
-        paramTypes?.let { searchTypes ->
-            if (method.parameterCount != searchTypes.size) return false
-
-            val actualTypes = method.parameterTypes
-
-            searchTypes.forEachIndexed { index, expectedType ->
-                if (expectedType == null) return@forEachIndexed
-
-                if (
-                    !matchParameterType(
-                        expected = expectedType,
-                        actual = actualTypes[index],
-                        mode = paramTypeMatch
-                    )
-                ) {
-                    return false
-                }
-            }
-        }
-
-        val modifiers = method.modifiers
-
-        if (isStatic != null && Modifier.isStatic(modifiers) != isStatic) return false
-        if (isFinal != null && Modifier.isFinal(modifiers) != isFinal) return false
-        if (isAbstract != null && Modifier.isAbstract(modifiers) != isAbstract) return false
-        if (isNative != null && Modifier.isNative(modifiers) != isNative) return false
-        if (
-            isSynchronized != null &&
-            Modifier.isSynchronized(modifiers) != isSynchronized
-        ) {
-            return false
-        }
-
-        if (
-            visibility != null &&
-            !matchVisibility(modifiers, visibility!!)
-        ) {
-            return false
-        }
-
-        return true
-    }
-}
-
-fun Class<*>.findMethodOrNull(
-    block: MethodSearcher.() -> Unit
-): Method? {
-    val searcher = MethodSearcher(this).apply(block)
-    return findMethodOrNull(searcher)
-}
-
-fun Class<*>.findMethod(
-    block: MethodSearcher.() -> Unit
-): Method {
-    val searcher = MethodSearcher(this).apply(block)
-
-    return findMethodOrNull(searcher)
-        ?: throw NoSuchMethodException(
-            "Method match failed. ${searcher.describe()}"
+        return MethodCacheKey(
+            owner = ownerClass,
+            startClass = startClass,
+            name = name,
+            returnType = returnType,
+            arguments = resolvedArguments(),
+            parameterCount = paramCount,
+            isStatic = isStatic,
+            visibility = visibility,
+            scope = scope,
+            includeSynthetic = includeSynthetic,
+            includeBridge = includeBridge,
+            includeVarArgs = includeVarArgs,
+            sameNameTypeMatch = sameNameTypeMatch,
+            index = index,
+            requireUnique = requireUnique
         )
+    }
+
+    internal fun describe(): String = buildString {
+        append("owner=").append(ownerClass.name)
+        append(", start=").append(startClass.name)
+        append(", name=").append(name ?: "*")
+        append(", params=")
+        append(resolvedArguments()?.joinToString(prefix = "[", postfix = "]") {
+            when (it) {
+                ArgumentSpec.AnyType -> "*"
+                ArgumentSpec.NullValue -> "null"
+                is ArgumentSpec.Typed -> it.type.name
+                is ArgumentSpec.TypedNullValue -> "null:${it.type.name}"
+            }
+        } ?: "*")
+        append(", return=").append(returnType?.name ?: "*")
+        append(", count=").append(paramCount ?: "*")
+        append(", static=").append(isStatic ?: "*")
+        append(", visibility=").append(visibility ?: "*")
+        append(", scope=").append(scope)
+        append(", index=").append(index)
+    }
 }
 
-fun Class<*>.findMethods(
-    block: MethodSearcher.() -> Unit
-): List<Method> {
+fun Class<*>.findMethodOrNull(block: MethodSearcher.() -> Unit): Method? {
+    val searcher = MethodSearcher(this).apply(block)
+    return ReflectCache.getMethod(searcher.cacheKey()) {
+        resolveMethod(searcher)
+    }
+}
+
+fun Class<*>.findMethod(block: MethodSearcher.() -> Unit): Method {
+    val searcher = MethodSearcher(this).apply(block)
+    return ReflectCache.getMethod(searcher.cacheKey()) {
+        resolveMethod(searcher)
+    } ?: throw NoSuchMethodException("Method match failed: ${searcher.describe()}")
+}
+
+fun Class<*>.findMethods(block: MethodSearcher.() -> Unit): List<Method> {
     val searcher = MethodSearcher(this).apply(block)
     searcher.validate()
-
-    return collectMethods(searcher.scope)
-        .filter(searcher::match)
-        .sortedWith(methodStableComparator)
-        .onEach(Method::makeAccessible)
-        .toList()
+    return scoreMethods(searcher)
+        .sortedWith(scoredMethodComparator)
+        .map { it.method.makeAccessible() }
 }
 
-private fun Class<*>.findMethodOrNull(
-    searcher: MethodSearcher
-): Method? {
-    searcher.validate()
+private fun resolveMethod(searcher: MethodSearcher): Method? {
+    val scored = scoreMethods(searcher).sortedWith(scoredMethodComparator)
+    if (scored.isEmpty()) return null
 
-    return ReflectCache.getMethod(searcher.uniqueKey()) {
-        val candidates = collectMethods(searcher.scope)
-            .filter(searcher::match)
-            .sortedWith(methodStableComparator)
-            .toList()
-
-        selectMethod(candidates, searcher)?.makeAccessible()
+    if (searcher.requireUnique && scored.size > 1) {
+        throw ambiguousMethod(searcher, scored.map { it.method })
     }
+
+    if (searcher.index > 0) {
+        return scored.getOrNull(searcher.index)?.method?.makeAccessible()
+    }
+
+    val bestScore = scored.first().score
+    val tied = scored.takeWhile { it.score == bestScore }
+    val selected = when {
+        tied.size == 1 -> tied.first().method
+        searcher.resolvedArguments() != null -> selectMostSpecific(tied.map { it.method })
+        else -> null
+    }
+
+    if (selected != null) return selected.makeAccessible()
+    if (tied.size > 1 && searcher.argumentSpecs != null) {
+        throw ambiguousMethod(searcher, tied.map { it.method })
+    }
+
+    return scored.first().method.makeAccessible()
 }
 
-private fun selectMethod(
-    candidates: List<Method>,
-    searcher: MethodSearcher
-): Method? {
-    if (candidates.isEmpty()) return null
-    if (candidates.size == 1) return candidates.first()
+private fun scoreMethods(searcher: MethodSearcher): List<ScoredMethod> {
+    val classes = collectSearchClasses(searcher.startClass, searcher.scope)
+    val distance = classes.withIndex().associate { it.value to it.index }
+    val args = searcher.resolvedArguments()
+    val result = ArrayList<ScoredMethod>()
 
-    return when (searcher.ambiguityStrategy) {
-        AmbiguityStrategy.FIRST -> {
-            candidates.first()
-        }
-
-        AmbiguityStrategy.FAIL -> {
-            throw ambiguousMethodException(candidates, searcher)
-        }
-
-        AmbiguityStrategy.BEST_MATCH -> {
-            val searchTypes = searcher.paramTypes
-                ?: throw ambiguousMethodException(candidates, searcher)
-
-            val scored = candidates.map { method ->
-                method to calculateMethodScore(
-                    method = method,
-                    searchTypes = searchTypes
+    for (clazz in classes) {
+        for (method in clazz.declaredMethods) {
+            if (searcher.name != null && method.name != searcher.name) continue
+            if (!searcher.includeSynthetic && method.isSynthetic) continue
+            if (!searcher.includeBridge && method.isBridge) continue
+            if (!searcher.includeVarArgs && method.isVarArgs) continue
+            if (searcher.isStatic != null && Modifier.isStatic(method.modifiers) != searcher.isStatic) continue
+            if (searcher.visibility != null && !matchesVisibility(method.modifiers, searcher.visibility!!)) continue
+            if (searcher.returnType != null && !ReflectTypeMatcher.isTypeCompatible(
+                    searcher.returnType!!,
+                    method.returnType,
+                    searcher.sameNameTypeMatch
                 )
+            ) continue
+
+            val requestedCount = args?.size ?: searcher.paramCount
+            if (requestedCount != null && !parameterCountMatches(
+                    method.parameterCount,
+                    method.isVarArgs && searcher.includeVarArgs,
+                    requestedCount
+                )
+            ) continue
+
+            val conversion = if (args != null) {
+                scoreExecutableParameters(
+                    method.parameterTypes,
+                    method.isVarArgs && searcher.includeVarArgs,
+                    args,
+                    searcher.sameNameTypeMatch
+                ) ?: continue
+            } else {
+                0 to 0
             }
-
-            val bestScore = scored.minOf { it.second }
-            val bestMethods = scored
-                .filter { it.second == bestScore }
-                .map { it.first }
-
-            if (bestMethods.size != 1) {
-                throw ambiguousMethodException(bestMethods, searcher)
-            }
-
-            bestMethods.first()
+            result += ScoredMethod(
+                method,
+                ExecutableScore(
+                    totalCost = conversion.first,
+                    maxCost = conversion.second,
+                    varArgsPenalty = if (method.isVarArgs) 1 else 0,
+                    declaringDistance = distance[method.declaringClass] ?: Int.MAX_VALUE,
+                    syntheticPenalty = if (method.isSynthetic) 1 else 0,
+                    bridgePenalty = if (method.isBridge) 1 else 0
+                )
+            )
         }
     }
+    return result
 }
 
-private fun ambiguousMethodException(
-    candidates: List<Method>,
-    searcher: MethodSearcher
-): AmbiguousMemberException {
-    return AmbiguousMemberException(
+private val scoredMethodComparator = Comparator<ScoredMethod> { left, right ->
+    val score = left.score.compareTo(right.score)
+    if (score != 0) score else methodSignature(left.method).compareTo(methodSignature(right.method))
+}
+
+private fun ambiguousMethod(
+    searcher: MethodSearcher,
+    candidates: List<Method>
+): AmbiguousMethodException {
+    return AmbiguousMethodException(
         buildString {
-            appendLine("Multiple methods matched. ${searcher.describe()}")
-            candidates.forEach { method ->
-                append("  ")
-                appendLine(method.toGenericString())
-            }
-        }.trimEnd()
+            append("Ambiguous method match: ").append(searcher.describe())
+            append(". Candidates: ")
+            append(candidates.joinToString { methodSignature(it) })
+        }
     )
 }
 
-class FieldSearcher internal constructor(
-    private val ownerClass: Class<*>
-) {
+private fun selectMostSpecific(methods: List<Method>): Method? {
+    return methods.singleOrNull { candidate ->
+        methods.all { other -> candidate === other || isMoreSpecific(candidate, other) }
+    }
+}
+
+private fun isMoreSpecific(left: Method, right: Method): Boolean {
+    val leftParams = left.parameterTypes
+    val rightParams = right.parameterTypes
+    if (leftParams.size != rightParams.size) return false
+
+    var strictlyMoreSpecific = false
+    for (index in leftParams.indices) {
+        val leftType = ReflectTypeMatcher.boxed(leftParams[index])
+        val rightType = ReflectTypeMatcher.boxed(rightParams[index])
+        if (leftType == rightType) continue
+        if (!rightType.isAssignableFrom(leftType)) return false
+        strictlyMoreSpecific = true
+    }
+    return strictlyMoreSpecific
+}
+
+class FieldSearcher internal constructor(private val ownerClass: Class<*>) {
 
     var name: String? = null
     var type: Class<*>? = null
-    var typeMatch: TypeMatchMode = TypeMatchMode.COMPATIBLE
     var isStatic: Boolean? = null
-    var isFinal: Boolean? = null
-    var isVolatile: Boolean? = null
-    var isTransient: Boolean? = null
     var visibility: Visibility? = null
-    var includeSynthetic: Boolean = false
+    var inParent: Class<*>? = null
 
-    /**
-     * 指定字段实际声明类。
-     *
-     * 它替代旧版 inParent 的含糊语义。
-     */
-    var declaredIn: Class<*>? = null
+    var scope: SearchScope = SearchScope.HIERARCHY
+    var includeSynthetic: Boolean = true
+    var sameNameTypeMatch: Boolean = false
+    var preferInstance: Boolean = true
+    var index: Int = 0
+    var requireUnique: Boolean = false
 
-    /**
-     * 兼容旧调用方式。
-     */
-    @Deprecated(
-        message = "Use declaredIn instead",
-        replaceWith = ReplaceWith("declaredIn")
-    )
-    var inParent: Class<*>?
-        get() = declaredIn
-        set(value) {
-            declaredIn = value
-        }
-
-    var scope: SearchScope = SearchScope.DECLARED_ONLY
-    var ambiguityStrategy: AmbiguityStrategy = AmbiguityStrategy.FAIL
-
-    val private get() = Visibility.PRIVATE
-    val public get() = Visibility.PUBLIC
-    val protected get() = Visibility.PROTECTED
-    val pkg get() = Visibility.PACKAGE
-
-    val compatible get() = TypeMatchMode.COMPATIBLE
-    val assignable get() = TypeMatchMode.ASSIGNABLE
-    val exact get() = TypeMatchMode.EXACT
-    val boxedExact get() = TypeMatchMode.BOXED_EXACT
-
-    val declaredOnly get() = SearchScope.DECLARED_ONLY
+    val declared get() = SearchScope.DECLARED
     val superclasses get() = SearchScope.SUPERCLASSES
     val hierarchy get() = SearchScope.HIERARCHY
 
-    val first get() = AmbiguityStrategy.FIRST
-    val failOnAmbiguous get() = AmbiguityStrategy.FAIL
-
-    internal val targetClass: Class<*>
-        get() = declaredIn ?: ownerClass
+    internal val targetClass: Class<*> get() = inParent ?: ownerClass
 
     internal fun validate() {
-        declaredIn?.let { declaringClass ->
-            require(declaringClass.isAssignableFrom(ownerClass)) {
-                "${declaringClass.name} is not a parent or interface of ${ownerClass.name}"
-            }
+        require(index >= 0) { "Field index cannot be negative: $index" }
+        val start = inParent ?: return
+        require(start.isAssignableFrom(ownerClass)) {
+            "${start.name} is not a parent class or interface of ${ownerClass.name}"
         }
     }
 
-    internal fun uniqueKey(): String {
+    internal fun cacheKey(): ReflectCache.CacheKey {
         validate()
-
-        return buildString {
-            append(classIdentity(targetClass))
-            append("#F")
-            append("|name=")
-            append(name ?: "*")
-            append("|type=")
-            append(typeIdentity(type))
-            append("|typeMatch=")
-            append(typeMatch)
-            append("|static=")
-            append(isStatic ?: "*")
-            append("|final=")
-            append(isFinal ?: "*")
-            append("|volatile=")
-            append(isVolatile ?: "*")
-            append("|transient=")
-            append(isTransient ?: "*")
-            append("|visibility=")
-            append(visibility ?: "*")
-            append("|synthetic=")
-            append(includeSynthetic)
-            append("|scope=")
-            append(scope)
-            append("|ambiguity=")
-            append(ambiguityStrategy)
-        }
-    }
-
-    internal fun describe(): String {
-        return buildString {
-            append("owner=")
-            append(targetClass.name)
-            append(", name=")
-            append(name ?: "*")
-            append(", type=")
-            append(type?.typeName ?: "*")
-            append(" [")
-            append(typeMatch)
-            append(']')
-            append(", scope=")
-            append(scope)
-        }
-    }
-
-    internal fun match(field: Field): Boolean {
-        if (!includeSynthetic && field.isSynthetic) return false
-        if (name != null && field.name != name) return false
-
-        if (
-            type != null &&
-            !matchFieldType(
-                expected = type!!,
-                actual = field.type,
-                mode = typeMatch
-            )
-        ) {
-            return false
-        }
-
-        val modifiers = field.modifiers
-
-        if (isStatic != null && Modifier.isStatic(modifiers) != isStatic) return false
-        if (isFinal != null && Modifier.isFinal(modifiers) != isFinal) return false
-        if (isVolatile != null && Modifier.isVolatile(modifiers) != isVolatile) return false
-        if (isTransient != null && Modifier.isTransient(modifiers) != isTransient) return false
-
-        if (
-            visibility != null &&
-            !matchVisibility(modifiers, visibility!!)
-        ) {
-            return false
-        }
-
-        return true
-    }
-}
-
-fun Class<*>.findFieldOrNull(
-    block: FieldSearcher.() -> Unit
-): Field? {
-    val searcher = FieldSearcher(this).apply(block)
-    return findFieldOrNull(searcher)
-}
-
-fun Class<*>.findField(
-    block: FieldSearcher.() -> Unit
-): Field {
-    val searcher = FieldSearcher(this).apply(block)
-
-    return findFieldOrNull(searcher)
-        ?: throw NoSuchFieldException(
-            "Field match failed. ${searcher.describe()}"
-        )
-}
-
-fun Class<*>.findFields(
-    block: FieldSearcher.() -> Unit
-): List<Field> {
-    val searcher = FieldSearcher(this).apply(block)
-    searcher.validate()
-
-    return searcher.targetClass
-        .collectFields(searcher.scope)
-        .filter(searcher::match)
-        .sortedWith(fieldStableComparator)
-        .onEach(Field::makeAccessible)
-        .toList()
-}
-
-private fun Class<*>.findFieldOrNull(
-    searcher: FieldSearcher
-): Field? {
-    searcher.validate()
-
-    return ReflectCache.getField(searcher.uniqueKey()) {
-        val candidates = searcher.targetClass
-            .collectFields(searcher.scope)
-            .filter(searcher::match)
-            .sortedWith(fieldStableComparator)
-            .toList()
-
-        when {
-            candidates.isEmpty() -> null
-            candidates.size == 1 -> candidates.first().makeAccessible()
-            searcher.ambiguityStrategy == AmbiguityStrategy.FIRST ->
-                candidates.first().makeAccessible()
-            else -> throw AmbiguousMemberException(
-                buildString {
-                    appendLine("Multiple fields matched. ${searcher.describe()}")
-                    candidates.forEach { field ->
-                        append("  ")
-                        appendLine(field.toGenericString())
-                    }
-                }.trimEnd()
-            )
-        }
-    }
-}
-
-private fun matchReturnType(
-    expected: Class<*>,
-    actual: Class<*>,
-    mode: TypeMatchMode
-): Boolean {
-    return matchType(
-        receiver = expected,
-        provided = actual,
-        mode = mode
-    )
-}
-
-private fun matchParameterType(
-    expected: Class<*>,
-    actual: Class<*>,
-    mode: TypeMatchMode
-): Boolean {
-    return matchType(
-        receiver = actual,
-        provided = expected,
-        mode = mode
-    )
-}
-
-private fun matchFieldType(
-    expected: Class<*>,
-    actual: Class<*>,
-    mode: TypeMatchMode
-): Boolean {
-    return matchType(
-        receiver = expected,
-        provided = actual,
-        mode = mode
-    )
-}
-
-private fun matchType(
-    receiver: Class<*>,
-    provided: Class<*>,
-    mode: TypeMatchMode
-): Boolean {
-    return when (mode) {
-        TypeMatchMode.COMPATIBLE -> {
-            receiver.boxed().isAssignableFrom(provided.boxed())
-        }
-
-        TypeMatchMode.ASSIGNABLE -> {
-            receiver.isAssignableFrom(provided)
-        }
-
-        TypeMatchMode.EXACT -> {
-            receiver == provided
-        }
-
-        TypeMatchMode.BOXED_EXACT -> {
-            receiver.boxed() == provided.boxed()
-        }
-    }
-}
-
-private fun matchVisibility(
-    modifiers: Int,
-    visibility: Visibility
-): Boolean {
-    return when (visibility) {
-        Visibility.PUBLIC -> Modifier.isPublic(modifiers)
-        Visibility.PROTECTED -> Modifier.isProtected(modifiers)
-        Visibility.PRIVATE -> Modifier.isPrivate(modifiers)
-        Visibility.PACKAGE ->
-            !Modifier.isPublic(modifiers) &&
-                    !Modifier.isProtected(modifiers) &&
-                    !Modifier.isPrivate(modifiers)
-    }
-}
-
-private fun calculateMethodScore(
-    method: Method,
-    searchTypes: Array<out Class<*>?>
-): Int {
-    val methodTypes = method.parameterTypes
-    var score = 0
-
-    for (index in searchTypes.indices) {
-        val providedType = searchTypes[index] ?: continue
-        val receiverType = methodTypes[index]
-
-        score += calculateTypeDistance(
-            source = providedType,
-            target = receiverType
+        return FieldCacheKey(
+            owner = ownerClass,
+            startClass = targetClass,
+            name = name,
+            type = type,
+            isStatic = isStatic,
+            visibility = visibility,
+            scope = scope,
+            includeSynthetic = includeSynthetic,
+            sameNameTypeMatch = sameNameTypeMatch,
+            preferInstance = preferInstance,
+            index = index,
+            requireUnique = requireUnique
         )
     }
 
-    return score
+    internal fun describe(): String = buildString {
+        append("owner=").append(ownerClass.name)
+        append(", start=").append(targetClass.name)
+        append(", name=").append(name ?: "*")
+        append(", type=").append(type?.name ?: "*")
+        append(", static=").append(isStatic ?: "*")
+        append(", visibility=").append(visibility ?: "*")
+        append(", scope=").append(scope)
+        append(", index=").append(index)
+    }
 }
 
-/**
- * 计算 source 转换为 target 所需的继承或接口距离。
- *
- * 使用广度优先搜索，同时遍历父类和接口。
- */
-private fun calculateTypeDistance(
-    source: Class<*>,
-    target: Class<*>
-): Int {
-    val from = source.boxed()
-    val to = target.boxed()
+fun Class<*>.findFieldOrNull(block: FieldSearcher.() -> Unit): Field? {
+    val searcher = FieldSearcher(this).apply(block)
+    return ReflectCache.getField(searcher.cacheKey()) {
+        resolveField(searcher)
+    }
+}
 
-    if (from == to) return 0
-    if (!to.isAssignableFrom(from)) return UNREACHABLE_TYPE_DISTANCE
+fun Class<*>.findField(block: FieldSearcher.() -> Unit): Field {
+    val searcher = FieldSearcher(this).apply(block)
+    return ReflectCache.getField(searcher.cacheKey()) {
+        resolveField(searcher)
+    } ?: throw NoSuchFieldException("Field match failed: ${searcher.describe()}")
+}
 
-    val queue = ArrayDeque<TypeNode>()
-    val visited = HashSet<Class<*>>()
+fun Class<*>.findFields(block: FieldSearcher.() -> Unit): List<Field> {
+    val searcher = FieldSearcher(this).apply(block)
+    searcher.validate()
+    return collectFields(searcher).map { it.makeAccessible() }
+}
 
-    queue.addLast(TypeNode(from, 0))
-    visited.add(from)
+private fun resolveField(searcher: FieldSearcher): Field? {
+    val fields = collectFields(searcher)
+    if (fields.isEmpty()) return null
+    if (searcher.requireUnique && fields.size > 1) {
+        throw AmbiguousFieldException(
+            "Ambiguous field match: ${searcher.describe()}. Candidates: " +
+                fields.joinToString { fieldSignature(it) }
+        )
+    }
+    return fields.getOrNull(searcher.index)?.makeAccessible()
+}
+
+private fun collectFields(searcher: FieldSearcher): List<Field> {
+    val result = ArrayList<Field>()
+    for (clazz in collectSearchClasses(searcher.targetClass, searcher.scope)) {
+        val declared = if (searcher.name != null) {
+            listOfNotNull(runCatching { clazz.getDeclaredField(searcher.name!!) }.getOrNull())
+        } else {
+            clazz.declaredFields.toList()
+        }
+
+        val filtered = declared.filter { field ->
+            (searcher.includeSynthetic || !field.isSynthetic) &&
+                (searcher.type == null || ReflectTypeMatcher.isTypeCompatible(
+                    searcher.type!!,
+                    field.type,
+                    searcher.sameNameTypeMatch
+                )) &&
+                (searcher.isStatic == null || Modifier.isStatic(field.modifiers) == searcher.isStatic) &&
+                (searcher.visibility == null || matchesVisibility(field.modifiers, searcher.visibility!!))
+        }
+
+        val ordered = if (searcher.name != null) {
+            filtered
+        } else {
+            val instanceFields = filtered.filterNot { Modifier.isStatic(it.modifiers) }
+                .sortedBy(::fieldSignature)
+            val staticFields = filtered.filter { Modifier.isStatic(it.modifiers) }
+                .sortedBy(::fieldSignature)
+            if (searcher.preferInstance) instanceFields + staticFields else staticFields + instanceFields
+        }
+        result += ordered
+    }
+    return result
+}
+
+internal fun Class<*>.resolveMethodForArguments(
+    name: String,
+    args: Array<out Any?>,
+    returnType: Class<*>? = null,
+    scope: SearchScope = SearchScope.HIERARCHY,
+    isStatic: Boolean? = null
+): Method? {
+    val searcher = MethodSearcher(this).apply {
+        this.name = name
+        this.returnType = returnType
+        this.paramCount = args.size
+        this.scope = scope
+        this.isStatic = isStatic
+        this.argumentSpecs = args.map(::argumentSpecOf)
+        this.requireUnique = false
+        this.includeVarArgs = true
+    }
+    return ReflectCache.getMethod(searcher.cacheKey()) {
+        resolveMethod(searcher)
+    }
+}
+
+internal fun Class<*>.resolveConstructorForArguments(
+    args: Array<out Any?>
+): Constructor<*>? {
+    val specs = args.map(::argumentSpecOf)
+    val key = ConstructorCacheKey(this, specs, includeVarArgs = true)
+    return ReflectCache.getConstructor(key) {
+        val scored = declaredConstructors.mapNotNull { constructor ->
+            val conversion = scoreExecutableParameters(
+                constructor.parameterTypes,
+                constructor.isVarArgs,
+                specs,
+                sameNameFallback = false
+            ) ?: return@mapNotNull null
+            ScoredConstructor(
+                constructor,
+                ExecutableScore(
+                    totalCost = conversion.first,
+                    maxCost = conversion.second,
+                    varArgsPenalty = if (constructor.isVarArgs) 1 else 0,
+                    declaringDistance = 0,
+                    syntheticPenalty = if (constructor.isSynthetic) 1 else 0,
+                    bridgePenalty = 0
+                )
+            )
+        }.sortedWith { left, right ->
+            val score = left.score.compareTo(right.score)
+            if (score != 0) score else executableSignature(left.constructor)
+                .compareTo(executableSignature(right.constructor))
+        }
+
+        if (scored.isEmpty()) return@getConstructor null
+        val best = scored.first()
+        val tied = scored.takeWhile { it.score == best.score }
+        if (tied.size > 1) {
+            throw AmbiguousMethodException(
+                "Ambiguous constructor in ${this.name}: " +
+                    tied.joinToString { executableSignature(it.constructor) }
+            )
+        }
+        best.constructor.makeAccessible()
+    }
+}
+
+internal fun resolveBestMethodForArguments(
+    methods: Collection<Method>,
+    args: Array<out Any?>
+): Method? {
+    val specs = args.map(::argumentSpecOf)
+    val scored = methods.mapNotNull { method ->
+        val conversion = scoreExecutableParameters(
+            method.parameterTypes,
+            method.isVarArgs,
+            specs,
+            sameNameFallback = false
+        ) ?: return@mapNotNull null
+        ScoredMethod(
+            method,
+            ExecutableScore(
+                totalCost = conversion.first,
+                maxCost = conversion.second,
+                varArgsPenalty = if (method.isVarArgs) 1 else 0,
+                declaringDistance = 0,
+                syntheticPenalty = if (method.isSynthetic) 1 else 0,
+                bridgePenalty = if (method.isBridge) 1 else 0
+            )
+        )
+    }.sortedWith(scoredMethodComparator)
+
+    if (scored.isEmpty()) return null
+    val best = scored.first()
+    val tied = scored.takeWhile { it.score == best.score }
+    return when {
+        tied.size == 1 -> best.method.makeAccessible()
+        else -> selectMostSpecific(tied.map { it.method })?.makeAccessible()
+            ?: throw AmbiguousMethodException(
+                "Ambiguous methods: ${tied.joinToString { methodSignature(it.method) }}"
+            )
+    }
+}
+
+internal fun prepareInvocationArguments(
+    executable: Executable,
+    args: Array<out Any?>
+): Array<Any?> {
+    val normalized = args.map { if (it is TypedNull) null else it }.toTypedArray()
+    if (!executable.isVarArgs) return normalized
+
+    val parameterTypes = executable.parameterTypes
+    val fixedCount = parameterTypes.size - 1
+
+    if (normalized.size == parameterTypes.size) {
+        val last = normalized.lastOrNull()
+        val arrayType = parameterTypes.last()
+        if (last == null || arrayType.isInstance(last)) return normalized
+    }
+
+    require(normalized.size >= fixedCount) {
+        "Not enough arguments for ${executableSignature(executable)}"
+    }
+
+    val result = arrayOfNulls<Any?>(parameterTypes.size)
+    for (index in 0 until fixedCount) result[index] = normalized[index]
+
+    val componentType = parameterTypes.last().componentType
+        ?: error("Varargs parameter is not an array type: ${parameterTypes.last().name}")
+    val varArgCount = normalized.size - fixedCount
+    val varArgArray = ReflectArray.newInstance(componentType, varArgCount)
+    for (index in 0 until varArgCount) {
+        ReflectArray.set(varArgArray, index, normalized[fixedCount + index])
+    }
+    result[fixedCount] = varArgArray
+    return result
+}
+
+private fun argumentSpecOf(value: Any?): ArgumentSpec = when (value) {
+    null -> ArgumentSpec.NullValue
+    is TypedNull -> ArgumentSpec.TypedNullValue(value.type)
+    else -> ArgumentSpec.Typed(value.javaClass)
+}
+
+private fun parameterCountMatches(
+    declaredCount: Int,
+    isVarArgs: Boolean,
+    requestedCount: Int
+): Boolean {
+    return if (isVarArgs) requestedCount >= declaredCount - 1 else requestedCount == declaredCount
+}
+
+/** 返回 totalCost 与 maxCost。 */
+private fun scoreExecutableParameters(
+    parameterTypes: Array<Class<*>>,
+    isVarArgs: Boolean,
+    arguments: List<ArgumentSpec>,
+    sameNameFallback: Boolean
+): Pair<Int, Int>? {
+    if (!isVarArgs) {
+        if (parameterTypes.size != arguments.size) return null
+        return scoreFixedParameters(parameterTypes, arguments, sameNameFallback)
+    }
+
+    val fixedCount = parameterTypes.size - 1
+    if (arguments.size < fixedCount) return null
+
+    var best: Pair<Int, Int>? = null
+
+    if (arguments.size == parameterTypes.size) {
+        scoreFixedParameters(parameterTypes, arguments, sameNameFallback)?.let {
+            best = it
+        }
+    }
+
+    val costs = ArrayList<Int>(arguments.size)
+    for (index in 0 until fixedCount) {
+        val cost = ReflectTypeMatcher.conversionCost(
+            parameterTypes[index],
+            arguments[index],
+            sameNameFallback
+        ) ?: return best
+        costs += cost
+    }
+
+    val componentType = parameterTypes.last().componentType ?: return best
+    for (index in fixedCount until arguments.size) {
+        val cost = ReflectTypeMatcher.conversionCost(
+            componentType,
+            arguments[index],
+            sameNameFallback
+        ) ?: return best
+        costs += cost
+    }
+
+    val expanded = (costs.sum() + 64) to (costs.maxOrNull() ?: 0)
+    return when {
+        best == null -> expanded
+        expanded.first < best.first -> expanded
+        else -> best
+    }
+}
+
+private fun scoreFixedParameters(
+    parameterTypes: Array<Class<*>>,
+    arguments: List<ArgumentSpec>,
+    sameNameFallback: Boolean
+): Pair<Int, Int>? {
+    var total = 0
+    var max = 0
+    for (index in parameterTypes.indices) {
+        val cost = ReflectTypeMatcher.conversionCost(
+            parameterTypes[index],
+            arguments[index],
+            sameNameFallback
+        ) ?: return null
+        total += cost
+        if (cost > max) max = cost
+    }
+    return total to max
+}
+
+internal fun collectSearchClasses(
+    startClass: Class<*>,
+    scope: SearchScope
+): List<Class<*>> {
+    if (scope == SearchScope.DECLARED) return listOf(startClass)
+
+    val classes = ArrayList<Class<*>>()
+    var current: Class<*>? = startClass
+    while (current != null) {
+        classes += current
+        current = current.superclass
+    }
+
+    if (scope == SearchScope.SUPERCLASSES) return classes
+
+    val result = ArrayList<Class<*>>(classes)
+    val visited = HashSet<Class<*>>(classes)
+    val queue = ArrayDeque<Class<*>>()
+    classes.forEach { clazz -> clazz.interfaces.forEach(queue::add) }
 
     while (queue.isNotEmpty()) {
-        val node = queue.removeFirst()
-
-        if (node.type == to) {
-            return node.distance
-        }
-
-        node.type.superclass?.let { superclass ->
-            if (visited.add(superclass)) {
-                queue.addLast(
-                    TypeNode(
-                        type = superclass,
-                        distance = node.distance + 1
-                    )
-                )
-            }
-        }
-
-        node.type.interfaces.forEach { interfaceType ->
-            if (visited.add(interfaceType)) {
-                queue.addLast(
-                    TypeNode(
-                        type = interfaceType,
-                        distance = node.distance + 1
-                    )
-                )
-            }
-        }
+        val iface = queue.removeFirst()
+        if (!visited.add(iface)) continue
+        result += iface
+        iface.interfaces.forEach(queue::add)
     }
-
-    return UNREACHABLE_TYPE_DISTANCE
+    return result
 }
 
-private data class TypeNode(
-    val type: Class<*>,
-    val distance: Int
-)
-
-private const val UNREACHABLE_TYPE_DISTANCE = 1_000_000
-
-private fun Class<*>.collectMethods(
-    scope: SearchScope
-): Sequence<Method> {
-    return when (scope) {
-        SearchScope.DECLARED_ONLY -> {
-            declaredMethods.asSequence()
-        }
-
-        SearchScope.SUPERCLASSES -> {
-            classHierarchy()
-                .flatMap { it.declaredMethods.asSequence() }
-        }
-
-        SearchScope.HIERARCHY -> {
-            sequence {
-                val visited = HashSet<Class<*>>()
-                val queue = ArrayDeque<Class<*>>()
-                queue.addLast(this@collectMethods)
-
-                while (queue.isNotEmpty()) {
-                    val current = queue.removeFirst()
-                    if (!visited.add(current)) continue
-
-                    yieldAll(current.declaredMethods.asSequence())
-
-                    current.superclass?.let(queue::addLast)
-                    current.interfaces.forEach(queue::addLast)
-                }
-            }
-        }
-    }
+private fun matchesVisibility(modifiers: Int, visibility: Visibility): Boolean = when (visibility) {
+    Visibility.PUBLIC -> Modifier.isPublic(modifiers)
+    Visibility.PROTECTED -> Modifier.isProtected(modifiers)
+    Visibility.PRIVATE -> Modifier.isPrivate(modifiers)
+    Visibility.PACKAGE -> !Modifier.isPublic(modifiers) &&
+        !Modifier.isProtected(modifiers) &&
+        !Modifier.isPrivate(modifiers)
 }
 
-private fun Class<*>.collectFields(
-    scope: SearchScope
-): Sequence<Field> {
-    return when (scope) {
-        SearchScope.DECLARED_ONLY -> {
-            declaredFields.asSequence()
-        }
-
-        SearchScope.SUPERCLASSES -> {
-            classHierarchy()
-                .flatMap { it.declaredFields.asSequence() }
-        }
-
-        SearchScope.HIERARCHY -> {
-            sequence {
-                val visited = HashSet<Class<*>>()
-                val queue = ArrayDeque<Class<*>>()
-                queue.addLast(this@collectFields)
-
-                while (queue.isNotEmpty()) {
-                    val current = queue.removeFirst()
-                    if (!visited.add(current)) continue
-
-                    yieldAll(current.declaredFields.asSequence())
-
-                    current.superclass?.let(queue::addLast)
-                    current.interfaces.forEach(queue::addLast)
-                }
-            }
-        }
-    }
+@Suppress("DEPRECATION")
+internal fun <T : java.lang.reflect.AccessibleObject> T.makeAccessible(): T {
+    if (!isAccessible) runCatching { isAccessible = true }
+    return this
 }
 
-private fun Class<*>.classHierarchy(): Sequence<Class<*>> {
-    return generateSequence(this) { current ->
-        current.superclass
-    }
+private fun methodSignature(method: Method): String = buildString {
+    append(method.declaringClass.name).append('#').append(method.name)
+    append(method.parameterTypes.joinToString(prefix = "(", postfix = ")") { it.name })
+    append(':').append(method.returnType.name)
 }
 
-private val methodStableComparator =
-    compareBy<Method>(
-        { it.declaringClass.name },
-        { it.name },
-        { it.parameterTypes.joinToString(",") { type -> type.name } },
-        { it.returnType.name },
-        { it.modifiers }
-    )
+private fun fieldSignature(field: Field): String =
+    "${field.declaringClass.name}#${field.name}:${field.type.name}"
 
-private val fieldStableComparator =
-    compareBy<Field>(
-        { it.declaringClass.name },
-        { it.name },
-        { it.type.name },
-        { it.modifiers }
-    )
-
-private fun Class<*>.boxed(): Class<*> {
-    return if (isPrimitive) {
-        this.kotlin.javaObjectType
-    } else {
-        this
-    }
-}
-
-private fun classIdentity(clazz: Class<*>): String {
-    return buildString {
-        append(clazz.name)
-        append('@')
-        append(System.identityHashCode(clazz))
-        append(":loader@")
-        append(System.identityHashCode(clazz.classLoader))
-    }
-}
-
-private fun typeIdentity(clazz: Class<*>?): String {
-    return clazz?.let(::classIdentity) ?: "*"
-}
-
-private fun Method.makeAccessible(): Method {
-    try {
-        isAccessible = true
-        return this
-    } catch (throwable: Throwable) {
-        throw IllegalStateException(
-            "Unable to make method accessible: ${toGenericString()}",
-            throwable
-        )
-    }
-}
-
-private fun Field.makeAccessible(): Field {
-    try {
-        isAccessible = true
-        return this
-    } catch (throwable: Throwable) {
-        throw IllegalStateException(
-            "Unable to make field accessible: ${toGenericString()}",
-            throwable
-        )
-    }
+private fun executableSignature(executable: Executable): String = buildString {
+    append(executable.declaringClass.name)
+    if (executable is Method) append('#').append(executable.name)
+    append(executable.parameterTypes.joinToString(prefix = "(", postfix = ")") { it.name })
 }

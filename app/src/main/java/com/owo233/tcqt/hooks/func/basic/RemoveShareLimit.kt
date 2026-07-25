@@ -1,11 +1,11 @@
 package com.owo233.tcqt.hooks.func.basic
 
 import android.app.Application
-import com.owo233.tcqt.HookEnv.requireMinQQVersion
-import com.owo233.tcqt.HookEnv.toHostClass
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -20,20 +20,19 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 @RegisterAction
 class RemoveShareLimit : IAction, DexKitTask {
 
-    override val name: String get() = "移除转发选择数量限制"
-    override val desc: String get() = "移除转发消息时最多选择9名联系人的限制。"
-    override val uiTab: String get() = "基础"
-
-    private val isKuiklyUISupported: Boolean by lazy {
-        requireMinQQVersion(QQVersion.QQ_9_2_25)
-    }
-
     private lateinit var friendListActivityCls: Class<*>
     private lateinit var recentActivityCls: Class<*>
     private lateinit var troopListFragmentCls: Class<*>
     private lateinit var selectTroopListFragmentCls: Class<*>
 
     override val key: String get() = "remove_share_limit"
+    override val name: String get() = "移除转发选择数量限制"
+    override val desc: String get() = "移除转发消息时最多选择9名联系人的限制。"
+    override val uiTab: String get() = "基础"
+
+    private val isKuiklyUISupported: Boolean by lazy {
+        HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_25)
+    }
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (isKuiklyUISupported) {
@@ -60,14 +59,10 @@ class RemoveShareLimit : IAction, DexKitTask {
     }
 
     override fun onInit(): Boolean {
-        friendListActivityCls =
-            "com.tencent.mobileqq.activity.ForwardFriendListActivity".toHostClass()
-        recentActivityCls =
-            "com.tencent.mobileqq.activity.ForwardRecentActivity".toHostClass()
-        troopListFragmentCls =
-            "com.tencent.mobileqq.activity.ForwardTroopListFragment".toHostClass()
-        selectTroopListFragmentCls =
-            "com.tencent.mobileqq.selectmember.troop.SelectTroopListFragment".toHostClass()
+        friendListActivityCls = "com.tencent.mobileqq.activity.ForwardFriendListActivity".toClass
+        recentActivityCls = "com.tencent.mobileqq.activity.ForwardRecentActivity".toClass
+        troopListFragmentCls = "com.tencent.mobileqq.activity.ForwardTroopListFragment".toClass
+        selectTroopListFragmentCls = "com.tencent.mobileqq.selectmember.troop.SelectTroopListFragment".toClass
 
         return super.onInit()
     }
