@@ -21,6 +21,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 @RegisterAction
 class DefaultVASAttributes : IAction {
 
+    override val key: String get() = "default_vas_attrs"
     override val name: String get() = "净化聊天界面装扮"
     override val desc: String get() = "默认禁用他人消息的个性化气泡、字体、QQ秀头像与头像挂件，若需保留特定项目（如头像挂件），请在下方勾选排除。"
     override val uiTab: String get() = "界面"
@@ -48,19 +49,19 @@ class DefaultVASAttributes : IAction {
                     u?.vasMsgInfo?.let { vasInfo ->
 
                         // 隐藏头像挂件
-                        if (options.isFlagEnabled(2)) {
+                        if (options.isFlagEnabled(2).not()) {
                             vasInfo.avatarPendantInfo?.pendantId = 0L
                             vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
                         }
 
                         // 强制默认气泡
-                        if (options.isFlagEnabled(0)) {
+                        if (options.isFlagEnabled(0).not()) {
                             vasInfo.bubbleInfo?.bubbleId = 0
                             vasInfo.bubbleInfo?.subBubbleId = 0
                         }
 
                         // 强制默认字体
-                        if (options.isFlagEnabled(1)) {
+                        if (options.isFlagEnabled(1).not()) {
                             vasInfo.vasFont?.fontId = 0
                             vasInfo.vasFont?.subFontId = 0L
                             vasInfo.vasFont?.magicFontType = 0
@@ -70,9 +71,8 @@ class DefaultVASAttributes : IAction {
             }
         }
 
-        if (options.isFlagEnabled(3)) {
-            // 新版超级QQ秀 应该是在 9.2.35 版本或以上才有的
-            if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_35)) {
+        if (options.isFlagEnabled(3).not()) {
+            if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_27)) {
                 "com.tencent.mobileqq.ai.avatar.api.impl.AIAvatarSwitchApiImpl".toClass
                     .findMethod {
                         name = "isQQShowEnableForAIO"
@@ -86,7 +86,4 @@ class DefaultVASAttributes : IAction {
             }
         }
     }
-
-    override val key: String get() = "default_vas_attrs"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }
