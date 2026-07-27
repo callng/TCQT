@@ -298,10 +298,13 @@ class MethodSearcher internal constructor(private val ownerClass: Class<*>) {
     /** 从指定父类或接口开始搜索。 */
     var inParent: Class<*>? = null
 
-    /** 桥接方法过滤，默认不过滤。 */
+    /** 合成方法过滤，默认包含。 */
     var includeSynthetic: Boolean = true
-    /** 合成方法过滤，默认过滤。 */
-    var includeBridge: Boolean = false
+
+    /** 桥接方法过滤，默认包含。 */
+    var includeBridge: Boolean = true
+
+    /** 可变参数方法过滤，默认包含。 */
     var includeVarArgs: Boolean = true
 
     /** 允许不同 ClassLoader 中的同名类型弱匹配，默认关闭。 */
@@ -574,7 +577,9 @@ class FieldSearcher internal constructor(private val ownerClass: Class<*>) {
     var visibility: Visibility? = null
     var inParent: Class<*>? = null
 
-    var scope: SearchScope = SearchScope.HIERARCHY
+    /** 默认搜索当前类和父类。 */
+    var scope: SearchScope = SearchScope.SUPERCLASSES
+    /** 合成字段过滤，默认包含。 */
     var includeSynthetic: Boolean = true
     var sameNameTypeMatch: Boolean = false
     var preferInstance: Boolean = true
@@ -681,9 +686,7 @@ private fun collectFields(searcher: FieldSearcher): List<Field> {
             filtered
         } else {
             val instanceFields = filtered.filterNot { Modifier.isStatic(it.modifiers) }
-                .sortedBy(::fieldSignature)
             val staticFields = filtered.filter { Modifier.isStatic(it.modifiers) }
-                .sortedBy(::fieldSignature)
             if (searcher.preferInstance) instanceFields + staticFields else staticFields + instanceFields
         }
         result += ordered

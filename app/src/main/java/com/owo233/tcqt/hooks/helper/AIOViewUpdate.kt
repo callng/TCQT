@@ -13,13 +13,11 @@ import com.owo233.tcqt.hooks.func.activity.ShowMsgInfo
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
-import com.owo233.tcqt.utils.reflect.getObjectByType
 import com.owo233.tcqt.utils.reflect.getObjectByTypeOrNull
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.mobileqq.aio.msg.GrayTipsMsgItem
 import com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB
 import com.tencent.mobileqq.aio.msglist.holder.AIOMsgItemUIState
-import com.tencent.mvi.base.mvi.MviUIState
 import com.tencent.qqnt.aio.holder.IMsgItemMviUIState
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
@@ -44,14 +42,15 @@ class AIOViewUpdate : AlwaysRunAction() {
         AIOBubbleMsgItemVB::class.java.findMethod {
             returnType = void
             visibility = public
-            paramTypes(MviUIState::class.java)
+            paramTypes(IMsgItemMviUIState::class.java)
         }.hookAfter { param ->
-            val mviUIState = param.args[0] as IMsgItemMviUIState
+            val mviUIState = param.args[0] as? IMsgItemMviUIState ?: return@hookAfter
 
             if (mviUIState is AIOMsgItemUIState.AIOMsgItemState) {
-                val view = param.thisObject.getObjectByType<View>() as ViewGroup
+                val view = (param.thisObject.getObjectByTypeOrNull(View::class.java) as? ViewGroup) ?: return@hookAfter
                 val aIOMsgItem = mviUIState.getObjectByTypeOrNull(
-                    AIOMsgItem::class.java.superclass as Class<*>) as AIOMsgItem
+                    AIOMsgItem::class.java.superclass as Class<*>
+                ) as? AIOMsgItem ?: return@hookAfter
 
                 if (aIOMsgItem !is GrayTipsMsgItem) {
                     activeDecorators.forEach {
