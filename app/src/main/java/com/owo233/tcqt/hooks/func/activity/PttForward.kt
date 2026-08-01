@@ -168,7 +168,6 @@ class PttForward : IAction, OnMenuBuilder {
     }
 
     @SuppressLint("DiscouragedApi")
-    @Suppress("UNCHECKED_CAST")
     override fun onGetMenuNt(msg: Any, componentType: String, param: MethodHookParam) {
         val ptt = getPttElementFromMsg(msg)
         currentPttElement = ptt
@@ -186,6 +185,7 @@ class PttForward : IAction, OnMenuBuilder {
             }
         )
 
-        (param.result as MutableList<Any>).add(item)
+        val menuList = param.result as? List<*> ?: return
+        param.result = listOf(item) + menuList
     }
 }

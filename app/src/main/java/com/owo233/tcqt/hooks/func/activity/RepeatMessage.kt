@@ -136,8 +136,8 @@ class RepeatMessage : IAction, OnMenuBuilder {
             }
         )
 
-        @Suppress("UNCHECKED_CAST")
-        (param.result as? MutableList<Any>)?.add(0, item)
+        val menuList = param.result as? List<*> ?: return
+        param.result = listOf(item) + menuList
     }
 
     private fun performRepeatMessage(msg: MsgRecord) {
