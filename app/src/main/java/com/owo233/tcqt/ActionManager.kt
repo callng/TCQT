@@ -168,15 +168,20 @@ internal object ActionManager {
             val action = instanceOf(actionClass) ?: return@forEach
             if (action.key.isBlank() || action.hidden) return@forEach
 
-            val textAreas = action.settings.filterIsInstance<StringSetting>().map { s ->
-                TextAreaField(
-                    key = s.key,
-                    label = s.name,
-                    placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" }
-                )
-            }
+            val textAreas = action.settings
+                .filterIsInstance<StringSetting>()
+                .filterNot { it.isHide }
+                .map { s ->
+                    TextAreaField(
+                        key = s.key,
+                        label = s.name,
+                        placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" }
+                    )
+                }
 
-            val optionSetting = action.settings.find { it is IntSetting || it is MultiIntSetting }
+            val optionSetting = action.settings.find {
+                (it is IntSetting || it is MultiIntSetting) && !it.isHide
+            }
             val optionGroup = optionSetting?.let { s ->
                 val options = when (s) {
                     is IntSetting -> s.options

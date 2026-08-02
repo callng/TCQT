@@ -26,19 +26,18 @@ import com.owo233.tcqt.utils.hook.hookMethodAfter
 @RegisterAction
 class ChangeGuid : IAction {
 
+    override val key: String get() = "change_guid"
     override val name: String get() = "自定义GUID"
     override val defaultEnabled: Boolean get() = true
-    override val desc: String get() = "启用后在登录页面长按登录按钮即可调出设置窗口，这个功能使用不当可能会导致用户身份信息失效需重新登录。"
+    override val desc: String
+        get() = "在登录页面长按登录按钮即可调出设置窗口，如果你不知道GUID是什么，请勿使用此功能（此处开关仅作为全局开关）。"
     override val uiTab: String get() = "高级"
     override val settings: List<Setting<*>>
         get() = listOf(
-            StringSetting("change_guid.string.defaultGuid", "默认GUID", "", "", "", false),
-            StringSetting("change_guid.string.newGuid", "新GUID", "", "", "", false),
-            BooleanSetting("change_guid.boolean.isEnabled", "是否启用更改", false, ""),
+            StringSetting("change_guid.string.defaultGuid", "默认GUID", isHide = true),
+            StringSetting("change_guid.string.newGuid", "新GUID", isHide = true),
+            BooleanSetting("change_guid.boolean.isEnabled", "是否启用更改")
         )
-
-    override val key: String
-        get() = "change_guid"
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
