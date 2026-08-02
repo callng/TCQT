@@ -40,7 +40,10 @@ class DisableFlashPic : IAction {
                 name = "getMsgRecord"
             }) { param ->
                 val msgRecord = param.result as? MsgRecord ?: return@hookMethodAfter
-                if (msgRecord.chatType == MsgConstant.KCHATTYPEC2C) {
+
+                if (msgRecord.chatType == MsgConstant.KCHATTYPEC2C &&
+                    msgRecord.sendType == MsgConstant.KSENDTYPERECV // 只处理对方发送的消息
+                ) {
                     val subMsgType = msgRecord.subMsgType // 位掩码（Bitmask）
                     // 8192 (闪照标记) + 2 (图片基础类型) = 8194
                     if ((subMsgType and 8192) != 0) { // 带有闪照属性
