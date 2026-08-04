@@ -18,6 +18,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +32,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -45,7 +49,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -56,17 +62,26 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.HookEnv
@@ -85,10 +100,10 @@ import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SearchBarDefaults
 import top.yukonga.miuix.kmp.basic.SnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
 import top.yukonga.miuix.kmp.basic.Surface
@@ -96,6 +111,8 @@ import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Search
+import top.yukonga.miuix.kmp.icon.basic.SearchCleanup
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Backup
 import top.yukonga.miuix.kmp.icon.extended.ChevronForward
@@ -112,10 +129,12 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.RadioButtonPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val PageTransitionDurationMillis = 380
 private const val TopBarTransitionDurationMillis = 340
@@ -1096,7 +1115,7 @@ private fun SearchBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        InputField(
+        SearchInputField(
             query = query,
             onQueryChange = onQueryChange,
             onSearch = {},
@@ -1108,6 +1127,142 @@ private fun SearchBar(
                 .weight(1f),
             label = "搜索功能名称或描述",
         )
+    }
+}
+
+@Composable
+private fun SearchInputField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "",
+    enabled: Boolean = true,
+) {
+    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
+    val currentOnSearch by rememberUpdatedState(onSearch)
+    val currentOnExpandedChange by rememberUpdatedState(onExpandedChange)
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(query, selection = TextRange(query.length)))
+    }
+    LaunchedEffect(query) {
+        if (query != textFieldValue.text) {
+            textFieldValue = TextFieldValue(query, selection = TextRange(query.length))
+        }
+    }
+
+    val labelText by remember(query, expanded, label) {
+        derivedStateOf { if (!(query.isNotEmpty() || expanded)) label else "" }
+    }
+
+    val textColor = LocalContentColor.current
+    val inputTextStyle = MiuixTheme.textStyles.main
+        .copy(fontWeight = FontWeight.Medium)
+        .copy(color = textColor)
+
+    BasicTextField(
+        value = textFieldValue,
+        onValueChange = { newValue ->
+            textFieldValue = newValue
+            currentOnQueryChange(newValue.text)
+        },
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .onFocusChanged { if (it.isFocused) currentOnExpandedChange(true) }
+            .semantics {
+                onClick {
+                    focusRequester.requestFocus()
+                    true
+                }
+            },
+        enabled = enabled,
+        singleLine = true,
+        textStyle = inputTextStyle,
+        cursorBrush = SolidColor(MiuixTheme.colorScheme.primary),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { currentOnSearch(query) }),
+        interactionSource = interactionSource,
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = MiuixTheme.colorScheme.surfaceContainerHigh,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        modifier = Modifier.padding(
+                            start = SearchBarDefaults.LeadingIconStartPadding,
+                            end = SearchBarDefaults.LeadingIconEndPadding,
+                        ),
+                        imageVector = MiuixIcons.Basic.Search,
+                        tint = MiuixTheme.colorScheme.onSurfaceContainerHigh,
+                        contentDescription = "搜索",
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = SearchBarDefaults.InputFieldMinHeight),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (labelText.isNotEmpty()) {
+                            Text(
+                                text = labelText,
+                                fontSize = SearchBarDefaults.InputFieldFontSize,
+                                fontWeight = FontWeight.Medium,
+                                color = MiuixTheme.colorScheme.onSurfaceContainerHigh,
+                            )
+                        }
+                        innerTextField()
+                    }
+                    AnimatedVisibility(
+                        visible = query.isNotEmpty(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(
+                                start = SearchBarDefaults.TrailingIconStartPadding,
+                                end = SearchBarDefaults.TrailingIconEndPadding,
+                            ),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Icon(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { currentOnQueryChange("") },
+                                imageVector = MiuixIcons.Basic.SearchCleanup,
+                                tint = MiuixTheme.colorScheme.onSurfaceContainerHighest,
+                                contentDescription = "清除搜索",
+                            )
+                        }
+                    }
+                }
+            }
+        },
+    )
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            focusRequester.requestFocus()
+        } else if (focused) {
+            if (query.isNotEmpty()) {
+                currentOnQueryChange("")
+            }
+            focusManager.clearFocus()
+        }
     }
 }
 
@@ -1485,9 +1640,9 @@ private fun FeatureTextArea(
 
     LaunchedEffect(isFocused, repositionKey) {
         if (isFocused) {
-            delay(32)
+            delay(32.milliseconds)
             bringIntoViewRequester.bringIntoView()
-            delay(288)
+            delay(288.milliseconds)
             bringIntoViewRequester.bringIntoView()
         }
     }
@@ -1583,7 +1738,6 @@ private fun rememberHighlightedText(text: String, keyword: String): AnnotatedStr
         if (keyword.isBlank() || text.isBlank()) return@remember AnnotatedString(text)
         val lowerText = text.lowercase()
         val lowerKeyword = keyword.lowercase()
-        val highlightBackground = colorScheme.primaryContainer.copy(alpha = 0.9f)
         val highlightColor = colorScheme.primary
 
         buildAnnotatedString {
@@ -1598,7 +1752,6 @@ private fun rememberHighlightedText(text: String, keyword: String): AnnotatedStr
                 pushStyle(
                     SpanStyle(
                         color = highlightColor,
-                        background = highlightBackground,
                         fontWeight = FontWeight.Bold,
                     ),
                 )

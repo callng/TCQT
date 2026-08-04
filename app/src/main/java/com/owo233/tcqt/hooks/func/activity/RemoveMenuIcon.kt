@@ -38,14 +38,21 @@ class RemoveMenuIcon : IAction {
                     .filter { it.type == Int::class.javaPrimitiveType && it.isNotStatic }
                     .onEach { it.isAccessible = true }
 
-                val rowHeightField = fields.firstOrNull { it.name == "m" || it.name == "o" }
-                    ?: fields.maxByOrNull { it.getInt(layout) }
+                val heightFields = listOf("u", "v", "w", "y", "m", "o")
+                    .mapNotNull { fieldName -> fields.firstOrNull { it.name == fieldName } }
 
-                if (rowHeightField != null) {
-                    val currentVal = rowHeightField.getInt(layout)
-                    if (currentVal > 0) {
-                        val scaledVal = (currentVal / 1.5f).toInt()
-                        rowHeightField.setInt(layout, scaledVal)
+                if (heightFields.isNotEmpty()) {
+                    var scaled = false
+                    for (field in heightFields) {
+                        val currentVal = field.getInt(layout)
+                        if (currentVal > 0) {
+                            val scaledVal = (currentVal / 1.5f).toInt()
+                            field.setInt(layout, scaledVal)
+                            scaled = true
+                        }
+                    }
+
+                    if (scaled) {
                         scaledObjects[layout] = true
                     }
                 }
