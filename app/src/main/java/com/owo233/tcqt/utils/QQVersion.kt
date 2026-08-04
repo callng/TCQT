@@ -192,8 +192,19 @@ internal object QQVersion {
     const val QQ_9_2_75: Long = 13520
     const val QQ_9_2_78_BETA_34760: Long = 13550
     const val QQ_9_2_80_BETA_35020: Long = 13648
+    const val QQ_9_2_80: Long = 13690
+    const val QQ_9_2_85: Long = 13860
     const val QQ_9_2_90: Long = 14030
     const val QQ_9_2_95_BETA_36295: Long = 14158
     const val QQ_9_2_95: Long = 14200
-    const val QQ_9_3_0_BETA_36720:Long = 14328
+    const val QQ_9_3_0_BETA_36720: Long = 14328
+    const val QQ_9_3_0: Long = 14370
+    const val QQ_9_3_1: Long = 14378
+    const val QQ_9_3_5: Long = 14540
+    const val QQ_9_3_10: Long = 14710
+    const val QQ_9_3_15: Long = 14880
+    const val QQ_9_3_20: Long = 15050
+    const val QQ_9_3_25: Long = 15220
+    const val QQ_9_3_30: Long = 15390
+    const val QQ_9_3_35_BETA_39695: Long = 15518
 }
