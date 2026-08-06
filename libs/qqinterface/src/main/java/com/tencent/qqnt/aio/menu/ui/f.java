@@ -1,7 +1,5 @@
 package com.tencent.qqnt.aio.menu.ui;
 
-import androidx.annotation.Nullable;
-
 import com.tencent.mobileqq.aio.msg.AIOMsgItem;
 
 /**
@@ -16,11 +14,6 @@ public abstract class f {
         this.a = aIOMsgItem;
     }
 
-    @Nullable
-    public String a() {
-        return null;
-    }
-
     public abstract int b();
 
     public abstract int c();
@@ -32,10 +25,6 @@ public abstract class f {
     public abstract String e();
 
     public abstract String f();
-
-    protected boolean g() {
-        return false;
-    }
 
     public abstract void h();
 }

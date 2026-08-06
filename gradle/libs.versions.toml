@@ -32,6 +32,9 @@ xposed = "82"
 # dexkit
 dexkit = "2.2.0"
 
+# DexMaker
+dexmaker = "2.28.6"
+
 # FastKV
 fastkv = "3.0.1"
 
@@ -75,6 +78,9 @@ xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xp
 
 # dexkit
 dexkit = { group = "org.luckypray", name = "dexkit", version.ref = "dexkit"}
+
+# DexMaker
+dexmaker = { group = "com.linkedin.dexmaker", name = "dexmaker", version.ref = "dexmaker"}
 
 # FastKV
 fastkv = { group = "io.github.billywei01", name = "fastkv", version.ref = "fastkv"}

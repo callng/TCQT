@@ -241,6 +241,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.documentfile)
     implementation(libs.dexkit)
+    implementation(libs.dexmaker)
     implementation(libs.fastkv)
     implementation(libs.kotlinx.io.jvm)
     implementation(libs.kotlinx.coroutines.android)
