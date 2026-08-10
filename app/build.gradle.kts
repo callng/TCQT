@@ -146,6 +146,12 @@ extensions.configure<ApplicationExtension> {
         }
     }
 
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
     @Suppress("UnstableApiUsage")
     androidResources {
         localeFilters += listOf("zh-rCN")
@@ -260,4 +266,86 @@ dependencies {
     implementation(libs.miuix.ui)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.preference)
+}
+
+// ── Zygisk 模块打包 ──────────────────────────────────────────────────────────
+// 产出 Magisk/KernelSU 可安装的模块 ZIP
+val prepareZygiskModule = tasks.register("prepareZygiskModule") {
+    group = "zygisk"
+    description = "组装 Zygisk 模块目录"
+    // 组装脚本使用 buildscript 局部引用，与配置缓存不兼容；该任务低频运行。
+    notCompatibleWithConfigurationCache("stages the Zygisk module ZIP")
+    dependsOn("assembleRelease")
+    dependsOn("externalNativeBuildRelease")
+
+    val stageDirProvider = layout.buildDirectory.dir("zygisk-module")
+    val templateDir = layout.projectDirectory.dir("src/main/zygisk-template")
+    val apkFileProvider =
+        layout.buildDirectory.file("outputs/apk/release/TCQT-${appVersionName}-release.apk")
+    val soDirProvider = layout.buildDirectory.dir(
+        "intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/arm64-v8a")
+
+    inputs.dir(templateDir)
+    inputs.file(apkFileProvider)
+    inputs.dir(soDirProvider)
+    outputs.dir(stageDirProvider)
+
+    doLast {
+        val stageDir = stageDirProvider.get().asFile
+        stageDir.deleteRecursively()
+        stageDir.mkdirs()
+
+        // 模板
+        templateDir.asFile.copyRecursively(stageDir)
+
+        // 版本占位符
+        val propFile = File(stageDir, "module.prop")
+        propFile.writeText(
+            propFile.readText()
+                .replace("@VERSION@", appVersionName)
+                .replace("@VERSION_CODE@", appVersionCode.toString())
+        )
+
+        // 注入器 so：AGP 会把 externalNativeBuild 产物合并进
+        // intermediates/merged_native_libs/.../lib/arm64-v8a/
+        val soBytes = File(soDirProvider.get().asFile, "libtcqtzygisk.so").readBytes()
+        File(stageDir, "zygisk/arm64-v8a.so").apply {
+            parentFile.mkdirs()
+            writeBytes(soBytes)
+        }
+        // customize.sh 从 ZIP 的 lib/<abi>/ 解压
+        File(stageDir, "lib/arm64-v8a/libtcqtzygisk.so").apply {
+            parentFile.mkdirs()
+            writeBytes(soBytes)
+        }
+
+        // payload APK
+        File(stageDir, "payload/tcqt.apk").apply {
+            parentFile.mkdirs()
+            apkFileProvider.get().asFile.copyTo(this, overwrite = true)
+        }
+
+        logger.lifecycle("Zygisk module staged at $stageDir")
+    }
+}
+
+val packageZygiskModule = tasks.register("packageZygiskModule", Zip::class.java) {
+    group = "zygisk"
+    description = "打包 TCQT Zygisk 模块 ZIP"
+    notCompatibleWithConfigurationCache("packages the Zygisk module ZIP")
+    dependsOn(prepareZygiskModule)
+
+    val stageDirProvider = layout.buildDirectory.dir("zygisk-module")
+    val outDirProvider = layout.buildDirectory.dir("outputs/zygisk")
+    archiveFileName.set("TCQT-zygisk-${appVersionName}.zip")
+    destinationDirectory.set(outDirProvider.get().asFile)
+    from(stageDirProvider)
+
+    doLast {
+        logger.lifecycle("Zygisk module ZIP: ${File(outDirProvider.get().asFile, archiveFileName.get())}")
+    }
+}
+
+tasks.named("assemble") {
+    dependsOn(packageZygiskModule)
 }

@@ -5,15 +5,27 @@ import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.log.ActionErrorStore
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import android.os.Handler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 
 internal object ModuleScope : CoroutineScope {
+
+    val mainDispatcher by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        val looper = Looper.getMainLooper()
+        if (looper != null) {
+            Handler(looper).asCoroutineDispatcher("TCQT-Main")
+        } else {
+            Log.w("主 Looper 未就绪，ModuleScope.mainDispatcher 回退 Dispatchers.IO")
+            Dispatchers.IO
+        }
+    }
 
     private fun exceptionHandler(tag: String): CoroutineExceptionHandler {
         val actionKey = ActionErrorStore.currentActionKey()
@@ -39,7 +51,7 @@ internal object ModuleScope : CoroutineScope {
         launch(Dispatchers.IO + exceptionHandler(tag), block = block)
 
     fun launchMain(block: suspend CoroutineScope.() -> Unit) =
-        launch(Dispatchers.Main.immediate, block = block)
+        launch(mainDispatcher, block = block)
 
     fun launchDelayed(delayMillis: Long, block: suspend CoroutineScope.() -> Unit) = launch {
         delay(delayMillis.milliseconds)
@@ -47,13 +59,13 @@ internal object ModuleScope : CoroutineScope {
     }
 
     fun launchMainDelayed(delayMillis: Long, block: suspend CoroutineScope.() -> Unit) =
-        launch(Dispatchers.Main.immediate) {
+        launch(mainDispatcher) {
             delay(delayMillis.milliseconds)
             block()
         }
 
     suspend fun <T> onMain(block: suspend CoroutineScope.() -> T): T =
-        withContext(Dispatchers.Main.immediate, block)
+        withContext(mainDispatcher, block)
 
     suspend fun <T> onIO(block: suspend CoroutineScope.() -> T): T =
         withContext(Dispatchers.IO, block)

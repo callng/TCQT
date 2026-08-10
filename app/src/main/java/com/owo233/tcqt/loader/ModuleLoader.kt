@@ -6,12 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.os.Process
+import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.internals.QQInterfaces
+import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.api.Unhook
+import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitCache
 import com.owo233.tcqt.utils.dexkit.DexKitFinder
@@ -19,7 +22,6 @@ import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
-import com.owo233.tcqt.utils.log.LogAndroid
 import com.owo233.tcqt.utils.reflect.allConstructors
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
@@ -177,19 +179,7 @@ internal object ModuleLoader {
                     HookSteps.initContext(app)
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
-                    // Force load Kotlin coroutines Main dispatcher under the module ClassLoader
-                    runCatching {
-                        val oldTCCL = Thread.currentThread().contextClassLoader
-                        Thread.currentThread().contextClassLoader = this.javaClass.classLoader
-                        try {
-                            val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
-                            LogAndroid.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
-                        } finally {
-                            Thread.currentThread().contextClassLoader = oldTCCL
-                        }
-                    }.onFailure {
-                        Log.e("Failed to pre-initialize coroutines Main dispatcher", it)
-                    }
+                    installMainDispatcher()
 
                     val cacheValid = DexKitCache.initCache()
                     val needFind = !cacheValid || DexKitFinder.needsFind()
@@ -207,6 +197,20 @@ internal object ModuleLoader {
         }
     }
 
+    private fun installMainDispatcher() {
+        if (HookEngineManager.engine !is ZygiskHookEngine) return
+
+        runCatching {
+            kotlinx.coroutines.Dispatchers::class.java
+                .getDeclaredMethod("getMain")
+                .hookBefore { param ->
+                    param.result = ModuleScope.mainDispatcher
+                }
+        }.onFailure {
+            Log.e("hook Dispatchers.getMain failed", it)
+        }
+    }
+
     fun reload(state: Map<*, *>) {
         HookSteps.initModulePath(state["moduleApkPath"] as String)
         HookSteps.initHandleLoadPackage(
@@ -218,19 +222,6 @@ internal object ModuleLoader {
         HookSteps.initContext(state["hostApplication"] as Application)
 
         System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
-
-        runCatching {
-            val oldTCCL = Thread.currentThread().contextClassLoader
-            Thread.currentThread().contextClassLoader = this.javaClass.classLoader
-            try {
-                val mainDispatcher = kotlinx.coroutines.Dispatchers.Main
-                LogAndroid.i("Successfully pre-initialized coroutines Main dispatcher: $mainDispatcher")
-            } finally {
-                Thread.currentThread().contextClassLoader = oldTCCL
-            }
-        }.onFailure {
-            Log.e("Failed to pre-initialize coroutines Main dispatcher", it)
-        }
 
         if (ProcUtil.isMain) {
             SyncUtils.runOnUiThread {

@@ -116,7 +116,7 @@ fun String.hex2ByteArray(replace: Boolean = false): ByteArray {
 fun CoroutineScope.launchWithCatch(
     context: CoroutineContext = EmptyCoroutineContext,
     start: CoroutineStart = CoroutineStart.DEFAULT,
-    errorDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    errorDispatcher: CoroutineDispatcher = ModuleScope.mainDispatcher,
     onError: suspend (Throwable) -> Unit = { e -> Log.e("launchWithCatch 异常", e) },
     block: suspend CoroutineScope.() -> Unit
 ): Job {

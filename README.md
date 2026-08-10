@@ -15,11 +15,46 @@
 
 ##  环境
 
-| 项目     | 说明                    |
-|----------|-------------------------|
-| 适配客户端 | QQ / TIM Android（NT 架构） |
-| 系统版本   | Android 8.1 ~ 17        |
-| 框架支持   | LSPosed                 |
+| 项目    | 说明                                |
+|-------|-----------------------------------|
+| 适配客户端 | QQ / TIM Android（NT 架构）           |
+| 系统版本  | Android 8.1 ~ 17                  |
+| 框架支持  | LSPosed（默认）；也可通过 Zygisk 注入运行（见下文） |
+
+---
+
+##  Zygisk 模式（可选）
+
+除 LSPosed 外，TCQT 也支持通过 **Zygisk** 直接注入 QQ / TIM 进程运行，
+**无需安装任何 Xposed 框架**。
+
+### 环境要求
+
+| 项目      | 说明                                              |
+|---------|-------------------------------------------------|
+| Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext） |
+| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                       |
+| 系统版本    | Android 8.1 ~ 16（高版本依赖 ART 布局探测，适配中）            |
+
+### 安装
+
+1. 下载 `TCQT-zygisk-<版本>.zip`（见下方编译产物，或到 CI 构建中获取）。
+2. 在 Magisk / KernelSU / APatch 应用中选择「从本地安装」刷入该 ZIP，然后重启。
+3. 安装并打开 TCQT App 进行功能配置（配置与 LSPosed 模式完全相同，
+   存储在宿主 QQ/TIM 的数据目录中）。
+4. 完全结束后台 QQ / TIM 进程并重新启动，功能即生效。
+
+### 卸载
+
+在 Magisk / KernelSU / APatch 中直接移除 `TCQT (Zygisk)` 模块并重启即可；
+卸载脚本会自动清理注入到 QQ/TIM 数据目录的 payload 副本。
+
+### 注意事项
+
+- **不要同时启用 LSPosed 中的 TCQT 模块**：两种模式共用同一份配置，
+  同时 hook 会造成冲突。使用 Zygisk 模式时请在 LSPosed 中停用 TCQT。
+- 当前以 arm64-v8a 为主，Android 15/16 为实验性支持。
+- 功能范围与 LSPosed 模式一致（包括 DexKit 方法查找、设置页联动等）。
 
 ---
 
@@ -89,6 +124,20 @@ KEY_PASSWORD=your_key_password \
 ```
 
 > 未配置签名信息时，发布版本无法编译；CI 环境已自动注入以上变量。
+
+### 编译 Zygisk 模块（可选）
+
+无需签名，直接打包 Magisk / KernelSU 可安装的模块 ZIP：
+
+```bash
+./gradlew :app:packageZygiskModule
+```
+
+产物输出到：
+
+```
+app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip
+```
 
 ### 产物输出
 

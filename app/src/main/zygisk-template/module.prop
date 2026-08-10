@@ -1,0 +1,6 @@
+id=zygisk_tcqt
+name=Zygisk TCQT
+version=@VERSION@
+versionCode=@VERSION_CODE@
+author=owo233
+description=TCQT — QQ/TIM 增强模块的 Zygisk 注入模式，无需 Xposed 框架。

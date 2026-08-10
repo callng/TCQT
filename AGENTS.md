@@ -16,11 +16,15 @@ TCQT is an Xposed module for QQ/TIM Android (NT architecture) providing message 
 # Build both
 ./gradlew :app:assembleDebug :app:assembleRelease
 
+# Build Zygisk module ZIP (Magisk/KernelSU, no signing required)
+./gradlew :app:packageZygiskModule
+
 # Clean build
 ./gradlew clean :app:assembleDebug
 ```
 
 Output APKs: `app/build/outputs/apk/{debug,release}/TCQT-*.apk`
+Output Zygisk module: `app/build/outputs/zygisk/TCQT-zygisk-*.zip`
 
 ## Requirements
 
@@ -33,15 +37,18 @@ Output APKs: `app/build/outputs/apk/{debug,release}/TCQT-*.apk`
 
 ```
 app/                    # Main module (com.owo233.tcqt)
-├── src/main/java/
-│   ├── com/owo233/tcqt/
-│   │   ├── hooks/      # Hook implementations
-│   │   ├── ext/        # Core interfaces (IAction, Setting)
-│   │   ├── loader/     # Xposed entry points
-│   │   ├── ui/         # Compose settings UI
-│   │   └── utils/      # DexKit, reflection, logging
-│   └── top/artmoe/inao/# QQ protobuf message models
-├── src/main/proto/     # Protobuf definitions
+├── src/main/
+│   ├── cpp/            # Zygisk native injector + self-made ArtMethod hook engine
+│   ├── java/
+│   │   ├── com/owo233/tcqt/
+│   │   │   ├── hooks/      # Hook implementations
+│   │   │   ├── ext/        # Core interfaces (IAction, Setting)
+│   │   │   ├── loader/     # Xposed entry points (legacy + modern + zygisk)
+│   │   │   ├── ui/         # Compose settings UI
+│   │   │   └── utils/      # DexKit, reflection, logging
+│   │   └── top/artmoe/inao/# QQ protobuf message models
+│   ├── proto/         # Protobuf definitions
+│   └── zygisk-template/ # Magisk/KernelSU module template for Zygisk mode
 libs/
 ├── annotations/        # @RegisterAction annotation
 ├── processor/          # KSP code generator
@@ -78,6 +85,31 @@ QQ runs multiple processes. Hooks specify which process(es) to run in:
 - `MSF` - Message service
 - `TOOL`, `OPENSDK`, `QZONE`, `QQFAV` - Other processes
 - `ALL` - All processes
+
+### Zygisk Mode (no Xposed framework needed)
+
+TCQT can also run by injecting into QQ/TIM through a Zygisk module
+(`./gradlew :app:packageZygiskModule`). Architecture :
+
+- `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
+  `postAppSpecialize` copies `payload/tcqt.apk` + `classes*.dex` into the app's
+  `files/.tcqt` dir, loads them via `InMemoryDexClassLoader` and calls
+  `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.
+- `app/src/main/cpp/art_hook.cpp` — self-made ArtMethod hook engine:
+  JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
+  `ScopedSuspendAll` + `WritableArtMethod` for safe mutation, ELF-symbol-resolved
+  libart.so helpers, memfd dual-mapped trampoline pool (arm64).
+- Java side (`loader/zygisk/`): `ZygiskEntry` bootstraps the host ClassLoader
+  (hook `LoadedApk.createAppFactory` → `AppComponentFactory.instantiateClassLoader`
+  → `ModuleLoader.initialize`); `ZygiskHookBridge` uses DexMaker to generate a
+  same-signature `bridge`/`backup` method pair per hooked method and dispatches
+  before/original/after callbacks in Java; `ZygiskHookEngine` implements
+  `IHookEngine` so all existing hooks run unchanged.
+- Module template at `app/src/main/zygisk-template/`; the packaging task pulls
+  `libtcqtzygisk.so` from AGP's merged native libs and the debug APK as payload.
+
+Do NOT enable the TCQT module in LSPosed and Zygisk mode simultaneously
+(shared config, double hooking).
 
 ### Generated Code
 

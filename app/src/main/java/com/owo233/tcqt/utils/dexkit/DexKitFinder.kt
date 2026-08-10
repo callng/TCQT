@@ -114,6 +114,10 @@ internal object DexKitFinder {
             System.loadLibrary("dexkit")
         }.onFailure {
             Log.e("dexkit library failed to load", it)
+        }.isSuccess || runCatching {
+            // Zygisk 注入模式下 dexkit 由 ZygiskEntry 提前 System.load 绝对路径，
+            // loadLibrary 会失败但 native 方法已注册，类可直接使用。
+            Class.forName("org.luckypray.dexkit.DexKitBridge")
         }.isSuccess
     }
 }
