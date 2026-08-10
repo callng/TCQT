@@ -480,7 +480,11 @@ val buildDualApkRelease = tasks.register("buildDualApkRelease") {
 
         val outFile = outApkProvider.get().asFile
         outFile.parentFile.mkdirs()
-        val ksPath = System.getenv("KEYSTORE_PATH")
+        val ksPathRaw = System.getenv("KEYSTORE_PATH")
+        val ksPath = ksPathRaw?.takeIf { it.isNotBlank() }?.let { raw ->
+            val f = File(raw)
+            if (f.isAbsolute) f.absolutePath else project.file(raw).absolutePath
+        }
         val ksPass = System.getenv("KEYSTORE_PASSWORD")
         val ksAlias = System.getenv("KEY_ALIAS")
         val ksKeyPass = System.getenv("KEY_PASSWORD")
@@ -620,7 +624,11 @@ val buildDualApkDebug = tasks.register("buildDualApkDebug") {
 
         val outFile = outApkProvider.get().asFile
         outFile.parentFile.mkdirs()
-        val ksPath = System.getenv("KEYSTORE_PATH")
+        val ksPathRaw = System.getenv("KEYSTORE_PATH")
+        val ksPath = ksPathRaw?.takeIf { it.isNotBlank() }?.let { raw ->
+            val f = File(raw)
+            if (f.isAbsolute) f.absolutePath else project.file(raw).absolutePath
+        }
         val ksPass = System.getenv("KEYSTORE_PASSWORD")
         val ksAlias = System.getenv("KEY_ALIAS")
         val ksKeyPass = System.getenv("KEY_PASSWORD")
