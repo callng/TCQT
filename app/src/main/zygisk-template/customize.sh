@@ -100,7 +100,7 @@ if [ -d "$active_dir/zygisk" ] && [ -d "$active_dir/payload" ]; then
     ui_print "  完全结束并重新启动 QQ/TIM 即可生效（无需重启设备）"
   fi
 else
-  ui_print "! 首次安装，请重启设备后生效"
+  ui_print "! 请重启设备后生效"
 fi
 
 ui_print "- TCQT Zygisk installed"
