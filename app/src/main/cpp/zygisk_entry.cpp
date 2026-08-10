@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -21,12 +22,13 @@ constexpr uint64_t DEX_MAX_BYTES = 64ULL * 1024 * 1024;
 
 bool is_qq_or_tim(const std::string &process_name) {
     const char *prefixes[] = {"com.tencent.mobileqq", "com.tencent.tim"};
-    for (const char *prefix : prefixes) {
-        if (process_name == prefix) return true;
-        if (process_name.rfind(prefix, 0) == 0 && process_name[std::strlen(prefix)] == ':')
-            return true;
-    }
-    return false;
+
+    return std::any_of(std::begin(prefixes), std::end(prefixes),
+                       [&process_name](const char* prefix) {
+                           return process_name == prefix ||
+                                  (process_name.rfind(prefix, 0) == 0 &&
+                                   process_name[std::strlen(prefix)] == ':');
+                       });
 }
 
 std::string get_jstring(JNIEnv *env, jstring str) {
@@ -111,9 +113,9 @@ std::vector<std::string> read_dex_list(int module_dir_fd) {
 
 class TcqtZygisk : public zygisk::ModuleBase {
 public:
-    void onLoad(zygisk::Api *api, JNIEnv *env) override {
-        this->api = api;
-        this->env = env;
+    void onLoad(zygisk::Api *api_ptr, JNIEnv *env_ptr) override {
+        this->api = api_ptr;
+        this->env = env_ptr;
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
@@ -126,6 +128,17 @@ public:
         int dir_fd = api->getModuleDir();
         if (dir_fd < 0) {
             LOGE("preAppSpecialize: getModuleDir failed");
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+
+        // 主动禁用模块时 disable 文件 → 本次跳过注入
+        // 卸载标记为 remove → 本次跳过注入
+        // 宿主（QQ/TIM）下次启动即不再注入
+        if (faccessat(dir_fd, "disable", F_OK, 0) == 0 ||
+            faccessat(dir_fd, "remove", F_OK, 0) == 0) {
+            LOGI("preAppSpecialize: module disabled by user, skip injection");
+            close(dir_fd);
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
@@ -185,7 +198,9 @@ public:
         // ModuleLoader.installMainDispatcher().
         auto *dex_bufs = new std::vector<std::vector<uint8_t>>();
         for (const std::string &name : dex_names_) {
-            std::string dst = target_dir + "/" + name;
+            std::string dst = target_dir;
+            dst += "/";
+            dst += name;
             std::string rel = "payload/" + name;
             uint64_t dex_size = module_file_size(mod_fd, rel.c_str());
             if (!path_has_size(dst, dex_size)) {
