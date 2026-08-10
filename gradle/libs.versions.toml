@@ -14,7 +14,7 @@ miuix = "0.9.3"
 
 # Kotlin
 kotlin = "2.4.10"
-ksp = "2.3.10"
+ksp = "2.3.11"
 
 # KotlinX
 kotlinx-coroutines = "1.11.0"
