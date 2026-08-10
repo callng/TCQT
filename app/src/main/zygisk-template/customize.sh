@@ -84,11 +84,10 @@ set_perm_recursive "$MODPATH/payload" 0 0 0755 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 
-# 若模块已激活（更新而非首次安装），把新 payload 同步到运行中的模块目录
+# 判断是否需要重启设备
 module_id=$(grep_prop id "$MODPATH/module.prop")
 active_dir="/data/adb/modules/$module_id"
-injector_changed=false
-if [ -d "$active_dir/payload" ]; then
+if [ -d "$active_dir/zygisk" ] && [ -d "$active_dir/payload" ]; then
   ui_print "- Syncing payload to active module dir"
   rm -rf "$active_dir/payload"
   cp -r "$MODPATH/payload" "$active_dir/payload" ||
@@ -96,13 +95,12 @@ if [ -d "$active_dir/payload" ]; then
   set_perm_recursive "$active_dir/payload" 0 0 0755 0644
   if [ -f "$active_dir/zygisk/arm64-v8a.so" ] &&
     ! cmp -s "$active_dir/zygisk/arm64-v8a.so" "$MODPATH/zygisk/arm64-v8a.so"; then
-    injector_changed=true
+    ui_print "! Zygisk 注入器已更新，仍需重启设备生效"
+  else
+    ui_print "  完全结束并重新启动 QQ/TIM 即可生效（无需重启设备）"
   fi
+else
+  ui_print "! 首次安装，请重启设备后生效"
 fi
 
 ui_print "- TCQT Zygisk installed"
-if [ "$injector_changed" = "true" ]; then
-  ui_print "! Zygisk 注入器已更新，仍需重启设备生效"
-else
-  ui_print "  完全结束并重新启动 QQ/TIM 即可生效（无需重启设备）"
-fi

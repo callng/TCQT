@@ -1,12 +1,15 @@
 package com.owo233.tcqt.loader.zygisk
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.ApplicationInfo
 import android.util.Log
 import androidx.annotation.Keep
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import java.io.File
 import java.util.zip.ZipFile
 
@@ -106,6 +109,23 @@ object ZygiskEntry {
                     Log.e(TAG, "ModuleLoader.initialize failed", it)
                 }
             }
+        }
+
+        runCatching {
+            ContextWrapper::class.java
+                .getDeclaredMethod("attachBaseContext", Context::class.java)
+                .hookBefore { param ->
+                    val loader = (param.args.getOrNull(0) as? Context)?.classLoader
+                        ?: return@hookBefore
+                    if (loader === javaClass.classLoader) return@hookBefore
+                    runCatching {
+                        ModuleLoader.initialize(loader, apkPath, pkg, processName)
+                    }.onFailure {
+                        Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
+                    }
+                }
+        }.onFailure {
+            Log.e(TAG, "hook ContextWrapper.attachBaseContext failed", it)
         }
     }
 }

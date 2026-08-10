@@ -48,12 +48,12 @@ internal object ModuleLoader {
         HookSteps.initModulePath(selfPath)
         HookSteps.initHandleLoadPackage(processName, packageName)
 
-        nextInit(hostClassLoader)
-
-        sLoaded = true
+        if (nextInit(hostClassLoader)) {
+            sLoaded = true
+        }
     }
 
-    private fun nextInit(hostClassLoader: ClassLoader) {
+    private fun nextInit(hostClassLoader: ClassLoader): Boolean {
         val classNames = listOf(
             "com.tencent.common.app.QFixApplicationImplProxy",
             "com.tencent.common.app.QFixApplicationImpl"
@@ -65,7 +65,7 @@ internal object ModuleLoader {
                 val clazz = hostClassLoader.loadClass(className)
                 val method = clazz.getDeclaredMethod("attachBaseContext", Context::class.java)
                 hookQFixAttach(method)
-                return
+                return true
             } catch (th: Throwable) {
                 errors.add(className to th)
             }
@@ -74,7 +74,8 @@ internal object ModuleLoader {
         if (errors.size >= 2) errors.forEach { (className, th) ->
             Log.e("nextInit Failure: $className", th)
         }
-        errors.clear()
+
+        return false
     }
 
     private fun hookQFixAttach(attach: Method) {
