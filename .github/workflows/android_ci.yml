@@ -69,8 +69,6 @@ jobs:
 
           ./gradlew \
             :app:buildDualApkRelease \
-            :app:buildDualApkDebug \
-            :app:packageZygiskModule \
             --stacktrace \
             --build-cache \
             -Dorg.gradle.vfs.watch=false \
@@ -84,36 +82,20 @@ jobs:
               -quit
           )
 
-          APK_FILE_DEBUG=$(
-            find app/build/outputs/apk/debug \
-              -type f \
-              -name '*.apk' \
-              -print \
-              -quit
-          )
-
           if [ -z "$APK_FILE_RELEASE" ] || [ ! -f "$APK_FILE_RELEASE" ]; then
             echo "::error::没有找到 Release APK"
             exit 1
           fi
 
-          if [ -z "$APK_FILE_DEBUG" ] || [ ! -f "$APK_FILE_DEBUG" ]; then
-            echo "::error::没有找到 Debug APK"
-            exit 1
-          fi
-
           echo "APK_FILE_RELEASE=$APK_FILE_RELEASE" >> "$GITHUB_ENV"
-          echo "APK_FILE_DEBUG=$APK_FILE_DEBUG" >> "$GITHUB_ENV"
 
           echo "Release APK: $APK_FILE_RELEASE"
-          echo "Debug APK: $APK_FILE_DEBUG"
 
       - name: Show Artifacts SHA256
         run: |
           set -euo pipefail
 
           release_sha256=$(sha256sum "$APK_FILE_RELEASE" | cut -d ' ' -f 1)
-          debug_sha256=$(sha256sum "$APK_FILE_DEBUG" | cut -d ' ' -f 1)
 
           {
             echo "### Build Success :rocket:"
@@ -121,7 +103,6 @@ jobs:
             echo "| Type | SHA256 |"
             echo "|:----:|:-------|"
             echo "| Release | \`$release_sha256\` |"
-            echo "| Debug | \`$debug_sha256\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Release Artifact
@@ -129,20 +110,6 @@ jobs:
         with:
           path: ${{ env.APK_FILE_RELEASE }}
           name: TCQT-release-${{ github.sha }}
-          if-no-files-found: error
-
-      - name: Upload Debug Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          path: ${{ env.APK_FILE_DEBUG }}
-          name: TCQT-debug-${{ github.sha }}
-          if-no-files-found: error
-
-      - name: Upload Zygisk Module Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          path: app/build/outputs/zygisk/*.zip
-          name: TCQT-zygisk-${{ github.sha }}
           if-no-files-found: error
 
   upload-telegram:
