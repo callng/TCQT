@@ -81,6 +81,7 @@ val androidTargetSdkVersion = 37
 val androidCompileSdkVersion = 37
 val androidSourceCompatibility = JavaVersion.VERSION_21
 val androidTargetCompatibility = JavaVersion.VERSION_21
+val androidNdkVersion = "29.0.14206865"
 val kotlinJvmTarget = JvmTarget.JVM_21
 
 val appVersionCode = gitInfo.commitCount
@@ -93,6 +94,7 @@ extra.set("androidTargetSdkVersion", androidTargetSdkVersion)
 extra.set("androidCompileSdkVersion", androidCompileSdkVersion)
 extra.set("androidSourceCompatibility", androidSourceCompatibility)
 extra.set("androidTargetCompatibility", androidTargetCompatibility)
+extra.set("androidNdkVersion", androidNdkVersion)
 extra.set("kotlinJvmTarget", kotlinJvmTarget)
 extra.set("appVersionCode", appVersionCode)
 extra.set("appVersionName", appVersionName)

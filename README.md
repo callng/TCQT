@@ -38,16 +38,17 @@
 
 ### 安装
 
-1. 下载 `TCQT-zygisk-<版本>.zip`（见下方编译产物，或到 CI 构建中获取）。
-2. 在 Magisk / KernelSU / APatch 应用中选择「从本地安装」刷入该 ZIP，然后重启。
+1. 下载 `TCQT-<版本>-release.apk`（见下方编译产物，或到 CI 构建中获取）。
+2. 该文件是**双格式包**：直接安装即为 Xposed 模块 ；
+   如需 Zygisk 模式，把它改名为 `.zip`（或直接用 `TCQT-zygisk-<版本>.zip`），
+   在 Magisk / KernelSU / APatch 应用中选择「从本地安装」刷入，然后重启。
 3. 安装并打开 TCQT App 进行功能配置（配置与 LSPosed 模式完全相同，
    存储在宿主 QQ/TIM 的数据目录中）。
 4. 完全结束后台 QQ / TIM 进程并重新启动，功能即生效。
 
 ### 卸载
 
-在 Magisk / KernelSU / APatch 中直接移除 `TCQT (Zygisk)` 模块并重启即可；
-卸载脚本会自动清理注入到 QQ/TIM 数据目录的 payload 副本。
+在 Magisk / KernelSU / APatch 中直接卸载 `TCQT (Zygisk)` 模块并重启即可；
 
 ### 注意事项
 
@@ -82,11 +83,11 @@
 
 ### 环境要求
 
-| 依赖         | 说明                               |
-|--------------|------------------------------------|
-| JDK          | **21** （由项目 toolchain 强制要求） |
-| Android SDK  | compileSdk 37、minSdk 27            |
-| Git          | 用于生成版本号（提交数 + 短哈希）      |
+| 依赖          | 说明                          |
+|-------------|-----------------------------|
+| JDK         | **21** （由项目 toolchain 强制要求） |
+| Android SDK | compileSdk 37、minSdk 27     |
+| Git         | 用于生成版本号（提交数 + 短哈希）          |
 
 > 请确保 `local.properties` 中的 `sdk.dir` 指向有效的 Android SDK 路径。  
 > 以下命令在 Windows 下请使用 `gradlew.bat`，macOS / Linux 下使用 `./gradlew`。
@@ -127,7 +128,9 @@ KEY_PASSWORD=your_key_password \
 
 ### 编译 Zygisk 模块（可选）
 
-无需签名，直接打包 Magisk / KernelSU 可安装的模块 ZIP：
+产物为**双格式 APK**：既是可安装的 APK，也是 Magisk / KernelSU 可刷入的模块 ZIP
+（改名 `.zip` 即可刷入）
+未配置签名信息时使用 debug keystore 回退签名：
 
 ```bash
 ./gradlew :app:packageZygiskModule
@@ -136,7 +139,7 @@ KEY_PASSWORD=your_key_password \
 产物输出到：
 
 ```
-app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip
+app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip   # 双格式 APK 的 .zip 副本
 ```
 
 ### 产物输出
@@ -144,8 +147,8 @@ app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip
 编译完成后，APK 输出到以下目录：
 
 ```
-app/build/outputs/apk/debug/    # 调试版本（TCQT-<版本>-debug.apk）
-app/build/outputs/apk/release/  # 发布版本（TCQT-<版本>-release.apk）
+app/build/outputs/apk/debug/    # 调试版本（TCQT-<版本>-debug.apk，双格式）
+app/build/outputs/apk/release/  # 发布版本（TCQT-<版本>-release.apk，双格式）
 ```
 
 ### 清理构建

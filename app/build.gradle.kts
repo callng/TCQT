@@ -32,6 +32,8 @@ val androidSourceCompatibility =
     rootProject.extra["androidSourceCompatibility"] as JavaVersion
 val androidTargetCompatibility =
     rootProject.extra["androidTargetCompatibility"] as JavaVersion
+val androidNdkVersion =
+    rootProject.extra["androidNdkVersion"] as String
 val appVersionName =
     rootProject.extra["appVersionName"] as String
 val appVersionCode =
@@ -87,6 +89,8 @@ tasks.configureEach {
 
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
+    ndkVersion = androidNdkVersion
+
     compileSdk {
         version = release(androidCompileSdkVersion) {
             minorApiLevel = 0
@@ -284,17 +288,15 @@ fun registerPrepareTask(
         group = "zygisk"
         description = "组装 Zygisk 模块目录（$variant）"
         notCompatibleWithConfigurationCache("stages the Zygisk module ZIP")
-        dependsOn("assemble${variant.replaceFirstChar { it.uppercase() }}")
         dependsOn("externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}")
+        // stripped so 来自 strip<Variant>DebugSymbols 产物
+        dependsOn("strip${variant.replaceFirstChar { it.uppercase() }}DebugSymbols")
 
         val stageDirProvider = layout.buildDirectory.dir(stagingDirName)
         val templateDir = layout.projectDirectory.dir("src/main/zygisk-template")
-        val apkFileProvider =
-            layout.buildDirectory.file("outputs/apk/$variant/TCQT-${appVersionName}-$variant.apk")
         val soDirProvider = layout.buildDirectory.dir(strippedPath)
 
         inputs.dir(templateDir)
-        inputs.file(apkFileProvider)
         inputs.dir(soDirProvider)
         outputs.dir(stageDirProvider)
 
@@ -306,6 +308,12 @@ fun registerPrepareTask(
             // 模板
             templateDir.asFile.copyRecursively(stageDir)
 
+            stageDir.walkTopDown().forEach { f ->
+                if (f.isFile && f.extension == "sh") {
+                    f.writeText(f.readText(Charsets.UTF_8).replace("\r\n", "\n"), Charsets.UTF_8)
+                }
+            }
+
             // 版本占位符
             val propFile = File(stageDir, "module.prop")
             propFile.writeText(
@@ -314,22 +322,10 @@ fun registerPrepareTask(
                     .replace("@VERSION_CODE@", appVersionCode.toString())
             )
 
-            // 注入器 so
             val soBytes = File(soDirProvider.get().asFile, "libtcqtzygisk.so").readBytes()
             File(stageDir, "zygisk/arm64-v8a.so").apply {
                 parentFile.mkdirs()
                 writeBytes(soBytes)
-            }
-            // customize.sh 从 ZIP 的 lib/<abi>/ 解压
-            File(stageDir, "lib/arm64-v8a/libtcqtzygisk.so").apply {
-                parentFile.mkdirs()
-                writeBytes(soBytes)
-            }
-
-            // payload APK
-            File(stageDir, "payload/tcqt.apk").apply {
-                parentFile.mkdirs()
-                apkFileProvider.get().asFile.copyTo(this, overwrite = true)
             }
 
             logger.lifecycle("Zygisk module ($variant) staged at $stageDir")
@@ -351,20 +347,24 @@ val prepareZygiskModule = tasks.register("prepareZygiskModule") {
     dependsOn(prepareZygiskModuleRelease)
 }
 
-val packageZygiskModule = tasks.register("packageZygiskModule", Zip::class.java) {
+val packageZygiskModule = tasks.register("packageZygiskModule") {
     group = "zygisk"
-    description = "打包 TCQT Zygisk 模块 ZIP"
+    description = "打包 TCQT Zygisk 模块 ZIP（双格式 APK 的 .zip 副本）"
     notCompatibleWithConfigurationCache("packages the Zygisk module ZIP")
-    dependsOn(prepareZygiskModuleRelease)
+    dependsOn(buildDualApkRelease)
 
-    val stageDirProvider = layout.buildDirectory.dir("zygisk-module-release")
-    val outDirProvider = layout.buildDirectory.dir("outputs/zygisk")
-    archiveFileName.set("TCQT-zygisk-${appVersionName}.zip")
-    destinationDirectory.set(outDirProvider.get().asFile)
-    from(stageDirProvider)
+    val srcFile = layout.buildDirectory
+        .file("outputs/apk/release/TCQT-${appVersionName}-release.apk")
+    val outFile = layout.buildDirectory
+        .file("outputs/zygisk/TCQT-zygisk-${appVersionName}.zip")
+    inputs.file(srcFile)
+    outputs.file(outFile)
 
     doLast {
-        logger.lifecycle("Zygisk module ZIP: ${File(outDirProvider.get().asFile, archiveFileName.get())}")
+        val dst = outFile.get().asFile
+        dst.parentFile.mkdirs()
+        srcFile.get().asFile.copyTo(dst, overwrite = true)
+        logger.lifecycle("Zygisk module ZIP: $dst")
     }
 }
 

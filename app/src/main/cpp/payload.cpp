@@ -22,22 +22,13 @@ bool ensure_dir(const std::string &path) {
     return true;
 }
 
-bool copy_module_file(int module_dir_fd, const char *src_rel, const std::string &dst_path,
-                      uint64_t max_bytes) {
-    if (module_dir_fd < 0 || src_rel == nullptr) return false;
-
-    // O_NOFOLLOW prevents symlink attacks.
-    int src_fd = openat(module_dir_fd, src_rel, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
-    if (src_fd < 0) {
-        LOGE("copy_module_file: openat %s failed (errno=%d)", src_rel, errno);
-        return false;
-    }
+bool copy_fd_to_path(int src_fd, const std::string &dst_path, uint64_t max_bytes) {
+    if (src_fd < 0) return false;
 
     struct stat st{};
     if (fstat(src_fd, &st) != 0 || (st.st_mode & S_IFMT) != S_IFREG || st.st_size <= 0 ||
         static_cast<uint64_t>(st.st_size) > max_bytes) {
-        LOGE("copy_module_file: invalid module payload %s", src_rel);
-        close(src_fd);
+        LOGE("copy_fd_to_path: invalid source (size=%lld)", static_cast<long long>(st.st_size));
         return false;
     }
 
@@ -47,8 +38,7 @@ bool copy_module_file(int module_dir_fd, const char *src_rel, const std::string 
     int dst_fd = open(tmp_path.c_str(),
                       O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (dst_fd < 0) {
-        LOGE("copy_module_file: cannot create %s (errno=%d)", tmp_path.c_str(), errno);
-        close(src_fd);
+        LOGE("copy_fd_to_path: cannot create %s (errno=%d)", tmp_path.c_str(), errno);
         return false;
     }
 
@@ -66,33 +56,162 @@ bool copy_module_file(int module_dir_fd, const char *src_rel, const std::string 
 
     fsync(dst_fd);
     close(dst_fd);
-    close(src_fd);
 
     if (!ok) {
         unlink(tmp_path.c_str());
-        LOGE("copy_module_file: copy failed for %s", src_rel);
+        LOGE("copy_fd_to_path: copy failed for %s", dst_path.c_str());
         return false;
     }
     if (rename(tmp_path.c_str(), dst_path.c_str()) != 0) {
         unlink(tmp_path.c_str());
-        LOGE("copy_module_file: rename failed for %s (errno=%d)", dst_path.c_str(), errno);
+        LOGE("copy_fd_to_path: rename failed for %s (errno=%d)", dst_path.c_str(), errno);
         return false;
     }
     return true;
 }
 
-bool read_file(const std::string &path, std::vector<uint8_t> *out) {
-    if (out == nullptr) return false;
-    int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
-    if (fd < 0) return false;
+// Read every classes*.dex entry from an APK via JNI (java.util.zip.ZipFile),
+// mirroring FunBox's loader: the dual-format package is a plain APK, so its
+// dex files are read straight out of the zip. Entry names are probed in
+// ascending numbering order (classes.dex, classes2.dex, ...).
+bool read_dex_from_apk(JNIEnv *env, const std::string &apk_path,
+                       std::vector<std::vector<uint8_t>> *out) {
+    if (env == nullptr || out == nullptr) return false;
     out->clear();
-    uint8_t buf[65536];
-    ssize_t n;
-    while ((n = read(fd, buf, sizeof(buf))) > 0) {
-        out->insert(out->end(), buf, buf + n);
+
+    jclass zip_cls = env->FindClass("java/util/zip/ZipFile");
+    jclass in_cls = env->FindClass("java/io/InputStream");
+    jclass baos_cls = env->FindClass("java/io/ByteArrayOutputStream");
+    if (zip_cls == nullptr || in_cls == nullptr || baos_cls == nullptr) {
+        env->ExceptionClear();
+        LOGE("read_dex_from_apk: classes not found");
+        return false;
     }
-    close(fd);
-    return n == 0;
+
+    jmethodID zip_ctor = env->GetMethodID(zip_cls, "<init>", "(Ljava/lang/String;)V");
+    jmethodID get_entry = env->GetMethodID(
+            zip_cls, "getEntry", "(Ljava/lang/String;)Ljava/util/zip/ZipEntry;");
+    jmethodID get_input = env->GetMethodID(
+            zip_cls, "getInputStream", "(Ljava/util/zip/ZipEntry;)Ljava/io/InputStream;");
+    jmethodID zip_close = env->GetMethodID(zip_cls, "close", "()V");
+    jmethodID read = env->GetMethodID(in_cls, "read", "([B)I");
+    jmethodID in_close = env->GetMethodID(in_cls, "close", "()V");
+    jmethodID baos_ctor = env->GetMethodID(baos_cls, "<init>", "()V");
+    jmethodID baos_write = env->GetMethodID(baos_cls, "write", "([BII)V");
+    jmethodID to_byte_array = env->GetMethodID(baos_cls, "toByteArray", "()[B");
+    if (zip_ctor == nullptr || get_entry == nullptr || get_input == nullptr ||
+        zip_close == nullptr || read == nullptr || in_close == nullptr ||
+        baos_ctor == nullptr || baos_write == nullptr || to_byte_array == nullptr) {
+        env->ExceptionClear();
+        LOGE("read_dex_from_apk: methods not found");
+        return false;
+    }
+
+    jstring j_path = env->NewStringUTF(apk_path.c_str());
+    if (j_path == nullptr) {
+        env->ExceptionClear();
+        return false;
+    }
+    jobject zip = env->NewObject(zip_cls, zip_ctor, j_path);
+    env->DeleteLocalRef(j_path);
+    if (zip == nullptr) {
+        env->ExceptionClear();
+        LOGE("read_dex_from_apk: cannot open %s", apk_path.c_str());
+        return false;
+    }
+
+    jbyteArray j_buf = env->NewByteArray(64 * 1024);
+    if (j_buf == nullptr) {
+        env->ExceptionClear();
+        env->DeleteLocalRef(zip);
+        return false;
+    }
+
+    for (size_t n = 1; n <= MAX_DEX_FILES; ++n) {
+        std::string name = (n == 1) ? "classes.dex" : "classes" + std::to_string(n) + ".dex";
+        jstring j_name = env->NewStringUTF(name.c_str());
+        if (j_name == nullptr) {
+            env->ExceptionClear();
+            break;
+        }
+        jobject entry = env->CallObjectMethod(zip, get_entry, j_name);
+        env->DeleteLocalRef(j_name);
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            break;
+        }
+        if (entry == nullptr) break;  // no more dex files
+        jobject input = env->CallObjectMethod(zip, get_input, entry);
+        env->DeleteLocalRef(entry);
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            break;
+        }
+        if (input == nullptr) break;
+
+        jobject baos = env->NewObject(baos_cls, baos_ctor);
+        if (baos == nullptr) {
+            env->ExceptionClear();
+            env->DeleteLocalRef(input);
+            break;
+        }
+        bool read_ok = true;
+        jint nread;
+        while ((nread = env->CallIntMethod(input, read, j_buf)) > 0) {
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+                read_ok = false;
+                break;
+            }
+            env->CallVoidMethod(baos, baos_write, j_buf, 0, nread);
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+                read_ok = false;
+                break;
+            }
+        }
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            read_ok = false;
+        }
+        env->CallVoidMethod(input, in_close);
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(input);
+
+        if (!read_ok) {
+            env->DeleteLocalRef(baos);
+            break;
+        }
+        jbyteArray bytes = static_cast<jbyteArray>(
+                env->CallObjectMethod(baos, to_byte_array));
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            env->DeleteLocalRef(baos);
+            break;
+        }
+        env->DeleteLocalRef(baos);
+        if (bytes == nullptr) break;
+
+        jsize len = env->GetArrayLength(bytes);
+        if (len <= 0) {
+            env->DeleteLocalRef(bytes);
+            break;
+        }
+        std::vector<uint8_t> dex(static_cast<size_t>(len));
+        env->GetByteArrayRegion(bytes, 0, len, reinterpret_cast<jbyte *>(dex.data()));
+        env->DeleteLocalRef(bytes);
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            break;
+        }
+        out->push_back(std::move(dex));
+    }
+
+    env->DeleteLocalRef(j_buf);
+    env->CallVoidMethod(zip, zip_close);
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    env->DeleteLocalRef(zip);
+    return !out->empty();
 }
 
 jobject build_dex_classloader(JNIEnv *env, const std::vector<std::vector<uint8_t>> &dex_bufs) {

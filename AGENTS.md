@@ -16,15 +16,19 @@ TCQT is an Xposed module for QQ/TIM Android (NT architecture) providing message 
 # Build both
 ./gradlew :app:assembleDebug :app:assembleRelease
 
-# Build Zygisk module ZIP (Magisk/KernelSU, no signing required)
+# Build Zygisk module ZIP (Magisk/KernelSU; a copy of the dual-format release APK)
 ./gradlew :app:packageZygiskModule
+
+# Build dual-format APK for a specific build type (.apk installs, rename to .zip to flash)
+./gradlew :app:buildDualApkRelease
+./gradlew :app:buildDualApkDebug
 
 # Clean build
 ./gradlew clean :app:assembleDebug
 ```
 
-Output APKs: `app/build/outputs/apk/{debug,release}/TCQT-*.apk`
-Output Zygisk module: `app/build/outputs/zygisk/TCQT-zygisk-*.zip`
+Output APKs: `app/build/outputs/apk/{debug,release}/TCQT-*.apk` (dual-format: installable APK + flashable Zygisk module in one file, no nested payload APK)
+Output Zygisk module: `app/build/outputs/zygisk/TCQT-zygisk-*.zip` (byte-identical copy of the dual-format release APK)
 
 ## Requirements
 
@@ -89,11 +93,24 @@ QQ runs multiple processes. Hooks specify which process(es) to run in:
 ### Zygisk Mode (no Xposed framework needed)
 
 TCQT can also run by injecting into QQ/TIM through a Zygisk module
-(`./gradlew :app:packageZygiskModule`). Architecture :
+(`./gradlew :app:buildDualApkRelease` or `:app:packageZygiskModule`). The build
+emits a **dual-format package** (FunBox-style): one file that is simultaneously
+an installable APK and a flashable Zygisk module zip — the module files
+(`customize.sh`, `module.prop`, `zygisk/arm64-v8a.so`, `META-INF/...`) sit at the
+zip root next to the APK entries (`classes*.dex`, `AndroidManifest.xml`, ...).
+No payload APK is nested inside, keeping the package ≈ the plain APK size.
+Architecture:
 
+- `app/src/main/zygisk-template/customize.sh` — `SKIPUNZIP=1`; extracts only the
+  module files and copies the whole `$ZIPFILE` (which is the APK itself) to
+  `/data/adb/tcqt/main.apk` (atomic tmp+mv). The installed module dir holds no
+  payload; `zygisk/arm64-v8a.so` is the injector.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
-  `postAppSpecialize` copies `payload/tcqt.apk` + `classes*.dex` into the app's
-  `files/.tcqt` dir, loads them via `InMemoryDexClassLoader` and calls
+  `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk` and keeps the
+  fd; in `postAppSpecialize` copies it into the app's `files/.tcqt` dir
+  (size-checked), reads every `classes*.dex` entry from that copy via JNI
+  `java.util.zip.ZipFile` (mirrors FunBox's loader), loads them via
+  `InMemoryDexClassLoader` and calls
   `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.
 - `app/src/main/cpp/art_hook.cpp` — self-made ArtMethod hook engine:
   JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
@@ -105,8 +122,12 @@ TCQT can also run by injecting into QQ/TIM through a Zygisk module
   same-signature `bridge`/`backup` method pair per hooked method and dispatches
   before/original/after callbacks in Java; `ZygiskHookEngine` implements
   `IHookEngine` so all existing hooks run unchanged.
-- Module template at `app/src/main/zygisk-template/`; the packaging task pulls
-  `libtcqtzygisk.so` from AGP's merged native libs and the debug APK as payload.
+- Module template at `app/src/main/zygisk-template/`; the staging task pulls
+  `libtcqtzygisk.so` from AGP's stripped native libs as `zygisk/arm64-v8a.so`.
+  `buildDualApk*` merge the staged module files into the signed APK, re-zip
+  (`.so` under `lib/` + `resources.arsc` STORED), `zipalign -p 4` and re-sign
+  (v2 only; debug keystore fallback). `packageZygiskModule` just copies the
+  dual-format release APK to `outputs/zygisk/TCQT-zygisk-*.zip`.
 
 Do NOT enable the TCQT module in LSPosed and Zygisk mode simultaneously
 (shared config, double hooking).

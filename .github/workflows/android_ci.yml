@@ -37,14 +37,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          submodules: 'true'
           fetch-depth: 0
+          submodules: recursive
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: 21
+          distribution: temurin
+          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6.2.0
@@ -69,6 +70,7 @@ jobs:
           ./gradlew \
             :app:buildDualApkRelease \
             :app:buildDualApkDebug \
+            :app:packageZygiskModule \
             --stacktrace \
             --build-cache \
             -Dorg.gradle.vfs.watch=false \
@@ -134,6 +136,13 @@ jobs:
         with:
           path: ${{ env.APK_FILE_DEBUG }}
           name: TCQT-debug-${{ github.sha }}
+          if-no-files-found: error
+
+      - name: Upload Zygisk Module Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: app/build/outputs/zygisk/*.zip
+          name: TCQT-zygisk-${{ github.sha }}
           if-no-files-found: error
 
   upload-telegram:
