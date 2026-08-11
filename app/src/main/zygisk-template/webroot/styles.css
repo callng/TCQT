@@ -157,6 +157,32 @@ body {
     color: var(--text-sub);
 }
 
+/* ── 日志导出 ───────────────────────────── */
+
+#export-log-button {
+    width: 100%;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent, #3d7bff);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#export-log-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.log-export-result {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 10px;
+    line-height: 1.5;
+}
+
 .app-list {
     display: grid;
     gap: 10px;

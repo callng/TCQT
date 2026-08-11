@@ -24,18 +24,23 @@ object ZygiskEntry {
     private external fun nativeArtInit(): Boolean
 
     @JvmStatic
+    private external fun nativeLog(tag: String, msg: String)
+
+    @JvmStatic
     @Keep
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
         if (pkg != QQ_PACKAGE && pkg != TIM_PACKAGE) return
 
         try {
+            nativeLog(TAG, "init: $processName")
             // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）。
             loadNativeLibs(apkPath, dataDir)
 
             // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）。
             if (!nativeArtInit()) {
                 Log.e(TAG, "nativeArtInit failed, abort")
+                nativeLog(TAG, "nativeArtInit failed, abort")
                 return
             }
 
@@ -45,8 +50,10 @@ object ZygiskEntry {
             // 3. 等待宿主 ClassLoader 就绪后启动模块。
             installHostBootstrap(pkg, apkPath, processName)
             Log.i(TAG, "ZygiskEntry.init: $processName bootstrap installed (apk=$apkPath)")
+            nativeLog(TAG, "init done: $processName")
         } catch (t: Throwable) {
             Log.e(TAG, "ZygiskEntry.init failed", t)
+            nativeLog(TAG, "init failed: ${t.javaClass.simpleName}: ${t.message}")
         }
     }
 

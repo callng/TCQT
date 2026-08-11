@@ -14,6 +14,8 @@ const errorMessage = document.querySelector("#error-message");
 const retryButton = document.querySelector("#retry-button");
 const liveStatus = document.querySelector("#live-status");
 const userTabs = document.querySelector("#user-tabs");
+const exportButton = document.querySelector("#export-log-button");
+const exportResult = document.querySelector("#export-log-result");
 
 const PRIMARY_USER = { id: 0, name: "主用户" };
 let users = [PRIMARY_USER];
@@ -281,6 +283,69 @@ for (const appName of Object.keys(apps)) {
         changeScope(appName, event.currentTarget.checked);
     });
 }
+
+async function exportLog() {
+    exportButton.disabled = true;
+    exportResult.textContent = "";
+    hideError();
+
+    const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+    const dest = `/sdcard/Download/tcqt_zygisk_report_${stamp}.log`;
+
+    // 多用户下日志位于 /data/user/<id>/<pkg>/files/.tcqt/log.txt，用 glob 合并
+    // log*.txt 同时覆盖轮转出的上一代 log.1.txt
+    const logSources = Object.values(apps)
+        .map((app) => `/data/user/*/${app.package}/files/.tcqt/log*.txt`)
+        .join(" ");
+
+    const command = [
+        "mkdir -p /sdcard/Download || exit 1",
+        "{",
+        '  echo "===== 设备信息 $(date \'+%F %T\') ====="',
+        '  echo "[设备] $(getprop ro.product.manufacturer) $(getprop ro.product.model) ($(getprop ro.product.device))"',
+        '  echo "[系统] Android $(getprop ro.build.version.release) (SDK $(getprop ro.build.version.sdk))"',
+        '  echo "[指纹] $(getprop ro.build.fingerprint)"',
+        '  echo "[内核] $(uname -r)"',
+        '  echo "[页大小] $(getconf PAGE_SIZE) 字节"',
+        '  echo "[SELinux] $(getenforce)"',
+        '  echo "[KSU] $(ksud --version 2>/dev/null || echo unknown)"',
+        '  echo "[模块]"',
+        "  for f in /data/adb/modules/*/module.prop; do",
+        '    [ -f "$f" ] || continue',
+        '    echo "  $(sed -n \'s/^name=//p\' "$f") $(sed -n \'s/^version=//p\' "$f") [$(sed -n \'s/^id=//p\' "$f")]"',
+        "  done",
+        '  echo "[QQ] $(dumpsys package com.tencent.mobileqq 2>/dev/null | grep -m1 versionName | sed \'s/.*versionName=//\')"',
+        '  echo "[TIM] $(dumpsys package com.tencent.tim 2>/dev/null | grep -m1 versionName | sed \'s/.*versionName=//\')"',
+        '  echo "===== TCQT 日志 ====="',
+        `  cat ${logSources} 2>/dev/null || true`,
+        `} > '${dest}'`,
+        `wc -c < '${dest}'`,
+    ].join("\n");
+
+    try {
+        const result = await exec(command);
+        if (result.errno !== 0) {
+            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
+        }
+        const size = (result.stdout || "0").trim();
+        if (size === "0") {
+            exportResult.textContent = "导出失败：未生成任何内容";
+            toast("导出失败");
+        } else {
+            exportResult.textContent =
+                `已导出 ${size} 字节 → Download/tcqt_zygisk_report_${stamp}.log，请发送给开发者`;
+            toast("日志已导出");
+        }
+    } catch (error) {
+        console.error("Failed to export log", error);
+        showError("日志导出失败，请重试");
+        toast("导出失败");
+    } finally {
+        exportButton.disabled = false;
+    }
+}
+
+exportButton.addEventListener("click", exportLog);
 
 // ksu://icon 加载失败时回退到字母占位
 document.querySelectorAll(".app-icon img").forEach((image) => {

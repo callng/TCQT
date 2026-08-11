@@ -127,6 +127,11 @@ public:
         if (!enabled_) return;
         enabled_ = false;
 
+        // 本地文件日志：先于一切日志输出初始化（环形缓冲 + 落盘），并接管
+        // 崩溃信号，闪退时把最近日志写入文件
+        log_file_init(data_dir_ + "/files/.tcqt/log.txt");
+        log_file_install_crash_handlers();
+
         // 仅 MSF 进程：把 libfekit.so 的 fopen 调用中 /proc/self/smaps
         // 重定向到 /dev/null，过宿主进程检测（QQ/TIM 已由 match_target 过滤）。
         // 越早越好，需赶在 libfekit.so 加载之前注册回调。

@@ -110,7 +110,16 @@ Architecture:
   `/data/adb/tcqt/{qq,tim}.disable` (per-user: `user_<id>/` subdir); the
   injector re-checks them in `preAppSpecialize` on every fork, so changes take
   effect on the next app start without rebooting (mirrors FunBox's scope
-  markers, but default-enabled).
+  markers, but default-enabled). Also has a 「导出日志」button: copies
+  `files/.tcqt/log.txt` (QQ/TIM) to `/sdcard/Download` for bug reporting.
+- `app/src/main/cpp/log_file.h/.cpp` — local file logging: every `LOG*` macro
+  (see `log.h`) also appends to the app's `files/.tcqt/log.txt` (1MB cap per
+  file; over the cap the file rotates to `log.1.txt`, keeping one generation)
+  plus a 128-line in-memory ring buffer; SIGABRT/SEGV/BUS handlers dump the
+  ring buffer with signal info on crash, then chain to the previous handler
+  (ART sigchain) so tombstones still fire. New log files start with a one-time
+  device header (model / Android SDK / kernel / page size). Java-side key
+  lifecycle logs reach the same file via `ZygiskEntry.nativeLog`.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
   `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk` and keeps the
   fd; in `postAppSpecialize` copies it into the app's `files/.tcqt` dir
