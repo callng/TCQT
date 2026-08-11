@@ -16,7 +16,8 @@ add_library(tcqtzygisk SHARED
         art_hook.cpp
         elf_util.cpp
         trampoline.cpp
-        jni_bridge.cpp)
+        jni_bridge.cpp
+        plt_hook.cpp)
 
 target_include_directories(tcqtzygisk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tcqtzygisk log)

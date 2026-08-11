@@ -9,6 +9,7 @@
 #include "jni_bridge.h"
 #include "log.h"
 #include "payload.h"
+#include "plt_hook.h"
 #include "zygisk.hpp"
 
 namespace tcqt {
@@ -125,6 +126,14 @@ public:
     void postAppSpecialize(const zygisk::AppSpecializeArgs *) override {
         if (!enabled_) return;
         enabled_ = false;
+
+        // 仅 MSF 进程：把 libfekit.so 的 fopen 调用中 /proc/self/smaps
+        // 重定向到 /dev/null，过宿主进程检测（QQ/TIM 已由 match_target 过滤）。
+        // 越早越好，需赶在 libfekit.so 加载之前注册回调。
+        if (process_name_.size() >= 4 &&
+            process_name_.compare(process_name_.size() - 4, 4, ":MSF") == 0) {
+            install_fekit_fopen_hook();
+        }
 
         if (apk_fd_ < 0 || data_dir_.empty()) {
             LOGE("postAppSpecialize: incomplete state");
