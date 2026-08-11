@@ -164,7 +164,13 @@ internal object ZygiskHookBridge {
     @Keep
     fun dispatch(hookId: Long, thisObject: Any?, args: Array<Any?>): Any? {
         val entry = hooks[hookId]
-            ?: throw IllegalStateException("$TAG: no entry for hookId=$hookId")
+            ?: run {
+                // Unhook 与进行中调用的窗口：entry 已被移除但 trampoline 入口
+                // 仍可能被正在执行的调用命中。此时不能把异常抛进宿主——异常
+                // 会穿越 trampoline 的裸跳帧,静默返回 null 即可。
+                Log.w(TAG, "dispatch: no entry for hookId=$hookId (unhooked?)")
+                return null
+            }
         val param = MutableHookParam(entry.member, thisObject, args)
         val snapshot = entry.callbacks.toList()
 

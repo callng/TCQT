@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -24,7 +25,7 @@ private:
     TrampolinePool();
     uint8_t *writable_ = nullptr;
     const uint8_t *executable_ = nullptr;
-    size_t next_slot_ = 0;
+    std::atomic<size_t> next_slot_{0};
     size_t pool_size_ = 0;
 };
 

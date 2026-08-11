@@ -92,6 +92,50 @@ private:
     alignas(16) uint8_t storage_[256];
 };
 
+// ── Memory mapping helpers ────────────────────────────────────────────────────
+// Protection bits of the mapping containing `addr`, or -1 when unmapped.
+int get_prot_for_addr(uintptr_t addr) {
+    int fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return -1;
+    char buf[8192];
+    ssize_t n;
+    std::string data;
+    while ((n = read(fd, buf, sizeof(buf))) > 0) data.append(buf, static_cast<size_t>(n));
+    close(fd);
+    if (n < 0) return -1;
+
+    size_t pos = 0;
+    while (pos < data.size()) {
+        size_t eol = data.find('\n', pos);
+        if (eol == std::string::npos) eol = data.size();
+        const std::string line = data.substr(pos, eol - pos);
+        pos = eol + 1;
+
+        size_t dash = line.find('-');
+        if (dash == std::string::npos) continue;
+        uintptr_t start = strtoul(line.substr(0, dash).c_str(), nullptr, 16);
+        size_t sp1 = line.find(' ', dash);
+        if (sp1 == std::string::npos) continue;
+        size_t sp2 = line.find(' ', sp1 + 1);
+        if (sp2 == std::string::npos) continue;
+        uintptr_t end = strtoul(line.substr(dash + 1, sp1 - dash - 1).c_str(), nullptr, 16);
+        const std::string perms = line.substr(sp1 + 1, sp2 - sp1 - 1);
+        if (addr >= start && addr < end) {
+            int prot = 0;
+            if (perms.find('r') != std::string::npos) prot |= PROT_READ;
+            if (perms.find('w') != std::string::npos) prot |= PROT_WRITE;
+            if (perms.find('x') != std::string::npos) prot |= PROT_EXEC;
+            return prot;
+        }
+    }
+    return -1;
+}
+
+// Whether `addr` points into executable memory (a plausible code pointer).
+bool is_executable_address(uintptr_t addr) {
+    return addr != 0 && (get_prot_for_addr(addr) & PROT_EXEC) != 0;
+}
+
 // ── WritableArtMethod: page-by-page mprotect with restoration ────────────────
 constexpr size_t MAX_PAGES = 257;
 
@@ -154,43 +198,6 @@ public:
     ~WritableArtMethod() { restore(); }
 
 private:
-    static int get_prot_for_addr(uintptr_t addr) {
-        int fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
-        if (fd < 0) return -1;
-        char buf[8192];
-        ssize_t n;
-        std::string data;
-        while ((n = read(fd, buf, sizeof(buf))) > 0) data.append(buf, static_cast<size_t>(n));
-        close(fd);
-        if (n < 0) return -1;
-
-        size_t pos = 0;
-        while (pos < data.size()) {
-            size_t eol = data.find('\n', pos);
-            if (eol == std::string::npos) eol = data.size();
-            const std::string line = data.substr(pos, eol - pos);
-            pos = eol + 1;
-
-            size_t dash = line.find('-');
-            if (dash == std::string::npos) continue;
-            uintptr_t start = strtoul(line.substr(0, dash).c_str(), nullptr, 16);
-            size_t sp1 = line.find(' ', dash);
-            if (sp1 == std::string::npos) continue;
-            size_t sp2 = line.find(' ', sp1 + 1);
-            if (sp2 == std::string::npos) continue;
-            uintptr_t end = strtoul(line.substr(dash + 1, sp1 - dash - 1).c_str(), nullptr, 16);
-            const std::string perms = line.substr(sp1 + 1, sp2 - sp1 - 1);
-            if (addr >= start && addr < end) {
-                int prot = 0;
-                if (perms.find('r') != std::string::npos) prot |= PROT_READ;
-                if (perms.find('w') != std::string::npos) prot |= PROT_WRITE;
-                if (perms.find('x') != std::string::npos) prot |= PROT_EXEC;
-                return prot;
-            }
-        }
-        return -1;
-    }
-
     PageState pages_[MAX_PAGES];
     size_t count_ = 0;
 };
@@ -222,7 +229,8 @@ bool init_reflection_fields(JNIEnv *env) {
 
 // Measure ArtMethod size via two adjacent Constructor ArtMethod pointers, then
 // scan the first ArtMethod for the access_flags value.
-bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_offset) {
+bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_offset,
+                             uintptr_t *entry_point_out) {
     jclass throwable = env->FindClass("java/lang/Throwable");
     jclass clazz = env->FindClass("java/lang/Class");
     if (throwable == nullptr || clazz == nullptr) {
@@ -284,6 +292,8 @@ bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_off
             if (off == 4) {
                 *method_size = size;
                 *flags_offset = off;
+                memcpy(entry_point_out, reinterpret_cast<const void *>(first + size - sizeof(void *)),
+                       sizeof(*entry_point_out));
                 return true;
             }
             if (!candidate) {
@@ -295,6 +305,8 @@ bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_off
     if (candidate) {
         *method_size = size;
         *flags_offset = found;
+        memcpy(entry_point_out, reinterpret_cast<const void *>(first + size - sizeof(void *)),
+               sizeof(*entry_point_out));
         return true;
     }
     LOGE("probe_art_method_layout: access_flags not found");
@@ -374,7 +386,8 @@ bool art_hook_init(JNIEnv *env) {
 
     // 3. Probe ArtMethod layout.
     size_t method_size = 0, flags_offset = 0;
-    if (!probe_art_method_layout(env, &method_size, &flags_offset)) {
+    uintptr_t probed_ep = 0;
+    if (!probe_art_method_layout(env, &method_size, &flags_offset, &probed_ep)) {
         LOGE("art_hook_init: failed to probe ArtMethod layout");
         return false;
     }
@@ -384,6 +397,16 @@ bool art_hook_init(JNIEnv *env) {
     if (flags_offset + 4 > entry_point_offset) {
         LOGE("art_hook_init: invalid layout flags=%zu entry=%zu size=%zu", flags_offset,
              entry_point_offset, method_size);
+        return false;
+    }
+
+    // Sanity check: the entry point of the probed ArtMethod must point into
+    // executable memory. A wrong method_size would place the offset inside a
+    // neighbouring object (e.g. a heap pointer), and later entry-point writes
+    // would then corrupt that object instead of the ArtMethod.
+    if (!is_executable_address(probed_ep)) {
+        LOGE("art_hook_init: probed entry point %#lx at offset %zu is not executable",
+             probed_ep, entry_point_offset);
         return false;
     }
 
@@ -488,14 +511,34 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     (void)env;
     if (!g_initialized.load() || target == 0 || backup == 0 || bridge == 0) return -1;
 
-    ScopedSuspend suspend("TCQT Hooking");
-    if (!suspend.active()) return -2;
-
     size_t method_size = g_method_size.load();
     size_t af_off = g_access_flags_offset.load();
     size_t ep_off = g_entry_point_offset.load();
-    uint32_t precomp = g_acc_precompiled.load();
-    uint32_t fast_interp = g_acc_fast_interp.load();
+    if (af_off + 4 > method_size || ep_off + sizeof(void *) > method_size) {
+        LOGE("art_hook_method: invalid layout flags=%zu entry=%zu size=%zu", af_off,
+             ep_off, method_size);
+        return -8;
+    }
+
+    // Allocate the trampoline first: it has no side effect on the ArtMethods,
+    // so a pool exhaustion leaves everything untouched.
+    const uint8_t *trampoline = TrampolinePool::instance()->allocate(bridge, ep_off);
+    if (trampoline == nullptr) return -7;
+
+    ScopedSuspend suspend("TCQT Hooking");
+    if (!suspend.active()) return -2;
+
+    // Reject targets whose entry point does not look like a code pointer.
+    // With a wrong layout probe this would otherwise write the trampoline
+    // into a neighbouring object and corrupt the heap.
+    uintptr_t target_ep = 0, bridge_ep = 0;
+    memcpy(&target_ep, reinterpret_cast<const void *>(target + ep_off), sizeof(target_ep));
+    memcpy(&bridge_ep, reinterpret_cast<const void *>(bridge + ep_off), sizeof(bridge_ep));
+    if (!is_executable_address(target_ep) || !is_executable_address(bridge_ep)) {
+        LOGE("art_hook_method: non-executable entry point target=%#lx bridge=%#lx",
+             target_ep, bridge_ep);
+        return -9;
+    }
 
     {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
@@ -510,26 +553,40 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     if (!bw.acquire(backup, method_size)) return -5;
     if (!brw.acquire(bridge, method_size)) return -6;
 
-    // Original access flags snapshot.
-    uint32_t original_access_flags =
-            __atomic_load_n(reinterpret_cast<uint32_t *>(target + af_off), __ATOMIC_RELAXED);
-
-    // Bridge: add ACC_COMPILE_DONT_BOTHER, clear precompiled.
+    auto *target_af = reinterpret_cast<uint32_t *>(target + af_off);
     auto *bridge_af = reinterpret_cast<uint32_t *>(bridge + af_off);
+    auto *target_ep_ptr = reinterpret_cast<void **>(target + ep_off);
+    auto *backup_ep_ptr = reinterpret_cast<void **>(backup + ep_off);
+
+    // ── Snapshots for rollback ──────────────────────────────────────────────
+    uint32_t original_target_flags = __atomic_load_n(target_af, __ATOMIC_RELAXED);
+    uint32_t original_bridge_flags = __atomic_load_n(bridge_af, __ATOMIC_RELAXED);
+    void *original_target_ep = __atomic_load_n(target_ep_ptr, __ATOMIC_RELAXED);
+    void *original_bridge_ep = __atomic_load_n(
+            reinterpret_cast<void **>(bridge + ep_off), __ATOMIC_RELAXED);
+
+    auto rollback = [&]() {
+        __atomic_store_n(target_af, original_target_flags, __ATOMIC_RELAXED);
+        __atomic_store_n(target_ep_ptr, original_target_ep, __ATOMIC_RELAXED);
+        __atomic_store_n(bridge_af, original_bridge_flags, __ATOMIC_RELAXED);
+    };
+
+    // ── Bridge: add ACC_COMPILE_DONT_BOTHER, clear precompiled ─────────────
+    uint32_t precomp = g_acc_precompiled.load();
     __atomic_store_n(bridge_af,
                      (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) &
                              ~precomp,
                      __ATOMIC_RELAXED);
 
-    // Target: clear intrinsic (may change flags), add ACC_COMPILE_DONT_BOTHER,
-    // clear precompiled.
+    // ── Target: clear intrinsic (may change flags), add ACC_COMPILE_DONT_BOTHER ──
     call_set_not_intrinsic(target);
-    auto *target_af = reinterpret_cast<uint32_t *>(target + af_off);
-    uint32_t target_flags =
-            (__atomic_load_n(target_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) & ~precomp;
-    __atomic_store_n(target_af, target_flags, __ATOMIC_RELAXED);
+    uint32_t fast_interp = g_acc_fast_interp.load();
+    __atomic_store_n(target_af,
+                     (__atomic_load_n(target_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) &
+                             ~precomp,
+                     __ATOMIC_RELAXED);
 
-    // Snapshot target into backup.
+    // ── Snapshot target into backup ─────────────────────────────────────────
     memcpy(reinterpret_cast<void *>(backup), reinterpret_cast<const void *>(target),
            method_size);
 
@@ -548,17 +605,31 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
                          __ATOMIC_RELAXED);
     }
 
-    // Redirect the target's entry point to the trampoline.
-    const uint8_t *trampoline = TrampolinePool::instance()->allocate(bridge, ep_off);
-    if (trampoline == nullptr) return -7;
-    __atomic_store_n(reinterpret_cast<void **>(target + ep_off),
-                     const_cast<uint8_t *>(trampoline), __ATOMIC_RELAXED);
+    // Backup always runs through the interpreter: point it at the bridge's
+    // entry point (the bridge is never JIT-compiled, so its entry point is the
+    // interpreter bridge). The memcpy above carried over the target's original
+    // entry point, which may be JIT-compiled code compiled for the target's
+    // ArtMethod identity — executing it as `backup` would run with mismatched
+    // method context.
+    __atomic_store_n(backup_ep_ptr, original_bridge_ep, __ATOMIC_RELAXED);
+
+    // ── Redirect the target's entry point to the trampoline ─────────────────
+    __atomic_store_n(target_ep_ptr, const_cast<uint8_t *>(trampoline), __ATOMIC_RELAXED);
+
+    // ── Read-back verification; roll back on mismatch ───────────────────────
+    if (__atomic_load_n(target_ep_ptr, __ATOMIC_RELAXED) != trampoline) {
+        LOGE("art_hook_method: entry point write-back mismatch (bad ep_off=%zu?)",
+             ep_off);
+        rollback();
+        return -10;
+    }
 
     {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
-        g_hook_records[target] = HookRecord{backup, original_access_flags};
+        g_hook_records[target] = HookRecord{backup, original_target_flags};
     }
-    LOGI("art_hook_method: hooked target=%#lx bridge=%#lx", target, bridge);
+    LOGD("art_hook_method: hooked target=%#lx backup=%#lx bridge=%#lx ep=%#lx",
+         target, backup, bridge, reinterpret_cast<uintptr_t>(trampoline));
     return 0;
 }
 
@@ -594,7 +665,7 @@ int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup) {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
         g_hook_records.erase(target);
     }
-    LOGI("art_unhook_method: unhooked target=%#lx", target);
+    LOGD("art_unhook_method: unhooked target=%#lx", target);
     return 0;
 }
 

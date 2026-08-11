@@ -53,12 +53,13 @@ const uint8_t *TrampolinePool::allocate(uintptr_t bridge_art, size_t ep_offset) 
         LOGE("TrampolinePool: pool unavailable");
         return nullptr;
     }
-    if (next_slot_ + TRAMPOLINE_STRIDE > pool_size_) {
+    // Atomic slot allocation so concurrent hooks can never overlap and
+    // overwrite each other's stub instructions / literal.
+    size_t slot = next_slot_.fetch_add(TRAMPOLINE_STRIDE);
+    if (slot + TRAMPOLINE_STRIDE > pool_size_) {
         LOGE("TrampolinePool: pool exhausted");
         return nullptr;
     }
-    size_t slot = next_slot_;
-    next_slot_ += TRAMPOLINE_STRIDE;
 
     uint8_t *w = writable_ + slot;
     const uint8_t *x = executable_ + slot;

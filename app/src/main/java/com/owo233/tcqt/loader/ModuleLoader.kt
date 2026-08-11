@@ -32,7 +32,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal object ModuleLoader {
 
-    private var sLoaded = false
+    // createAppFactory 与 attachBaseContext 两条路径可能并发进入 initialize,
+    // 必须原子化防止重复安装 hook。
+    private val sLoaded = AtomicBoolean(false)
 
     private var isInit = AtomicBoolean(false)
     private var hasCapturedTinker = AtomicBoolean(false)
@@ -43,13 +45,13 @@ internal object ModuleLoader {
         packageName: String,
         processName: String
     ) {
-        if (sLoaded) return
+        if (sLoaded.get()) return
 
         HookSteps.initModulePath(selfPath)
         HookSteps.initHandleLoadPackage(processName, packageName)
 
         if (nextInit(hostClassLoader)) {
-            sLoaded = true
+            sLoaded.set(true)
         }
     }
 
