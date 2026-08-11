@@ -2,7 +2,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -15,18 +14,24 @@
 namespace tcqt {
 
 constexpr const char *SHARED_PAYLOAD_APK = "/data/adb/tcqt/main.apk";
+constexpr const char *SCOPE_DIR = "/data/adb/tcqt";
 constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
 constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
 
-bool is_qq_or_tim(const std::string &process_name) {
+enum class TargetApp { NONE, QQ, TIM };
+
+TargetApp match_target(const std::string &process_name) {
     const char *prefixes[] = {"com.tencent.mobileqq", "com.tencent.tim"};
 
-    return std::any_of(std::begin(prefixes), std::end(prefixes),
-                       [&process_name](const char* prefix) {
-                           return process_name == prefix ||
-                                  (process_name.rfind(prefix, 0) == 0 &&
-                                   process_name[std::strlen(prefix)] == ':');
-                       });
+    for (size_t i = 0; i < 2; ++i) {
+        const char *prefix = prefixes[i];
+        if (process_name == prefix ||
+            (process_name.rfind(prefix, 0) == 0 &&
+             process_name[std::strlen(prefix)] == ':')) {
+            return i == 0 ? TargetApp::QQ : TargetApp::TIM;
+        }
+    }
+    return TargetApp::NONE;
 }
 
 std::string get_jstring(JNIEnv *env, jstring str) {
@@ -55,7 +60,8 @@ public:
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
         std::string nice_name = get_jstring(env, args->nice_name);
-        if (!is_qq_or_tim(nice_name)) {
+        TargetApp target = match_target(nice_name);
+        if (target == TargetApp::NONE) {
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
@@ -78,6 +84,20 @@ public:
             return;
         }
         close(dir_fd);
+
+        std::string scope_path = SCOPE_DIR;
+        int user_id = args->uid / 100000;
+        if (user_id != 0) {
+            scope_path += "/user_";
+            scope_path += std::to_string(user_id);
+        }
+        scope_path += target == TargetApp::QQ ? "/qq.disable" : "/tim.disable";
+        if (access(scope_path.c_str(), F_OK) == 0) {
+            LOGI("preAppSpecialize: %s disabled via WebUI (uid=%d), skip injection",
+                 target == TargetApp::QQ ? "QQ" : "TIM", args->uid);
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
 
         int apk_fd = open(SHARED_PAYLOAD_APK, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
         if (apk_fd < 0) {

@@ -1,0 +1,357 @@
+:root {
+    --brand: #3d7bff;
+    --brand-strong: #2f62e6;
+    --brand-soft: rgba(61, 123, 255, 0.14);
+    --bg: #f3f5f9;
+    --card: #ffffff;
+    --text: #1a1d24;
+    --text-sub: #7a8190;
+    --line: rgba(20, 24, 34, 0.08);
+    --danger: #e5484d;
+    --success: #30a46c;
+    --switch-off: #d2d7e0;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1117;
+        --card: #1a1d26;
+        --text: #e8eaef;
+        --text-sub: #8b92a3;
+        --line: rgba(255, 255, 255, 0.08);
+        --switch-off: #3a3f4d;
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC",
+        "Microsoft YaHei", sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+.page {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #3d7bff 0%, #6a5bff 100%);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(61, 123, 255, 0.28);
+    margin-bottom: 16px;
+}
+
+.hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.hero-logo {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.18);
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+}
+
+.hero-text h1 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.hero-summary {
+    flex-shrink: 0;
+}
+
+.summary-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ── 多用户 tab ───────────────────────────── */
+
+.user-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+}
+
+.user-tab {
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--text-sub);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.user-tab[aria-selected="true"] {
+    background: var(--brand-soft);
+    border-color: var(--brand);
+    color: var(--brand);
+    font-weight: 600;
+}
+
+.user-tab:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* ── 区块与卡片 ───────────────────────────── */
+
+.section {
+    margin-bottom: 16px;
+}
+
+.section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 4px;
+    margin-bottom: 10px;
+}
+
+.section-heading h2 {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.section-hint {
+    font-size: 12px;
+    color: var(--text-sub);
+}
+
+.app-list {
+    display: grid;
+    gap: 10px;
+}
+
+.app-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    transition: opacity 0.2s ease;
+}
+
+.app-card.is-unavailable {
+    opacity: 0.55;
+}
+
+.app-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.app-icon {
+    position: relative;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 18px;
+    color: #fff;
+}
+
+.app-icon-qq {
+    background: linear-gradient(135deg, #12b7f5, #0079d6);
+}
+
+.app-icon-tim {
+    background: linear-gradient(135deg, #2fd1c0, #0aa79b);
+}
+
+.app-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+.app-icon img:not([hidden]) {
+    display: block;
+}
+
+.app-icon img[hidden] + .icon-fallback {
+    display: grid;
+}
+
+.icon-fallback {
+    display: none;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.app-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-info strong {
+    font-size: 16px;
+}
+
+.app-info small {
+    font-size: 12px;
+    color: var(--text-sub);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-state {
+    display: inline-block;
+    width: fit-content;
+    margin-top: 4px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.app-state.state-on {
+    color: var(--success);
+    background: rgba(48, 164, 108, 0.12);
+}
+
+.app-state.state-off {
+    color: var(--text-sub);
+    background: rgba(128, 138, 158, 0.12);
+}
+
+/* ── 开关（MIUI 风格）────────────────────── */
+
+.switch {
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+}
+
+.switch-track {
+    display: block;
+    width: 52px;
+    height: 30px;
+    border-radius: 999px;
+    background: var(--switch-off);
+    transition: background 0.2s ease;
+}
+
+.switch-track::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+    transition: transform 0.2s ease;
+}
+
+.switch input:checked + .switch-track {
+    background: var(--brand);
+}
+
+.switch input:checked + .switch-track::after {
+    transform: translateX(22px);
+}
+
+.switch input:disabled + .switch-track {
+    opacity: 0.5;
+}
+
+/* ── 提示 / 错误 ──────────────────────────── */
+
+.tip {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 16px;
+}
+
+.error-panel {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(229, 72, 77, 0.1);
+    border: 1px solid rgba(229, 72, 77, 0.3);
+    font-size: 13px;
+}
+
+.error-panel button {
+    margin-top: 8px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

@@ -25,6 +25,10 @@ ui_print "- Extracting Zygisk library"
 unzip -o "$ZIPFILE" 'zygisk/arm64-v8a.so' -d "$MODPATH" >&2 ||
   abort "! Missing arm64-v8a Zygisk library"
 
+ui_print "- Extracting WebUI"
+unzip -o "$ZIPFILE" 'webroot/*' -d "$MODPATH" >&2 ||
+  abort "! Missing webroot"
+
 ui_print "- Storing TCQT package"
 DATAPATH="/data/adb/tcqt"
 mkdir -p "$DATAPATH" || abort "! Failed to create $DATAPATH"
@@ -37,6 +41,7 @@ rm -rf "$MODPATH/payload"
 
 ui_print "- Setting permissions"
 set_perm_recursive "$MODPATH/zygisk" 0 0 0755 0644
+set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 

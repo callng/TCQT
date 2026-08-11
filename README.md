@@ -40,7 +40,7 @@
 
 1. 下载 `TCQT-<版本>-release.apk`（见下方编译产物，或到 CI 构建中获取）。
 2. 该文件是**双格式包**：直接安装即为 Xposed 模块 ；
-   如需 Zygisk 模式，把它改名为 `.zip`（或直接用 `TCQT-zygisk-<版本>.zip`），
+   如需 Zygisk 模式，把它改名为 `.zip`，
    在 Magisk / KernelSU / APatch 应用中选择「从本地安装」刷入，然后重启。
 3. 安装并打开 TCQT App 进行功能配置（配置与 LSPosed 模式完全相同，
    存储在宿主 QQ/TIM 的数据目录中）。
@@ -56,6 +56,11 @@
   同时 hook 会造成冲突。使用 Zygisk 模式时请在 LSPosed 中停用 TCQT。
 - 当前以 arm64-v8a 为主，Android 15/16 为实验性支持。
 - 功能范围与 LSPosed 模式一致（包括 DexKit 方法查找、设置页联动等）。
+
+### 注入控制（WebUI）
+
+在支持模块 WebUI 的 KernelSU / APatch 管理器（模块详情页）中可打开
+**TCQT WebUI**，按应用（QQ / TIM）独立控制是否注入。
 
 ---
 

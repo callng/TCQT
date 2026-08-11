@@ -102,9 +102,15 @@ No payload APK is nested inside, keeping the package ≈ the plain APK size.
 Architecture:
 
 - `app/src/main/zygisk-template/customize.sh` — `SKIPUNZIP=1`; extracts only the
-  module files and copies the whole `$ZIPFILE` (which is the APK itself) to
-  `/data/adb/tcqt/main.apk` (atomic tmp+mv). The installed module dir holds no
-  payload; `zygisk/arm64-v8a.so` is the injector.
+  module files (incl. `webroot/*`) and copies the whole `$ZIPFILE` (which is
+  the APK itself) to `/data/adb/tcqt/main.apk` (atomic tmp+mv). The installed
+  module dir holds no payload; `zygisk/arm64-v8a.so` is the injector.
+- `app/src/main/zygisk-template/webroot/` — KernelSU/APatch WebUI: per-app
+  injection toggles backed by realtime marker files
+  `/data/adb/tcqt/{qq,tim}.disable` (per-user: `user_<id>/` subdir); the
+  injector re-checks them in `preAppSpecialize` on every fork, so changes take
+  effect on the next app start without rebooting (mirrors FunBox's scope
+  markers, but default-enabled).
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
   `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk` and keeps the
   fd; in `postAppSpecialize` copies it into the app's `files/.tcqt` dir

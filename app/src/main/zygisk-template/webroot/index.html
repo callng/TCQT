@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#3d7bff">
+    <title>TCQT · 注入控制</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="page">
+
+    <header class="hero">
+        <div class="hero-brand">
+            <div class="hero-logo" aria-hidden="true">TC</div>
+            <div class="hero-text">
+                <h1>TCQT</h1>
+            </div>
+        </div>
+        <div class="hero-summary" id="hero-summary" aria-live="polite">
+            <span class="summary-badge" id="summary-badge">…</span>
+        </div>
+    </header>
+
+    <!-- 多用户切换（设备存在多个用户时显示） -->
+    <nav id="user-tabs" class="user-tabs" role="tablist" aria-label="用户" hidden></nav>
+
+    <!-- 应用注入开关 -->
+    <section class="section" aria-labelledby="app-title">
+        <div class="section-heading">
+            <h2 id="app-title">注入目标</h2>
+            <span class="section-hint">关闭后该应用不再被注入</span>
+        </div>
+
+        <div class="app-list" id="app-list" aria-busy="true">
+            <div class="app-card" data-app="qq">
+                <div class="app-identity">
+                    <div class="app-icon app-icon-qq" aria-hidden="true">
+                        <img src="ksu://icon/com.tencent.mobileqq" alt="">
+                        <span class="icon-fallback">Q</span>
+                    </div>
+                    <div class="app-info">
+                        <strong>QQ</strong>
+                        <small>com.tencent.mobileqq</small>
+                        <span class="app-state" data-state-role="badge">…</span>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" disabled aria-label="启用 QQ">
+                    <span class="switch-track" aria-hidden="true"></span>
+                </label>
+            </div>
+
+            <div class="app-card" data-app="tim">
+                <div class="app-identity">
+                    <div class="app-icon app-icon-tim" aria-hidden="true">
+                        <img src="ksu://icon/com.tencent.tim" alt="">
+                        <span class="icon-fallback">T</span>
+                    </div>
+                    <div class="app-info">
+                        <strong>TIM</strong>
+                        <small>com.tencent.tim</small>
+                        <span class="app-state" data-state-role="badge">…</span>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" disabled aria-label="启用 TIM">
+                    <span class="switch-track" aria-hidden="true"></span>
+                </label>
+            </div>
+        </div>
+
+        <div id="error-panel" class="error-panel" hidden>
+            <p id="error-message">读取状态失败</p>
+            <button id="retry-button" type="button">重新加载</button>
+        </div>
+    </section>
+
+    <!-- 生效提示 -->
+    <aside class="tip">
+        <p>更改状态后重启对应应用生效。</p>
+    </aside>
+
+    <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
