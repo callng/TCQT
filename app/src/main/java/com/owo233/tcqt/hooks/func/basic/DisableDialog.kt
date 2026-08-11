@@ -17,6 +17,7 @@ import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.hooks.base.loadOrThrow
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
@@ -66,7 +67,13 @@ class DisableDialog : IAction {
     }
 
     private fun disableNewVersionDialog() {
-        loadOrThrow("com.tencent.mobileqq.upgrade.ui.dialog.UpgradeActivity").findMethod {
+        loadOrThrow(
+            if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_20)) {
+                "com.tencent.mobileqq.upgrade.ui.dialog.UpgradeActivity"
+            } else {
+                "com.tencent.mobileqq.upgrade.activity.UpgradeActivity"
+            }
+        ).findMethod {
             name = "doOnCreate"
             paramTypes = arrayOf(bundle)
         }.hookReplace { param ->
