@@ -4,6 +4,7 @@
 #include <sys/syscall.h>
 #include <sys/system_properties.h>
 #include <sys/time.h>
+#include <sys/uio.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -129,11 +130,95 @@ void append_hex(char *out, size_t *pos, size_t cap, uintptr_t value) {
     while (n > 0 && *pos + 1 < cap) out[(*pos)++] = buf[--n];
 }
 
-void crash_handler(int sig, siginfo_t * /*si*/, void *uctx) {
+// 常见 si_code 的文本名（tombstone 里 SI_TKILL 是 TCQT 处理器 re-raise
+// 造成的，原始 si_code 只在这里可见，用于区分真实内存故障与故意自杀）
+const char *si_code_name(int sig, int code) {
+    switch (code) {
+        case SI_TKILL: return "SI_TKILL";
+        case SI_USER: return "SI_USER";
+        case SI_KERNEL: return "SI_KERNEL";
+    }
+    switch (sig) {
+        case SIGBUS:
+            switch (code) {
+                case BUS_ADRALN: return "BUS_ADRALN";
+                case BUS_ADRERR: return "BUS_ADRERR";
+                case BUS_MCEERR_AR: return "BUS_MCEERR_AR";
+                case BUS_MCEERR_AO: return "BUS_MCEERR_AO";
+            }
+            break;
+        case SIGSEGV:
+            switch (code) {
+                case SEGV_MAPERR: return "SEGV_MAPERR";
+                case SEGV_ACCERR: return "SEGV_ACCERR";
+                case SEGV_BNDERR: return "SEGV_BNDERR";
+                case SEGV_PKUERR: return "SEGV_PKUERR";
+                case SEGV_MTEAERR: return "SEGV_MTEAERR";
+                case SEGV_MTESERR: return "SEGV_MTESERR";
+            }
+            break;
+    }
+    return "?";
+}
+
+// 崩溃 PC 附近的指令字节（pc-8..pc+8），供离线反汇编定位触发指令。
+// 用 process_vm_readv 读自身，避免信号处理器里触碰未映射内存。
+void dump_code_around(int fd, uintptr_t pc) {
+    if (pc == 0) return;
+    unsigned char bytes[16] = {0};
+    uintptr_t from = pc - 8;
+    struct iovec local = {bytes, sizeof(bytes)};
+    struct iovec remote = {reinterpret_cast<void *>(from), sizeof(bytes)};
+    ssize_t n = syscall(SYS_process_vm_readv, getpid(), &local, 1, &remote, 1, 0);
+    if (n <= 0) {
+        // 整段越界时退化为只读 pc 处 4 字节
+        remote.iov_base = reinterpret_cast<void *>(pc);
+        remote.iov_len = 4;
+        local.iov_len = 4;
+        n = syscall(SYS_process_vm_readv, getpid(), &local, 1, &remote, 1, 0);
+        if (n <= 0) return;
+        from = pc;
+    }
+    char buf[96];
+    size_t pos = 0;
+    const char hdr[] = "code@0x";
+    memcpy(buf, hdr, sizeof(hdr) - 1);
+    pos = sizeof(hdr) - 1;
+    append_hex(buf, &pos, sizeof(buf), from);
+    buf[pos++] = ':';
+    for (ssize_t i = 0; i < n; ++i) {
+        buf[pos++] = ' ';
+        char hi = static_cast<char>("0123456789abcdef"[bytes[i] >> 4]);
+        char lo = static_cast<char>("0123456789abcdef"[bytes[i] & 0xf]);
+        if (pos + 2 >= sizeof(buf)) break;
+        buf[pos++] = hi;
+        buf[pos++] = lo;
+    }
+    buf[pos++] = '\n';
+    write_all(fd, buf, pos);
+}
+
+void crash_handler(int sig, siginfo_t *si, void *uctx) {
     // 防重入：崩溃发生在日志代码自身时，恢复默认处理并重新 raise，保证终止
     if (g_in_crash_handler.exchange(true)) {
         signal(sig, SIG_DFL);
         raise(sig);
+        return;
+    }
+
+    // ART 隐式空指针检查（implicit null check）：ART 编译代码对 null 引用的
+    // 访问会触发 SEGV（si_addr 为 0 或很小的字段偏移），ART sigchain 捕获后
+    // 修复故障点并正常抛出 NullPointerException，是正常 Java 语义，不是进程
+    // 崩溃。若在此记录并 re-raise，日志里会堆满误报的 CRASH 块。判断条件：
+    // SEGV_MAPERR + si_addr < 4096（null+偏移）。真实崩溃（其他 si_addr、
+    // 其他 si_code、或 SIGBUS/SIGABRT）不受影响，照常记录。静默透传：只恢复
+    // 原处理器并 re-raise，不写日志。
+    if (sig == SIGSEGV && si != nullptr && si->si_code == SEGV_MAPERR &&
+        reinterpret_cast<uintptr_t>(si->si_addr) < 4096) {
+        struct sigaction old = g_old_actions[sig];
+        sigaction(sig, &old, nullptr);
+        raise(sig);
+        g_in_crash_handler.store(false);
         return;
     }
 
@@ -159,12 +244,25 @@ void crash_handler(int sig, siginfo_t * /*si*/, void *uctx) {
         size_t pos = 0;
         const char header[] = "\n========== CRASH ==========\n";
         write_all(fd, header, sizeof(header) - 1);
-        snprintf(buf, sizeof(buf), "signal %d, tid=%d pid=%d pc=0x", sig,
-                 static_cast<int>(syscall(SYS_gettid)), getpid());
-        write_all(fd, buf, strlen(buf));
+        int si_code = (si != nullptr) ? si->si_code : 0;
+        uintptr_t fault_addr =
+                (si != nullptr) ? reinterpret_cast<uintptr_t>(si->si_addr) : 0;
+        int n = snprintf(buf, sizeof(buf),
+                         "signal %d (si_code=%d %s, si_addr=0x", sig, si_code,
+                         si_code_name(sig, si_code));
+        write_all(fd, buf, static_cast<size_t>(n));
+        pos = 0;
+        append_hex(buf, &pos, sizeof(buf), fault_addr);
+        buf[pos++] = ')';
+        n = snprintf(buf + pos, sizeof(buf) - pos, " tid=%d pid=%d pc=0x",
+                     static_cast<int>(syscall(SYS_gettid)), getpid());
+        pos += static_cast<size_t>(n);
         append_hex(buf, &pos, sizeof(buf), pc);
         buf[pos++] = '\n';
         write_all(fd, buf, pos);
+
+        // 崩溃指令字节（离线反汇编）
+        dump_code_around(fd, pc);
 
         // 崩溃时刻寄存器（用于定位垃圾指针来源）
         const char reg_hdr[] = "regs:\n";

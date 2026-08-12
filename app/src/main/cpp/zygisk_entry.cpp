@@ -2,6 +2,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -52,6 +54,34 @@ bool path_has_size(const std::string &path, uint64_t expected) {
     return S_ISREG(st.st_mode) && static_cast<uint64_t>(st.st_size) == expected;
 }
 
+void log_impl_ident(zygisk::Api *api) {
+    FILE *fp = fopen("/proc/self/maps", "r");
+    if (fp != nullptr) {
+        char line[512];
+        int logged = 0;
+        while (logged < 3 && fgets(line, sizeof(line), fp) != nullptr) {
+            bool hit = false;
+            for (const char *p = line; *p != '\0' && !hit; ++p) {
+                const char needle[] = "zygisk";
+                size_t i = 0;
+                while (needle[i] != '\0' &&
+                       std::tolower(static_cast<unsigned char>(p[i])) == needle[i]) {
+                    ++i;
+                }
+                if (needle[i] == '\0') hit = true;
+            }
+            if (hit) {
+                line[strcspn(line, "\n")] = '\0';
+                LOGI("impl: %s", line);
+                ++logged;
+            }
+        }
+        fclose(fp);
+    }
+    uint32_t flags = api->getFlags();
+    LOGI("impl: getFlags()=0x%x", flags);
+}
+
 class TcqtZygisk : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api_ptr, JNIEnv *env_ptr) override {
@@ -73,6 +103,8 @@ public:
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
+
+        log_impl_ident(api);
 
         // 主动禁用模块时 disable 文件 → 本次跳过注入
         // 卸载标记为 remove → 本次跳过注入
@@ -113,6 +145,15 @@ public:
             close(apk_fd);
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
+        }
+
+        // 通知 Zygisk 实现保留该 fd：fork 路径下 ReZygisk 会在 pre 之后
+        // 关闭所有未豁免的 fd（rz_sanitize_fds），不豁免则 post 阶段复制
+        // main.apk 会因 fd 已关闭而失败。
+        if (api->exemptFd(apk_fd)) {
+            LOGI("preAppSpecialize: payload fd %d exempted", apk_fd);
+        } else {
+            LOGW("preAppSpecialize: exemptFd unavailable or rejected (fd %d)", apk_fd);
         }
 
         apk_fd_ = apk_fd;
@@ -156,15 +197,24 @@ public:
 
         // Copy the package into the app's data dir (only when missing or size
         // changed). ZygiskEntry.init later uses it to extract libdexkit.so.
+        // 先校验 fd 仍指向 payload：个别实现（如未豁免 fd 的 fork 路径）可能
+        // 在 pre 之后把它关掉，此时跳过复制、不 close 可能已被复用的 fd 号，
+        // 后面改为从已有路径读 dex（main.apk 已存在时同样能注入）。
         std::string apk_dst = target_dir + "/main.apk";
-        if (!path_has_size(apk_dst, apk_size_)) {
-            if (!copy_fd_to_path(apk_fd, apk_dst, APK_MAX_BYTES)) {
-                LOGE("postAppSpecialize: failed to copy main.apk");
-                close(apk_fd);
-                return;
+        struct stat st {};
+        bool fd_ok = fstat(apk_fd, &st) == 0 && S_ISREG(st.st_mode);
+        if (fd_ok) {
+            if (!path_has_size(apk_dst, apk_size_)) {
+                if (!copy_fd_to_path(apk_fd, apk_dst, APK_MAX_BYTES)) {
+                    LOGE("postAppSpecialize: failed to copy main.apk");
+                    close(apk_fd);
+                    return;
+                }
             }
+            close(apk_fd);
+        } else {
+            LOGW("postAppSpecialize: payload fd %d no longer valid, skip copy", apk_fd);
         }
-        close(apk_fd);
 
         // Read all classes*.dex from the copied package and build an
         // InMemoryDexClassLoader. An APK-path DexClassLoader is not usable
