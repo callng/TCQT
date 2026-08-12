@@ -26,7 +26,7 @@ internal class MessagingNotificationBuilder(
 
     private val historyMessage = HashMap<String, MessagingStyle>()
     private val avatarHelper = QQAvatarHelper()
-    private val logger = LogUtils.xposedNoFilter
+    private val logger = LogUtils.android
 
     fun clearHistory() {
         historyMessage.clear()

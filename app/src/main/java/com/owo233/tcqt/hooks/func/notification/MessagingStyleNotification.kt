@@ -45,7 +45,8 @@ class MessagingStyleNotification : IAction {
         disableConversationSubChannel = { disableConversationSubChannel },
         disableBubble = { disableBubble }
     )
-    private val logger = LogUtils.xposedNoFilter
+
+    private val logger = LogUtils.android
 
     private val options: Int
         get() = TCQTSetting.getInt(OPTIONS_KEY)

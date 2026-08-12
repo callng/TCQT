@@ -32,6 +32,8 @@ internal object ZygiskHookBridge {
     private external fun nativeHookMethod(targetArt: Long, backupArt: Long, bridgeArt: Long): Int
     private external fun nativeUnhookMethod(targetArt: Long, backupArt: Long): Int
     private external fun nativeTrustDexFile(dexFile: DexFile): Boolean
+    private external fun nativeNoteDispatch(hookId: Long)
+    private external fun nativeInvokeBackup(backupMethod: Method, thisObject: Any?, args: Array<Any?>): Any?
 
     private enum class Mode { BEFORE, AFTER, REPLACE }
 
@@ -44,93 +46,71 @@ internal object ZygiskHookBridge {
 
     private val hooks = ConcurrentHashMap<Long, HookEntry>()
     private val memberToHookId = ConcurrentHashMap<Member, Long>()
-    private val idSeq = AtomicLong(0)
-    private val hookLock = Any()
 
-    // ── 对外 hook API（IHookEngine 调用） ───────────────────────────────────
+    // ── Public hook API（与 Xposed 语义一致） ──────────────────────────────
 
-    fun hookBefore(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook =
-        install(member, Registration(priority, Mode.BEFORE, callback))
+    fun hookBefore(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook {
+        val entry = getOrCreateHookEntry(member)
+        val reg = Registration(priority, Mode.BEFORE, callback)
+        entry.callbacks.add(reg)
+        entry.callbacks.sortByDescending { it.priority }
+        return Unhook { unhook(member, reg) }
+    }
 
-    fun hookAfter(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook =
-        install(member, Registration(priority, Mode.AFTER, callback))
+    fun hookAfter(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook {
+        val entry = getOrCreateHookEntry(member)
+        val reg = Registration(priority, Mode.AFTER, callback)
+        entry.callbacks.add(reg)
+        entry.callbacks.sortByDescending { it.priority }
+        return Unhook { unhook(member, reg) }
+    }
 
-    fun hookReplace(member: Member, priority: Int, callback: (Chain) -> Any?): Unhook =
-        install(member, Registration(priority, Mode.REPLACE, callback))
+    fun hookReplace(member: Member, priority: Int, callback: (Chain) -> Any?): Unhook {
+        val entry = getOrCreateHookEntry(member)
+        val reg = Registration(priority, Mode.REPLACE, callback)
+        entry.callbacks.add(reg)
+        entry.callbacks.sortByDescending { it.priority }
+        return Unhook { unhook(member, reg) }
+    }
 
-    private fun install(member: Member, reg: Registration): Unhook {
-        require(member is Method || member is Constructor<*>) {
-            "ZygiskHookBridge: unsupported member type ${member.javaClass}"
-        }
-        // Native members are hookable: art_hook_method snapshots the whole
-        // ArtMethod (including the JNI binding `data_` and the original JNI
-        // stub entry point) into the generated backup method before touching
-        // the target, so invoking the backup runs the original native
-        // implementation. Only abstract members (no executable code) cannot
-        // be hooked.
-        require(!Modifier.isAbstract(member.modifiers)) {
-            "ZygiskHookBridge: cannot hook abstract member $member"
-        }
+    private fun getOrCreateHookEntry(member: Member): HookEntry {
+        return memberToHookId[member]?.let { hooks[it] } ?: synchronized(this) {
+            memberToHookId[member]?.let { hooks[it] } ?: run {
+                val target = member as Executable
+                val targetArt = nativeGetArtMethod(target)
+                require(targetArt != 0L) { "failed to get ArtMethod for $member" }
 
-        val hookId = synchronized(hookLock) {
-            val existing = memberToHookId[member]
-            if (existing != null) {
-                existing
-            } else {
-                val targetArt = nativeGetArtMethod(member)
-                require(targetArt != 0L) { "ZygiskHookBridge: art_get_art_method returned 0 for $member" }
-
-                val pair = generateBridgePair(member)
-                val backupArt = nativeGetArtMethod(pair.backupMethod)
+                val pair = generateBridgePair(target)
                 val bridgeArt = nativeGetArtMethod(pair.bridgeMethod)
-                require(backupArt != 0L && bridgeArt != 0L) {
-                    "ZygiskHookBridge: art_get_art_method returned 0 for generated bridge"
+                val backupArt = nativeGetArtMethod(pair.backupMethod)
+                require(bridgeArt != 0L && backupArt != 0L) {
+                    "failed to get ArtMethod for generated bridge/backup"
                 }
 
-                val newId = idSeq.incrementAndGet()
-                hooks[newId] = HookEntry(member, pair.backupMethod)
-                memberToHookId[member] = newId
-
-                // hookId 必须先写入生成的静态字段，再安装 entry_point。
-                pair.setHookId(newId)
+                val hookId = bridgeCounter.getAndIncrement()
+                pair.setHookId(hookId)
 
                 val rc = nativeHookMethod(targetArt, backupArt, bridgeArt)
-                if (rc != 0) {
-                    hooks.remove(newId)
-                    memberToHookId.remove(member)
-                    error("ZygiskHookBridge: nativeHookMethod failed (rc=$rc) for $member")
-                }
-                newId
+                check(rc == 0) { "nativeHookMethod failed ($rc) for $member" }
+
+                val entry = HookEntry(member, pair.backupMethod)
+                hooks[hookId] = entry
+                memberToHookId[member] = hookId
+                entry
             }
         }
-
-        val registration = addCallback(hookId, reg)
-        return Unhook { removeCallback(hookId, registration, member) }
     }
 
-    private fun addCallback(hookId: Long, reg: Registration): Registration {
-        val entry = requireNotNull(hooks[hookId]) { "$TAG: no entry for hookId=$hookId" }
-        synchronized(entry.callbacks) {
-            val idx = entry.callbacks.indexOfFirst { it.priority < reg.priority }
-            if (idx == -1) entry.callbacks.add(reg) else entry.callbacks.add(idx, reg)
-        }
-        return reg
-    }
-
-    private fun removeCallback(hookId: Long, reg: Registration, member: Member) {
-        synchronized(hookLock) {
-            val entry = hooks[hookId] ?: return
-            if (!entry.callbacks.remove(reg)) return
-            if (entry.callbacks.isNotEmpty()) return
-
-            // 最后一个回调被移除：真正卸载 native hook。
+    private fun unhook(member: Member, reg: Registration) {
+        val hookId = memberToHookId[member] ?: return
+        val entry = hooks[hookId] ?: return
+        entry.callbacks.remove(reg)
+        if (entry.callbacks.isEmpty()) {
             val targetArt = nativeGetArtMethod(member as Executable)
             val backupArt = nativeGetArtMethod(entry.backupMethod)
             if (targetArt != 0L && backupArt != 0L && nativeUnhookMethod(targetArt, backupArt) == 0) {
                 hooks.remove(hookId)
                 memberToHookId.remove(member)
-            } else {
-                Log.e(TAG, "failed to unhook $member; callback removed but native hook kept")
             }
         }
     }
@@ -150,12 +130,8 @@ internal object ZygiskHookBridge {
     }
 
     private fun invokeBackup(entry: HookEntry, thisObject: Any?, args: Array<Any?>): Any? {
-        val backup = entry.backupMethod
-        return if (Modifier.isStatic(entry.member.modifiers)) {
-            backup.invoke(null, *args)
-        } else {
-            backup.invoke(thisObject, *args)
-        }
+        val self = if (Modifier.isStatic(entry.member.modifiers)) null else thisObject
+        return nativeInvokeBackup(entry.backupMethod, self, args)
     }
 
     // ── Dispatch（由生成的 bridge 方法调用） ────────────────────────────────
@@ -163,6 +139,9 @@ internal object ZygiskHookBridge {
     @JvmStatic
     @Keep
     fun dispatch(hookId: Long, thisObject: Any?, args: Array<Any?>): Any? {
+        // 记录本次 hook 调用（native 环形缓冲），崩溃时随日志落盘，用于定位
+        // 崩溃前最后执行的 hook。JNI 调用开销在此热路径上可接受
+        nativeNoteDispatch(hookId)
         val entry = hooks[hookId]
             ?: run {
                 // Unhook 与进行中调用的窗口：entry 已被移除但 trampoline 入口
@@ -223,10 +202,47 @@ internal object ZygiskHookBridge {
         }
 
         val finalThrowable = param.throwable
-        val finalResult = param.result
+        val finalResult = sanitizeResult(entry.member, param.result)
         param.clear()
         finalThrowable?.let { throw it }
         return finalResult
+    }
+
+    private fun sanitizeResult(member: Member, value: Any?): Any? {
+        if (value == null) return null
+        val returnType = when (member) {
+            is Method -> member.returnType
+            else -> Void.TYPE
+        }
+        if (returnType == Void.TYPE) return null
+        if (returnType.isPrimitive) {
+            if (value === Unit) return defaultPrimitiveValue(returnType)
+            return when (returnType) {
+                Boolean::class.javaPrimitiveType -> (value as? Boolean) ?: false
+                Int::class.javaPrimitiveType -> (value as? Number)?.toInt() ?: 0
+                Long::class.javaPrimitiveType -> (value as? Number)?.toLong() ?: 0L
+                Float::class.javaPrimitiveType -> (value as? Number)?.toFloat() ?: 0f
+                Double::class.javaPrimitiveType -> (value as? Number)?.toDouble() ?: 0.0
+                Byte::class.javaPrimitiveType -> (value as? Number)?.toByte() ?: 0.toByte()
+                Short::class.javaPrimitiveType -> (value as? Number)?.toShort() ?: 0.toShort()
+                Char::class.javaPrimitiveType -> (value as? Char) ?: '\u0000'
+                else -> value
+            }
+        }
+        if (value === Unit) return null
+        return value
+    }
+
+    private fun defaultPrimitiveValue(type: Class<*>): Any = when (type) {
+        Boolean::class.javaPrimitiveType -> false
+        Int::class.javaPrimitiveType -> 0
+        Long::class.javaPrimitiveType -> 0L
+        Float::class.javaPrimitiveType -> 0f
+        Double::class.javaPrimitiveType -> 0.0
+        Byte::class.javaPrimitiveType -> 0.toByte()
+        Short::class.javaPrimitiveType -> 0.toShort()
+        Char::class.javaPrimitiveType -> '\u0000'
+        else -> 0
     }
 
     private class MutableHookParam(
@@ -398,7 +414,7 @@ internal object ZygiskHookBridge {
         fun declareBridgeOrBackup(name: String, isBackup: Boolean) {
             @Suppress("UNCHECKED_CAST")
             val mid = classId.getMethod(retTid, name, *allParamTids) as MethodId<Any, Any>
-            val modifiers = Modifier.PUBLIC or if (isStatic) Modifier.STATIC else 0
+            val modifiers = Modifier.PUBLIC or if (isBackup || isStatic) Modifier.STATIC else 0
             val code = dm.declare(mid, modifiers)
 
             if (isBackup) {

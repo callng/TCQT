@@ -127,19 +127,6 @@ public:
         if (!enabled_) return;
         enabled_ = false;
 
-        // 本地文件日志：先于一切日志输出初始化（环形缓冲 + 落盘），并接管
-        // 崩溃信号，闪退时把最近日志写入文件
-        log_file_init(data_dir_ + "/files/.tcqt/log.txt");
-        log_file_install_crash_handlers();
-
-        // 仅 MSF 进程：把 libfekit.so 的 fopen 调用中 /proc/self/smaps
-        // 重定向到 /dev/null，过宿主进程检测（QQ/TIM 已由 match_target 过滤）。
-        // 越早越好，需赶在 libfekit.so 加载之前注册回调。
-        if (process_name_.size() >= 4 &&
-            process_name_.compare(process_name_.size() - 4, 4, ":MSF") == 0) {
-            install_fekit_fopen_hook();
-        }
-
         if (apk_fd_ < 0 || data_dir_.empty()) {
             LOGE("postAppSpecialize: incomplete state");
             if (apk_fd_ >= 0) close(apk_fd_);
@@ -152,6 +139,19 @@ public:
         if (!ensure_dir(target_dir)) {
             close(apk_fd);
             return;
+        }
+
+        // 本地文件日志：目录就绪后初始化（环形缓冲 + 落盘），并接管崩溃
+        // 信号，闪退时把最近日志与最近调用的 hook 写入文件
+        log_file_init(target_dir + "/log.txt");
+        log_file_install_crash_handlers();
+
+        // 仅 MSF 进程：把 libfekit.so 的 fopen 调用中 /proc/self/smaps
+        // 重定向到 /dev/null，过宿主进程检测（QQ/TIM 已由 match_target 过滤）。
+        // 越早越好，需赶在 libfekit.so 加载之前注册回调。
+        if (process_name_.size() >= 4 &&
+            process_name_.compare(process_name_.size() - 4, 4, ":MSF") == 0) {
+            install_fekit_fopen_hook();
         }
 
         // Copy the package into the app's data dir (only when missing or size

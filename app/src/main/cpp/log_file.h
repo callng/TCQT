@@ -17,4 +17,8 @@ void tcqt_log_write(int level, const char *fmt, ...)
 // 然后恢复原处理器并重新 raise，保证 tombstone / 宿主崩溃链不受影响
 void log_file_install_crash_handlers();
 
+// 记录一次 hook 调用
+// 崩溃前最后执行的 hook）。hook_id 与 Java 侧 install 日志中的 id 对应
+void log_file_note_hook_call(uint64_t hook_id);
+
 }  // namespace tcqt

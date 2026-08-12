@@ -35,6 +35,10 @@ RingLine g_ring[RING_LINES];
 size_t g_ring_next = 0;
 size_t g_ring_count = 0;
 
+constexpr size_t HOOK_CALL_RING = 64;
+uint64_t g_hook_calls[HOOK_CALL_RING] = {0};
+size_t g_hook_calls_next = 0;
+
 // ── 日志文件 ─────────────────────────────────────────────────────────────────
 
 int g_log_fd = -1;
@@ -134,9 +138,18 @@ void crash_handler(int sig, siginfo_t * /*si*/, void *uctx) {
     }
 
     uintptr_t pc = 0;
+    uintptr_t regs[31] = {0};
+    uintptr_t sp = 0;
+    uintptr_t lr = 0;
 #if defined(__aarch64__)
     if (uctx != nullptr) {
-        pc = static_cast<uintptr_t>(reinterpret_cast<ucontext_t *>(uctx)->uc_mcontext.pc);
+        const auto *mc = &reinterpret_cast<ucontext_t *>(uctx)->uc_mcontext;
+        pc = static_cast<uintptr_t>(mc->pc);
+        for (int i = 0; i < 31; ++i) {
+            regs[i] = static_cast<uintptr_t>(mc->regs[i]);
+        }
+        sp = static_cast<uintptr_t>(mc->sp);
+        lr = static_cast<uintptr_t>(mc->regs[30]);
     }
 #endif
 
@@ -144,12 +157,33 @@ void crash_handler(int sig, siginfo_t * /*si*/, void *uctx) {
     if (fd >= 0) {
         char buf[512];
         size_t pos = 0;
-        const char header[] = "\n========== TCQT CRASH ==========\n";
+        const char header[] = "\n========== CRASH ==========\n";
         write_all(fd, header, sizeof(header) - 1);
         snprintf(buf, sizeof(buf), "signal %d, tid=%d pid=%d pc=0x", sig,
                  static_cast<int>(syscall(SYS_gettid)), getpid());
         write_all(fd, buf, strlen(buf));
         append_hex(buf, &pos, sizeof(buf), pc);
+        buf[pos++] = '\n';
+        write_all(fd, buf, pos);
+
+        // 崩溃时刻寄存器（用于定位垃圾指针来源）
+        const char reg_hdr[] = "regs:\n";
+        write_all(fd, reg_hdr, sizeof(reg_hdr) - 1);
+        for (int i = 0; i < 31; ++i) {
+            snprintf(buf, sizeof(buf), "x%02d=", i);
+            pos = strlen(buf);
+            append_hex(buf, &pos, sizeof(buf), regs[i]);
+            buf[pos++] = (i % 4 == 3 || i == 30) ? '\n' : ' ';
+            write_all(fd, buf, pos);
+        }
+        snprintf(buf, sizeof(buf), "sp=0x");
+        pos = strlen(buf);
+        append_hex(buf, &pos, sizeof(buf), sp);
+        buf[pos++] = ' ';
+        write_all(fd, buf, pos);
+        snprintf(buf, sizeof(buf), "lr=0x");
+        pos = strlen(buf);
+        append_hex(buf, &pos, sizeof(buf), lr);
         buf[pos++] = '\n';
         write_all(fd, buf, pos);
 
@@ -163,6 +197,19 @@ void crash_handler(int sig, siginfo_t * /*si*/, void *uctx) {
             const char *line = g_ring[(start + i) % RING_LINES].text;
             write_all(fd, line, strlen(line));
             write_all(fd, "\n", 1);
+        }
+
+        const char hook_hdr[] = "----- last hook calls (id, newest first) -----\n";
+        write_all(fd, hook_hdr, sizeof(hook_hdr) - 1);
+        char line[24];
+        for (size_t i = 0; i < HOOK_CALL_RING; ++i) {
+            // 从最新倒序输出
+            size_t idx = (g_hook_calls_next + HOOK_CALL_RING - 1 - i) % HOOK_CALL_RING;
+            uint64_t id = g_hook_calls[idx];
+            if (id == 0) continue;
+            int n = snprintf(line, sizeof(line), "%llu\n",
+                             static_cast<unsigned long long>(id));
+            if (n > 0) write_all(fd, line, static_cast<size_t>(n));
         }
         const char footer[] = "========== END ==========\n";
         write_all(fd, footer, sizeof(footer) - 1);
@@ -258,6 +305,12 @@ void log_file_install_crash_handlers() {
             g_old_actions[sig].sa_handler = SIG_DFL;
         }
     }
+}
+
+void log_file_note_hook_call(uint64_t hook_id) {
+    if (hook_id == 0) return;
+    g_hook_calls[g_hook_calls_next] = hook_id;
+    g_hook_calls_next = (g_hook_calls_next + 1) % HOOK_CALL_RING;
 }
 
 }  // namespace tcqt

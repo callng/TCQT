@@ -64,21 +64,22 @@ const uint8_t *TrampolinePool::allocate(uintptr_t bridge_art, size_t ep_offset) 
     uint8_t *w = writable_ + slot;
     const uint8_t *x = executable_ + slot;
 
-    // arm64 stub (20 bytes + 12-byte literal, padded to 32):
-    //   ldr x0, #12          ; x0 = bridge_art_method (8-byte literal at +12)
+    // arm64 stub (24 bytes + 8-byte literal, padded to 32):
+    //   ldr x0, #16          ; x0 = bridge_art_method (8-byte literal at +16)
     //   ldur x16, [x0, #ep]  ; x16 = [bridge_art + ep_offset] (quick entry point)
+    //   xpaci x16            ; strip PAC signature from x16 (NOP on non-PAC ARM64 CPUs)
     //   br x16               ; jump into the bridge
-    //   nop
     //   .8byte bridge_art_method
     uint32_t ep = static_cast<uint32_t>(ep_offset & 0x1ff);
     uint32_t ldur_x16 = 0xF8400010u | (ep << 12);  // LDUR X16, [X0, #imm9]
-    uint32_t instr[3] = {
-            0x58000060u,  // ldr x0, #12
+    uint32_t instr[4] = {
+            0x58000080u,  // ldr x0, #16
             ldur_x16,
+            0xD503241Fu,  // xpaci x16
             0xD61F0200u,  // br x16
     };
     memcpy(w, instr, sizeof(instr));
-    memcpy(w + 12, &bridge_art, sizeof(bridge_art));
+    memcpy(w + 16, &bridge_art, sizeof(bridge_art));
 
     // Flush icache so execution sees the new instructions.
     __builtin___clear_cache(const_cast<char *>(reinterpret_cast<const char *>(x)),

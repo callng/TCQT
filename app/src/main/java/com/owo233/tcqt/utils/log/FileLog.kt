@@ -28,13 +28,15 @@ internal object FileLog {
         Thread(r, "FileLog-Writer").apply { isDaemon = true }
     }
 
-    private val mediaDir: File by lazy {
-        @Suppress("DEPRECATION")
-        HookEnv.hostAppContext.externalMediaDirs
-            ?.firstOrNull { it != null && it.canWrite() }
-            ?.let { File(it, "${TCQTBuild.APP_NAME}/log") }
-            ?.apply { if (!exists()) mkdirs() }
-            ?: throw IllegalStateException("No external storage available")
+    private fun getMediaDir(): File? {
+        return runCatching {
+            val context = runCatching { HookEnv.hostAppContext }.getOrNull() ?: return null
+            @Suppress("DEPRECATION")
+            context.externalMediaDirs
+                ?.firstOrNull { it != null && it.canWrite() }
+                ?.let { File(it, "${TCQTBuild.APP_NAME}/log") }
+                ?.apply { if (!exists()) mkdirs() }
+        }.getOrNull()
     }
 
     fun i(msg: String, tag: String = TCQTBuild.HOOK_TAG, tr: Throwable? = null) =
@@ -104,7 +106,7 @@ internal object FileLog {
     }
 
     private fun getValidLogFile(): File? {
-        val baseDir = mediaDir
+        val baseDir = getMediaDir() ?: return null
         val baseFile = File(baseDir, DEFAULT_LOG_FILE_NAME)
 
         try {
@@ -153,7 +155,7 @@ internal object FileLog {
     private fun cleanOldLogs() {
         logExecutor.submit {
             try {
-                val baseDir = mediaDir
+                val baseDir = getMediaDir() ?: return@submit
                 val deadline = System.currentTimeMillis() - LOG_KEEP_DAYS * 24L * 3600L * 1000L
 
                 baseDir.listFiles()?.filter { file ->

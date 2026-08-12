@@ -40,7 +40,7 @@ class RemoveAD : IAction {
             syntheticIndex(1, 2, 3, 5)
         }?.declaredMethods
             ?.filter { it.returnType == View::class.java && it.emptyParam && it.isNotStatic }
-            ?.onEach { it.hookBefore { p -> p.result = Unit } }
+            ?.onEach { it.hookBefore { p -> p.result = null } }
     }
 
     private fun removeKeywordAD() {
@@ -50,13 +50,13 @@ class RemoveAD : IAction {
                 .firstOrNull {
                     it.isPublic && it.paramCount > 0 &&
                             it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
-                }?.hookBefore { param -> param.result = Unit }
+                }?.hookBefore { param -> param.result = null }
             load("com.tencent.mobileqq.aio.animation.pag.PagEasterEggPopManager")
                 ?.declaredMethods
                 ?.firstOrNull {
                     it.isPublic && it.paramCount > 0 &&
                             it.parameterTypes[0].name == "androidx.fragment.app.Fragment"
-                }?.hookBefore { param -> param.result = Unit }
+                }?.hookBefore { param -> param.result = null }
         }
     }
 
@@ -67,7 +67,7 @@ class RemoveAD : IAction {
             name = "updateBanner"
             paramTypes = arrayOf(null, Message::class.java)
         }) {
-            it.result = Unit
+            it.result = null
         }
 
         load("cooperation.vip.ad.GrowHalfLayerHelper")
@@ -76,7 +76,7 @@ class RemoveAD : IAction {
                 method.returnType == Void.TYPE && method.isPublic &&
                         method.isFinal && method.paramCount == 3 &&
                         method.parameterTypes[0].name == "android.app.Activity"
-            }?.hookBefore { param -> param.result = Unit }
+            }?.hookBefore { param -> param.result = null }
     }
 
     override val key: String get() = "remove_ad"

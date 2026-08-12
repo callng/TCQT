@@ -70,9 +70,19 @@ void *hook_android_dlopen_ext(const char *filename, int flags, const void *extin
 }
 
 // ── 内存辅助（与 art_hook.cpp 中 WritableArtMethod 同一模式）──────────────────
+inline uintptr_t strip_pac(uintptr_t addr) {
+#ifdef __aarch64__
+    register uintptr_t x16 __asm__("x16") = addr;
+    __asm__ __volatile__("hint #32" : "+r"(x16));
+    return x16;
+#else
+    return addr;
+#endif
+}
 
 // 包含 `addr` 的映射的权限位，未映射返回 -1。
 int get_prot_for_addr(uintptr_t addr) {
+    addr = strip_pac(addr);
     int fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
     if (fd < 0) return -1;
     char buf[4096];

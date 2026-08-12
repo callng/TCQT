@@ -85,6 +85,15 @@ extern "C" jboolean jni_native_trust_dex_file(JNIEnv *env, jclass, jobject dex_f
     return art_trust_dex_file(env, dex_file) ? JNI_TRUE : JNI_FALSE;
 }
 
+extern "C" void jni_native_note_dispatch(JNIEnv *, jclass, jlong hook_id) {
+    log_file_note_hook_call(static_cast<uint64_t>(hook_id));
+}
+
+extern "C" jobject jni_native_invoke_backup(JNIEnv *env, jclass, jobject backup_method,
+                                            jobject this_object, jobjectArray args) {
+    return art_invoke_backup(env, backup_method, this_object, args);
+}
+
 }  // namespace
 
 bool register_entry_natives(JNIEnv *env, jobject class_loader) {
@@ -128,8 +137,13 @@ bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeTrustDexFile"),
              const_cast<char *>("(Ldalvik/system/DexFile;)Z"),
              reinterpret_cast<void *>(jni_native_trust_dex_file)},
+            {const_cast<char *>("nativeNoteDispatch"), const_cast<char *>("(J)V"),
+             reinterpret_cast<void *>(jni_native_note_dispatch)},
+            {const_cast<char *>("nativeInvokeBackup"),
+             const_cast<char *>("(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;"),
+             reinterpret_cast<void *>(jni_native_invoke_backup)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 4);
+    jint rc = env->RegisterNatives(clazz, methods, 6);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_hook_bridge_natives: RegisterNatives failed (%d)", rc);
