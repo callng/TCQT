@@ -98,10 +98,17 @@ public:
         }
 
         int dir_fd = api->getModuleDir();
-        if (dir_fd < 0) {
-            LOGE("preAppSpecialize: getModuleDir failed");
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
-            return;
+        bool disabled = false;
+        if (dir_fd >= 0) {
+            disabled = faccessat(dir_fd, "disable", F_OK, 0) == 0 ||
+                       faccessat(dir_fd, "remove", F_OK, 0) == 0;
+            close(dir_fd);
+        } else {
+            LOGW("preAppSpecialize: getModuleDir failed, fallback to path check");
+            constexpr const char *MODULE_DIR = "/data/adb/modules/zygisk_tcqt";
+            disabled =
+                    access((std::string(MODULE_DIR) + "/disable").c_str(), F_OK) == 0 ||
+                    access((std::string(MODULE_DIR) + "/remove").c_str(), F_OK) == 0;
         }
 
         log_impl_ident(api);
@@ -109,14 +116,11 @@ public:
         // 主动禁用模块时 disable 文件 → 本次跳过注入
         // 卸载标记为 remove → 本次跳过注入
         // 宿主（QQ/TIM）下次启动即不再注入
-        if (faccessat(dir_fd, "disable", F_OK, 0) == 0 ||
-            faccessat(dir_fd, "remove", F_OK, 0) == 0) {
+        if (disabled) {
             LOGI("preAppSpecialize: module disabled by user, skip injection");
-            close(dir_fd);
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
-        close(dir_fd);
 
         std::string scope_path = SCOPE_DIR;
         int user_id = args->uid / 100000;

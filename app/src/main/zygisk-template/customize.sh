@@ -45,6 +45,10 @@ set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 
+ui_print "- Fixing SELinux contexts"
+chcon -R u:object_r:system_file:s0 "$MODPATH" 2>/dev/null || true
+chcon u:object_r:system_lib_file:s0 "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null || true
+
 # 判断是否需要重启设备
 NEW_SO_HASH="$(sha1sum "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null | cut -d ' ' -f1)"
 OLD_SO_HASH="$(cat "$DATAPATH/so.sha1" 2>/dev/null | tr -d ' \r\n')"
