@@ -11,11 +11,14 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <mutex>
 #include <string>
+#include <vector>
 
+#include "elf_util.h"
 #include "log.h"
 #include "log_file.h"
 
@@ -119,6 +122,50 @@ void ring_push(const char *line) {
 std::atomic<bool> g_in_crash_handler{false};
 struct sigaction g_old_actions[NSIG];
 
+// ── 信号接管策略 ──────────────────────────────────────────────────────────
+bool art_uffd_gc_enabled() {
+    ArtLibrary art;
+    if (find_art_library(&art)) {
+        uintptr_t off = resolve_elf_symbol(art.path, "_ZN3art15gUseUserfaultfdE");
+        if (off != 0) {
+            uint8_t value = 0;
+            struct iovec local = {&value, sizeof(value)};
+            struct iovec remote = {reinterpret_cast<void *>(art.base + off), sizeof(value)};
+            if (syscall(SYS_process_vm_readv, getpid(), &local, 1, &remote, 1, 0) == 1) {
+                return value != 0;
+            }
+        }
+    }
+    // 后备：属性明确为 true（libart 变体符号缺失 / 厂商 ART / LTO 等）
+    char buf[PROP_VALUE_MAX] = {0};
+    __system_property_get("ro.dalvik.vm.enable_uffd_gc", buf);
+    return strcmp(buf, "true") == 0;
+}
+
+// 把信号交给上一个处理器，且必须携带原始 siginfo/ucontext。ART 的 FaultManager
+void chain_to_previous_handler(int sig, siginfo_t *si, void *uctx) {
+    const struct sigaction &old = g_old_actions[sig];
+    if ((old.sa_flags & SA_SIGINFO) && old.sa_sigaction != nullptr) {
+        old.sa_sigaction(sig, si, uctx);
+        return;
+    }
+    if (old.sa_handler == SIG_IGN) {
+        return;
+    }
+    if (old.sa_handler != SIG_DFL && old.sa_handler != nullptr) {
+        old.sa_handler(sig);
+        return;
+    }
+    // 没有可链式调用的旧处理器：恢复默认动作后把信号发回当前线程，让内核
+    // 以原始故障语义终止进程并产生 tombstone。用 tgkill 而非 raise()，明确
+    // 定向到当前故障线程（raise 可能被派发到同进程的其他线程）
+    struct sigaction dfl {};
+    dfl.sa_handler = SIG_DFL;
+    sigemptyset(&dfl.sa_mask);
+    sigaction(sig, &dfl, nullptr);
+    syscall(SYS_tgkill, getpid(), static_cast<pid_t>(syscall(SYS_gettid)), sig);
+}
+
 void append_hex(char *out, size_t *pos, size_t cap, uintptr_t value) {
     static const char digits[] = "0123456789abcdef";
     char buf[20];
@@ -199,25 +246,27 @@ void dump_code_around(int fd, uintptr_t pc) {
 }
 
 void crash_handler(int sig, siginfo_t *si, void *uctx) {
-    // 防重入：崩溃发生在日志代码自身时，恢复默认处理并重新 raise，保证终止
+    // 防重入：崩溃发生在日志代码自身时，恢复默认动作并把信号定向发回当前
+    // 线程（tgkill），保证进程按默认方式终止
     if (g_in_crash_handler.exchange(true)) {
-        signal(sig, SIG_DFL);
-        raise(sig);
+        struct sigaction dfl {};
+        dfl.sa_handler = SIG_DFL;
+        sigemptyset(&dfl.sa_mask);
+        sigaction(sig, &dfl, nullptr);
+        syscall(SYS_tgkill, getpid(), static_cast<pid_t>(syscall(SYS_gettid)), sig);
         return;
     }
 
-    // ART 隐式空指针检查（implicit null check）：ART 编译代码对 null 引用的
-    // 访问会触发 SEGV（si_addr 为 0 或很小的字段偏移），ART sigchain 捕获后
-    // 修复故障点并正常抛出 NullPointerException，是正常 Java 语义，不是进程
-    // 崩溃。若在此记录并 re-raise，日志里会堆满误报的 CRASH 块。判断条件：
-    // SEGV_MAPERR + si_addr < 4096（null+偏移）。真实崩溃（其他 si_addr、
-    // 其他 si_code、或 SIGBUS/SIGABRT）不受影响，照常记录。静默透传：只恢复
-    // 原处理器并 re-raise，不写日志。
+    // Best-effort suppression of ART implicit-null-check SIGSEGV. This is
+    // intentionally heuristic：ART 编译/解释代码对 null 引用的访问会触发
+    // SEGV_MAPERR 且 si_addr 为 0 或很小的字段偏移，ART FaultManager 捕获后
+    // 修复故障点并正常抛出 NullPointerException——这是正常 Java 语义而不是进程崩溃
+    // 静默透传给 ART（不写日志）：否则每个空指针检查都会写一个 CRASH 块
+    // 刷屏（日志 1MB 轮转 + 信号上下文里文件 I/O）。是否真的可恢复仍由 ART
+    // 用原始 ucontext 自行判断——只负责不刷屏、不 re-raise
     if (sig == SIGSEGV && si != nullptr && si->si_code == SEGV_MAPERR &&
         reinterpret_cast<uintptr_t>(si->si_addr) < 4096) {
-        struct sigaction old = g_old_actions[sig];
-        sigaction(sig, &old, nullptr);
-        raise(sig);
+        chain_to_previous_handler(sig, si, uctx);
         g_in_crash_handler.store(false);
         return;
     }
@@ -313,11 +362,11 @@ void crash_handler(int sig, siginfo_t *si, void *uctx) {
         write_all(fd, footer, sizeof(footer) - 1);
     }
 
-    // 恢复原处理器（通常是 ART 的 sigchain），重新 raise 保证 tombstone
-    // 与宿主崩溃上报链路不受影响
-    struct sigaction old = g_old_actions[sig];
-    sigaction(sig, &old, nullptr);
-    raise(sig);
+    // 不得在这里 restore + raise 把原始故障上下文链式交给上一个
+    // 处理器（ART 的 FaultManager / libsigchain dispatcher），使其能对可恢复的
+    // ART 内部事件（隐式空指针、uffd GC 毒化页）修复 ucontext 后让进程继续
+    // 对真正致命的故障则由其走默认动作终止进程并产生 tombstone
+    chain_to_previous_handler(sig, si, uctx);
     g_in_crash_handler.store(false);
 }
 
@@ -398,11 +447,38 @@ void log_file_install_crash_handlers() {
     sa.sa_sigaction = crash_handler;
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
-    for (int sig : {SIGABRT, SIGSEGV, SIGBUS}) {
+
+    // 检测只做一次：运行时读 libart gUseUserfaultfd（含属性兜底），避免
+    // 重复解析 ELF / 读属性导致前后结果不一致
+    const bool uffd_gc_enabled = art_uffd_gc_enabled();
+    char sdk_buf[PROP_VALUE_MAX] = {0};
+    __system_property_get("ro.build.version.sdk", sdk_buf);
+    const int sdk = atoi(sdk_buf);
+
+    // Android 15+：ART 对 SIGSEGV 的内部 fault handling（隐式空指针检查）
+    const bool art_owns_sigsegv = sdk >= 35;
+    // UFFD GC：ART 可能用 SIGBUS 作为 userfaultfd fault 的恢复机制，
+    // 一旦确认启用，则完全不碰 SIGBUS
+    const bool art_owns_sigbus = uffd_gc_enabled;
+
+    // SIGABRT 始终由模块接管（Java 致命异常等必然终止，用于记录日志）
+    std::vector<int> sigs = {SIGABRT};
+    if (!art_owns_sigsegv) sigs.push_back(SIGSEGV);
+    if (!art_owns_sigbus) sigs.push_back(SIGBUS);
+    for (int sig : sigs) {
         if (sigaction(sig, &sa, &g_old_actions[sig]) != 0) {
             g_old_actions[sig].sa_handler = SIG_DFL;
+            g_old_actions[sig].sa_flags = 0;
+            g_old_actions[sig].sa_sigaction = nullptr;
         }
     }
+    LOGI("log_file: crash handlers installed "
+         "(SIGABRT=%d SIGSEGV=%d SIGBUS=%d uffd_gc=%d sdk=%d)",
+         1,
+         art_owns_sigsegv ? 0 : 1,
+         art_owns_sigbus ? 0 : 1,
+         uffd_gc_enabled ? 1 : 0,
+         sdk);
 }
 
 void log_file_note_hook_call(uint64_t hook_id) {
