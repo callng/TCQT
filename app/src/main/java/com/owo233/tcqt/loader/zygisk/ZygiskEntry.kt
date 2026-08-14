@@ -182,6 +182,7 @@ object ZygiskEntry {
 
     @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
+        var isLoaded = false
         val loadedApkClass = Class.forName("android.app.LoadedApk")
         val createAppFactory = loadedApkClass.getDeclaredMethod(
             "createAppFactory", ApplicationInfo::class.java, ClassLoader::class.java
@@ -199,28 +200,38 @@ object ZygiskEntry {
                 if (p2.throwable != null) return@hookAfter
                 val hostLoader = p2.result as? ClassLoader ?: return@hookAfter
                 runCatching {
-                    ModuleLoader.initialize(hostLoader, apkPath, pkg, processName)
+                    if (ModuleLoader.initialize(
+                            hostLoader,
+                            apkPath,
+                            pkg,
+                            processName
+                        )
+                    ) {
+                        isLoaded = true
+                    }
                 }.onFailure {
                     Log.e(TAG, "ModuleLoader.initialize failed", it)
                 }
             }
         }
 
-        runCatching {
-            ContextWrapper::class.java
-                .getDeclaredMethod("attachBaseContext", Context::class.java)
-                .hookBefore { param ->
-                    val loader = (param.args.getOrNull(0) as? Context)?.classLoader
-                        ?: return@hookBefore
-                    if (loader === javaClass.classLoader) return@hookBefore
-                    runCatching {
-                        ModuleLoader.initialize(loader, apkPath, pkg, processName)
-                    }.onFailure {
-                        Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
+        if (!isLoaded) {
+            runCatching {
+                ContextWrapper::class.java
+                    .getDeclaredMethod("attachBaseContext", Context::class.java)
+                    .hookBefore { param ->
+                        val loader = (param.args.getOrNull(0) as? Context)?.classLoader
+                            ?: return@hookBefore
+                        if (loader === javaClass.classLoader) return@hookBefore
+                        runCatching {
+                            ModuleLoader.initialize(loader, apkPath, pkg, processName)
+                        }.onFailure {
+                            Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
+                        }
                     }
-                }
-        }.onFailure {
-            Log.e(TAG, "hook ContextWrapper.attachBaseContext failed", it)
+            }.onFailure {
+                Log.e(TAG, "hook ContextWrapper.attachBaseContext failed", it)
+            }
         }
     }
 }

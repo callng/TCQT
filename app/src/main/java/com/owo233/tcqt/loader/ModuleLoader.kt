@@ -32,8 +32,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal object ModuleLoader {
 
-    // createAppFactory 与 attachBaseContext 两条路径可能并发进入 initialize,
-    // 必须原子化防止重复安装 hook。
+    private const val QFIX_PROXY_CLASS = "com.tencent.common.app.QFixApplicationImplProxy"
+    private const val QFIX_IMPL_CLASS = "com.tencent.common.app.QFixApplicationImpl"
+    private const val TINKER_LOADER_CLASS = "com.tencent.tinker.loader.TinkerLoader"
+    private const val TINKER_TRY_LOAD_METHOD = "tryLoad"
+
     private val sLoaded = AtomicBoolean(false)
 
     private var isInit = AtomicBoolean(false)
@@ -44,37 +47,69 @@ internal object ModuleLoader {
         selfPath: String,
         packageName: String,
         processName: String
-    ) {
-        if (sLoaded.get()) return
+    ): Boolean {
+        if (sLoaded.get()) return true
+
+        if (!isHostClassLoaderReady(hostClassLoader)) {
+            return false
+        }
 
         HookSteps.initModulePath(selfPath)
         HookSteps.initHandleLoadPackage(processName, packageName)
 
-        if (nextInit(hostClassLoader)) {
-            sLoaded.set(true)
+        if (!nextInit(hostClassLoader)) {
+            return false
+        }
+
+        sLoaded.set(true)
+        return true
+    }
+
+    private fun isHostClassLoaderReady(
+        classLoader: ClassLoader
+    ): Boolean {
+        if (classLoader === this.javaClass.classLoader) {
+            return false
+        }
+
+        if (classLoader !is BaseDexClassLoader) {
+            return false
+        }
+
+        return try {
+            classLoader.loadClass(QFIX_PROXY_CLASS)
+            true
+        } catch (_: ClassNotFoundException) {
+            try {
+                classLoader.loadClass(QFIX_IMPL_CLASS)
+                true
+            } catch (_: ClassNotFoundException) {
+                false
+            }
+        } catch (_: LinkageError) {
+            false
+        } catch (_: SecurityException) {
+            false
         }
     }
 
     private fun nextInit(hostClassLoader: ClassLoader): Boolean {
-        val classNames = listOf(
-            "com.tencent.common.app.QFixApplicationImplProxy",
-            "com.tencent.common.app.QFixApplicationImpl"
-        )
-        val errors = mutableListOf<Pair<String, Throwable>>()
+        val classNames = listOf(QFIX_PROXY_CLASS, QFIX_IMPL_CLASS)
 
         for (className in classNames) {
             try {
                 val clazz = hostClassLoader.loadClass(className)
-                val method = clazz.getDeclaredMethod("attachBaseContext", Context::class.java)
+                val method = clazz.getDeclaredMethod(
+                    "attachBaseContext",
+                    Context::class.java
+                )
                 hookQFixAttach(method)
                 return true
+            } catch (_: ClassNotFoundException) {
+                // ?
             } catch (th: Throwable) {
-                errors.add(className to th)
+                Log.e("nextInit Failure: $className", th)
             }
-        }
-
-        if (errors.size >= 2) errors.forEach { (className, th) ->
-            Log.e("nextInit Failure: $className", th)
         }
 
         return false
@@ -148,9 +183,9 @@ internal object ModuleLoader {
         try {
             val classLoader = param.thisObject.javaClass.classLoader!!
             val tryLoadMethod = classLoader
-                .loadClass("com.tencent.tinker.loader.TinkerLoader")
+                .loadClass(TINKER_LOADER_CLASS)
                 .getDeclaredMethod(
-                    "tryLoad",
+                    TINKER_TRY_LOAD_METHOD,
                     classLoader.loadClass("com.tencent.tinker.loader.app.TinkerApplication")
                 )
 
