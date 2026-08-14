@@ -17,6 +17,7 @@
 namespace tcqt {
 
 constexpr const char *SHARED_PAYLOAD_APK = "/data/adb/tcqt/main.apk";
+constexpr const char *SHARED_PAYLOAD_HASH = "/data/adb/tcqt/main.apk.sha256";
 constexpr const char *SCOPE_DIR = "/data/adb/tcqt";
 constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
 constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
@@ -44,14 +45,6 @@ std::string get_jstring(JNIEnv *env, jstring str) {
     std::string out(chars);
     env->ReleaseStringUTFChars(str, chars);
     return out;
-}
-
-// Whether `path` exists as a regular file with the expected size.
-bool path_has_size(const std::string &path, uint64_t expected) {
-    if (expected == 0) return false;
-    struct stat st {};
-    if (stat(path.c_str(), &st) != 0) return false;
-    return S_ISREG(st.st_mode) && static_cast<uint64_t>(st.st_size) == expected;
 }
 
 void log_impl_ident(zygisk::Api *api) {
@@ -151,6 +144,13 @@ public:
             return;
         }
 
+        payload_hash_.clear();
+        if (read_text_file(SHARED_PAYLOAD_HASH, payload_hash_)) {
+            LOGI("preAppSpecialize: global payload hash %s", payload_hash_.c_str());
+        } else {
+            LOGW("preAppSpecialize: cannot read %s, cache will be refreshed", SHARED_PAYLOAD_HASH);
+        }
+
         // 通知 Zygisk 实现保留该 fd：fork 路径下 ReZygisk 会在 pre 之后
         // 关闭所有未豁免的 fd（rz_sanitize_fds），不豁免则 post 阶段复制
         // main.apk 会因 fd 已关闭而失败。
@@ -161,7 +161,6 @@ public:
         }
 
         apk_fd_ = apk_fd;
-        apk_size_ = static_cast<uint64_t>(st.st_size);
         process_name_ = std::move(nice_name);
         data_dir_ = get_jstring(env, args->app_data_dir);
         enabled_ = true;
@@ -199,21 +198,42 @@ public:
             install_fekit_fopen_hook();
         }
 
-        // Copy the package into the app's data dir (only when missing or size
-        // changed). ZygiskEntry.init later uses it to extract libdexkit.so.
         // 先校验 fd 仍指向 payload：个别实现（如未豁免 fd 的 fork 路径）可能
         // 在 pre 之后把它关掉，此时跳过复制、不 close 可能已被复用的 fd 号，
         // 后面改为从已有路径读 dex（main.apk 已存在时同样能注入）。
         std::string apk_dst = target_dir + "/main.apk";
+        std::string hash_dst = target_dir + "/main.apk.sha256";
         struct stat st {};
         bool fd_ok = fstat(apk_fd, &st) == 0 && S_ISREG(st.st_mode);
         if (fd_ok) {
-            if (!path_has_size(apk_dst, apk_size_)) {
+            std::string cached_hash;
+            bool cached_hash_ok = read_text_file(hash_dst, cached_hash);
+
+            bool payload_changed =
+                    payload_hash_.empty() || !cached_hash_ok ||
+                    payload_hash_ != cached_hash;
+
+            if (payload_changed) {
+                LOGI("postAppSpecialize: payload changed, updating cached main.apk");
                 if (!copy_fd_to_path(apk_fd, apk_dst, APK_MAX_BYTES)) {
                     LOGE("postAppSpecialize: failed to copy main.apk");
                     close(apk_fd);
                     return;
                 }
+                if (!payload_hash_.empty()) {
+                    if (!write_text_file_atomic(hash_dst, payload_hash_)) {
+                        LOGE("postAppSpecialize: failed to update payload hash");
+                        close(apk_fd);
+                        return;
+                    }
+                    LOGI("postAppSpecialize: payload updated: %s", payload_hash_.c_str());
+                } else {
+                    unlink(hash_dst.c_str());
+                    LOGW("postAppSpecialize: global payload hash missing, "
+                         "cache refreshed without version file");
+                }
+            } else {
+                LOGI("postAppSpecialize: payload unchanged: %s", payload_hash_.c_str());
             }
             close(apk_fd);
         } else {
@@ -299,10 +319,10 @@ private:
     zygisk::Api *api = nullptr;
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
-    uint64_t apk_size_ = 0;
     bool enabled_ = false;
     std::string process_name_;
     std::string data_dir_;
+    std::string payload_hash_;
 };
 
 }  // namespace tcqt

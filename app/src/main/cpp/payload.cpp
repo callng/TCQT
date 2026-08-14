@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -65,6 +66,75 @@ bool copy_fd_to_path(int src_fd, const std::string &dst_path, uint64_t max_bytes
     if (rename(tmp_path.c_str(), dst_path.c_str()) != 0) {
         unlink(tmp_path.c_str());
         LOGE("copy_fd_to_path: rename failed for %s (errno=%d)", dst_path.c_str(), errno);
+        return false;
+    }
+    return true;
+}
+
+bool read_text_file(const std::string &path, std::string &out) {
+    out.clear();
+
+    FILE *fp = fopen(path.c_str(), "r");
+    if (fp == nullptr) return false;
+
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        out.append(buf, n);
+        if (out.size() > 64 * 1024) {
+            fclose(fp);
+            out.clear();
+            return false;
+        }
+    }
+    bool ok = !ferror(fp);
+    fclose(fp);
+    if (!ok) {
+        out.clear();
+        return false;
+    }
+
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r' ||
+                            out.back() == ' ' || out.back() == '\t')) {
+        out.pop_back();
+    }
+
+    return !out.empty();
+}
+
+bool write_text_file_atomic(const std::string &path, const std::string &content) {
+    std::string tmp_path = path + "." + std::to_string(getpid()) + ".tmp";
+    unlink(tmp_path.c_str());
+
+    int fd = open(tmp_path.c_str(),
+                  O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (fd < 0) {
+        LOGE("write_text_file_atomic: cannot create %s (errno=%d)", tmp_path.c_str(), errno);
+        return false;
+    }
+
+    bool ok = true;
+    size_t off = 0;
+    while (off < content.size()) {
+        ssize_t w = write(fd, content.data() + off, content.size() - off);
+        if (w <= 0) {
+            ok = false;
+            break;
+        }
+        off += static_cast<size_t>(w);
+    }
+
+    fsync(fd);
+    close(fd);
+
+    if (!ok) {
+        unlink(tmp_path.c_str());
+        LOGE("write_text_file_atomic: write failed for %s", path.c_str());
+        return false;
+    }
+    if (rename(tmp_path.c_str(), path.c_str()) != 0) {
+        unlink(tmp_path.c_str());
+        LOGE("write_text_file_atomic: rename failed for %s (errno=%d)", path.c_str(), errno);
         return false;
     }
     return true;

@@ -36,6 +36,14 @@ cp "$ZIPFILE" "$DATAPATH/main.apk.tmp" || abort "! Failed to store TCQT package"
 mv -f "$DATAPATH/main.apk.tmp" "$DATAPATH/main.apk"
 set_perm "$DATAPATH/main.apk" 0 0 0644
 
+ui_print "- Calculating TCQT package hash"
+APK_HASH="$(sha256sum "$DATAPATH/main.apk" 2>/dev/null | cut -d ' ' -f1)"
+if [ -z "$APK_HASH" ]; then
+  abort "! Failed to calculate TCQT package hash"
+fi
+printf '%s' "$APK_HASH" > "$DATAPATH/main.apk.sha256"
+set_perm "$DATAPATH/main.apk.sha256" 0 0 0644
+
 # 清理旧布局（payload/tcqt.apk + classes*.dex + dex.list）残留
 rm -rf "$MODPATH/payload"
 
@@ -53,9 +61,9 @@ chcon u:object_r:system_lib_file:s0 "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null |
 NEW_SO_HASH="$(sha1sum "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null | cut -d ' ' -f1)"
 OLD_SO_HASH="$(cat "$DATAPATH/so.sha1" 2>/dev/null | tr -d ' \r\n')"
 if [ -n "$OLD_SO_HASH" ] && [ "$OLD_SO_HASH" = "$NEW_SO_HASH" ]; then
-  ui_print "  完全结束并重新启动 QQ/TIM 即可生效（无需重启设备）"
+  ui_print "✅ 重启 QQ/TIM 即可生效（无需重启设备）"
 else
-  ui_print "! 请重启设备后生效"
+  ui_print "! 需要重启, 某些更改需要(软)重启设备后才会生效"
 fi
 printf '%s' "$NEW_SO_HASH" > "$DATAPATH/so.sha1"
 set_perm "$DATAPATH/so.sha1" 0 0 0644

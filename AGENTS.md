@@ -103,8 +103,9 @@ Architecture:
 
 - `app/src/main/zygisk-template/customize.sh` — `SKIPUNZIP=1`; extracts only the
   module files (incl. `webroot/*`) and copies the whole `$ZIPFILE` (which is
-  the APK itself) to `/data/adb/tcqt/main.apk` (atomic tmp+mv). The installed
-  module dir holds no payload; `zygisk/arm64-v8a.so` is the injector.
+  the APK itself) to `/data/adb/tcqt/main.apk` (atomic tmp+mv), then writes the
+  payload's SHA-256 fingerprint to `/data/adb/tcqt/main.apk.sha256`. The
+  installed module dir holds no payload; `zygisk/arm64-v8a.so` is the injector.
 - `app/src/main/zygisk-template/webroot/` — KernelSU/APatch WebUI: per-app
   injection toggles backed by realtime marker files
   `/data/adb/tcqt/{qq,tim}.disable` (per-user: `user_<id>/` subdir); the
@@ -121,9 +122,13 @@ Architecture:
   device header (model / Android SDK / kernel / page size). Java-side key
   lifecycle logs reach the same file via `ZygiskEntry.nativeLog`.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
-  `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk` and keeps the
-  fd; in `postAppSpecialize` copies it into the app's `files/.tcqt` dir
-  (size-checked), reads every `classes*.dex` entry from that copy via JNI
+  `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk`, keeps the fd
+  and reads the global SHA-256 fingerprint `/data/adb/tcqt/main.apk.sha256`
+  (must happen pre-specialization: the app loses access to `/data/adb` after);
+  in `postAppSpecialize` it re-copies the payload into the app's `files/.tcqt`
+  dir only when that fingerprint differs from the cached `main.apk.sha256`
+  (size is NOT compared — same-size new versions would otherwise keep the old
+  cached APK), reads every `classes*.dex` entry from that copy via JNI
   `java.util.zip.ZipFile` (mirrors FunBox's loader), loads them via
   `InMemoryDexClassLoader` and calls
   `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.

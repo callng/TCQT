@@ -19,6 +19,16 @@ bool ensure_dir(const std::string &path);
 // a PID-unique temp file and atomic rename. Returns false on any failure.
 bool copy_fd_to_path(int src_fd, const std::string &dst_path, uint64_t max_bytes);
 
+// Read a small text file (a hash/version fingerprint, a few hundred bytes)
+// fully into out, trimming trailing whitespace. Returns false on I/O failure
+// or when the file is empty after trimming — an empty fingerprint can never
+// match a real one and must not be treated as "same version".
+bool read_text_file(const std::string &path, std::string &out);
+
+// Atomically write content to path via a PID-unique temp file, fsync and
+// rename, so a crash mid-write never leaves a half-written fingerprint.
+bool write_text_file_atomic(const std::string &path, const std::string &content);
+
 // Read every classes*.dex entry (classes.dex, classes2.dex, ...) from the APK
 // file at apk_path into memory, in ascending numbering order, via
 // java.util.zip.ZipFile. Returns false when no dex could be read.
