@@ -115,18 +115,32 @@ public:
             return;
         }
 
-        std::string scope_path = SCOPE_DIR;
+        std::string scope_base = SCOPE_DIR;
         int user_id = args->uid / 100000;
         if (user_id != 0) {
-            scope_path += "/user_";
-            scope_path += std::to_string(user_id);
+            scope_base += "/user_";
+            scope_base += std::to_string(user_id);
         }
-        scope_path += target == TargetApp::QQ ? "/qq.disable" : "/tim.disable";
+        const std::string scope_path = scope_base + (target == TargetApp::QQ ? "/qq.disable" : "/tim.disable");
         if (access(scope_path.c_str(), F_OK) == 0) {
             LOGI("preAppSpecialize: %s disabled via WebUI (uid=%d), skip injection",
                  target == TargetApp::QQ ? "QQ" : "TIM", args->uid);
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
+        }
+
+        const char *app_tag = target == TargetApp::QQ ? "qq" : "tim";
+        const PltHookSpec *hook_specs = default_plt_hooks();
+        const std::size_t hook_count = default_plt_hook_count();
+        disabled_hook_ids_.clear();
+        for (std::size_t i = 0; i < hook_count; ++i) {
+            const std::string marker =
+                    scope_base + "/" + app_tag + "." + hook_specs[i].id + ".disable";
+            if (access(marker.c_str(), F_OK) == 0) {
+                disabled_hook_ids_.push_back(hook_specs[i].id);
+                LOGI("preAppSpecialize: PLT hook %s disabled via WebUI (%s)",
+                     hook_specs[i].id, marker.c_str());
+            }
         }
 
         int apk_fd = open(SHARED_PAYLOAD_APK, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
@@ -190,12 +204,14 @@ public:
         log_file_init(target_dir + "/log.txt");
         log_file_install_crash_handlers();
 
-        // 仅 MSF 进程：把 libfekit.so 的 fopen 调用中 /proc/self/smaps
-        // 重定向到 /dev/null，过宿主进程检测（QQ/TIM 已由 match_target 过滤）。
-        // 越早越好，需赶在 libfekit.so 加载之前注册回调。
+        // install hooks
         if (process_name_.size() >= 4 &&
             process_name_.compare(process_name_.size() - 4, 4, ":MSF") == 0) {
-            install_fekit_fopen_hook();
+            if (disabled_hook_ids_.size() >= default_plt_hook_count()) {
+                LOGI("postAppSpecialize: all PLT hooks disabled by user, skip");
+            } else {
+                install_default_plt_hooks(disabled_hook_ids_);
+            }
         }
 
         // 先校验 fd 仍指向 payload：个别实现（如未豁免 fd 的 fork 路径）可能
@@ -320,6 +336,7 @@ private:
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
     bool enabled_ = false;
+    std::vector<std::string> disabled_hook_ids_;
     std::string process_name_;
     std::string data_dir_;
     std::string payload_hash_;

@@ -7,6 +7,23 @@ const apps = {
     tim: { label: "TIM", package: "com.tencent.tim", marker: "tim.disable" },
 };
 
+const SHIELD_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M12 3l7 2.8v5.4c0 4.6-3 8.3-7 9.8-4-1.5-7-5.2-7-9.8V5.8z"/>' +
+    '<path d="M9.4 12l1.8 1.8 3.4-3.8"/>' +
+    "</svg>";
+
+const hooks = [
+    {
+        id: "key1",
+        label: "fopen 重定向",
+        detail: "一般情况下默认就好~",
+        icon: SHIELD_ICON,
+        desc: "对 /proc/self/smaps 的 fopen 调用 重定向到 /dev/null",
+    },
+];
+
 const appList = document.querySelector("#app-list");
 const heroSummary = document.querySelector("#summary-badge");
 const errorPanel = document.querySelector("#error-panel");
@@ -16,6 +33,7 @@ const liveStatus = document.querySelector("#live-status");
 const userTabs = document.querySelector("#user-tabs");
 const exportButton = document.querySelector("#export-log-button");
 const exportResult = document.querySelector("#export-log-result");
+const hookList = document.querySelector("#hook-list");
 
 const PRIMARY_USER = { id: 0, name: "主用户" };
 let users = [PRIMARY_USER];
@@ -35,6 +53,26 @@ function appBadge(appName) {
     return appCard(appName).querySelector("[data-state-role=badge]");
 }
 
+function hookCard(hookId) {
+    return document.querySelector(`[data-hook="${hookId}"]`);
+}
+
+function hookTargetRow(hookId, appName) {
+    return hookCard(hookId).querySelector(`[data-target="${appName}"]`);
+}
+
+function hookInput(hookId, appName) {
+    return hookTargetRow(hookId, appName).querySelector("input");
+}
+
+function hookBadge(hookId, appName) {
+    return hookTargetRow(hookId, appName).querySelector("[data-state-role=hook-badge]");
+}
+
+function hookMarkerPath(userId, hookId, appName) {
+    return markerPath(userId, `${appName}.${hookId}.disable`);
+}
+
 function hasManager() {
     return window.ksu && typeof window.ksu.exec === "function";
 }
@@ -43,6 +81,91 @@ function markerPath(userId, marker) {
     return userId === 0
         ? `${DATA_DIRECTORY}/${marker}`
         : `${DATA_DIRECTORY}/user_${userId}/${marker}`;
+}
+
+function renderHookCards() {
+    hookList.textContent = "";
+    for (const hook of hooks) {
+        const item = document.createElement("div");
+        item.className = "hook-item";
+
+        const card = document.createElement("div");
+        card.className = "app-card hook-card";
+        card.dataset.hook = hook.id;
+
+        const header = document.createElement("div");
+        header.className = "hook-header";
+        header.innerHTML = `
+            <div class="app-icon app-icon-hook" aria-hidden="true">${hook.icon}</div>
+            <div class="app-info">
+                <strong>${hook.label}</strong>
+                <small>${hook.detail}</small>
+            </div>`;
+
+        const targets = document.createElement("div");
+        targets.className = "hook-targets";
+        for (const appName of Object.keys(apps)) {
+            const app = apps[appName];
+            const row = document.createElement("div");
+            row.className = "hook-target";
+            row.dataset.target = appName;
+            row.innerHTML = `
+                <span class="hook-target-icon app-icon app-icon-${appName}" aria-hidden="true">
+                    <img src="ksu://icon/${app.package}" alt="">
+                    <span class="icon-fallback">${appName === "qq" ? "Q" : "T"}</span>
+                </span>
+                <span class="hook-target-name">${app.label}</span>
+                <span class="app-state" data-state-role="hook-badge">…</span>
+                <label class="switch switch-sm">
+                    <input type="checkbox" aria-label="${app.label} · ${hook.label}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                </label>`;
+            row.querySelector("input").addEventListener("change", (event) => {
+                changeHookState(hook, appName, event.currentTarget.checked);
+            });
+            targets.append(row);
+        }
+
+        const desc = document.createElement("p");
+        desc.className = "hook-desc";
+        desc.textContent = hook.desc;
+
+        card.append(header, targets);
+        item.append(card, desc);
+        hookList.append(item);
+    }
+}
+
+function setHookInputsDisabled(disabled) {
+    for (const hook of hooks) {
+        for (const appName of Object.keys(apps)) {
+            hookInput(hook.id, appName).disabled =
+                disabled || !isInstalled(appName, currentUserId);
+        }
+    }
+}
+
+function renderHookBadges() {
+    for (const hook of hooks) {
+        for (const appName of Object.keys(apps)) {
+            const row = hookTargetRow(hook.id, appName);
+            const input = hookInput(hook.id, appName);
+            const badge = hookBadge(hook.id, appName);
+            const available = isInstalled(appName, currentUserId);
+            row.classList.toggle("is-unavailable", !available);
+            if (!available) {
+                input.checked = false;
+                badge.textContent = "未安装";
+                badge.className = "app-state state-off";
+            } else if (input.checked) {
+                badge.textContent = "已启用";
+                badge.className = "app-state state-on";
+            } else {
+                badge.textContent = "已停用";
+                badge.className = "app-state state-off";
+            }
+        }
+    }
 }
 
 function isInstalled(appName, userId) {
@@ -89,7 +212,15 @@ function renderSummary() {
     const names = Object.keys(apps);
     const installedNames = names.filter((name) => isInstalled(name, currentUserId));
     const enabled = installedNames.filter((name) => appInput(name).checked).length;
-    heroSummary.textContent = `已启用 ${enabled}/${installedNames.length}`;
+    let hooksEnabled = 0;
+    for (const hook of hooks) {
+        for (const appName of installedNames) {
+            if (hookInput(hook.id, appName).checked) hooksEnabled++;
+        }
+    }
+    const hooksTotal = hooks.length * installedNames.length;
+    heroSummary.textContent =
+        `注入 ${enabled}/${installedNames.length} · Hook ${hooksEnabled}/${hooksTotal}`;
 }
 
 function showError(message) {
@@ -192,27 +323,40 @@ async function loadInstalledPackages(userId) {
 async function loadStates() {
     hideError();
     setInputsDisabled(true);
+    setHookInputsDisabled(true);
     setTabsDisabled(true);
     appList.setAttribute("aria-busy", "true");
+    hookList.setAttribute("aria-busy", "true");
     heroSummary.textContent = "读取中…";
 
     if (!hasManager()) {
         showError("请在支持模块 WebUI 的管理器（KernelSU / APatch）中打开此页面");
         heroSummary.textContent = "不可用";
         appList.setAttribute("aria-busy", "false");
+        hookList.setAttribute("aria-busy", "false");
         return;
     }
 
     const userId = currentUserId;
-    const checks = Object.values(apps)
+    const appChecks = Object.values(apps)
         .map(({ marker }) => `[ -f '${markerPath(userId, marker)}' ] && printf '1\\n' || printf '0\\n'`)
         .join("; ");
+    const hookChecks = [];
+    for (const hook of hooks) {
+        for (const appName of Object.keys(apps)) {
+            hookChecks.push(
+                `[ -f '${hookMarkerPath(userId, hook.id, appName)}' ] && printf '1\\n' || printf '0\\n'`
+            );
+        }
+    }
+    const checks = [appChecks, ...hookChecks].filter(Boolean).join("; ");
+    const total = Object.keys(apps).length + hooks.length * Object.keys(apps).length;
 
     try {
         await loadInstalledPackages(userId);
         const result = await exec(checks);
         const states = (result.stdout || "").trim().split(/\s+/);
-        if (result.errno !== 0 || states.length !== Object.keys(apps).length) {
+        if (result.errno !== 0 || states.length !== total) {
             throw new Error(result.stderr || "状态数据不完整");
         }
         if (userId !== currentUserId) return; // 期间已切换用户，丢弃过期结果
@@ -220,9 +364,18 @@ async function loadStates() {
         Object.keys(apps).forEach((appName, index) => {
             appInput(appName).checked = states[index] !== "1";
         });
+        let hookIndex = Object.keys(apps).length;
+        for (const hook of hooks) {
+            for (const appName of Object.keys(apps)) {
+                hookInput(hook.id, appName).checked = states[hookIndex] !== "1";
+                hookIndex++;
+            }
+        }
         renderBadges();
+        renderHookBadges();
         renderSummary();
         setInputsDisabled(false);
+        setHookInputsDisabled(false);
     } catch (error) {
         console.error("Failed to load TCQT scopes", error);
         if (userId !== currentUserId) return;
@@ -232,6 +385,7 @@ async function loadStates() {
         if (userId === currentUserId) {
             setTabsDisabled(false);
             appList.setAttribute("aria-busy", "false");
+            hookList.setAttribute("aria-busy", "false");
         }
     }
 }
@@ -278,11 +432,54 @@ async function changeScope(appName, enabled) {
     }
 }
 
+async function changeHookState(hook, appName, enabled) {
+    const app = apps[appName];
+    const input = hookInput(hook.id, appName);
+    const userId = currentUserId;
+    input.disabled = true;
+    hideError();
+
+    const path = hookMarkerPath(userId, hook.id, appName);
+    const dir = path.slice(0, path.lastIndexOf("/"));
+    const command = enabled
+        ? `rm -f '${path}'`
+        : `mkdir -p '${dir}' && touch '${path}'`;
+
+    try {
+        const result = await exec(command);
+        if (result.errno !== 0) {
+            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
+        }
+        renderHookBadges();
+        renderSummary();
+        const stateText = enabled ? "已启用" : "已停用";
+        const userText = users.length > 1 ? `[${getUserName(userId)}] ` : "";
+        const message = `${userText}${app.label} · ${hook.label} ${stateText}`;
+        liveStatus.textContent = message;
+        toast(message);
+    } catch (error) {
+        console.error(`Failed to update ${hook.id} state for ${appName}`, error);
+        if (userId === currentUserId) {
+            input.checked = !enabled;
+            renderHookBadges();
+            renderSummary();
+        }
+        showError(`${app.label} · ${hook.label} 修改失败，请重试`);
+        toast("修改失败");
+    } finally {
+        if (userId === currentUserId) {
+            input.disabled = !isInstalled(appName, currentUserId);
+        }
+    }
+}
+
 for (const appName of Object.keys(apps)) {
     appInput(appName).addEventListener("change", (event) => {
         changeScope(appName, event.currentTarget.checked);
     });
 }
+
+renderHookCards();
 
 async function exportLog() {
     exportButton.disabled = true;

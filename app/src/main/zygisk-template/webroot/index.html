@@ -77,6 +77,17 @@
         </div>
     </section>
 
+    <!-- 原生 Hook（PLT/GOT） -->
+    <section class="section" aria-labelledby="hook-title">
+        <div class="section-heading">
+            <h2 id="hook-title">原生 Hook</h2>
+            <span class="section-hint">Zygisk 模式 · 按宿主独立控制</span>
+        </div>
+
+        <div class="hook-list" id="hook-list" aria-busy="true"></div>
+        <p class="hook-note">按 QQ / TIM 分别控制，默认启用；关闭后重启对应应用生效。</p>
+    </section>
+
     <!-- 日志导出 -->
     <section class="section" aria-labelledby="log-title">
         <div class="section-heading">
@@ -89,7 +100,7 @@
 
     <!-- 生效提示 -->
     <aside class="tip">
-        <p>更改状态后重启对应应用生效。</p>
+        <p>更改注入目标或 Hook 开关后，重启对应应用生效。</p>
     </aside>
 
     <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>

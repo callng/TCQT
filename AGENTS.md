@@ -108,11 +108,27 @@ Architecture:
   installed module dir holds no payload; `zygisk/arm64-v8a.so` is the injector.
 - `app/src/main/zygisk-template/webroot/` — KernelSU/APatch WebUI: per-app
   injection toggles backed by realtime marker files
-  `/data/adb/tcqt/{qq,tim}.disable` (per-user: `user_<id>/` subdir); the
+  `/data/adb/tcqt/{qq,tim}.disable` (per-user: `user_<id>/` subdir); plus a
+  **原生 Hook** section whose toggles are also per host × user, using markers
+  `<host>.<hookId>.disable` (e.g. `qq.fekit.disable`, default enabled); the
   injector re-checks them in `preAppSpecialize` on every fork, so changes take
   effect on the next app start without rebooting (mirrors FunBox's scope
   markers, but default-enabled). Also has a 「导出日志」button: copies
   `files/.tcqt/log.txt` (QQ/TIM) to `/sdcard/Download` for bug reporting.
+- `app/src/main/cpp/plt_hook.h/.cpp` — generic PLT/GOT hook engine with a
+  declarative spec table: new hooks are added by writing one same-signature
+  replacement function and appending one `PLT_HOOK_SPEC(id, lib, symbol,
+  hook_fn, real)` row to `kDefaultPltHooks` (see `plt_hook.h`); the engine
+  handles library discovery (background poller, 50ms — do NOT add a
+  dlopen/android_dlopen_ext GOT trigger: it redirects system libs' loads into
+  the module and reentrantly scans in-flight link_maps on Android 17+,
+  crashing `System.load`), GOT slot patching and real symbol resolution. The
+  `id` doubles as the WebUI marker
+  suffix (`<host>.<id>.disable`): `zygisk_entry` collects disabled ids per
+  host/user in `preAppSpecialize` and `install_default_plt_hooks(disabled_ids)`
+  skips them, so each hook can be toggled per host × user. Currently contains
+  the `libfekit.so` `fopen` detection evasion (`/proc/self/smaps` → `/dev/null`),
+  installed only in the `:MSF` process.
 - `app/src/main/cpp/log_file.h/.cpp` — local file logging: every `LOG*` macro
   (see `log.h`) also appends to the app's `files/.tcqt/log.txt` (1MB cap per
   file; over the cap the file rotates to `log.1.txt`, keeping one generation)

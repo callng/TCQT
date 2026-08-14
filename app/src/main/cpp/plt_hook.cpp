@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -15,6 +16,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "log.h"
 #include "plt_hook.h"
@@ -26,10 +28,18 @@ namespace {
 // R_AARCH64_GLOB_DAT / R_AARCH64_JUMP_SLOT relocation types (from
 // bits/elf_common.h): their GOT slots point at imported symbols.
 
-// ── Hook 目标函数 ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// 一、Hook 定义区
+//
+// 新增一个 PLT hook：
+//   1. 写一个与目标符号同签名的替换函数，内部通过真实指针调用原实现
+//   2. 用 PLT_HOOK_SPEC 在 kDefaultPltHooks 表中追加一行
+// ══════════════════════════════════════════════════════════════════════════
 
+// 真实 fopen：安装时由引擎 dlsym 解析写入
 FILE *(*real_fopen)(const char *, const char *) = nullptr;
 
+// fopen 检测规避：libfekit.so 读取 /proc/self/smaps 时改喂 /dev/null
 FILE *hook_fopen(const char *pathname, const char *mode) {
     if (pathname != nullptr && strncmp(pathname, "/proc/self/smaps", 16) == 0) {
         LOGD("plt_hook: fopen(%s) intercepted -> /dev/null", pathname);
@@ -38,36 +48,25 @@ FILE *hook_fopen(const char *pathname, const char *mode) {
     return real_fopen(pathname, mode);
 }
 
-int scan_cb(dl_phdr_info *info, size_t size, void *data);
+// 声明式注册宏：{ id, 库名子串, 符号, 替换函数, 真实指针 }
+#define PLT_HOOK_SPEC(id, lib, symbol, hook_fn, real)                        \
+    {                                                                        \
+        (id), (lib), (symbol), reinterpret_cast<void *>(hook_fn),           \
+                reinterpret_cast<void **>(&(real))                           \
+    }
 
-// 扫描参数：log_new —— 本次扫描是否记录新出现的库名（安装时的初始快照不打）；
-// dlopen_patches —— 本次扫描新装 dlopen 触发的库数（仅安装扫描时汇总成一行）。
-struct ScanContext {
-    bool log_new = false;
-    int dlopen_patches = 0;
+// 内置默认 hook 表
+const PltHookSpec kDefaultPltHooks[] = {
+    PLT_HOOK_SPEC("key1", "libfekit.so", "fopen", &hook_fopen, real_fopen),
 };
+const std::size_t kDefaultPltHookCount = sizeof(kDefaultPltHooks) / sizeof(kDefaultPltHooks[0]);
 
-// dlopen 触发：接住已加载库对 dlopen 的调用，返回后立即重扫一遍，第一时间
-// 发现 libfekit.so（bionic 的 dl_iterate_phdr 不会在库加载时主动回调）。
-void *(*real_dlopen)(const char *, int) = nullptr;
-void *(*real_android_dlopen_ext)(const char *, int, const void *) = nullptr;
-
-void rescan_after_dlopen() {
-    ScanContext ctx{true, 0};
-    dl_iterate_phdr(scan_cb, &ctx);
-}
-
-void *hook_dlopen(const char *filename, int flags) {
-    void *handle = real_dlopen(filename, flags);
-    rescan_after_dlopen();
-    return handle;
-}
-
-void *hook_android_dlopen_ext(const char *filename, int flags, const void *extinfo) {
-    void *handle = real_android_dlopen_ext(filename, flags, extinfo);
-    rescan_after_dlopen();
-    return handle;
-}
+// ══════════════════════════════════════════════════════════════════════════
+// 二、通用 PLT 引擎
+//
+// 发现机制说明：bionic 的 dl_iterate_phdr 是一次性遍历、不会在后续 dlopen
+// 时主动回调，因此只靠后台轮询线程周期性扫描（50ms）发现目标库。
+// ══════════════════════════════════════════════════════════════════════════
 
 // ── 内存辅助（与 art_hook.cpp 中 WritableArtMethod 同一模式）──────────────────
 inline uintptr_t strip_pac(uintptr_t addr) {
@@ -246,12 +245,28 @@ int patch_got_symbol(dl_phdr_info *info, const char *name, void *replacement) {
     return patched;
 }
 
-// ── 扫描状态（scan_cb 都在 dl_iterate_phdr 回调内执行，用互斥锁串行化）──────
+// ── 扫描状态 ────────────────────────────────────────────────────────────────
 
-std::atomic<bool> g_fekit_seen{false};  // libfekit.so 出现过（轮询线程据此退出）
+// 每个 spec 的运行时状态：真实符号解析 + 目标库出现标记
+struct InternalSpec {
+    PltHookSpec spec{};
+    bool ready = false;  // 真实符号解析成功，可参与安装
+    bool seen = false;   // 目标库已出现过（日志去重 / 轮询退出）
+};
+
+// 安装时快照；安装完成后只读（扫描回调与轮询线程并发读）
+std::vector<InternalSpec> g_specs;
+std::atomic<bool> g_installed{false};
+// 尚未发现目标库的 spec 数；归零即全部命中，轮询线程退出
+std::atomic<std::size_t> g_pending{0};
+
 std::mutex g_scan_mutex;
-std::set<uintptr_t> g_dlopen_patched;  // 已装 dlopen 触发的库（按加载基址去重）
-std::set<std::string> g_seen_libs;     // 已见过的库名（日志去重）
+std::set<std::string> g_seen_libs;  // 已见过的库名（日志去重）
+
+// 扫描参数：log_new —— 本次扫描是否记录新出现的库名（安装时的初始快照不打）
+struct ScanContext {
+    bool log_new = false;
+};
 
 int scan_cb(dl_phdr_info *info, size_t /*size*/, void *data) {
     const char *name = info->dlpi_name;
@@ -260,78 +275,91 @@ int scan_cb(dl_phdr_info *info, size_t /*size*/, void *data) {
 
     std::lock_guard<std::mutex> lock(g_scan_mutex);
 
-    const bool is_fekit = strstr(name, "libfekit.so") != nullptr;
-    if (is_fekit) {
-        const int n = patch_got_symbol(
-                info, "fopen",
-                reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&hook_fopen)));
-        if (!g_fekit_seen.exchange(true)) {
+    // 匹配每个已注册 spec：目标库出现即改写其 GOT 槽位
+    for (InternalSpec &is : g_specs) {
+        if (!is.ready) continue;  // 真实符号未解析成功，跳过（避免空指针）
+        if (strstr(name, is.spec.lib) == nullptr) continue;
+        const bool first = !is.seen;
+        is.seen = true;
+        const int n = patch_got_symbol(info, is.spec.symbol, is.spec.hook_fn);
+        if (first) {
+            if (g_pending.load(std::memory_order_relaxed) > 0) {
+                g_pending.fetch_sub(1, std::memory_order_relaxed);
+            }
             if (n > 0) {
-                LOGI("plt_hook: found %s (base=%#lx), patched %d fopen GOT slot(s)", name,
-                     static_cast<uintptr_t>(info->dlpi_addr), n);
+                LOGI("plt_hook: found %s (base=%#lx), patched %d %s GOT slot(s)", name,
+                     static_cast<uintptr_t>(info->dlpi_addr), n, is.spec.symbol);
             } else {
-                LOGW("plt_hook: found %s but no fopen GOT slot", name);
+                LOGW("plt_hook: found %s but no %s GOT slot", name, is.spec.symbol);
             }
         }
     }
 
-    // dlopen 触发：按基址去重，避免每次扫描都重解析整张重定位表。
-    if (g_dlopen_patched.insert(static_cast<uintptr_t>(info->dlpi_addr)).second) {
-        patch_got_symbol(info, "android_dlopen_ext",
-                         reinterpret_cast<void *>(
-                                 reinterpret_cast<uintptr_t>(&hook_android_dlopen_ext)));
-        patch_got_symbol(info, "dlopen",
-                         reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&hook_dlopen)));
-        ctx->dlopen_patches++;
-    }
-
-    // 库名去重：初始快照只入集合不打日志，之后新出现的库才打（便于发现
-    // libfekit.so 或其变体名）。
-    if (!is_fekit && g_seen_libs.insert(name).second && ctx->log_new) {
-        if (strstr(name, "fekit") != nullptr) {
-            LOGI("plt_hook: fekit-like lib loaded (not matched): %s", name);
-        } else {
-            LOGD("plt_hook: lib loaded: %s", name);
-        }
+    // 库名去重：新出现的库打 DEBUG 日志，便于发现目标库或其变体名
+    if (g_seen_libs.insert(name).second && ctx->log_new) {
+        LOGD("plt_hook: lib loaded: %s", name);
     }
     return 0;
 }
 
 // 轮询线程：dl_iterate_phdr 是一次性遍历、不会在后续 dlopen 时回调，周期
-// 扫描作为兜底（dlopen 触发负责缩短正常路径上的发现延迟）。
+// 扫描作为唯一发现机制（50ms 粒度对 MSF 启动期的目标库足够及时）
 void *poller_main(void *) {
     constexpr int kPollIntervalMs = 50;
     constexpr int kMaxPolls = 6000;  // 最长约 5 分钟
-    ScanContext ctx{true, 0};
-    for (int i = 0; i < kMaxPolls && !g_fekit_seen; ++i) {
+    ScanContext ctx{true};
+    int polls = 0;
+    while (g_pending.load(std::memory_order_relaxed) > 0 && polls < kMaxPolls) {
         dl_iterate_phdr(scan_cb, &ctx);
         usleep(static_cast<useconds_t>(kPollIntervalMs) * 1000);
+        ++polls;
     }
-    if (!g_fekit_seen) {
-        LOGW("plt_hook: libfekit.so not seen within %d s, giving up",
-             kPollIntervalMs * kMaxPolls / 1000);
+    const std::size_t pending = g_pending.load(std::memory_order_relaxed);
+    if (pending > 0) {
+        LOGW("plt_hook: %zu target lib(s) never appeared within %d s, giving up",
+             pending, kPollIntervalMs * kMaxPolls / 1000);
     }
     return nullptr;
 }
 
 }  // namespace
 
-void install_fekit_fopen_hook() {
-    real_fopen = reinterpret_cast<FILE *(*)(const char *, const char *)>(
-            dlsym(RTLD_DEFAULT, "fopen"));
-    real_dlopen =
-            reinterpret_cast<void *(*)(const char *, int)>(dlsym(RTLD_DEFAULT, "dlopen"));
-    real_android_dlopen_ext = reinterpret_cast<void *(*)(const char *, int, const void *)>(
-            dlsym(RTLD_DEFAULT, "android_dlopen_ext"));
-    if (real_fopen == nullptr) {
-        LOGE("plt_hook: dlsym(fopen) failed");
+void install_plt_hooks(const PltHookSpec *specs, std::size_t count) {
+    if (specs == nullptr || count == 0) return;
+    if (g_installed.load(std::memory_order_acquire)) return;
+
+    // 解析每个 spec 的真实符号；解析失败则跳过该 spec（缺 real 会导致替换
+    // 函数调用空指针）。此时尚无并发（轮询线程在最后才创建）
+    g_specs.clear();
+    g_specs.reserve(count);
+    std::size_t pending = 0;
+    for (std::size_t i = 0; i < count; ++i) {
+        InternalSpec is;
+        is.spec = specs[i];
+        if (is.spec.real != nullptr && is.spec.symbol != nullptr) {
+            void *real = dlsym(RTLD_DEFAULT, is.spec.symbol);
+            if (real != nullptr) {
+                *is.spec.real = real;
+                is.ready = true;
+                ++pending;
+            } else {
+                LOGE("plt_hook: dlsym(%s) failed, spec skipped", is.spec.symbol);
+            }
+        }
+        g_specs.push_back(std::move(is));
+    }
+    if (pending == 0) {
+        LOGE("plt_hook: no spec ready, abort install");
+        g_specs.clear();
         return;
     }
+    g_pending.store(pending, std::memory_order_relaxed);
+    g_installed.store(true, std::memory_order_release);
 
-    // 初始快照：给已加载库装 dlopen 触发；libfekit.so 若已加载则直接 patch。
-    ScanContext ctx{false, 0};
+    // 初始快照：目标库若已加载则直接 patch；未加载的交给轮询线程发现
+    ScanContext ctx{false};
     dl_iterate_phdr(scan_cb, &ctx);
-    LOGI("plt_hook: dlopen trigger installed on %d libs", ctx.dlopen_patches);
+    LOGI("plt_hook: %zu hook spec(s) armed, poller started", pending);
 
     pthread_t tid;
     if (pthread_create(&tid, nullptr, poller_main, nullptr) != 0) {
@@ -339,7 +367,30 @@ void install_fekit_fopen_hook() {
         return;
     }
     pthread_detach(tid);
-    LOGI("plt_hook: fopen hook installed (dlopen trigger + poller)");
+}
+
+const PltHookSpec *default_plt_hooks() {
+    return kDefaultPltHooks;
+}
+
+std::size_t default_plt_hook_count() {
+    return kDefaultPltHookCount;
+}
+
+void install_default_plt_hooks(const std::vector<std::string> &disabled_ids) {
+    // 按 id 过滤出本次要安装的 hook（默认全部启用）
+    std::vector<PltHookSpec> enabled;
+    enabled.reserve(kDefaultPltHookCount);
+    for (const auto & spec : kDefaultPltHooks) {
+        const bool disabled = std::find(disabled_ids.begin(), disabled_ids.end(), spec.id) !=
+                              disabled_ids.end();
+        if (!disabled) enabled.push_back(spec);
+    }
+    if (enabled.empty()) {
+        LOGW("plt_hook: all default hooks disabled, nothing to install");
+        return;
+    }
+    install_plt_hooks(enabled.data(), enabled.size());
 }
 
 }  // namespace tcqt

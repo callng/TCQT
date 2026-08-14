@@ -60,7 +60,8 @@
 ### 注入控制（WebUI）
 
 在支持模块 WebUI 的 KernelSU / APatch 管理器（模块详情页）中可打开
-**TCQT WebUI**，按应用（QQ / TIM）独立控制是否注入。
+**TCQT WebUI**，按应用（QQ / TIM）× 用户独立控制是否注入；同时提供
+**原生 Hook** 开关（Zygisk 模式下的 PLT/GOT hook)
 
 ---
 
