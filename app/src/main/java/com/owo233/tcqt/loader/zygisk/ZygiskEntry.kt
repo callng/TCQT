@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ApplicationInfo
+import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
 import com.owo233.tcqt.loader.ModuleLoader
@@ -11,6 +12,7 @@ import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import java.io.File
+import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
 @Keep
@@ -34,10 +36,10 @@ object ZygiskEntry {
 
         try {
             nativeLog(TAG, "init: $processName")
-            // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）。
+            // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
             loadNativeLibs(apkPath, dataDir)
 
-            // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）。
+            // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）
             if (!nativeArtInit()) {
                 Log.e(TAG, "nativeArtInit failed, abort")
                 nativeLog(TAG, "nativeArtInit failed, abort")
@@ -47,7 +49,7 @@ object ZygiskEntry {
             if (HookEngineManager.isInitialized) return
             HookEngineManager.engine = ZygiskHookEngine()
 
-            // 3. 等待宿主 ClassLoader 就绪后启动模块。
+            // 3. 等待宿主 ClassLoader 就绪后启动模块
             installHostBootstrap(pkg, apkPath, processName)
             Log.i(TAG, "ZygiskEntry.init: $processName bootstrap installed (apk=$apkPath)")
             nativeLog(TAG, "init done: $processName")
@@ -57,38 +59,124 @@ object ZygiskEntry {
         }
     }
 
-    /** 从注入 APK 的 lib/arm64-v8a 解压并 System.load 所有 so。 */
+    /**
+     * 从注入 APK 的 lib/arm64-v8a/ 提取并加载 native libraries。
+     *
+     * Android 17 / API 37 开始，System.load() 对 native dynamic code
+     * 增加了只读检查，因此所有准备通过 System.load() 加载的 .so
+     * 都必须在加载前设置为 read-only。
+     */
     @SuppressLint("UnsafeDynamicallyLoadedCode")
     private fun loadNativeLibs(apkPath: String, dataDir: String) {
-        val outDir = File(dataDir, "files/.tcqt").apply { mkdirs() }
-        runCatching {
-            ZipFile(apkPath).use { zip ->
-                zip.entries().asSequence()
-                    .filter { it.name.startsWith("lib/arm64-v8a/") && it.name.endsWith(".so") }
-                    .forEach { entry ->
-                        val outFile = File(outDir, entry.name.substringAfterLast('/'))
-
-                        if (!outFile.exists() || outFile.length() != entry.size) {
-                            val tmp = File(outDir, outFile.name + ".tmp")
-                            zip.getInputStream(entry).use { input ->
-                                tmp.outputStream().use { output -> input.copyTo(output) }
-                            }
-                            if (outFile.exists() && !outFile.delete()) {
-                                tmp.delete()
-                                error("failed to remove stale ${outFile.name}")
-                            }
-                            if (!tmp.renameTo(outFile)) {
-                                tmp.delete()
-                                error("failed to replace ${outFile.name}")
-                            }
-                        }
-                        runCatching { System.load(outFile.absolutePath) }.onFailure {
-                            Log.e(TAG, "failed to load ${outFile.name}", it)
-                        }
-                    }
+        val outDir = File(dataDir, "files/.tcqt").apply {
+            if (!exists() && !mkdirs()) {
+                error("failed to create native library directory: $absolutePath")
             }
-        }.onFailure {
-            Log.e(TAG, "failed to extract native libs from $apkPath", it)
+
+            if (!isDirectory) {
+                error("native library path is not a directory: $absolutePath")
+            }
+        }
+
+        ZipFile(apkPath).use { zip ->
+            zip.entries().asSequence()
+                .filter { entry ->
+                    !entry.isDirectory &&
+                            entry.name.startsWith("lib/arm64-v8a/") &&
+                            entry.name.endsWith(".so")
+                }
+                .forEach { entry ->
+                    val fileName = entry.name.substringAfterLast('/')
+
+                    // 防止 ZIP entry 中出现奇怪的路径
+                    if (fileName.isEmpty() || fileName == "." || fileName == "..") {
+                        Log.w(TAG, "skip invalid native library entry: ${entry.name}")
+                        return@forEach
+                    }
+
+                    val outFile = File(outDir, fileName)
+
+                    try {
+                        extractNativeLibrary(
+                            zip = zip,
+                            entry = entry,
+                            outFile = outFile
+                        )
+
+                        // Android 17+:
+                        // native libraries loaded through System.load() must be read-only.
+                        ensureReadOnly(outFile)
+                        System.load(outFile.absolutePath)
+                        Log.i(TAG, "loaded native library: ${outFile.name}")
+                    } catch (t: Throwable) {
+                        Log.e(
+                            TAG,
+                            "failed to prepare/load native library: ${outFile.name}",
+                            t
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun extractNativeLibrary(
+        zip: ZipFile,
+        entry: ZipEntry,
+        outFile: File
+    ) {
+        if (outFile.isFile && outFile.length() == entry.size) {
+            return
+        }
+
+        val tmpFile = File(
+            outFile.parentFile,
+            "${outFile.name}.${Process.myPid()}.tmp"
+        )
+
+        try {
+            tmpFile.delete()
+
+            zip.getInputStream(entry).use { input ->
+                tmpFile.outputStream().use { output ->
+                    input.copyTo(output)
+                    output.flush()
+                }
+            }
+
+            if (entry.size >= 0 && tmpFile.length() != entry.size) {
+                error(
+                    "extracted size mismatch for ${entry.name}: " +
+                            "expected=${entry.size}, actual=${tmpFile.length()}"
+                )
+            }
+
+            if (outFile.exists() && !outFile.delete()) {
+                error("failed to remove stale native library: ${outFile.absolutePath}")
+            }
+
+            if (!tmpFile.renameTo(outFile)) {
+                error(
+                    "failed to replace native library: ${outFile.absolutePath}"
+                )
+            }
+        } finally {
+            if (tmpFile.exists()) {
+                tmpFile.delete()
+            }
+        }
+    }
+
+    private fun ensureReadOnly(file: File) {
+        check(file.isFile) {
+            "native library does not exist: ${file.absolutePath}"
+        }
+
+        check(file.setReadOnly()) {
+            "failed to make native library read-only: ${file.absolutePath}"
+        }
+
+        check(!file.canWrite()) {
+            "native library is still writable: ${file.absolutePath}"
         }
     }
 

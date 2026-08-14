@@ -7,7 +7,9 @@ import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
+import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.api.Unhook
+import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.TAG
@@ -86,12 +88,15 @@ internal object DexKitFinder {
             val oldCache = DexKitCache.cacheMap.toMap()
             val newCache = DexKitCache.cacheMap.toMutableMap()
 
-            DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
-                tasks.forEach { task ->
-                    runCatching {
-                        task.execute(bridge, newCache)
-                    }.onFailure { Log.e("", it) }
+            runCatching {
+                DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
+                    tasks.forEach { task ->
+                        runCatching { task.execute(bridge, newCache) }
+                            .onFailure { Log.e("", it) }
+                    }
                 }
+            }.onFailure {
+                Log.e("create DexKitBridge failed", it)
             }
 
             val isIdentical = oldCache.isNotEmpty() && oldCache == newCache
@@ -109,17 +114,13 @@ internal object DexKitFinder {
         }
     }
 
-    private fun initDexKit(): Boolean {
-        return runCatching {
+    private fun initDexKit(): Boolean = runCatching {
+        if (HookEngineManager.engine !is ZygiskHookEngine) {
             System.loadLibrary("dexkit")
-        }.onFailure {
-            Log.e("dexkit library failed to load", it)
-        }.isSuccess || runCatching {
-            // Zygisk 注入模式下 dexkit 由 ZygiskEntry 提前 System.load 绝对路径，
-            // loadLibrary 会失败但 native 方法已注册，类可直接使用。
-            Class.forName("org.luckypray.dexkit.DexKitBridge")
-        }.isSuccess
-    }
+        }
+    }.onFailure {
+        Log.e("dexkit library failed to load", it)
+    }.isSuccess
 }
 
 interface DexKitTask {
