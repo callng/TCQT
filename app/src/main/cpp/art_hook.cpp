@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
@@ -28,6 +29,7 @@ constexpr uint32_t ACC_STATIC = 0x0008;
 constexpr uint32_t ACC_COMPILE_DONT_BOTHER = 0x02000000;
 constexpr uint32_t ACC_FAST_INTERPRETER = 0x40000000;  // kAccFastInterpreterToInterpreterInvoke
 constexpr uint32_t ACC_INTRINSIC = 0x80000000;
+constexpr uint32_t ACC_PROXY_METHOD = 0x00400000;  // kAccProxyMethod
 
 namespace {
 
@@ -144,9 +146,15 @@ int get_prot_for_addr(uintptr_t addr) {
 }
 
 // Whether `addr` points into executable memory (a plausible code pointer).
+// NOTE: get_prot_for_addr() returns -1 for addresses that are NOT present in
+// /proc/self/maps at all (unmapped, or a small non-pointer value like a dex
+// method index). Such an address must NEVER be treated as executable:
+// (-1 & PROT_EXEC) is nonzero, so this check must reject -1 explicitly.
 bool is_executable_address(uintptr_t addr) {
     addr = strip_pac(addr);
-    return addr != 0 && (get_prot_for_addr(addr) & PROT_EXEC) != 0;
+    if (addr == 0) return false;
+    int prot = get_prot_for_addr(addr);
+    return prot >= 0 && (prot & PROT_EXEC) != 0;
 }
 
 // ── WritableArtMethod: page-by-page mprotect with restoration ────────────────
@@ -240,8 +248,9 @@ bool init_reflection_fields(JNIEnv *env) {
     return true;
 }
 
-// Measure ArtMethod size via two adjacent Constructor ArtMethod pointers, then
-// scan the first ArtMethod for the access_flags value.
+// Any ambiguity fails the probe and the caller refuses to hook: writing at a
+// guessed offset would corrupt neighbouring ArtMethods and turn into
+// "GC tried to mark invalid reference" crashes.
 bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_offset,
                              uintptr_t *entry_point_out) {
     jclass throwable = env->FindClass("java/lang/Throwable");
@@ -266,64 +275,172 @@ bool probe_art_method_layout(JNIEnv *env, size_t *method_size, size_t *flags_off
         return false;
     }
     jsize len = env->GetArrayLength(ctors);
-    if (len < 2) {
+    if (len < 3) {
+        LOGE("probe_art_method_layout: need >=3 constructors, got %d", len);
         env->DeleteLocalRef(ctors);
         return false;
     }
-    jobject c0 = env->GetObjectArrayElement(ctors, 0);
-    jobject c1 = env->GetObjectArrayElement(ctors, 1);
-    uintptr_t first = 0, second = 0;
-    uint32_t flags = 0;
-    if (c0 != nullptr && g_art_method_field != nullptr) {
-        first = static_cast<uintptr_t>(env->GetLongField(c0, g_art_method_field));
+
+    constexpr jsize MAX_CTORS = 4;
+    const jsize n = len < MAX_CTORS ? len : MAX_CTORS;
+    uintptr_t arts[MAX_CTORS] = {0};
+    uint32_t flags_arr[MAX_CTORS] = {0};
+    for (jsize i = 0; i < n; ++i) {
+        jobject c = env->GetObjectArrayElement(ctors, i);
+        if (c == nullptr) {
+            env->DeleteLocalRef(ctors);
+            return false;
+        }
+        if (g_art_method_field != nullptr)
+            arts[i] = static_cast<uintptr_t>(env->GetLongField(c, g_art_method_field));
         if (g_access_flags_field != nullptr)
-            flags = static_cast<uint32_t>(env->GetIntField(c0, g_access_flags_field));
+            flags_arr[i] = static_cast<uint32_t>(env->GetIntField(c, g_access_flags_field));
+        env->DeleteLocalRef(c);
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            env->DeleteLocalRef(ctors);
+            return false;
+        }
+        if (arts[i] == 0) {
+            LOGE("probe_art_method_layout: ctor[%d] has no ArtMethod", static_cast<int>(i));
+            env->DeleteLocalRef(ctors);
+            return false;
+        }
     }
-    if (c1 != nullptr && g_art_method_field != nullptr) {
-        second = static_cast<uintptr_t>(env->GetLongField(c1, g_art_method_field));
-    }
-    if (c0 != nullptr) env->DeleteLocalRef(c0);
-    if (c1 != nullptr) env->DeleteLocalRef(c1);
     env->DeleteLocalRef(ctors);
     env->ExceptionClear();
 
-    if (first == 0 || second == 0) return false;
-    size_t size = first > second ? first - second : second - first;
-    if (size < sizeof(void *) * 3 || size > 256 || size % sizeof(void *) != 0) {
-        LOGE("probe_art_method_layout: invalid size %zu", size);
-        return false;
+    // Constructors must come in ascending address order (methods_ array order).
+    for (jsize i = 1; i < n; ++i) {
+        if (arts[i] <= arts[i - 1]) {
+            LOGE("probe_art_method_layout: constructors not in ascending order at %d", i);
+            return false;
+        }
     }
 
-    // Scan for the access_flags value (prefer offset 4, right after the
-    // declaring_class GC root).
-    size_t found = 0;
-    bool candidate = false;
-    for (size_t off = 0; off + 4 <= size; off += 4) {
-        uint32_t value;
-        memcpy(&value, reinterpret_cast<const void *>(first + off), sizeof(value));
-        if (value == flags) {
-            if (off == 4) {
-                *method_size = size;
-                *flags_offset = off;
-                memcpy(entry_point_out, reinterpret_cast<const void *>(first + size - sizeof(void *)),
-                       sizeof(*entry_point_out));
-                return true;
+    // All consecutive deltas must agree; a single mismatch means the ctor list
+    // is not a run of adjacent ArtMethods and the size cannot be trusted.
+    size_t delta = arts[1] - arts[0];
+    if (delta < sizeof(void *) * 4 || delta > 256 || delta % sizeof(void *) != 0) {
+        LOGE("probe_art_method_layout: implausible constructor delta %zu", delta);
+        return false;
+    }
+    for (jsize i = 2; i < n; ++i) {
+        size_t d = arts[i] - arts[i - 1];
+        if (d != delta) {
+            LOGE("probe_art_method_layout: constructor deltas disagree (%zu vs %zu) — "
+                 "constructors are not adjacent, refusing to probe", d, delta);
+            return false;
+        }
+    }
+
+    auto dump_bytes = [&](const char *why) {
+        char hex[256];
+        size_t pos = 0;
+        const size_t dump_len = delta < 64 ? delta : 64;
+        for (size_t i = 0; i < dump_len && pos + 3 < sizeof(hex); ++i) {
+            pos += static_cast<size_t>(snprintf(hex + pos, sizeof(hex) - pos, "%02x ",
+                                                *reinterpret_cast<const uint8_t *>(arts[0] + i)));
+        }
+        LOGE("probe_art_method_layout: %s (delta=%zu, flags ctor0=%#x ctor1=%#x ctor2=%#x)",
+             why, delta, flags_arr[0], flags_arr[1], flags_arr[2]);
+        LOGE("probe_art_method_layout: ctor0 bytes: %s", hex);
+    };
+
+    // ── Locate access_flags_: the offset where every ctor's ArtMethod holds
+    // its own reflection flags value (with ACC_CONSTRUCTOR). A coincidence
+    // cannot repeat at the same offset in three different ArtMethods.
+    constexpr uint32_t ACC_CONSTRUCTOR = 0x10000;
+    long af_off = -1;
+    for (size_t off = 0; off + 4 <= delta && off + 4 <= 64; off += 4) {
+        bool all = true;
+        for (jsize i = 0; i < n; ++i) {
+            uint32_t v = 0;
+            memcpy(&v, reinterpret_cast<const void *>(arts[i] + off), sizeof(v));
+            if (v != flags_arr[i] || (v & ACC_CONSTRUCTOR) == 0) {
+                all = false;
+                break;
             }
-            if (!candidate) {
-                found = off;
-                candidate = true;
+        }
+        if (all) {
+            if (af_off >= 0) {
+                dump_bytes("multiple consistent access_flags offsets");
+                return false;
+            }
+            af_off = static_cast<long>(off);
+        }
+    }
+    if (af_off < 0) {
+        // Fallback: OEM builds where the reflection flags field does not mirror
+        // the ArtMethod word. Accept the offset where every ctor shows clean
+        // dex-level constructor flags (public/private/protected/final/varargs/
+        // synthetic + constructor, nothing else).
+        for (size_t off = 0; off + 4 <= delta && off + 4 <= 64; off += 4) {
+            bool all = true;
+            for (jsize i = 0; i < n; ++i) {
+                uint32_t v = 0;
+                memcpy(&v, reinterpret_cast<const void *>(arts[i] + off), sizeof(v));
+                if ((v & ACC_CONSTRUCTOR) == 0 || (v & ~0x11097u) != 0) {
+                    all = false;
+                    break;
+                }
+            }
+            if (all) {
+                af_off = static_cast<long>(off);
+                break;
             }
         }
     }
-    if (candidate) {
-        *method_size = size;
-        *flags_offset = found;
-        memcpy(entry_point_out, reinterpret_cast<const void *>(first + size - sizeof(void *)),
-               sizeof(*entry_point_out));
-        return true;
+    if (af_off < 0) {
+        dump_bytes("access_flags not found at a consistent offset");
+        return false;
     }
-    LOGE("probe_art_method_layout: access_flags not found");
-    return false;
+
+    // ── Entry point: the first 8-byte slot after the flags that holds an
+    // executable address, consistently across all constructors. ArtMethod's
+    // entry point is always its last field, so this directly yields the size.
+    // Scan every 8-byte-aligned slot (data_/dex fields are not executable, so
+    // the entry point is the first executable slot after the flags).
+    long ep_off = -1;
+    uintptr_t ep_value = 0;
+    size_t scan_start = (static_cast<size_t>(af_off) + 4 + sizeof(void *) - 1) &
+                        ~(sizeof(void *) - 1);
+    for (size_t off = scan_start;
+         off + sizeof(void *) <= delta && off + sizeof(void *) <= 64;
+         off += sizeof(void *)) {
+        bool all = true;
+        uintptr_t v0 = 0;
+        for (jsize i = 0; i < n; ++i) {
+            uintptr_t v = 0;
+            memcpy(&v, reinterpret_cast<const void *>(arts[i] + off), sizeof(v));
+            if (!is_executable_address(v)) {
+                all = false;
+                break;
+            }
+            v0 = v;
+        }
+        if (all) {
+            ep_off = static_cast<long>(off);
+            ep_value = v0;
+            break;
+        }
+    }
+    if (ep_off < 0 || static_cast<size_t>(af_off) + 4 > static_cast<size_t>(ep_off)) {
+        dump_bytes("entry point not found after access_flags");
+        return false;
+    }
+
+    size_t size = static_cast<size_t>(ep_off) + sizeof(void *);
+    if (size < sizeof(void *) * 4 || size > sizeof(void *) * 8 ||
+        size % sizeof(void *) != 0 || delta % size != 0) {
+        dump_bytes("implausible method size derived from entry point");
+        return false;
+    }
+
+    *method_size = size;
+    *flags_offset = static_cast<size_t>(af_off);
+    memcpy(entry_point_out, &ep_value, sizeof(*entry_point_out));
+    return true;
 }
 
 void call_set_not_intrinsic(uintptr_t art_method) {
@@ -533,6 +650,66 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
         return -8;
     }
 
+    // Fail closed when any of the three ArtMethods does not look like a real
+    // method: an unmapped address, a non-8-byte-aligned pointer, or an
+    // implausible declaring-class root. Writing at a bogus offset would scribble
+    // over neighbouring ArtMethods and corrupt the GC roots (the "GC tried to
+    // mark invalid reference" crash class).
+    auto plausible_art_method = [&](uintptr_t art, const char *name) -> bool {
+        if (art == 0 || (art & (sizeof(void *) - 1)) != 0) {
+            LOGE("art_hook_method: %s=%#lx is not a plausible ArtMethod", name, art);
+            return false;
+        }
+        if (get_prot_for_addr(art) < 0 ||
+            get_prot_for_addr(art + method_size - 1) < 0) {
+            LOGE("art_hook_method: %s=%#lx is not fully mapped (%zu bytes)", name, art,
+                 method_size);
+            return false;
+        }
+        // The declaring-class root at offset 0 is either a 4-byte compressed
+        // reference (flags sit at offset 4 — compact ArtMethod layout used by
+        // some OEM builds) or an 8-byte pointer (flags at offset 8, AOSP
+        // layout). Validate it according to the probed layout instead of
+        // assuming 8 bytes.
+        if (af_off == 4) {
+            // Compressed references are heap offsets and can be large on
+            // devices with big heaps; only a null root is clearly invalid.
+            // The real gates are the mapped-address check above and the
+            // entry-point / write-back verification below.
+            uint32_t cls = 0;
+            memcpy(&cls, reinterpret_cast<const void *>(art), sizeof(cls));
+            if (cls == 0) {
+                LOGE("art_hook_method: %s=%#lx has null declaring class root",
+                     name, art);
+                return false;
+            }
+        } else {
+            uintptr_t cls = 0;
+            memcpy(&cls, reinterpret_cast<const void *>(art), sizeof(cls));
+            if (cls == 0 || (cls & (sizeof(void *) - 1)) != 0 || get_prot_for_addr(cls) < 0) {
+                LOGE("art_hook_method: %s=%#lx has implausible declaring class %#lx",
+                     name, art, cls);
+                return false;
+            }
+        }
+        return true;
+    };
+    if (!plausible_art_method(target, "target") || !plausible_art_method(backup, "backup") ||
+        !plausible_art_method(bridge, "bridge")) {
+        return -11;
+    }
+
+    // bridge and backup are the two ArtMethods of the generated DexMaker class
+    // and must be adjacent in its methods_ array. If they are not, the memcpy
+    // below would spill into a neighbouring slot; refuse instead of corrupting.
+    uintptr_t lo = bridge < backup ? bridge : backup;
+    uintptr_t hi = bridge < backup ? backup : bridge;
+    if (hi - lo != method_size) {
+        LOGE("art_hook_method: bridge/backup not adjacent (bridge=%#lx backup=%#lx "
+             "delta=%zu, expected size=%zu)", bridge, backup, hi - lo, method_size);
+        return -12;
+    }
+
     // Allocate the trampoline first: it has no side effect on the ArtMethods,
     // so a pool exhaustion leaves everything untouched.
     const uint8_t *trampoline = TrampolinePool::instance()->allocate(bridge, ep_off);
@@ -561,6 +738,12 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
         }
     }
 
+    // Snapshot the pristine backup bytes so a failed hook can restore the
+    // backup slot exactly (the memcpy below would otherwise leave it clobbered
+    // on the rollback path).
+    std::vector<uint8_t> backup_orig(method_size);
+    memcpy(backup_orig.data(), reinterpret_cast<const void *>(backup), method_size);
+
     WritableArtMethod tw, bw, brw;
     if (!tw.acquire(target, method_size)) return -4;
     if (!bw.acquire(backup, method_size)) return -5;
@@ -570,6 +753,7 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     auto *bridge_af = reinterpret_cast<uint32_t *>(bridge + af_off);
     auto *target_ep_ptr = reinterpret_cast<void **>(target + ep_off);
     auto *backup_ep_ptr = reinterpret_cast<void **>(backup + ep_off);
+    auto *backup_af = reinterpret_cast<uint32_t *>(backup + af_off);
 
     // ── Snapshots for rollback ──────────────────────────────────────────────
     uint32_t original_target_flags = __atomic_load_n(target_af, __ATOMIC_RELAXED);
@@ -579,50 +763,75 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
             strip_pac(reinterpret_cast<uintptr_t>(
                     __atomic_load_n(reinterpret_cast<void **>(bridge + ep_off), __ATOMIC_RELAXED))));
 
+    bool hook_ok = true;
+    auto fail = [&](const char *what) {
+        LOGE("art_hook_method: verification failed (%s), rolling back", what);
+        hook_ok = false;
+    };
     auto rollback = [&]() {
         __atomic_store_n(target_af, original_target_flags, __ATOMIC_RELAXED);
         __atomic_store_n(target_ep_ptr, original_target_ep, __ATOMIC_RELAXED);
         __atomic_store_n(bridge_af, original_bridge_flags, __ATOMIC_RELAXED);
+        memcpy(reinterpret_cast<void *>(backup), backup_orig.data(), method_size);
     };
 
     // ── Bridge: add ACC_COMPILE_DONT_BOTHER, clear precompiled ─────────────
     uint32_t precomp = g_acc_precompiled.load();
-    __atomic_store_n(bridge_af,
-                     (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) &
-                             ~precomp,
-                     __ATOMIC_RELAXED);
+    uint32_t bridge_flags_new =
+            (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) & ~precomp;
+    __atomic_store_n(bridge_af, bridge_flags_new, __ATOMIC_RELAXED);
+    if (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) != bridge_flags_new) fail("bridge flags");
 
     // ── Target: clear intrinsic (may change flags), add ACC_COMPILE_DONT_BOTHER ──
     call_set_not_intrinsic(target);
+    uint32_t after_set_not_intrinsic = __atomic_load_n(target_af, __ATOMIC_RELAXED);
     uint32_t fast_interp = g_acc_fast_interp.load();
-    __atomic_store_n(target_af,
-                     (__atomic_load_n(target_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) &
-                             ~precomp,
-                     __ATOMIC_RELAXED);
+    uint32_t target_flags_new = (after_set_not_intrinsic | ACC_COMPILE_DONT_BOTHER) & ~precomp;
+    __atomic_store_n(target_af, target_flags_new, __ATOMIC_RELAXED);
+    if (__atomic_load_n(target_af, __ATOMIC_RELAXED) != target_flags_new) fail("target flags");
 
     // ── Snapshot target into backup ─────────────────────────────────────────
     memcpy(reinterpret_cast<void *>(backup), reinterpret_cast<const void *>(target),
            method_size);
 
+    // The copy must have landed in the backup slot: the backup's declaring
+    // class root now equals the target's. A wrong method_size / offset would
+    // leave it untouched (or overwrite a neighbour instead). Compare only the
+    // class root — at hook time the flags word already matches (the memcpy
+    // happens after the target's flags were tweaked), but keep the comparison
+    // root-only to be layout-correct.
+    bool backup_copy_ok = false;
+    if (af_off == 4) {
+        uint32_t t = 0, b = 0;
+        memcpy(&t, reinterpret_cast<const void *>(target), sizeof(t));
+        memcpy(&b, reinterpret_cast<const void *>(backup), sizeof(b));
+        backup_copy_ok = (t != 0 && t == b);
+    } else {
+        uintptr_t t = 0, b = 0;
+        memcpy(&t, reinterpret_cast<const void *>(target), sizeof(t));
+        memcpy(&b, reinterpret_cast<const void *>(backup), sizeof(b));
+        backup_copy_ok = (t != 0 && t == b);
+    }
+    if (!backup_copy_ok) fail("backup declaring-class copy");
+
     // Clear the target's fast-interpreter bit so it always goes through the
     // trampoline.
-    __atomic_store_n(target_af,
-                     __atomic_load_n(target_af, __ATOMIC_RELAXED) & ~fast_interp,
-                     __ATOMIC_RELAXED);
+    uint32_t target_flags_final = __atomic_load_n(target_af, __ATOMIC_RELAXED) & ~fast_interp;
+    __atomic_store_n(target_af, target_flags_final, __ATOMIC_RELAXED);
 
     // Clear fast-interpreter and precompiled flags on backup so Nterp/interpreter performs standard frame setup.
-    auto *backup_af = reinterpret_cast<uint32_t *>(backup + af_off);
-    __atomic_store_n(backup_af,
-                     __atomic_load_n(backup_af, __ATOMIC_RELAXED) & ~fast_interp & ~precomp,
-                     __ATOMIC_RELAXED);
-
-    // Non-static backup methods become private (matching ART expectations).
-    if ((__atomic_load_n(backup_af, __ATOMIC_RELAXED) & ACC_STATIC) == 0) {
-        __atomic_store_n(backup_af,
-                         (__atomic_load_n(backup_af, __ATOMIC_RELAXED) | ACC_PRIVATE) &
-                                 ~(ACC_PUBLIC | ACC_PROTECTED),
-                         __ATOMIC_RELAXED);
+    // ACC_PROXY_METHOD is cleared too: the backup is a plain method of the
+    // generated class, and if the target happened to be a proxy method, leaving
+    // the bit set would make the GC treat the backup as a proxy and read its
+    // data_ as an interface-method root.
+    uint32_t backup_flags_new =
+            __atomic_load_n(backup_af, __ATOMIC_RELAXED) & ~fast_interp & ~precomp &
+            ~ACC_PROXY_METHOD;
+    if ((backup_flags_new & ACC_STATIC) == 0) {
+        backup_flags_new = (backup_flags_new | ACC_PRIVATE) & ~(ACC_PUBLIC | ACC_PROTECTED);
     }
+    __atomic_store_n(backup_af, backup_flags_new, __ATOMIC_RELAXED);
+    if (__atomic_load_n(backup_af, __ATOMIC_RELAXED) != backup_flags_new) fail("backup flags");
 
     // Backup always runs through the interpreter: point it at the bridge's
     // entry point (the bridge is never JIT-compiled, so its entry point is the
@@ -631,14 +840,17 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     // ArtMethod identity — executing it as `backup` would run with mismatched
     // method context.
     __atomic_store_n(backup_ep_ptr, original_bridge_ep, __ATOMIC_RELAXED);
+    if (__atomic_load_n(backup_ep_ptr, __ATOMIC_RELAXED) != original_bridge_ep)
+        fail("backup entry point");
 
     // ── Redirect the target's entry point to the trampoline ─────────────────
     __atomic_store_n(target_ep_ptr, const_cast<uint8_t *>(trampoline), __ATOMIC_RELAXED);
-
-    // ── Read-back verification; roll back on mismatch ───────────────────────
     if (__atomic_load_n(target_ep_ptr, __ATOMIC_RELAXED) != trampoline) {
-        LOGE("art_hook_method: entry point write-back mismatch (bad ep_off=%zu?)",
-             ep_off);
+        LOGE("art_hook_method: entry point write-back mismatch (bad ep_off=%zu?)", ep_off);
+        fail("target entry point");
+    }
+
+    if (!hook_ok) {
         rollback();
         return -10;
     }
@@ -647,8 +859,10 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
         g_hook_records[target] = HookRecord{backup, original_target_flags};
     }
-    LOGD("art_hook_method: hooked target=%#lx backup=%#lx bridge=%#lx ep=%#lx",
-         target, backup, bridge, reinterpret_cast<uintptr_t>(trampoline));
+    LOGD("art_hook_method: hooked target=%#lx backup=%#lx bridge=%#lx ep=%#lx "
+         "size=%zu flags_off=%zu ep_off=%zu",
+         target, backup, bridge, reinterpret_cast<uintptr_t>(trampoline),
+         method_size, af_off, ep_off);
     return 0;
 }
 
@@ -679,6 +893,28 @@ int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup) {
            method_size);
     __atomic_store_n(reinterpret_cast<uint32_t *>(target + af_off), original_access_flags,
                      __ATOMIC_RELAXED);
+
+    // Verify the restore actually landed in the target slot. Compare only the
+    // declaring-class root (4-byte compressed ref when flags sit at offset 4,
+    // 8-byte pointer otherwise): the flags word at offset 4..7 legitimately
+    // differs (target was restored to its original flags, the backup keeps the
+    // hook-time modified ones).
+    bool cls_ok = false;
+    if (af_off == 4) {
+        uint32_t t = 0, b = 0;
+        memcpy(&t, reinterpret_cast<const void *>(target), sizeof(t));
+        memcpy(&b, reinterpret_cast<const void *>(backup), sizeof(b));
+        cls_ok = (t != 0 && t == b);
+    } else {
+        uintptr_t t = 0, b = 0;
+        memcpy(&t, reinterpret_cast<const void *>(target), sizeof(t));
+        memcpy(&b, reinterpret_cast<const void *>(backup), sizeof(b));
+        cls_ok = (t != 0 && t == b);
+    }
+    if (!cls_ok) {
+        LOGE("art_unhook_method: restore verification failed for target=%#lx", target);
+        return -5;
+    }
 
     {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);

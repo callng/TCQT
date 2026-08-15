@@ -22,6 +22,15 @@ const hooks = [
         icon: SHIELD_ICON,
         desc: "对 /proc/self/smaps 的 fopen 调用 重定向到 /dev/null",
     },
+    {
+        id: "crashhandler",
+        label: "崩溃日志捕获",
+        detail: "SIGABRT/SIGSEGV 崩溃上下文",
+        icon: SHIELD_ICON,
+        desc: "模块接管崩溃信号，把最近日志与最近调用的 hook 写入 files/.tcqt/log.txt。" +
+            "关闭后信号完全交给系统与 QQ 自带 Bugly 处理，生成标准 tombstone" +
+            "（与 Bugly/Frida 等崩溃框架叠加异常时建议关闭），默认启用。",
+    },
 ];
 
 const appList = document.querySelector("#app-list");

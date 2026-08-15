@@ -50,7 +50,7 @@ internal object ZygiskHookBridge {
     // ── Public hook API（与 Xposed 语义一致） ──────────────────────────────
 
     fun hookBefore(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook {
-        val entry = getOrCreateHookEntry(member)
+        val entry = getOrCreateHookEntry(member) ?: return failedHook(member)
         val reg = Registration(priority, Mode.BEFORE, callback)
         entry.callbacks.add(reg)
         entry.callbacks.sortByDescending { it.priority }
@@ -58,7 +58,7 @@ internal object ZygiskHookBridge {
     }
 
     fun hookAfter(member: Member, priority: Int, callback: (HookParam) -> Unit): Unhook {
-        val entry = getOrCreateHookEntry(member)
+        val entry = getOrCreateHookEntry(member) ?: return failedHook(member)
         val reg = Registration(priority, Mode.AFTER, callback)
         entry.callbacks.add(reg)
         entry.callbacks.sortByDescending { it.priority }
@@ -66,32 +66,49 @@ internal object ZygiskHookBridge {
     }
 
     fun hookReplace(member: Member, priority: Int, callback: (Chain) -> Any?): Unhook {
-        val entry = getOrCreateHookEntry(member)
+        val entry = getOrCreateHookEntry(member) ?: return failedHook(member)
         val reg = Registration(priority, Mode.REPLACE, callback)
         entry.callbacks.add(reg)
         entry.callbacks.sortByDescending { it.priority }
         return Unhook { unhook(member, reg) }
     }
 
-    private fun getOrCreateHookEntry(member: Member): HookEntry {
+    /** native 层判定该成员不可安全 hook（布局探测失败/校验失败）时，优雅降级为 no-op。 */
+    private fun failedHook(member: Member): Unhook {
+        Log.e(TAG, "hook skipped (native hook unavailable): $member")
+        return Unhook {}
+    }
+
+    private fun getOrCreateHookEntry(member: Member): HookEntry? {
         return memberToHookId[member]?.let { hooks[it] } ?: synchronized(this) {
             memberToHookId[member]?.let { hooks[it] } ?: run {
                 val target = member as Executable
                 val targetArt = nativeGetArtMethod(target)
-                require(targetArt != 0L) { "failed to get ArtMethod for $member" }
+                if (targetArt == 0L) {
+                    Log.e(TAG, "failed to get ArtMethod for $member")
+                    return@run null
+                }
 
                 val pair = generateBridgePair(target)
                 val bridgeArt = nativeGetArtMethod(pair.bridgeMethod)
                 val backupArt = nativeGetArtMethod(pair.backupMethod)
-                require(bridgeArt != 0L && backupArt != 0L) {
-                    "failed to get ArtMethod for generated bridge/backup"
+                if (bridgeArt == 0L || backupArt == 0L) {
+                    Log.e(TAG, "failed to get ArtMethod for generated bridge/backup of $member")
+                    return@run null
                 }
 
                 val hookId = bridgeCounter.getAndIncrement()
                 pair.setHookId(hookId)
 
                 val rc = nativeHookMethod(targetArt, backupArt, bridgeArt)
-                check(rc == 0) { "nativeHookMethod failed ($rc) for $member" }
+                if (rc != 0) {
+                    Log.e(TAG, "nativeHookMethod failed ($rc) for $member — hook skipped")
+                    return@run null
+                }
+
+                // 记录 hookId <-> member 映射：native 崩溃环形缓冲只记 hookId，
+                // 崩溃后靠这里把 id 还原成具体方法名，便于定位。
+                Log.d(TAG, "hooked #$hookId ${member.declaringClass?.name}.${member.name}")
 
                 val entry = HookEntry(member, pair.backupMethod)
                 hooks[hookId] = entry
@@ -118,8 +135,11 @@ internal object ZygiskHookBridge {
     // ── Invoke original（Invoker 用） ────────────────────────────────────────
 
     fun invokeOriginal(member: Member, thisObject: Any?, args: Array<Any?>): Any? {
-        val id = memberToHookId[member]
-            ?: throw IllegalArgumentException("ZygiskHookBridge: member is not hooked: $member")
+        val id = memberToHookId[member] ?: run {
+            // native hook 失败被跳过时，原方法未被替换，直接返回 null 比抛异常安全
+            Log.w(TAG, "invokeOriginal: member is not hooked (native hook failed?): $member")
+            return null
+        }
         val entry = hooks[id]
             ?: throw IllegalArgumentException("ZygiskHookBridge: member is not hooked: $member")
         return try {

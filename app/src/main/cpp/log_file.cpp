@@ -149,21 +149,19 @@ void chain_to_previous_handler(int sig, siginfo_t *si, void *uctx) {
         old.sa_sigaction(sig, si, uctx);
         return;
     }
-    if (old.sa_handler == SIG_IGN) {
+    // 前一个动作是 SIG_IGN 时同样恢复默认动作并
+    // re-raise，让内核以原始故障语义终止进程并产生 tombstone（否则进程会
+    // 带着损坏状态继续运行，且系统拿不到任何崩溃证据）
+    if (old.sa_handler == SIG_IGN || old.sa_handler == SIG_DFL || old.sa_handler == nullptr) {
+        struct sigaction dfl {};
+        dfl.sa_handler = SIG_DFL;
+        sigemptyset(&dfl.sa_mask);
+        sigaction(sig, &dfl, nullptr);
+        // 用 tgkill 而非 raise()，明确定向到当前故障线程（raise 可能被派发到同进程的其他线程）
+        syscall(SYS_tgkill, getpid(), static_cast<pid_t>(syscall(SYS_gettid)), sig);
         return;
     }
-    if (old.sa_handler != SIG_DFL && old.sa_handler != nullptr) {
-        old.sa_handler(sig);
-        return;
-    }
-    // 没有可链式调用的旧处理器：恢复默认动作后把信号发回当前线程，让内核
-    // 以原始故障语义终止进程并产生 tombstone。用 tgkill 而非 raise()，明确
-    // 定向到当前故障线程（raise 可能被派发到同进程的其他线程）
-    struct sigaction dfl {};
-    dfl.sa_handler = SIG_DFL;
-    sigemptyset(&dfl.sa_mask);
-    sigaction(sig, &dfl, nullptr);
-    syscall(SYS_tgkill, getpid(), static_cast<pid_t>(syscall(SYS_gettid)), sig);
+    old.sa_handler(sig);
 }
 
 void append_hex(char *out, size_t *pos, size_t cap, uintptr_t value) {
