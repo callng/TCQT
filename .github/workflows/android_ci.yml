@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
     if: >-
-      ${{
+      ${{ 
         github.event_name == 'workflow_dispatch' ||
         (
           github.event_name == 'push' &&
@@ -67,48 +67,47 @@ jobs:
           chmod +x ./gradlew
 
           ./gradlew \
-            :app:buildDualApkRelease \
+            :app:packageZygiskModule \
             --stacktrace \
             --build-cache \
             -Dorg.gradle.vfs.watch=false \
             -Dorg.gradle.configuration-cache=false
 
-          APK_FILE_RELEASE=$(
-            find app/build/outputs/apk/release \
+          ZIP_FILE=$( \
+            find app/build/outputs/zygisk \
               -type f \
-              -name '*.apk' \
+              -name '*.zip' \
               -print \
-              -quit
+              -quit \
           )
 
-          if [ -z "$APK_FILE_RELEASE" ] || [ ! -f "$APK_FILE_RELEASE" ]; then
-            echo "::error::没有找到 Release APK"
+          if [ -z "$ZIP_FILE" ] || [ ! -f "$ZIP_FILE" ]; then
+            echo "::error::没有找到 Zygisk 模块 ZIP 文件"
             exit 1
           fi
 
-          echo "APK_FILE_RELEASE=$APK_FILE_RELEASE" >> "$GITHUB_ENV"
-
-          echo "Release APK: $APK_FILE_RELEASE"
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+          echo "Zygisk 模块 ZIP: $ZIP_FILE"
 
       - name: Show Artifacts SHA256
         run: |
           set -euo pipefail
 
-          release_sha256=$(sha256sum "$APK_FILE_RELEASE" | cut -d ' ' -f 1)
+          zip_sha256=$(sha256sum "$ZIP_FILE" | cut -d ' ' -f 1)
 
           {
             echo "### Build Success :rocket:"
             echo
             echo "| Type | SHA256 |"
             echo "|:----:|:-------|"
-            echo "| Release | \`$release_sha256\` |"
+            echo "| Zygisk Module | \`$zip_sha256\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Release Artifact
         uses: actions/upload-artifact@v7
         with:
-          path: ${{ env.APK_FILE_RELEASE }}
-          name: TCQT-release-${{ github.sha }}
+          path: ${{ env.ZIP_FILE }}
+          name: TCQT-zygisk-${{ github.sha }}
           if-no-files-found: error
 
   upload-telegram:
@@ -117,7 +116,7 @@ jobs:
     needs:
       - build
     if: >-
-      ${{
+      ${{ 
         success() &&
         github.repository == 'callng/TCQT'
       }}
@@ -127,7 +126,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Upload Release to Telegram
+      - name: Prepare and Upload Release to Telegram
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
@@ -140,20 +139,41 @@ jobs:
         run: |
           set -euo pipefail
 
-          release=$(
+          # download-artifact 已经把 Artifact 内容直接下载到了 artifacts/
+          zip_file=$( \
             find artifacts \
               -type f \
-              -name '*-release.apk' \
+              -name 'TCQT-zygisk-*.zip' \
               -print \
               -quit
           )
 
-          echo "Release path: $release"
+          echo "Build ZIP: $zip_file"
 
-          if [ -z "$release" ] || [ ! -f "$release" ]; then
-            echo "::error::没找到对应的 Release APK 文件"
+          if [ -z "$zip_file" ] || [ ! -f "$zip_file" ]; then
+            echo "::error::没找到 Zygisk 模块 ZIP 文件"
             exit 1
           fi
+
+          # 重命名为 .apk
+          apk_file="${zip_file%.zip}.apk"
+          mv "$zip_file" "$apk_file"
+
+          if [ ! -f "$apk_file" ]; then
+            echo "::error::重命名失败: $apk_file"
+            exit 1
+          fi
+
+          # 验证 APK 实际上仍然是合法 ZIP
+          if ! unzip -t "$apk_file" >/dev/null 2>&1; then
+            echo "::error::重命名后的 APK 不是有效 ZIP/APK"
+            exit 1
+          fi
+
+          echo "Final APK: $apk_file"
+          echo "Size: $(du -h "$apk_file" | cut -f1)"
+          echo "SHA256: $(sha256sum "$apk_file" | cut -d ' ' -f1)"
+          file "$apk_file"
 
           python3 > caption.txt <<'PY'
           import html
@@ -205,14 +225,14 @@ jobs:
 
             : > response.json
 
-            http_code=$(
+            http_code=$( \
               curl \
                 --silent \
                 --show-error \
                 --output response.json \
                 --write-out '%{http_code}' \
                 --form-string "chat_id=${CHANNEL_ID}" \
-                --form "document=@${release};type=application/vnd.android.package-archive" \
+                --form "document=@${apk_file};type=application/vnd.android.package-archive" \
                 --form "caption=<caption.txt" \
                 --form-string "parse_mode=HTML" \
                 "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument"
