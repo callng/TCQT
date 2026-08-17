@@ -42,7 +42,8 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
     override val key: String get() = "get_sign"
     override val name: String get() = "获取测试签名"
-    override val desc: String get() = "本功能仅用于调试，正常情况下无需启用。"
+    override val desc: String
+        get() = "本功能仅用于测试，正常情况下无需启用!!! 用法: 在聊天框随便打个字符然后长按发送按钮即可获取。"
     override val uiTab: String get() = "调试"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
 
@@ -110,8 +111,12 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
     ) {
         pendingEditText = editText
 
+        val userInput = editText.text?.toString()?.trim() ?: ""
+        val cmd = if (userInput.length >= 13) userInput else "MessageSvc.PbSendMsg"
+
         Intent(ACTION_REQUEST_SIGN).apply {
             putExtra("uin", QQInterfaces.currentUin)
+            putExtra("cmd", cmd)
             setPackage(HookEnv.hostAppPackageName)
         }.also {
             HookEnv.application.sendBroadcast(it)
@@ -124,7 +129,9 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
             override fun onReceive(context: Context, intent: Intent) {
                 runCatching {
                     val uin = intent.getStringExtra("uin") ?: "0"
-                    val cmd = "MessageSvc.PbSendMsg"
+                    val cmd = intent.getStringExtra("cmd")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "MessageSvc.PbSendMsg"
                     val buffer = "000000160A08120608D48BCAE5031206080110001800".hex2ByteArray()
                     val seq = MsfService.getCore().nextSeq
                     val toServiceMsg: ToServiceMsg = createToServiceMsg(uin = uin).apply {
