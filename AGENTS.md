@@ -137,6 +137,21 @@ Architecture:
   (ART sigchain) so tombstones still fire. New log files start with a one-time
   device header (model / Android SDK / kernel / page size). Java-side key
   lifecycle logs reach the same file via `ZygiskEntry.nativeLog`.
+- `app/src/main/cpp/so_hider.h/.cpp` — `/proc/self/maps` hiding for the
+  module's injected libraries (`libtcqtzygisk.so`, `libdexkit.so`,
+  `libandroidx.graphics.path.so`): parses every segment from `/proc/self/maps`,
+  copies each segment's RUNTIME bytes into its OWN memfd, then `MAP_FIXED`
+  remaps it onto its original address with the original protections. One
+  memfd per segment (NOT one per library): adjacent segments overlap in
+  file offsets (ELF page alignment) and their views of the shared page
+  differ at runtime (.rodata pristine vs .data relocated), so a shared
+  memfd corrupts one of them — DexKit search then reads a polluted
+  .rodata table and crashes. Virtual addresses and in-memory content
+  (relocations/GOT hooks) are preserved; only the maps path becomes
+  `/memfd:wk (deleted)`. Exec segments are mapped with their final prot
+  directly (no non-exec window). All copies happen before any remap;
+  per-segment all-or-nothing on copy failure. Wired in via
+  `ZygiskEntry.nativeHideMaps` right after `loadNativeLibs`.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
   `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk`, keeps the fd
   and reads the global SHA-256 fingerprint `/data/adb/tcqt/main.apk.sha256`
@@ -159,7 +174,11 @@ Architecture:
   before/original/after callbacks in Java; `ZygiskHookEngine` implements
   `IHookEngine` so all existing hooks run unchanged.
 - Module template at `app/src/main/zygisk-template/`; the staging task pulls
-  `libtcqtzygisk.so` from AGP's stripped native libs as `zygisk/arm64-v8a.so`.
+  the current build's `libtcqtzygisk.so` from the CMake obj output
+  (`intermediates/cmake/<variant>/obj`) and strips it with the NDK's
+  `llvm-strip` into `zygisk/arm64-v8a.so`. The injector is excluded from the
+  APK's `lib/` (`packaging.jniLibs.excludes`) and from `ZygiskEntry.loadNativeLibs`
+  — it is compiled only for the module, never shipped inside the APK.
   `buildDualApk*` merge the staged module files into the signed APK, re-zip
   (`.so` under `lib/` + `resources.arsc` STORED), `zipalign -p 4` and re-sign
   (v2 only; debug keystore fallback). `packageZygiskModule` just copies the

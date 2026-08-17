@@ -171,6 +171,9 @@ extensions.configure<ApplicationExtension> {
     }
 
     packaging {
+        jniLibs {
+            excludes += "**/libtcqtzygisk.so"
+        }
         resources {
             excludes += "google/**"
             excludes += "kotlin/**"
@@ -277,27 +280,57 @@ dependencies {
     implementation(libs.miuix.preference)
 }
 
+// 解析 Android SDK 目录（local.properties 的 sdk.dir 优先，其次 ANDROID_HOME）
+fun resolveSdkDir(): File {
+    val fromLocalProps = project.rootProject.file("local.properties")
+        .takeIf { it.exists() }
+        ?.let { f ->
+            Properties().apply { f.inputStream().use { load(it) } }.getProperty("sdk.dir")
+        }
+        ?.trim()
+    return fromLocalProps?.let { File(it) }
+        ?: System.getenv("ANDROID_HOME")?.let { File(it) }
+        ?: error("无法定位 Android SDK：请设置 ANDROID_HOME 或 local.properties 的 sdk.dir")
+}
+
 // ── Zygisk 模块打包 ──────────────────────────────────────────────────────────
 fun registerPrepareTask(
     taskName: String,
     variant: String,
     stagingDirName: String,
-    strippedPath: String,
+    objPath: String,
 ): TaskProvider<Task> {
     return tasks.register(taskName) {
         group = "zygisk"
         description = "组装 Zygisk 模块目录（$variant）"
         notCompatibleWithConfigurationCache("stages the Zygisk module ZIP")
         dependsOn("externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}")
-        // stripped so 来自 strip<Variant>DebugSymbols 产物
-        dependsOn("strip${variant.replaceFirstChar { it.uppercase() }}DebugSymbols")
 
         val stageDirProvider = layout.buildDirectory.dir(stagingDirName)
         val templateDir = layout.projectDirectory.dir("src/main/zygisk-template")
-        val soDirProvider = layout.buildDirectory.dir(strippedPath)
+        val objDirProvider = layout.buildDirectory.dir(objPath)
+
+        // NDK llvm-strip（任务已 notCompatibleWithConfigurationCache 配置期解析即可）
+        val sdkDir = resolveSdkDir()
+        val ndkDir = File(sdkDir, "ndk/$androidNdkVersion")
+        val osName = System.getProperty("os.name")?.lowercase().orEmpty()
+        val osArch = System.getProperty("os.arch")?.lowercase().orEmpty()
+        val hostDir = when {
+            osName.contains("mac") ->
+                if (osArch.contains("aarch64") || osArch.contains("arm64")) "darwin-arm64"
+                else "darwin-x86_64"
+            osName.contains("win") -> "windows-x86_64"
+            else -> "linux-x86_64"
+        }
+        val stripExe = File(
+            ndkDir,
+            "toolchains/llvm/prebuilt/$hostDir/bin/llvm-strip" +
+                if (osName.contains("win")) ".exe" else ""
+        )
 
         inputs.dir(templateDir)
-        inputs.dir(soDirProvider)
+        inputs.dir(objDirProvider)
+        inputs.file(stripExe)
         outputs.dir(stageDirProvider)
 
         doLast {
@@ -322,10 +355,37 @@ fun registerPrepareTask(
                     .replace("@VERSION_CODE@", appVersionCode.toString())
             )
 
-            val soBytes = File(soDirProvider.get().asFile, "libtcqtzygisk.so").readBytes()
-            File(stageDir, "zygisk/arm64-v8a.so").apply {
-                parentFile.mkdirs()
-                writeBytes(soBytes)
+            val candidates = mutableListOf<File>()
+            val stableObj = File(objDirProvider.get().asFile, "arm64-v8a/libtcqtzygisk.so")
+            if (stableObj.isFile) candidates += stableObj
+            listOf("Debug", "RelWithDebInfo").forEach { buildType ->
+                File(layout.buildDirectory.get().asFile, "intermediates/cxx/$buildType")
+                    .listFiles()
+                    ?.forEach { hashDir ->
+                        val f = File(hashDir, "obj/arm64-v8a/libtcqtzygisk.so")
+                        if (f.isFile) candidates += f
+                    }
+            }
+            val objSo = candidates.maxByOrNull { it.lastModified() }
+                ?: error(
+                    "libtcqtzygisk.so 未找到（检查 $objPath 或 intermediates/cxx，需先执行 " +
+                        "externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}）"
+                )
+            if (!stripExe.isFile) {
+                error("NDK llvm-strip 不存在：$stripExe")
+            }
+
+            val targetSo = File(stageDir, "zygisk/arm64-v8a.so")
+            targetSo.parentFile.mkdirs()
+            val p = ProcessBuilder(
+                stripExe.absolutePath, "-o", targetSo.absolutePath, objSo.absolutePath
+            ).redirectErrorStream(true).start()
+            p.inputStream.bufferedReader().use { r ->
+                r.forEachLine { line -> if (line.isNotBlank()) logger.lifecycle("  $line") }
+            }
+            val code = p.waitFor()
+            if (code != 0) {
+                error("llvm-strip failed (exit=$code): ${objSo.absolutePath}")
             }
 
             logger.lifecycle("Zygisk module ($variant) staged at $stageDir")
@@ -335,10 +395,10 @@ fun registerPrepareTask(
 
 val prepareZygiskModuleRelease = registerPrepareTask(
     "prepareZygiskModuleRelease", "release", "zygisk-module-release",
-    "intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib/arm64-v8a")
+    "intermediates/cmake/release/obj")
 val prepareZygiskModuleDebug = registerPrepareTask(
     "prepareZygiskModuleDebug", "debug", "zygisk-module-debug",
-    "intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib/arm64-v8a")
+    "intermediates/cmake/debug/obj")
 
 // 兼容旧引用：prepareZygiskModule = release 变体
 val prepareZygiskModule = tasks.register("prepareZygiskModule") {

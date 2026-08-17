@@ -8,6 +8,7 @@
 #include "log.h"
 #include "log_file.h"
 #include "payload.h"
+#include "so_hider.h"
 
 namespace tcqt {
 
@@ -63,6 +64,26 @@ extern "C" jboolean jni_native_art_init(JNIEnv *env, jclass entry_cls) {
     return JNI_TRUE;
 }
 
+// Hide the module's injected libraries from /proc/self/maps by
+// re-backing their file-backed mappings with private memfd snapshots.
+extern "C" jint jni_native_hide_maps(JNIEnv *, jclass) {
+    static const char *const kHiddenLibs[] = {
+            // Payload libraries.
+            // "libtcqtzygisk.so",
+            "libdexkit.so",
+            "libandroidx.graphics.path.so",
+
+            // Payload APK mappings.
+            "/files/.tcqt/main.apk",
+
+            // Zygisk entry library.
+            "zygisk/arm64-v8a.so",
+    };
+    const int hidden = tcqt::hide_paths(kHiddenLibs, 5);
+    LOGI("ZygiskEntry.nativeHideMaps: remapped %d segments to memfd", hidden);
+    return hidden;
+}
+
 // ── ZygiskHookBridge natives ─────────────────────────────────────────────────
 
 extern "C" jlong jni_native_get_art_method(JNIEnv *env, jclass, jobject executable) {
@@ -109,8 +130,10 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeLog"),
              const_cast<char *>("(Ljava/lang/String;Ljava/lang/String;)V"),
              reinterpret_cast<void *>(jni_native_log)},
+            {const_cast<char *>("nativeHideMaps"), const_cast<char *>("()I"),
+             reinterpret_cast<void *>(jni_native_hide_maps)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 2);
+    jint rc = env->RegisterNatives(clazz, methods, 3);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_entry_natives: RegisterNatives failed (%d)", rc);

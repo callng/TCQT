@@ -7,11 +7,13 @@ import android.content.pm.ApplicationInfo
 import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
@@ -29,6 +31,9 @@ object ZygiskEntry {
     private external fun nativeLog(tag: String, msg: String)
 
     @JvmStatic
+    private external fun nativeHideMaps(): Int
+
+    @JvmStatic
     @Keep
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
@@ -38,6 +43,10 @@ object ZygiskEntry {
             nativeLog(TAG, "init: $processName")
             // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
             loadNativeLibs(apkPath, dataDir)
+
+            // 1.5 隐藏注入的 so 在 /proc/self/maps 中的路径（memfd 重映射）
+            val hidden = nativeHideMaps()
+            nativeLog(TAG, "hidden $hidden so segments from maps")
 
             // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）
             if (!nativeArtInit()) {
@@ -78,46 +87,69 @@ object ZygiskEntry {
             }
         }
 
+        val apkFingerprint = readTrimmed(File(outDir, "main.apk.sha256"))
+        val libsFingerprint = readTrimmed(File(outDir, "libs.sha256"))
+        val libsUpToDate = apkFingerprint != null && apkFingerprint == libsFingerprint
+
         ZipFile(apkPath).use { zip ->
-            zip.entries().asSequence()
+            val soEntries = zip.entries().asSequence()
                 .filter { entry ->
                     !entry.isDirectory &&
                             entry.name.startsWith("lib/arm64-v8a/") &&
-                            entry.name.endsWith(".so")
+                            entry.name.endsWith(".so") &&
+                            !entry.name.endsWith("/libtcqtzygisk.so")
                 }
-                .forEach { entry ->
-                    val fileName = entry.name.substringAfterLast('/')
+                .toList()
 
-                    // 防止 ZIP entry 中出现奇怪的路径
-                    if (fileName.isEmpty() || fileName == "." || fileName == "..") {
-                        Log.w(TAG, "skip invalid native library entry: ${entry.name}")
-                        return@forEach
-                    }
+            var allOk = true
+            soEntries.forEach { entry ->
+                val fileName = entry.name.substringAfterLast('/')
 
-                    val outFile = File(outDir, fileName)
+                // 防止 ZIP entry 中出现奇怪的路径
+                if (fileName.isEmpty() || fileName == "." || fileName == "..") {
+                    Log.w(TAG, "skip invalid native library entry: ${entry.name}")
+                    return@forEach
+                }
 
-                    try {
-                        extractNativeLibrary(
-                            zip = zip,
-                            entry = entry,
-                            outFile = outFile
-                        )
+                val outFile = File(outDir, fileName)
+
+                try {
+                    if (!libsUpToDate || !outFile.isFile) {
+                        extractNativeLibrary(zip, entry, outFile)
 
                         // Android 17+:
                         // native libraries loaded through System.load() must be read-only.
                         ensureReadOnly(outFile)
-                        System.load(outFile.absolutePath)
-                        Log.i(TAG, "loaded native library: ${outFile.name}")
-                    } catch (t: Throwable) {
-                        Log.e(
-                            TAG,
-                            "failed to prepare/load native library: ${outFile.name}",
-                            t
-                        )
+                    }
+                    System.load(outFile.absolutePath)
+                    Log.i(TAG, "loaded native library: ${outFile.name}")
+                } catch (t: Throwable) {
+                    allOk = false
+                    Log.e(
+                        TAG,
+                        "failed to prepare/load native library: ${outFile.name}",
+                        t
+                    )
+                }
+            }
+
+            if (!libsUpToDate) {
+                if (allOk && apkFingerprint != null) {
+                    File(outDir, "libs.sha256").writeText(apkFingerprint)
+                }
+
+                val wanted = soEntries.mapTo(mutableSetOf()) { it.name.substringAfterLast('/') }
+                outDir.listFiles()?.forEach { f ->
+                    if (f.isFile && f.extension == "so" && f.name !in wanted) {
+                        f.delete()
                     }
                 }
+            }
         }
     }
+
+    private fun readTrimmed(file: File): String? =
+        if (file.isFile) file.readText().trim().takeIf { it.isNotEmpty() } else null
 
     private fun extractNativeLibrary(
         zip: ZipFile,
@@ -180,6 +212,28 @@ object ZygiskEntry {
         }
     }
 
+    private val hidePolling = AtomicBoolean(false)
+
+    private fun hideAfterHostReady() {
+        if (!ProcUtil.isMain) return
+        if (!hidePolling.compareAndSet(false, true)) return
+        Thread {
+            try {
+                var hidden: Int
+                for (attempt in 1..12) {
+                    hidden = nativeHideMaps()
+                    nativeLog(TAG, "hideAfterHostReady pass $attempt: $hidden segments")
+                    if (hidden > 0) break
+                    Thread.sleep(2000)
+                }
+            } catch (t: Throwable) {
+                nativeLog(TAG, "hideAfterHostReady failed: ${t.message}")
+            } finally {
+                hidePolling.set(false)
+            }
+        }.start()
+    }
+
     @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
         var isLoaded = false
@@ -208,6 +262,7 @@ object ZygiskEntry {
                         )
                     ) {
                         isLoaded = true
+                        hideAfterHostReady()
                     }
                 }.onFailure {
                     Log.e(TAG, "ModuleLoader.initialize failed", it)
@@ -225,6 +280,7 @@ object ZygiskEntry {
                         if (loader === javaClass.classLoader) return@hookBefore
                         runCatching {
                             ModuleLoader.initialize(loader, apkPath, pkg, processName)
+                            hideAfterHostReady()
                         }.onFailure {
                             Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
                         }
