@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.func.advanced
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.Setting
@@ -16,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap
 @RegisterAction
 class MMKVConfigHook : IAction {
 
+    override val key: String get() = "mmkv_config_hook"
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
     override val name: String get() = "MMKV配置Hook"
     override val desc: String get() = $$"仅高级用户使用，针对'common_mmkv_configurations'处理，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。"
     override val uiTab: String get() = "高级"
@@ -30,6 +33,12 @@ class MMKVConfigHook : IAction {
                 false
             ),
         )
+
+    /**
+     * MMKV 配置在宿主启动早期就可能被读取（不一定在 onCreate 内），
+     * 放在 EARLY 尽量提前安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onRun(app: Application, process: ActionProcess) {
         val clazz = load("com.tencent.mobileqq.qmmkv.v2.MMKVOptionEntityV2")
@@ -105,7 +114,4 @@ class MMKVConfigHook : IAction {
             }
         }
     }
-
-    override val key: String get() = "mmkv_config_hook"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
 }

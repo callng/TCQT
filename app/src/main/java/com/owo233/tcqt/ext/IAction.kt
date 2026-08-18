@@ -17,6 +17,40 @@ enum class ActionProcess {
     OTHER, ALL
 }
 
+/**
+ * 功能启动优先级。
+ *
+ * 宿主 `BaseApplicationImpl.onCreate` 的 Before 回调里只会**同步**安装
+ * [CRITICAL]，其余优先级由 [com.owo233.tcqt.StartupScheduler] 在
+ * onCreate 返回后于后台分批安装，从而让「白屏时间」不再随启用功能数量线性增长。
+ */
+enum class ActionPriority {
+
+    /**
+     * 必须在宿主 Application.onCreate 返回之前同步安装。
+     *
+     * 只允许「目标方法在 onCreate 执行期间就会被调用，且第一次调用不能漏」的
+     * 功能使用（例如 [com.owo233.tcqt.hooks.func.advanced.FileRecvRedirect]）。
+     * 数量必须严格控制，否则白屏时间会随 CRITICAL 数量线性增长。
+     */
+    CRITICAL,
+
+    /**
+     * onCreate 返回后立刻安装（主线程 Handler post 后转入后台线程）。
+     * 目标方法在 Activity / 登录流程早期被调用，但不会在 onCreate 内被调用。
+     */
+    EARLY,
+
+    /**
+     * 默认值。MAIN 进程等首帧后、后台进程立刻，分批在后台线程安装。
+     * 目标方法在用户与界面交互之后才会被调用（聊天、设置、WebView 等）。
+     */
+    DEFERRED,
+
+    /** 最后一批安装，允许与其他初始化错峰。 */
+    BACKGROUND,
+}
+
 interface IAction {
 
     val key: String
@@ -31,6 +65,15 @@ interface IAction {
     val settings: List<Setting<*>> get() = emptyList()
 
     val processes: Set<ActionProcess> get() = DEFAULT_PROCESSES
+
+    /**
+     * 启动优先级，默认 [ActionPriority.DEFERRED]。
+     *
+     * 绝大多数功能不需要覆盖：只有目标方法在宿主
+     * [android.app.Application.onCreate] 执行期间就会被调用、且第一次调用
+     * 不能漏时，才应提升为 [ActionPriority.CRITICAL]。
+     */
+    val priority: ActionPriority get() = ActionPriority.DEFERRED
 
     /**
      * 获取配置项的动态描述

@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.toClass
@@ -24,6 +25,11 @@ class ShowHideEmoticon : IAction, DexKitTask {
     override val name: String get() = "显示隐藏表情"
     override val desc: String get() = "让隐藏或处于灰度中的表情强制显示到表情列表中。"
     override val uiTab: String get() = "界面"
+
+    /**
+     * 只在打开表情面板时才会被调用，放到 BACKGROUND 错峰安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.BACKGROUND
 
     override fun onRun(app: Application, process: ActionProcess) {
         forceGrayEmoticonsIntoPanels()

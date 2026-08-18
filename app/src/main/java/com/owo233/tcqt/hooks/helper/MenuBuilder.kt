@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.helper
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
@@ -23,6 +24,11 @@ class MenuBuilder : AlwaysRunAction() {
         PttForward(),
         RepeatMessage()
     )
+
+    /**
+     * 只在用户长按消息等交互时才会被调用，放到 BACKGROUND 错峰安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.BACKGROUND
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (!PlatformTools.isNt()) {

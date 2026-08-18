@@ -75,7 +75,33 @@ internal object HookSteps {
         ResourcesUtils.injectResourcesToContext(app.resources)
     }
 
-    fun initHooks(app: Application, missingDexKitKeys: Set<String>? = null) {
+    /**
+     * 解析当前进程对应的 [ActionProcess]。
+     */
+    fun resolveActionProcess(): ActionProcess = when {
+        ProcUtil.isMain -> ActionProcess.MAIN
+        ProcUtil.isMSF -> ActionProcess.MSF
+        ProcUtil.isTool -> ActionProcess.TOOL
+        ProcUtil.isOpenSdk -> ActionProcess.OPENSDK
+        ProcUtil.isQzone -> ActionProcess.QZONE
+        ProcUtil.isQQFav -> ActionProcess.QQFAV
+        else -> ActionProcess.OTHER
+    }
+
+    /**
+     * 启动入口（在 `BaseApplicationImpl.onCreate` 的 Before 回调中调用）。
+     *
+     * 只**同步**执行 [com.owo233.tcqt.ext.ActionPriority.CRITICAL] 优先级的功能，其余由
+     * [StartupScheduler] 在 onCreate 返回后分批在后台线程安装，
+     * 避免宿主启动白屏时间随启用功能数量线性增长。
+     *
+     * @return 本次启动的执行计划，调用方需交给 [StartupScheduler.schedule]
+     */
+    fun initStartup(
+        app: Application,
+        proc: ActionProcess,
+        missingDexKitKeys: Set<String>? = null
+    ): ActionPlan {
         if (ProcUtil.isMain) {
             Log.i(
                 """
@@ -90,19 +116,9 @@ internal object HookSteps {
             )
         }
 
-        ActionManager.runFirst(
-            app,
-            when {
-                ProcUtil.isMain -> ActionProcess.MAIN
-                ProcUtil.isMSF -> ActionProcess.MSF
-                ProcUtil.isTool -> ActionProcess.TOOL
-                ProcUtil.isOpenSdk -> ActionProcess.OPENSDK
-                ProcUtil.isQzone -> ActionProcess.QZONE
-                ProcUtil.isQQFav -> ActionProcess.QQFAV
-                else -> ActionProcess.OTHER
-            },
-            missingDexKitKeys
-        )
+        val plan = ActionManager.buildPlan(proc, missingDexKitKeys)
+        ActionManager.runCritical(app, proc, plan)
+        return plan
     }
 
     @SuppressLint("DiscouragedPrivateApi")

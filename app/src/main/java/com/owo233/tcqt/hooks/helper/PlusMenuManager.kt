@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks.helper
 import android.app.Activity
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.hooks.base.loadOrThrow
@@ -19,6 +20,12 @@ import java.util.concurrent.CopyOnWriteArrayList
 object PlusMenuManager : AlwaysRunAction(), DexKitTask {
 
     override val key: String get() = "plus_menu_manager"
+
+    /**
+     * conversationPlusBuild 在首页初始化时就会被调用（预构建加号菜单），
+     * Hook 必须在其之前装好，否则首次启动漏挂。EARLY：onCreate 返回后立刻执行。
+     */
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     private val items = CopyOnWriteArrayList<ExtraMenuItem>()
 

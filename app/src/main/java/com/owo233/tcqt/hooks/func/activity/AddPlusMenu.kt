@@ -2,6 +2,7 @@ package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.ModuleCommand
@@ -15,6 +16,12 @@ class AddPlusMenu : IAction {
     override val name: String get() = "添加额外选项"
     override val desc: String get() = "给主页右上角菜单添加额外功能选项(结束/重启进程)。"
     override val uiTab: String get() = "界面"
+
+    /**
+     * 主页加号菜单在首页初始化时就会构建，必须在构建前把菜单项注册好，
+     * 否则首次启动会漏。EARLY：onCreate 返回后立刻执行。
+     */
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onRun(app: Application, process: ActionProcess) {
         PlusMenuManager.registerAll(

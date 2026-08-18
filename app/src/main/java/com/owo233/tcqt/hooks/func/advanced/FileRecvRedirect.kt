@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.toClass
@@ -31,6 +32,12 @@ class FileRecvRedirect : IAction {
 
     override val key: String
         get() = "file_recv_redirect"
+
+    /**
+     * `VFSAssistantUtils.getSDKPrivatePath` 在宿主 onCreate 期间就会被调用，
+     * 第一次调用不能漏，因此必须在 onCreate Before 中同步安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (!isTargetDirUsable()) {

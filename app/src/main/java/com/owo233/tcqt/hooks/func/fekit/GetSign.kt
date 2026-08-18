@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.EditText
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.hex2ByteArray
@@ -46,6 +47,13 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         get() = "本功能仅用于测试，正常情况下无需启用!!! 用法: 在聊天框随便打个字符然后长按发送按钮即可获取。"
     override val uiTab: String get() = "调试"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
+
+    /**
+     * 需要 Hook AIO 输入栏的初始化方法（InputRootInit），用户一旦进入聊天页
+     * 该方法就会执行，漏挂后长按发送按钮无反应。EARLY：onCreate 返回后立刻装，
+     * 保证先于任何聊天页创建。
+     */
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onRun(app: Application, process: ActionProcess) {
         when (process) {

@@ -3,6 +3,7 @@ package com.owo233.tcqt.hooks.func.basic
 import android.app.Application
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.toClass
@@ -29,6 +30,11 @@ class RemoveShareLimit : IAction, DexKitTask {
     override val name: String get() = "移除转发选择数量限制"
     override val desc: String get() = "移除转发消息时最多选择9名联系人的限制。"
     override val uiTab: String get() = "基础"
+
+    /**
+     * 只在打开转发选择页时才会被调用，放到 BACKGROUND 错峰安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.BACKGROUND
 
     private val isKuiklyUISupported: Boolean by lazy {
         HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_25)

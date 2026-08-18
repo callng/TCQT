@@ -5,6 +5,7 @@ import android.app.Application
 import android.view.View
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
@@ -23,6 +24,12 @@ class HideMiniAppPullEntry : IAction {
     override val uiTab: String get() = "界面"
     override val key: String get() = "hide_mini_app_pull_entry"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
+
+    /**
+     * 反射扫描/加载大量聊天列表 UI 类，单次 ~1s。只在用户下拉聊天列表时
+     * 才会被调用，放到 BACKGROUND 错峰安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.BACKGROUND
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isTim()) return

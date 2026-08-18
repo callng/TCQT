@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.Toast
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.BooleanSetting
 import com.owo233.tcqt.ext.IAction
@@ -41,6 +42,12 @@ class ChangeGuid : IAction {
 
     override val processes: Set<ActionProcess>
         get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
+
+    /**
+     * GUID 在登录 / 设备注册流程早期被读取（不会在 onCreate 内），
+     * 放在 EARLY：onCreate 返回后立刻安装。
+     */
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onRun(app: Application, process: ActionProcess) {
         when {

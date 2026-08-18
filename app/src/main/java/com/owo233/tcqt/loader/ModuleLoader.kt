@@ -9,6 +9,7 @@ import android.os.Process
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookSteps
+import com.owo233.tcqt.StartupScheduler
 import com.owo233.tcqt.data.TCQTBuild
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.internals.QQInterfaces
@@ -220,14 +221,14 @@ internal object ModuleLoader {
                     installMainDispatcher()
 
                     val cacheValid = DexKitCache.initCache()
-                    val needFind = !cacheValid || DexKitFinder.needsFind()
+                    val missingKeys = DexKitFinder.getMissingKeys()
+                    val needDexKitFind = !cacheValid || missingKeys.isNotEmpty()
 
-                    if (!needFind) {
-                        HookSteps.initHooks(app)
-                    } else {
-                        HookSteps.initHooks(app, missingDexKitKeys = DexKitFinder.getMissingKeys())
-                        DexKitFinder.doFind()
-                    }
+                    // 只同步安装 CRITICAL，其余全部交给 StartupScheduler 在
+                    // onCreate 返回后分批后台安装，避免宿主白屏时间随功能数量线性增长
+                    val proc = HookSteps.resolveActionProcess()
+                    val plan = HookSteps.initStartup(app, proc, missingKeys)
+                    StartupScheduler.schedule(app, proc, plan, needDexKitFind)
                 }
             }
         } catch (th: Throwable) {
@@ -272,16 +273,12 @@ internal object ModuleLoader {
         }
 
         val cacheValid = DexKitCache.initCache()
-        val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
+        val missingKeys = DexKitFinder.getMissingKeys()
+        val needDexKitFind = !cacheValid || missingKeys.isNotEmpty()
 
-        if (!needDexKitFind) {
-            HookSteps.initHooks(state["hostApplication"] as Application)
-        } else {
-            HookSteps.initHooks(
-                state["hostApplication"] as Application,
-                missingDexKitKeys = DexKitFinder.getMissingKeys()
-            )
-            DexKitFinder.doFind()
-        }
+        val app = state["hostApplication"] as Application
+        val proc = HookSteps.resolveActionProcess()
+        val plan = HookSteps.initStartup(app, proc, missingKeys)
+        StartupScheduler.schedule(app, proc, plan, needDexKitFind)
     }
 }
