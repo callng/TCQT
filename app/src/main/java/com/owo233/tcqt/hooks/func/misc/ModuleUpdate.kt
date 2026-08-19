@@ -17,6 +17,7 @@ import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 @RegisterAction
 class ModuleUpdate : IAction {
 
+    override val key: String get() = "module_update"
     override val name: String get() = "模块更新干掉宿主"
     override val defaultEnabled: Boolean
         get() = HookEngineManager.engine !is ZygiskHookEngine && HookEngineManager.engine.apiLevel < 102
@@ -50,7 +51,4 @@ class ModuleUpdate : IAction {
 
         ReceiverRegistry.register(app, receiver, filter, exported = true)
     }
-
-    override val key: String get() = "module_update"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

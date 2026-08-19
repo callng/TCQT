@@ -18,11 +18,11 @@ class AllowOpenBlockedGroup : IAction {
 
     override val key: String get() = "allow_open_blocked_group"
     override val name: String get() = "允许打开被封禁群组"
-    override val desc: String get() = "解除被封禁群组无法进入聊天页面的限制，对TIM无效。"
+    override val desc: String get() = "解除被封禁群组无法进入聊天页面的限制。"
     override val uiTab: String get() = "基础"
 
     override fun onInit(): Boolean {
-        return !HookEnv.isTim()
+        return !HookEnv.isTIM()
     }
 
     override fun onRun(app: Application, process: ActionProcess) {

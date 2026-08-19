@@ -1,6 +1,7 @@
 package com.owo233.tcqt.hooks.helper
 
 import android.app.Application
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
@@ -9,7 +10,6 @@ import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.func.activity.PttForward
 import com.owo233.tcqt.hooks.func.activity.RepeatMessage
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.isAbstract
@@ -19,23 +19,19 @@ import com.owo233.tcqt.utils.log.Log
 @RegisterAction
 class MenuBuilder : AlwaysRunAction() {
 
-    override val key: String = "MenuBuilder"
     private val decorators: Array<out OnMenuBuilder> = arrayOf<OnMenuBuilder>(
         PttForward(),
         RepeatMessage()
     )
 
-    /**
-     * 只在用户长按消息等交互时才会被调用，放到 BACKGROUND 错峰安装。
-     */
+    override val key: String = "MenuBuilder"
     override val priority: ActionPriority get() = ActionPriority.BACKGROUND
 
-    override fun onRun(app: Application, process: ActionProcess) {
-        if (!PlatformTools.isNt()) {
-            Log.e("The current host is not an NT architecture!")
-            return
-        }
+    override fun onInit(): Boolean {
+        return HookEnv.isNT()
+    }
 
+    override fun onRun(app: Application, process: ActionProcess) {
         val activeDecorators = decorators
             .filterIsInstance<IAction>()
             .filter { it.canRun() && it.onInit() }

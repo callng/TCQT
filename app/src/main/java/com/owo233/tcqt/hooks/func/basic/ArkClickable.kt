@@ -16,12 +16,14 @@ class ArkClickable : IAction {
     override val desc: String get() = "仅TIM可用，绕过部分Ark卡片消息禁止访问（请到最新版本QQ使用）的限制。"
     override val uiTab: String get() = "基础"
 
+    override fun onInit(): Boolean {
+        return HookEnv.isTIM()
+    }
+
     override fun onRun(app: Application, process: ActionProcess) {
-        if (HookEnv.isTim()) {
-            load("com.tencent.mobileqq.aio.msglist.holder.component.ark.d")
-                ?.hookMethodBefore("a", String::class.java, String::class.java) {
-                    it.result = true
-                }
-        }
+        load("com.tencent.mobileqq.aio.msglist.holder.component.ark.d")
+            ?.hookMethodBefore("a", String::class.java, String::class.java) {
+                it.result = true
+            }
     }
 }

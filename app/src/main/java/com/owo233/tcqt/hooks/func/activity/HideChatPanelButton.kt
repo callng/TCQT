@@ -20,11 +20,15 @@ import com.owo233.tcqt.utils.reflect.findMethod
 @RegisterAction
 class HideChatPanelButton : IAction {
 
+    private val activeItems: Set<PanelItem> by lazy {
+        val value = TCQTSetting.getInt("$key.items")
+        PANEL_ITEMS.filterIndexed { index, _ -> value.isFlagEnabled(index) }.toSet()
+    }
+
+    override val key: String get() = "hide_chat_panel_button"
     override val name: String get() = "净化输入框下的快捷按钮"
     override val desc: String get() = "移除聊天输入框下方的语音、相册、拍照等快捷按钮，并让剩余按钮自动重新排版。"
     override val uiTab: String get() = "界面"
-    override val key: String get() = "hide_chat_panel_button"
-
     override val settings: List<Setting<*>>
         get() = listOf(
             MultiIntSetting(
@@ -34,11 +38,6 @@ class HideChatPanelButton : IAction {
                 options = PANEL_ITEMS.map { it.label }
             )
         )
-
-    private val activeItems: Set<PanelItem> by lazy {
-        val value = TCQTSetting.getInt("$key.items")
-        PANEL_ITEMS.filterIndexed { index, _ -> value.isFlagEnabled(index) }.toSet()
-    }
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (!HookEnv.isQQ() || activeItems.isEmpty()) return

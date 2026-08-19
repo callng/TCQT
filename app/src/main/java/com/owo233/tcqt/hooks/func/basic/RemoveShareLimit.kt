@@ -41,6 +41,11 @@ class RemoveShareLimit : IAction, DexKitTask {
     }
 
     override fun onRun(app: Application, process: ActionProcess) {
+        friendListActivityCls = "com.tencent.mobileqq.activity.ForwardFriendListActivity".toClass
+        recentActivityCls = "com.tencent.mobileqq.activity.ForwardRecentActivity".toClass
+        troopListFragmentCls = "com.tencent.mobileqq.activity.ForwardTroopListFragment".toClass
+        selectTroopListFragmentCls = "com.tencent.mobileqq.selectmember.troop.SelectTroopListFragment".toClass
+
         if (isKuiklyUISupported) {
             requireClass("remove_share_limit")
                 .allConstructors()
@@ -62,15 +67,6 @@ class RemoveShareLimit : IAction, DexKitTask {
                 param.thisObject.setObjectByType<Map<String, ResultRecord>>(UnlimitedMap(), cls)
             }
         }
-    }
-
-    override fun onInit(): Boolean {
-        friendListActivityCls = "com.tencent.mobileqq.activity.ForwardFriendListActivity".toClass
-        recentActivityCls = "com.tencent.mobileqq.activity.ForwardRecentActivity".toClass
-        troopListFragmentCls = "com.tencent.mobileqq.activity.ForwardTroopListFragment".toClass
-        selectTroopListFragmentCls = "com.tencent.mobileqq.selectmember.troop.SelectTroopListFragment".toClass
-
-        return super.onInit()
     }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = if (isKuiklyUISupported) {

@@ -1401,8 +1401,9 @@ private fun FeatureCard(
     var searchExpanded by remember(item.key, searchQuery, forceExpanded) {
         mutableStateOf(forceExpanded)
     }
+    val initReady = item.initReady
     val effectivelyExpanded =
-        (if (forceExpanded) searchExpanded else item.expanded) || item.error != null
+        initReady && ((if (forceExpanded) searchExpanded else item.expanded) || item.error != null)
     val toggleDetails = {
         if (forceExpanded) {
             searchExpanded = !searchExpanded
@@ -1411,7 +1412,7 @@ private fun FeatureCard(
         }
     }
     val feature = item.feature
-    val hasDetails = item.error != null || item.optionGroup != null || item.textAreas.isNotEmpty()
+    val hasDetails = initReady && (item.error != null || item.optionGroup != null || item.textAreas.isNotEmpty())
     val query = searchQuery.trim()
     val featureTitleColor =
         if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -1419,15 +1420,20 @@ private fun FeatureCard(
         color = featureTitleColor,
     )
     val bottomAction: (@Composable () -> Unit)? =
-        if (item.hasPending || item.error != null || (effectivelyExpanded && hasDetails)) {
+        if (!initReady || item.hasPending || item.error != null || (effectivelyExpanded && hasDetails)) {
             {
-                FeaturePreferenceDetails(
-                    item = item,
-                    expanded = effectivelyExpanded,
-                    onOptionValueChange = onOptionValueChange,
-                    onTextValueChange = onTextValueChange,
-                    onClearError = onClearError,
-                )
+                if (!initReady) {
+                    ForcedDisabledHint()
+                }
+                if (initReady) {
+                    FeaturePreferenceDetails(
+                        item = item,
+                        expanded = effectivelyExpanded,
+                        onOptionValueChange = onOptionValueChange,
+                        onTextValueChange = onTextValueChange,
+                        onClearError = onClearError,
+                    )
+                }
             }
         } else {
             null
@@ -1444,6 +1450,7 @@ private fun FeatureCard(
     ) {
         if (query.isNotBlank()) {
             BasicComponent(
+                enabled = initReady,
                 endActions = {
                     when (item.uiType) {
                         ActionUiType.ENTRY -> {
@@ -1456,7 +1463,7 @@ private fun FeatureCard(
                         }
 
                         else -> {
-                            if (hasDetails && item.error == null) {
+                            if (initReady && hasDetails && item.error == null) {
                                 Icon(
                                     imageVector = MiuixIcons.ChevronForward,
                                     contentDescription = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
@@ -1470,8 +1477,9 @@ private fun FeatureCard(
                                 )
                             }
                             Switch(
-                                checked = item.enabled,
-                                onCheckedChange = onFeatureEnabledChange,
+                                checked = if (initReady) item.enabled else false,
+                                onCheckedChange = if (initReady) onFeatureEnabledChange else null,
+                                enabled = initReady,
                             )
                         }
                     }
@@ -1479,6 +1487,7 @@ private fun FeatureCard(
                 bottomAction = bottomAction,
                 insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
                 onClick = when {
+                    !initReady -> null
                     item.uiType == ActionUiType.ENTRY -> onFeatureClick
                     hasDetails && item.error == null -> toggleDetails
                     hasDetails -> null
@@ -1506,7 +1515,8 @@ private fun FeatureCard(
                 titleColor = titleColor,
                 bottomAction = bottomAction,
                 insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-                onClick = onFeatureClick,
+                onClick = if (initReady) onFeatureClick else null,
+                enabled = initReady,
             )
         } else if (hasDetails) {
             BasicComponent(
@@ -1539,16 +1549,27 @@ private fun FeatureCard(
             )
         } else {
             SwitchPreference(
-                checked = item.enabled,
+                checked = if (initReady) item.enabled else false,
                 onCheckedChange = onFeatureEnabledChange,
                 title = feature.label,
                 summary = feature.desc.takeIf(String::isNotBlank),
                 titleColor = titleColor,
                 bottomAction = bottomAction,
                 insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                enabled = initReady,
             )
         }
     }
+}
+
+@Composable
+private fun ForcedDisabledHint() {
+    Text(
+        text = "当前运行环境不满足执行条件，此功能已被强制禁用。",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.padding(top = 2.dp)
+    )
 }
 
 @Composable

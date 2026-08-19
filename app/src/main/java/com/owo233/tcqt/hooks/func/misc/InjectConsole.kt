@@ -13,21 +13,20 @@ import com.tencent.smtt.sdk.WebViewClient
 @RegisterAction
 class InjectConsole : IAction {
 
+    override val key: String get() = "inject_console"
     override val name: String get() = "注入Console"
     override val desc: String get() = "对宿主内置浏览器注入Console，方便调试。此外，无论本功能是否启用，都会对每个网页注入剪切板保护代码。"
     override val uiTab: String get() = "杂项"
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 
     companion object {
         private var enableConsole = false
     }
 
-    override fun onInit(): Boolean {
+    override fun onRun(app: Application, process: ActionProcess) {
         enableConsole = TCQTSetting.getBoolean(key)
         installHookIfNeeded()
-        return super.onInit()
     }
-
-    override fun onRun(app: Application, process: ActionProcess) = Unit
 
     private fun installHookIfNeeded() {
         WebViewClient::class.java.hookMethodBefore(
@@ -342,7 +341,4 @@ class InjectConsole : IAction {
 
         webView.evaluateJavascript(jsCode, null)
     }
-
-    override val key: String get() = "inject_console"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.TOOL)
 }

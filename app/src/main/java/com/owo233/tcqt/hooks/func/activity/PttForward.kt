@@ -34,9 +34,14 @@ import java.io.File
 @RegisterAction
 class PttForward : IAction, OnMenuBuilder {
 
+    override val key: String get() = "ptt_forward"
     override val name: String get() = "允许转发语音消息"
     override val desc: String get() = "长按语音消息显示转发按钮，可以将语音消息转发给其他好友或群。"
     override val uiTab: String get() = "界面"
+    override val targetComponentTypes: Array<String>
+        get() = arrayOf(
+            "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"
+        )
 
     private companion object {
         const val MAGIC_TOKEN = "114514" // 恶臭的 MAGIC_TOKEN
@@ -46,13 +51,6 @@ class PttForward : IAction, OnMenuBuilder {
         var currentPttElement: PttElement? = null
     }
 
-    override val key: String get() = "ptt_forward"
-    override val targetComponentTypes: Array<String>
-        get() = arrayOf(
-            "com.tencent.mobileqq.aio.msglist.holder.component.ptt.AIOPttContentComponent"
-        )
-
-    @OptIn(DelicateCoroutinesApi::class)
     override fun onRun(app: Application, process: ActionProcess) {
         val forwardBaseOption = load(CLS_FORWARD_BASE) ?: error("$CLS_FORWARD_BASE not found")
 

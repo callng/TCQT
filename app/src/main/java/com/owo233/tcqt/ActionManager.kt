@@ -254,6 +254,21 @@ internal object ActionManager {
         return instanceOf(actionClass)
     }
 
+    private val initReadyCache = ConcurrentHashMap<String, Boolean>()
+
+    /**
+     * 查询功能是否满足执行条件（[IAction.onInit] 是否返回 true）。
+     *
+     * 仅供设置界面判断强制禁用状态使用。onInit 应保持为纯条件判断，
+     * 有副作用的初始化逻辑请放在 [IAction.onRun] 中。
+     */
+    fun isInitReady(key: String): Boolean {
+        val action = getActionByKey(key) ?: return true
+        return initReadyCache.getOrPut(key) {
+            runCatching { action.onInit() }.getOrDefault(true)
+        }
+    }
+
     fun getSettingDesc(key: String, defaultDesc: String): String {
         val action = getActionByKey(key) ?: return defaultDesc
         return action.getSettingDesc(key) ?: defaultDesc

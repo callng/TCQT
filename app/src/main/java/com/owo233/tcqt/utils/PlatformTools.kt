@@ -17,7 +17,6 @@ import androidx.core.net.toUri
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.HookEnv.QQ_PACKAGE
 import com.owo233.tcqt.HookEnv.toHostClass
-import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.utils.hook.isStatic
 import com.owo233.tcqt.utils.log.Log
@@ -42,14 +41,6 @@ object PlatformTools {
         }.onFailure {
             Log.e("Restart: Failed to get companion instance", it)
         }.getOrNull()
-    }
-
-    fun isNt(): Boolean {
-        return try {
-            load("com.tencent.qqnt.base.BaseActivity") != null
-        } catch (_: Exception) {
-            false
-        }
     }
 
     fun getHostVersion(ctx: Context = HookEnv.hostAppContext): String {
@@ -87,7 +78,7 @@ object PlatformTools {
     }
 
     fun isTim(): Boolean {
-        return HookEnv.isTim()
+        return HookEnv.isTIM()
     }
 
     fun isMainProcess(): Boolean {

@@ -13,6 +13,7 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole
 @RegisterAction
 class SortAtList : IAction {
 
+    override val key: String get() = "sort_at_list"
     override val name: String get() = "优化排序@列表"
     override val desc: String get() = "键入'@'时重新排序成员列表，由群主·管理员·机器人·至普通群成员。"
     override val uiTab: String get() = "界面"
@@ -29,8 +30,6 @@ class SortAtList : IAction {
                 })
             }
     }
-
-    override val key: String get() = "sort_at_list"
 
     private fun extractMemberInfo(item: Any?): MemberInfo? {
         if (item == null) return null

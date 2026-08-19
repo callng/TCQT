@@ -18,6 +18,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 @RegisterAction
 class ReplyNoAt : IAction, DexKitTask {
 
+    override val key: String get() = "reply_no_at"
     override val name: String get() = "移除引用消息自动艾特"
     override val desc: String get() = "引用消息时不添加艾特文本。"
     override val uiTab: String get() = "界面"
@@ -39,8 +40,6 @@ class ReplyNoAt : IAction, DexKitTask {
             aioMsgItem.msgRecord.senderUid = senderUid
         }
     }
-
-    override val key: String get() = "reply_no_at"
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
         "reply_no_at" to FindClass().apply {

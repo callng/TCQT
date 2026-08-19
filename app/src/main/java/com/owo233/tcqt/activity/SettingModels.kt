@@ -53,7 +53,8 @@ data class FeatureItemUiState(
     val optionValue: Int?,
     val textAreas: List<TextAreaUiState>,
     val uiType: ActionUiType,
-    val error: FeatureErrorUiState?
+    val error: FeatureErrorUiState?,
+    val initReady: Boolean
 )
 
 @Immutable

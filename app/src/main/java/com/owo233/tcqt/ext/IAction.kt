@@ -114,8 +114,12 @@ interface IAction {
     }
 
     /**
-     * 初始化逻辑
-     * @return true 表示继续执行后续 onRun 函数，false 则不执行
+     * 功能执行条件判断（模块设置界面会调用它来决定是否强制禁用该功能）。
+     *
+     * 保持为纯条件判断，不要在这里执行 Hook 安装、配置写入等副作用；
+     * 这类初始化逻辑应放在 [onRun] 中。
+     *
+     * @return true 表示满足执行条件，继续执行后续 onRun 函数；false 则不执行
      */
     fun onInit(): Boolean = true
 

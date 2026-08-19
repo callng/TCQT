@@ -1,12 +1,12 @@
 package com.owo233.tcqt.hooks.helper
 
 import android.app.Application
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.AlwaysRunAction
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.func.basic.RenameBaseApk
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.reflect.findMethod
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
@@ -15,13 +15,14 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 @RegisterAction
 class AIOSendMsgBefore : AlwaysRunAction() {
 
-    override val key: String = "AIOSendMsgBefore"
     private val decorators: Array<out OnAIOSendMsgBefore> = arrayOf(
         RenameBaseApk()
     )
 
+    override val key: String = "AIOSendMsgBefore"
+
     override fun onInit(): Boolean {
-        return PlatformTools.isNt()
+        return HookEnv.isNT()
     }
 
     @Suppress("UNCHECKED_CAST")

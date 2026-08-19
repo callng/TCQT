@@ -93,9 +93,15 @@ internal object HookEnv {
         moduleDataPath = path
     }
 
-    fun isTim() = hostAppPackageName == TIM_PACKAGE
+    fun isTIM() = hostAppPackageName == TIM_PACKAGE
 
     fun isQQ() = hostAppPackageName == QQ_PACKAGE
+
+    fun isNT() = try {
+        load("com.tencent.qqnt.base.BaseActivity") != null
+    } catch (_: Exception) {
+        false
+    }
 
     fun isMainProcess() = ::processName.isInitialized &&
             ::hostAppPackageName.isInitialized &&
@@ -106,7 +112,7 @@ internal object HookEnv {
     }
 
     fun requireMinTimVersion(versionCode: Long): Boolean {
-        return this.isTim() && this.versionCode >= versionCode
+        return this.isTIM() && this.versionCode >= versionCode
     }
 
     fun String.toHostClass(): Class<*> = loadOrThrow(this)
@@ -118,12 +124,10 @@ internal object HookEnv {
     }
 
     fun isNightMode(): Boolean {
-        if (ThemeUtil.isNowThemeIsNight(null, true, null)) return true
-        return if (isQQ() && requireMinQQVersion(QQVersion.QQ_9_2_55_BETA_32895)) {
-            ThemeUtil.isThemeNightModeV2()
-        } else {
-            false
-        }
+        return ThemeUtil.isNowThemeIsNight(null, true, null) ||
+                isQQ() &&
+                requireMinQQVersion(QQVersion.QQ_9_2_55_BETA_32895) &&
+                ThemeUtil.isThemeNightModeV2()
     }
 
     fun resetApp() {

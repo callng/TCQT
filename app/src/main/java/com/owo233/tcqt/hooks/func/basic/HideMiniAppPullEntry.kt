@@ -27,7 +27,7 @@ class HideMiniAppPullEntry : IAction {
     override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     override fun onRun(app: Application, process: ActionProcess) {
-        if (HookEnv.isTim()) return
+        if (HookEnv.isTIM()) return
         val rule = currentHookRule() ?: run {
             Log.e("隐藏下拉小程序: 当前 QQ 版本 ${HookEnv.versionCode} 未配置 Hook 规则")
             return

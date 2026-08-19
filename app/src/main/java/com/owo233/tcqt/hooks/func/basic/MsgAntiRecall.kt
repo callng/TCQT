@@ -33,9 +33,7 @@ class MsgAntiRecall : IAction {
             ),
         )
 
-    override fun onRun(app: Application, process: ActionProcess) = Unit
-
-    override fun onInit(): Boolean {
+    override fun onRun(app: Application, process: ActionProcess) {
         AntiRecallConfig.migrateLegacyOptions()
 
         KernelServiceImpl::class.java.hookMethodAfter("initService") {
@@ -51,7 +49,5 @@ class MsgAntiRecall : IAction {
                 NTServiceFetcher.onFetch(service)
             }
         }
-
-        return super.onInit()
     }
 }

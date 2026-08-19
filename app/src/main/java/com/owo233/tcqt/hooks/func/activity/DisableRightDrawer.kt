@@ -15,8 +15,7 @@ class DisableRightDrawer : IAction {
     override val name: String get() = "禁用聊天右侧抽屉"
     override val desc: String get() = "屏蔽在聊天界面向左滑动呼出右侧面板（如群应用、亲密关系等）"
     override val uiTab: String get() = "界面"
-    override val key: String
-        get() = "disable_right_drawer"
+    override val key: String get() = "disable_right_drawer"
 
     override fun onRun(app: Application, process: ActionProcess) {
         loadOrThrow("com.tencent.aio.frame.drawer.DrawerFrameViewGroup").findMethod {

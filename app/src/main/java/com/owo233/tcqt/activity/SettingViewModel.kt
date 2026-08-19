@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.owo233.tcqt.ActionManager
 import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.hooks.helper.AntiRecallConfig
 import com.owo233.tcqt.internals.setting.TCQTSetting
@@ -83,11 +84,11 @@ class SettingViewModel : ViewModel() {
     // ───── Stats (computed dynamically using derivedStateOf) ─────
 
     val enabledCount: Int by derivedStateOf {
-        allFeatures.count { it.uiType == ActionUiType.SWITCH && effectiveBoolean(it.key) }
+        allFeatures.count { it.uiType == ActionUiType.SWITCH && isFeatureUiEnabled(it.key) }
     }
 
     val disabledCount: Int by derivedStateOf {
-        allFeatures.count { it.uiType == ActionUiType.SWITCH && !effectiveBoolean(it.key) }
+        allFeatures.count { it.uiType == ActionUiType.SWITCH && !isFeatureUiEnabled(it.key) }
     }
 
     val errorCount: Int by derivedStateOf {
@@ -248,6 +249,7 @@ class SettingViewModel : ViewModel() {
     // ───── Feature interaction ─────
 
     fun toggleExpanded(key: String) {
+        if (!ActionManager.isInitReady(key)) return
         expandedKeys[key] = !(expandedKeys[key] ?: false)
     }
 
@@ -280,6 +282,7 @@ class SettingViewModel : ViewModel() {
     fun setFeatureEnabled(key: String, value: Boolean) {
         val feature = featureByKey[key]
         if (feature?.uiType == ActionUiType.ENTRY) return
+        if (!ActionManager.isInitReady(key)) return
 
         val persisted = persistedBooleans[key] ?: false
 
@@ -431,7 +434,7 @@ class SettingViewModel : ViewModel() {
     private fun toCategoryUiState(node: CategoryNode): CategoryUiState {
         val isLeaf = node.children.isEmpty()
         val allKeysInSubtree = collectFeatureKeys(node)
-        val enabledInSubtree = allKeysInSubtree.count { effectiveBoolean(it) }
+        val enabledInSubtree = allKeysInSubtree.count { isFeatureUiEnabled(it) }
 
         return CategoryUiState(
             name = node.name,
@@ -530,10 +533,11 @@ class SettingViewModel : ViewModel() {
     }
 
     private fun toFeatureItemUiState(feature: SettingFeature): FeatureItemUiState {
+        val initReady = ActionManager.isInitReady(feature.key)
         return FeatureItemUiState(
             key = feature.key,
             feature = feature,
-            enabled = effectiveBoolean(feature.key),
+            enabled = initReady && effectiveBoolean(feature.key),
             expanded = expandedKeys[feature.key] == true,
             hasPending = hasPendingFor(feature),
             optionGroup = feature.optionGroup,
@@ -547,7 +551,8 @@ class SettingViewModel : ViewModel() {
                 )
             },
             uiType = feature.uiType,
-            error = actionErrors[feature.key]
+            error = actionErrors[feature.key],
+            initReady = initReady
         )
     }
 
@@ -557,6 +562,10 @@ class SettingViewModel : ViewModel() {
         if (pendingBooleans.containsKey(feature.key)) return true
         if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
         return feature.textAreas.any { pendingStrings.containsKey(it.key) }
+    }
+
+    private fun isFeatureUiEnabled(key: String): Boolean {
+        return ActionManager.isInitReady(key) && effectiveBoolean(key)
     }
 
     private fun effectiveBoolean(key: String): Boolean {

@@ -15,41 +15,42 @@ import com.owo233.tcqt.utils.reflect.findMethod
 @RegisterAction
 class DisablePaoPaoIcon : IAction {
 
+    override val key: String get() = "disable_pao_pao_icon"
     override val name: String get() = "禁用泡泡图标"
     override val desc: String get() = "将聊天界面中的泡泡图标替换为红包图标。"
     override val uiTab: String get() = "界面"
 
+    override fun onInit(): Boolean {
+        return HookEnv.isQQ()
+    }
+
     @SuppressLint("DiscouragedApi")
     override fun onRun(app: Application, process: ActionProcess) {
-        if (HookEnv.isQQ()) {
-            "com.tencent.qqnt.aio.shortcutbar.PanelIconLinearLayout".toHostClass().also { clazz ->
-                clazz.findMethod {
-                    paramTypes(int, string, null)
-                }.hookAfter { param ->
-                    /*
-                    val layout = param.thisObject as LinearLayout
-                    val tags = (0 until layout.childCount).map { idx -> layout.getChildAt(idx).tag }
-                    Log.e("PanelIconLinearLayout child tags = $tags")
-                    */
-                    val layout = param.thisObject as LinearLayout
-                    val icon = layout.findViewWithTag<ImageView>(1016)
+        "com.tencent.qqnt.aio.shortcutbar.PanelIconLinearLayout".toHostClass().also { clazz ->
+            clazz.findMethod {
+                paramTypes(int, string, null)
+            }.hookAfter { param ->
+                /*
+                val layout = param.thisObject as LinearLayout
+                val tags = (0 until layout.childCount).map { idx -> layout.getChildAt(idx).tag }
+                Log.e("PanelIconLinearLayout child tags = $tags")
+                */
+                val layout = param.thisObject as LinearLayout
+                val icon = layout.findViewWithTag<ImageView>(1016)
 
-                    if (icon != null) {
-                        val hbId = HookEnv.hostAppContext.resources
-                            .getIdentifier(
-                                "qui_red_envelope_aio_oversized_light_selector",
-                                "drawable",
-                                HookEnv.hostAppPackageName
-                            )
+                if (icon != null) {
+                    val hbId = HookEnv.hostAppContext.resources
+                        .getIdentifier(
+                            "qui_red_envelope_aio_oversized_light_selector",
+                            "drawable",
+                            HookEnv.hostAppPackageName
+                        )
 
-                        icon.tag = 1004
-                        icon.contentDescription = "红包"
-                        icon.setImageResource(hbId)
-                    }
+                    icon.tag = 1004
+                    icon.contentDescription = "红包"
+                    icon.setImageResource(hbId)
                 }
             }
         }
     }
-
-    override val key: String get() = "disable_pao_pao_icon"
 }

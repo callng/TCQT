@@ -7,6 +7,7 @@
 package com.owo233.tcqt.hooks.func.activity
 
 import android.app.Application
+import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
@@ -14,7 +15,6 @@ import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.internals.setting.TCQTSetting
-import com.owo233.tcqt.utils.PlatformTools
 import com.owo233.tcqt.utils.hook.hookMethodBefore
 import com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
@@ -52,7 +52,7 @@ class ImageCustomSummary : IAction {
         )
 
     override fun onInit(): Boolean {
-        return PlatformTools.isNt()
+        return HookEnv.isNT()
     }
 
     override fun onRun(app: Application, process: ActionProcess) {

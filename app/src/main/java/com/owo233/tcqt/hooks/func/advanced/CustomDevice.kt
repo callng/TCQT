@@ -17,9 +17,11 @@ import com.owo233.tcqt.utils.reflect.getMethods
 @RegisterAction
 class CustomDevice : IAction {
 
+    override val key: String get() = "custom_device"
     override val name: String get() = "自定义设备信息"
     override val desc: String get() = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。"
     override val uiTab: String get() = "高级"
+    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
     override val settings: List<Setting<*>>
         get() = listOf(
             StringSetting(
@@ -48,29 +50,8 @@ class CustomDevice : IAction {
             ),
         )
 
-    override fun onInit(): Boolean {
-        if (device.isBlank()) {
-            TCQTSetting.setString(
-                "custom_device.string.device",
-                Build.DEVICE
-            )
-        }
-        if (model.isBlank()) {
-            TCQTSetting.setString(
-                "custom_device.string.model",
-                Build.MODEL
-            )
-        }
-        if (manufacturer.isBlank()) {
-            TCQTSetting.setString(
-                "custom_device.string.manufacturer",
-                Build.MANUFACTURER
-            )
-        }
-        return super.onInit()
-    }
-
     override fun onRun(app: Application, process: ActionProcess) {
+        fillDefaultDeviceInfo()
         load("android.os.SystemProperties")!!
             .getMethods(false)
             .filter { it.name == "get" }
@@ -98,8 +79,26 @@ class CustomDevice : IAction {
         }
     }
 
-    override val key: String get() = "custom_device"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
+    private fun fillDefaultDeviceInfo() {
+        if (device.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.device",
+                Build.DEVICE
+            )
+        }
+        if (model.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.model",
+                Build.MODEL
+            )
+        }
+        if (manufacturer.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.manufacturer",
+                Build.MANUFACTURER
+            )
+        }
+    }
 
     companion object {
         const val DEVICE_KEY = "ro.product.device"

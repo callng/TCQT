@@ -11,6 +11,7 @@ import com.owo233.tcqt.utils.reflect.findMethod
 @RegisterAction
 class PokeNoCoolDown : IAction {
 
+    override val key: String get() = "poke_no_cool_down"
     override val name: String get() = "戳一戳无冷却"
     override val desc: String get() = "移除戳一戳冷却时间(每天上限200次)。"
     override val uiTab: String get() = "界面"
@@ -23,7 +24,4 @@ class PokeNoCoolDown : IAction {
             paramCount = 1
         }.hookBefore { param -> param.result = true }
     }
-
-    override val key: String get() = "poke_no_cool_down"
-    override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
 }

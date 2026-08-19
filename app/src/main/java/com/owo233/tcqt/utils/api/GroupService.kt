@@ -61,7 +61,7 @@ internal object GroupService {
     }
 
     fun modifyMemberRole(groupId: String, uin: String, isEnable: Boolean) {
-        if (HookEnv.isTim()) {
+        if (HookEnv.isTIM()) {
             ToServiceMsg(
                 "mobileqq.service",
                 QQInterfaces.currentUin,

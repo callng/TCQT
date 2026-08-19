@@ -29,6 +29,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @RegisterAction
 class MultiSelectRecall : IAction {
 
+    override val key: String get() = "multi_select_recall"
     override val name: String get() = "消息多选撤回"
     override val desc: String get() = "启用本功能后,消息多选模式下可批量撤回选中消息,非管理员也可使用。"
     override val uiTab: String get() = "界面"
@@ -48,8 +49,6 @@ class MultiSelectRecall : IAction {
         }
     }
 
-    override val key: String get() = "multi_select_recall"
-
     private fun injectRecallButton(
         operationLayout: LinearLayout,
         operationLambda: Any
@@ -68,7 +67,6 @@ class MultiSelectRecall : IAction {
         operationLayout.addView(recallBtn, index)
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     @Suppress("UNCHECKED_CAST", "DEPRECATION")
     private fun performBatchRecall() {
         runCatching {

@@ -63,7 +63,7 @@ class HideQzoneAD : IAction {
                 }
         }
 
-        if (HookEnv.isTim()) {
+        if (HookEnv.isTIM()) {
             loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
                 .hookMethodBefore({
                     name = "isShowingRecommendAd"

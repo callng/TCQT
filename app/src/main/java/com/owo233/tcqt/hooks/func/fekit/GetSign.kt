@@ -65,7 +65,7 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initMainProcess(app: Application) {
-        val method = if (HookEnv.isTim()) {
+        val method = if (HookEnv.isTIM()) {
             "com.tencent.tim.aio.inputbar.simpleui.TimAIOInputSimpleUIVBDelegate".toClass.findMethod {
                 name = "B"
             }
@@ -181,12 +181,12 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
     }
 
     override fun getCacheKeys(): Set<String> {
-        if (HookEnv.isTim()) return emptySet()
+        if (HookEnv.isTIM()) return emptySet()
         return setOf(TASK_INPUT_ROOT_INIT, TASK_GET_SIGN)
     }
 
     override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        if (HookEnv.isTim()) return
+        if (HookEnv.isTIM()) return
 
         with(bridge) {
             findAndCache(cache, TASK_GET_SIGN) {

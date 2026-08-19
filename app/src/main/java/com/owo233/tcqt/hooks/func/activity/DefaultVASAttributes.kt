@@ -36,6 +36,10 @@ class DefaultVASAttributes : IAction {
             ),
         )
 
+    override fun onInit(): Boolean {
+        return HookEnv.isNT() && HookEnv.isQQ()
+    }
+
     override fun onRun(app: Application, process: ActionProcess) {
         val options = TCQTSetting.getInt("default_vas_attrs.type")
 
