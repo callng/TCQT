@@ -21,15 +21,13 @@ class InjectConsole : IAction {
         private var enableConsole = false
     }
 
-    override fun onRun(app: Application, process: ActionProcess) {
-        // 不需要任何代码
-    }
-
-    override fun canRun(): Boolean {
+    override fun onInit(): Boolean {
         enableConsole = TCQTSetting.getBoolean(key)
         installHookIfNeeded()
-        return enableConsole
+        return super.onInit()
     }
+
+    override fun onRun(app: Application, process: ActionProcess) = Unit
 
     private fun installHookIfNeeded() {
         WebViewClient::class.java.hookMethodBefore(

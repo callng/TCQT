@@ -26,12 +26,7 @@ class RemoveAD : IAction {
     override val name: String get() = "移除部分广告"
     override val desc: String get() = "移除一些常见的广告弹窗。"
     override val uiTab: String get() = "基础"
-
-    /**
-     * 首页顶部广告/弹窗在启动早期就会创建显示，必须在其之前挂钩，
-     * 否则开局广告会漏。EARLY：onCreate 返回后立刻装。
-     */
-    override val priority: ActionPriority get() = ActionPriority.EARLY
+    override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     override fun onRun(app: Application, process: ActionProcess) {
         removeImmersionBannerAD()

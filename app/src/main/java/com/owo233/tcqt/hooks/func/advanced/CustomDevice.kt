@@ -48,6 +48,28 @@ class CustomDevice : IAction {
             ),
         )
 
+    override fun onInit(): Boolean {
+        if (device.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.device",
+                Build.DEVICE
+            )
+        }
+        if (model.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.model",
+                Build.MODEL
+            )
+        }
+        if (manufacturer.isBlank()) {
+            TCQTSetting.setString(
+                "custom_device.string.manufacturer",
+                Build.MANUFACTURER
+            )
+        }
+        return super.onInit()
+    }
+
     override fun onRun(app: Application, process: ActionProcess) {
         load("android.os.SystemProperties")!!
             .getMethods(false)
@@ -78,33 +100,6 @@ class CustomDevice : IAction {
 
     override val key: String get() = "custom_device"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.ALL)
-
-    override fun canRun(): Boolean {
-        val isEnabled = TCQTSetting.getBoolean(key)
-
-        if (!isEnabled) {
-            if (device.isBlank()) {
-                TCQTSetting.setString(
-                    "custom_device.string.device",
-                    Build.DEVICE
-                )
-            }
-            if (model.isBlank()) {
-                TCQTSetting.setString(
-                    "custom_device.string.model",
-                    Build.MODEL
-                )
-            }
-            if (manufacturer.isBlank()) {
-                TCQTSetting.setString(
-                    "custom_device.string.manufacturer",
-                    Build.MANUFACTURER
-                )
-            }
-        }
-
-        return isEnabled
-    }
 
     companion object {
         const val DEVICE_KEY = "ro.product.device"

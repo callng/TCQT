@@ -104,8 +104,7 @@ interface IAction {
     fun onUiClick(context: Context): Boolean = false
 
     fun canRun(): Boolean {
-        if (uiType == ActionUiType.ENTRY) return false
-        return runCatching {
+        return uiType != ActionUiType.ENTRY && runCatching {
             TCQTSetting.getValue<Boolean>(key) ?: defaultEnabled
         }.getOrElse { e ->
             ActionErrorStore.report(key, "开关检查", e)

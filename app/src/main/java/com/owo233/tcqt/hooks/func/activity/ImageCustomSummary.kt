@@ -23,6 +23,7 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 @RegisterAction
 class ImageCustomSummary : IAction {
 
+    override val key: String get() = "image_custom_summary"
     override val name: String get() = "自定义图片外显文字"
     override val desc: String get() = "自定义消息列表中图片类型消息的外显文字。"
     override val uiTab: String get() = "界面"
@@ -49,6 +50,10 @@ class ImageCustomSummary : IAction {
                 false
             ),
         )
+
+    override fun onInit(): Boolean {
+        return PlatformTools.isNt()
+    }
 
     override fun onRun(app: Application, process: ActionProcess) {
         val mHookType =
@@ -95,8 +100,4 @@ class ImageCustomSummary : IAction {
             }
         }
     }
-
-    override val key: String get() = "image_custom_summary"
-
-    override fun canRun(): Boolean = PlatformTools.isNt() && TCQTSetting.getBoolean(key)
 }

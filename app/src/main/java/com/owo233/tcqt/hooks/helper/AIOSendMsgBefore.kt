@@ -20,6 +20,10 @@ class AIOSendMsgBefore : AlwaysRunAction() {
         RenameBaseApk()
     )
 
+    override fun onInit(): Boolean {
+        return PlatformTools.isNt()
+    }
+
     @Suppress("UNCHECKED_CAST")
     override fun onRun(app: Application, process: ActionProcess) {
         val activeDecorators = decorators
@@ -36,10 +40,6 @@ class AIOSendMsgBefore : AlwaysRunAction() {
                 it.onSend(elements)
             }
         }
-    }
-
-    override fun canRun(): Boolean {
-        return PlatformTools.isNt()
     }
 }
 

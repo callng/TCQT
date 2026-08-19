@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.graphics.toColorInt
 import androidx.core.view.children
 import com.owo233.tcqt.HookEnv.toHostClass
 import com.owo233.tcqt.ext.ActionProcess
@@ -18,7 +19,6 @@ import com.owo233.tcqt.hooks.helper.AntiRecallConfig
 import com.owo233.tcqt.hooks.helper.OnAIOViewUpdate
 import com.owo233.tcqt.hooks.helper.RecallManager
 import com.owo233.tcqt.internals.QQInterfaces
-import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.hook.MethodHookParam
 import com.owo233.tcqt.utils.reflect.invoke
@@ -26,7 +26,6 @@ import com.owo233.tcqt.utils.reflect.new
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import java.util.WeakHashMap
-import androidx.core.graphics.toColorInt
 
 class RecallHeaderTip : IAction, OnAIOViewUpdate {
 
@@ -43,10 +42,8 @@ class RecallHeaderTip : IAction, OnAIOViewUpdate {
     private val boundLayouts = WeakHashMap<ViewGroup, MessageLayout>()
     private var listenerRegistered = false
 
-    override fun canRun(): Boolean =
-        TCQTSetting.getBoolean(key) && AntiRecallConfig.isTopTipEnabled()
-
     override fun onInit(): Boolean {
+        if (!AntiRecallConfig.isTopTipEnabled()) return false
         if (!listenerRegistered) {
             RecallManager.addListener(::onMessageRecalled)
             listenerRegistered = true

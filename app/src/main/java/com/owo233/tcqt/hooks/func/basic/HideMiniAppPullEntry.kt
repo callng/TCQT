@@ -24,12 +24,7 @@ class HideMiniAppPullEntry : IAction {
     override val uiTab: String get() = "界面"
     override val key: String get() = "hide_mini_app_pull_entry"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN)
-
-    /**
-     * 反射扫描/加载大量聊天列表 UI 类，单次 ~1s。只在用户下拉聊天列表时
-     * 才会被调用，放到 BACKGROUND 错峰安装。
-     */
-    override val priority: ActionPriority get() = ActionPriority.BACKGROUND
+    override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     override fun onRun(app: Application, process: ActionProcess) {
         if (HookEnv.isTim()) return
