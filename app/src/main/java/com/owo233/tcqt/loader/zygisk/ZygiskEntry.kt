@@ -1,9 +1,8 @@
 package com.owo233.tcqt.loader.zygisk
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
-import android.content.ContextWrapper
-import android.content.pm.ApplicationInfo
 import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
@@ -241,60 +240,31 @@ object ZygiskEntry {
         }.start()
     }
 
-    @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
+    @SuppressLint("DiscouragedPrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
-        var isLoaded = false
-        val loadedApkClass = Class.forName("android.app.LoadedApk")
-        val createAppFactory = loadedApkClass.getDeclaredMethod(
-            "createAppFactory", ApplicationInfo::class.java, ClassLoader::class.java
-        )
-        createAppFactory.hookAfter { param ->
-            if (param.throwable != null) return@hookAfter
-            val appInfo = param.args.getOrNull(0) as? ApplicationInfo ?: return@hookAfter
-            if (appInfo.packageName != pkg) return@hookAfter
-            val factory = param.result ?: return@hookAfter
-
-            val instantiate = factory.javaClass.getMethod(
-                "instantiateClassLoader", ClassLoader::class.java, ApplicationInfo::class.java
-            )
-            instantiate.hookAfter { p2 ->
-                if (p2.throwable != null) return@hookAfter
-                val hostLoader = p2.result as? ClassLoader ?: return@hookAfter
+        runCatching {
+            Application::class.java.getDeclaredMethod(
+                "attach",
+                Context::class.java
+            ).hookBefore { param ->
+                if (param.throwable != null) return@hookBefore
+                val context = param.args.getOrNull(0) as? Context ?: return@hookBefore
+                val hostLoader = context.classLoader ?: return@hookBefore
+                if (hostLoader === javaClass.classLoader) return@hookBefore
                 runCatching {
-                    if (ModuleLoader.initialize(
-                            hostLoader,
-                            apkPath,
-                            pkg,
-                            processName
-                        )
-                    ) {
-                        isLoaded = true
-                        hideAfterHostReady()
-                    }
+                    val ok = ModuleLoader.initialize(
+                        hostLoader,
+                        apkPath,
+                        pkg,
+                        processName
+                    )
+                    if (ok) hideAfterHostReady()
                 }.onFailure {
-                    Log.e(TAG, "ModuleLoader.initialize failed", it)
+                    Log.e(TAG, "ModuleLoader.initialize (Application.attach) failed", it)
                 }
             }
-        }
-
-        if (!isLoaded) {
-            runCatching {
-                ContextWrapper::class.java
-                    .getDeclaredMethod("attachBaseContext", Context::class.java)
-                    .hookBefore { param ->
-                        val loader = (param.args.getOrNull(0) as? Context)?.classLoader
-                            ?: return@hookBefore
-                        if (loader === javaClass.classLoader) return@hookBefore
-                        runCatching {
-                            ModuleLoader.initialize(loader, apkPath, pkg, processName)
-                            hideAfterHostReady()
-                        }.onFailure {
-                            Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
-                        }
-                    }
-            }.onFailure {
-                Log.e(TAG, "hook ContextWrapper.attachBaseContext failed", it)
-            }
+        }.onFailure {
+            Log.e(TAG, "hook Application.attach failed", it)
         }
     }
 }
