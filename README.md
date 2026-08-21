@@ -15,11 +15,11 @@
 
 ##  环境
 
-| 项目    | 说明                                |
-|-------|-----------------------------------|
-| 适配客户端 | QQ / TIM Android（NT 架构）           |
-| 系统版本  | Android 8.1 ~ 17                  |
-| 框架支持  | LSPosed（默认）；也可通过 Zygisk 注入运行（见下文） |
+| 项目       | 说明                                                |
+|------------|-----------------------------------------------------|
+| 适配客户端 | QQ / TIM Android（NT 架构）                         |
+| 系统版本   | Android 8.1 ~ 17                                    |
+| 框架支持   | LSPosed（默认）；也可通过 Zygisk 注入运行（见下文） |
 
 ---
 
@@ -30,11 +30,11 @@
 
 ### 环境要求
 
-| 项目      | 说明                                              |
-|---------|-------------------------------------------------|
+| 项目      | 说明                                                    |
+|-----------|---------------------------------------------------------|
 | Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext） |
-| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                       |
-| 系统版本    | Android 8.1 ~ 16（高版本依赖 ART 布局探测，适配中）            |
+| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                    |
+| 系统版本  | Android 8.1 ~ 16（高版本依赖 ART 布局探测，适配中）     |
 
 ### 安装
 
@@ -89,11 +89,11 @@
 
 ### 环境要求
 
-| 依赖          | 说明                          |
-|-------------|-----------------------------|
+| 依赖        | 说明                                 |
+|-------------|--------------------------------------|
 | JDK         | **21** （由项目 toolchain 强制要求） |
-| Android SDK | compileSdk 37、minSdk 27     |
-| Git         | 用于生成版本号（提交数 + 短哈希）          |
+| Android SDK | compileSdk 37、minSdk 27             |
+| Git         | 用于生成版本号（提交数 + 短哈希）    |
 
 > 请确保 `local.properties` 中的 `sdk.dir` 指向有效的 Android SDK 路径。  
 > 以下命令在 Windows 下请使用 `gradlew.bat`，macOS / Linux 下使用 `./gradlew`。
@@ -134,15 +134,17 @@ KEY_PASSWORD=your_key_password \
 
 ### 编译 Zygisk 模块（可选）
 
-产物为**双格式 APK**：既是可安装的 APK，也是 Magisk / KernelSU 可刷入的模块 ZIP
-（改名 `.zip` 即可刷入）
-未配置签名信息时使用 debug keystore 回退签名：
+`assembleDebug` / `assembleRelease` 产出的 APK 本身就是**双格式 APK**：
+既是可安装的 APK，也是 Magisk / KernelSU 可刷入的模块 ZIP（改名 `.zip` 即可刷入），
+Android Studio 里直接 Build / Generate Signed APK 也会得到同样的双格式产物。
+
+如需额外的 `.zip` 文件，可执行：
 
 ```bash
 ./gradlew :app:packageZygiskModule
 ```
 
-产物输出到：
+它会复制 release 双格式 APK 到：
 
 ```
 app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip   # 双格式 APK 的 .zip 副本

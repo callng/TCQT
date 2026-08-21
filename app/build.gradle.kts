@@ -293,6 +293,46 @@ fun resolveSdkDir(): File {
         ?: error("无法定位 Android SDK：请设置 ANDROID_HOME 或 local.properties 的 sdk.dir")
 }
 
+// 解析双格式 APK 重签时使用的签名参数
+// 优先级：Android Studio 注入的签名配置（Generate Signed APK）> 环境变量 > debug keystore
+fun resolveSigningArgs(): List<String> {
+    fun gradleProp(name: String): String? =
+        providers.gradleProperty(name).orNull?.takeIf { it.isNotBlank() }
+
+    val injStore = gradleProp("android.injected.signing.store.file")
+    val injStorePass = gradleProp("android.injected.signing.store.password")
+    val injAlias = gradleProp("android.injected.signing.key.alias")
+    val injKeyPass = gradleProp("android.injected.signing.key.password")
+    if (injStore != null) {
+        val f = File(injStore)
+        return listOf(
+            "--ks", (if (f.isAbsolute) f.absolutePath else project.file(injStore).absolutePath),
+            "--ks-pass", "pass:${injStorePass ?: ""}",
+            "--ks-key-alias", injAlias ?: "",
+            "--key-pass", "pass:${injKeyPass ?: ""}"
+        )
+    }
+
+    val envStore = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+    if (envStore != null) {
+        val f = File(envStore)
+        return listOf(
+            "--ks", (if (f.isAbsolute) f.absolutePath else project.file(envStore).absolutePath),
+            "--ks-pass", "pass:${System.getenv("KEYSTORE_PASSWORD") ?: ""}",
+            "--ks-key-alias", System.getenv("KEY_ALIAS") ?: "",
+            "--key-pass", "pass:${System.getenv("KEY_PASSWORD") ?: ""}"
+        )
+    }
+
+    val debugKs = File(System.getProperty("user.home"), ".android/debug.keystore")
+    return listOf(
+        "--ks", debugKs.absolutePath,
+        "--ks-pass", "pass:android",
+        "--ks-key-alias", "androiddebugkey",
+        "--key-pass", "pass:android"
+    )
+}
+
 // ── Zygisk 模块打包 ──────────────────────────────────────────────────────────
 fun registerPrepareTask(
     taskName: String,
@@ -437,7 +477,7 @@ val buildDualApkRelease = tasks.register("buildDualApkRelease") {
     group = "zygisk"
     description = "构建双格式 APK（release：.apk = XP 模块，.zip = Zygisk 模块）"
     notCompatibleWithConfigurationCache("stages the dual-format APK")
-    dependsOn("assembleRelease")
+    dependsOn("packageRelease")
     dependsOn(prepareZygiskModuleRelease)
 
     val apkName = "TCQT-${appVersionName}-release.apk"
@@ -540,31 +580,7 @@ val buildDualApkRelease = tasks.register("buildDualApkRelease") {
 
         val outFile = outApkProvider.get().asFile
         outFile.parentFile.mkdirs()
-        val ksPathRaw = System.getenv("KEYSTORE_PATH")
-        val ksPath = ksPathRaw?.takeIf { it.isNotBlank() }?.let { raw ->
-            val f = File(raw)
-            if (f.isAbsolute) f.absolutePath else project.file(raw).absolutePath
-        }
-        val ksPass = System.getenv("KEYSTORE_PASSWORD")
-        val ksAlias = System.getenv("KEY_ALIAS")
-        val ksKeyPass = System.getenv("KEY_PASSWORD")
-        val signArgs = if (ksPath.isNullOrBlank()) {
-            // 回退 debug keystore（本地无签名环境时也能产出可安装 APK）
-            val debugKs = File(System.getProperty("user.home"), ".android/debug.keystore")
-            listOf(
-                "--ks", debugKs.absolutePath,
-                "--ks-pass", "pass:android",
-                "--ks-key-alias", "androiddebugkey",
-                "--key-pass", "pass:android"
-            )
-        } else {
-            listOf(
-                "--ks", ksPath,
-                "--ks-pass", "pass:$ksPass",
-                "--ks-key-alias", ksAlias,
-                "--key-pass", "pass:$ksKeyPass"
-            )
-        }
+        val signArgs = resolveSigningArgs()
         runCmd(
             "java", "-jar", File(btDir, "lib/apksigner.jar").absolutePath, "sign",
             *signArgs.toTypedArray(),
@@ -581,7 +597,7 @@ val buildDualApkDebug = tasks.register("buildDualApkDebug") {
     group = "zygisk"
     description = "构建双格式 APK（debug：.apk = XP 模块，.zip = Zygisk 模块）"
     notCompatibleWithConfigurationCache("stages the dual-format APK")
-    dependsOn("assembleDebug")
+    dependsOn("packageDebug")
     dependsOn(prepareZygiskModuleDebug)
 
     val apkName = "TCQT-${appVersionName}-debug.apk"
@@ -684,31 +700,7 @@ val buildDualApkDebug = tasks.register("buildDualApkDebug") {
 
         val outFile = outApkProvider.get().asFile
         outFile.parentFile.mkdirs()
-        val ksPathRaw = System.getenv("KEYSTORE_PATH")
-        val ksPath = ksPathRaw?.takeIf { it.isNotBlank() }?.let { raw ->
-            val f = File(raw)
-            if (f.isAbsolute) f.absolutePath else project.file(raw).absolutePath
-        }
-        val ksPass = System.getenv("KEYSTORE_PASSWORD")
-        val ksAlias = System.getenv("KEY_ALIAS")
-        val ksKeyPass = System.getenv("KEY_PASSWORD")
-        val signArgs = if (ksPath.isNullOrBlank()) {
-            // 回退 debug keystore（本地无签名环境时也能产出可安装 APK）
-            val debugKs = File(System.getProperty("user.home"), ".android/debug.keystore")
-            listOf(
-                "--ks", debugKs.absolutePath,
-                "--ks-pass", "pass:android",
-                "--ks-key-alias", "androiddebugkey",
-                "--key-pass", "pass:android"
-            )
-        } else {
-            listOf(
-                "--ks", ksPath,
-                "--ks-pass", "pass:$ksPass",
-                "--ks-key-alias", ksAlias,
-                "--key-pass", "pass:$ksKeyPass"
-            )
-        }
+        val signArgs = resolveSigningArgs()
         runCmd(
             "java", "-jar", File(btDir, "lib/apksigner.jar").absolutePath, "sign",
             *signArgs.toTypedArray(),
@@ -725,4 +717,25 @@ val buildDualApk = tasks.register("buildDualApk") {
     group = "zygisk"
     description = "构建双格式 APK（release，兼容旧名）"
     dependsOn("buildDualApkRelease")
+}
+
+tasks.configureEach {
+    if (name == "assembleRelease") {
+        dependsOn(buildDualApkRelease)
+    }
+    if (name == "assembleDebug") {
+        dependsOn(buildDualApkDebug)
+    }
+    if (name == "installRelease") {
+        dependsOn(buildDualApkRelease)
+    }
+    if (name == "installDebug") {
+        dependsOn(buildDualApkDebug)
+    }
+    if (name == "redirectIdeApkOutputsRelease") {
+        dependsOn(buildDualApkRelease)
+    }
+    if (name == "redirectIdeApkOutputsDebug") {
+        dependsOn(buildDualApkDebug)
+    }
 }
