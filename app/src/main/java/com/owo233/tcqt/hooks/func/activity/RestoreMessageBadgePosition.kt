@@ -7,9 +7,11 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.hooks.base.toClass
+import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.reflect.findMethod
@@ -23,6 +25,7 @@ class RestoreMessageBadgePosition : IAction, DexKitTask {
     override val name: String get() = "还原消息红点气泡位置"
     override val desc: String get() = "将会话列表的未读消息红点气泡移动到消息区域右下角，并隐藏多余的免打扰图标。"
     override val uiTab: String get() = "界面"
+    override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onInit(): Boolean {
         return HookEnv.isQQ()
@@ -85,24 +88,26 @@ class RestoreMessageBadgePosition : IAction, DexKitTask {
             val summary = getSummary.invoke(itemLayout) as? View ?: return@hookAfter
             val summaryRightLayoutParams = summaryRightView.layoutParams as RelativeLayout.LayoutParams
 
-            if (badge.parent !== messageArea) {
-                (badge.parent as? ViewGroup)?.removeView(badge)
-                messageArea.addView(
-                    badge,
-                    createMessageAreaLayoutParams(summaryRightLayoutParams)
-                )
-            } else {
-                badge.layoutParams = createMessageAreaLayoutParams(summaryRightLayoutParams)
-            }
+            SyncUtils.runOnUiThread {
+                if (badge.parent !== messageArea) {
+                    (badge.parent as? ViewGroup)?.removeView(badge)
+                    messageArea.addView(
+                        badge,
+                        createMessageAreaLayoutParams(summaryRightLayoutParams)
+                    )
+                } else {
+                    badge.layoutParams = createMessageAreaLayoutParams(summaryRightLayoutParams)
+                }
 
-            (summary.layoutParams as? RelativeLayout.LayoutParams)?.apply {
-                removeRule(RelativeLayout.START_OF)
-                addRule(RelativeLayout.START_OF, badge.id)
-                summary.layoutParams = this
-            }
+                (summary.layoutParams as? RelativeLayout.LayoutParams)?.apply {
+                    removeRule(RelativeLayout.START_OF)
+                    addRule(RelativeLayout.START_OF, badge.id)
+                    summary.layoutParams = this
+                }
 
-            messageArea.clipChildren = false
-            messageArea.clipToPadding = false
+                messageArea.clipChildren = false
+                messageArea.clipToPadding = false
+            }
         }
 
         // 隐藏免打扰图标

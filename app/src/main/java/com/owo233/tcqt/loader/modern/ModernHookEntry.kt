@@ -1,10 +1,12 @@
 package com.owo233.tcqt.loader.modern
 
 import android.content.pm.ApplicationInfo
+import android.util.Log as AndroidLog
 import com.owo233.tcqt.HookEnv
 import com.owo233.tcqt.ext.ModuleScope
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.enums.HostTypeEnum
+import com.owo233.tcqt.loader.InjectionGuard
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.ReceiverRegistry
 import com.owo233.tcqt.loader.api.HookEngineManager
@@ -25,6 +27,13 @@ class ModernHookEntry : XposedModule {
 
     @Suppress("unused")
     constructor(base: XposedInterface, param: XposedModuleInterface.ModuleLoadedParam) {
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_XPOSED)) {
+            AndroidLog.w(
+                "TCQT.ModernHookEntry",
+                "Xposed 注入被阻断：已由 Zygisk 模式接管（tcqt.injection.mode=zygisk）"
+            )
+            return
+        }
         // 相当于调用 super(base, param)
         this.setObject("mBase", base, XposedInterfaceWrapper::class.java)
         initModule(param.processName)
@@ -37,6 +46,14 @@ class ModernHookEntry : XposedModule {
     }
 
     override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_XPOSED)) {
+            AndroidLog.w(
+                "TCQT.ModernHookEntry",
+                "Xposed 注入被阻断：已由 Zygisk 模式接管（tcqt.injection.mode=zygisk）"
+            )
+            return
+        }
+
         if (isApi100Fallback) {
             val packageName = param.packageName
             val base = this.getObject("mBase", XposedInterfaceWrapper::class.java)
@@ -70,11 +87,18 @@ class ModernHookEntry : XposedModule {
     }
 
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
-        if (HookEngineManager.isInitialized) return
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_XPOSED)) {
+            AndroidLog.w(
+                "TCQT.ModernHookEntry",
+                "Xposed 注入被阻断：已由 Zygisk 模式接管（tcqt.injection.mode=zygisk）"
+            )
+            return
+        }
 
         val packageName = param.packageName
 
         if (HostTypeEnum.contain(packageName) && param.isFirstPackage) {
+            if (HookEngineManager.isInitialized) return
             HookEngineManager.engine = ModernHookEngine(this)
 
             ModuleLoader.initialize(
@@ -87,6 +111,14 @@ class ModernHookEntry : XposedModule {
     }
 
     override fun onHotReloading(param: XposedModuleInterface.HotReloadingParam): Boolean {
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_XPOSED)) {
+            AndroidLog.w(
+                "TCQT.ModernHookEntry",
+                "Xposed 注入被阻断：已由 Zygisk 模式接管（tcqt.injection.mode=zygisk）"
+            )
+            return false
+        }
+
         ModuleScope.cancelAll()
         ReceiverRegistry.unregisterAll()
 
@@ -101,6 +133,14 @@ class ModernHookEntry : XposedModule {
     }
 
     override fun onHotReloaded(param: XposedModuleInterface.HotReloadedParam) {
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_XPOSED)) {
+            AndroidLog.w(
+                "TCQT.ModernHookEntry",
+                "Xposed 注入被阻断：已由 Zygisk 模式接管（tcqt.injection.mode=zygisk）"
+            )
+            return
+        }
+
         param.oldHookHandles.forEach { it.unhook() }
 
         val engine = ModernHookEngine(this)

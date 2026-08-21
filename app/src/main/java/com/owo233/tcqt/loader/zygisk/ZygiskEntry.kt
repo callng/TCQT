@@ -8,6 +8,7 @@ import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
 import com.owo233.tcqt.hooks.base.ProcUtil
+import com.owo233.tcqt.loader.InjectionGuard
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -39,8 +40,14 @@ object ZygiskEntry {
         val pkg = processName.substringBefore(':')
         if (pkg != QQ_PACKAGE && pkg != TIM_PACKAGE) return
 
+        if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_ZYGISK)) {
+            nativeLog(TAG, "init blocked: ${InjectionGuard.activeMode()} already active")
+            Log.w(TAG, "Zygisk init blocked, another injection mode is already active")
+            return
+        }
+
         try {
-            nativeLog(TAG, "init: $processName")
+            nativeLog(TAG, "init: $processName (zygisk mode claimed)")
             // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
             loadNativeLibs(apkPath, dataDir)
 

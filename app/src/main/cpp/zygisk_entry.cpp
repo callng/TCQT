@@ -104,8 +104,6 @@ public:
                     access((std::string(MODULE_DIR) + "/remove").c_str(), F_OK) == 0;
         }
 
-        log_impl_ident(api);
-
         // 主动禁用模块时 disable 文件 → 本次跳过注入
         // 卸载标记为 remove → 本次跳过注入
         // 宿主（QQ/TIM）下次启动即不再注入
@@ -128,6 +126,8 @@ public:
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
+
+        log_impl_ident(api);
 
         const char *app_tag = target == TargetApp::QQ ? "qq" : "tim";
         const PltHookSpec *hook_specs = default_plt_hooks();
