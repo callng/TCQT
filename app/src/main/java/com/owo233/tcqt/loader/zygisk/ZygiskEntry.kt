@@ -243,10 +243,11 @@ object ZygiskEntry {
 
     @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
-        var isLoaded = false
         val loadedApkClass = Class.forName("android.app.LoadedApk")
         val createAppFactory = loadedApkClass.getDeclaredMethod(
-            "createAppFactory", ApplicationInfo::class.java, ClassLoader::class.java
+            "createAppFactory",
+            ApplicationInfo::class.java,
+            ClassLoader::class.java
         )
         createAppFactory.hookAfter { param ->
             if (param.throwable != null) return@hookAfter
@@ -255,7 +256,9 @@ object ZygiskEntry {
             val factory = param.result ?: return@hookAfter
 
             val instantiate = factory.javaClass.getMethod(
-                "instantiateClassLoader", ClassLoader::class.java, ApplicationInfo::class.java
+                "instantiateClassLoader",
+                ClassLoader::class.java,
+                ApplicationInfo::class.java
             )
             instantiate.hookAfter { p2 ->
                 if (p2.throwable != null) return@hookAfter
@@ -268,32 +271,11 @@ object ZygiskEntry {
                             processName
                         )
                     ) {
-                        isLoaded = true
                         hideAfterHostReady()
                     }
                 }.onFailure {
                     Log.e(TAG, "ModuleLoader.initialize failed", it)
                 }
-            }
-        }
-
-        if (!isLoaded) {
-            runCatching {
-                ContextWrapper::class.java
-                    .getDeclaredMethod("attachBaseContext", Context::class.java)
-                    .hookBefore { param ->
-                        val loader = (param.args.getOrNull(0) as? Context)?.classLoader
-                            ?: return@hookBefore
-                        if (loader === javaClass.classLoader) return@hookBefore
-                        runCatching {
-                            ModuleLoader.initialize(loader, apkPath, pkg, processName)
-                            hideAfterHostReady()
-                        }.onFailure {
-                            Log.e(TAG, "ModuleLoader.initialize (attachBaseContext) failed", it)
-                        }
-                    }
-            }.onFailure {
-                Log.e(TAG, "hook ContextWrapper.attachBaseContext failed", it)
             }
         }
     }

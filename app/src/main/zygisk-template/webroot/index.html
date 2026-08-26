@@ -4,105 +4,93 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#3d7bff">
-    <title>TCQT · 注入控制</title>
+    <meta name="theme-color" content="#f6f7f9">
+    <title>TCQT 作用域</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <main class="page">
-
-    <header class="hero">
-        <div class="hero-brand">
-            <div class="hero-logo" aria-hidden="true">TC</div>
-            <div class="hero-text">
-                <h1>TCQT</h1>
-            </div>
-        </div>
-        <div class="hero-summary" id="hero-summary" aria-live="polite">
-            <span class="summary-badge" id="summary-badge">…</span>
+    <header class="topbar">
+        <div class="brand-mark" aria-hidden="true">TC</div>
+        <div>
+            <h1>TCQT</h1>
+            <p>作用域控制 & Hook</p>
         </div>
     </header>
 
-    <!-- 多用户切换（设备存在多个用户时显示） -->
     <nav id="user-tabs" class="user-tabs" role="tablist" aria-label="用户" hidden></nav>
 
-    <!-- 应用注入开关 -->
-    <section class="section" aria-labelledby="app-title">
+    <!-- 应用作用域 -->
+    <section class="scope-section" aria-labelledby="scope-title">
         <div class="section-heading">
-            <h2 id="app-title">注入目标</h2>
-            <span class="section-hint">关闭后该应用不再被注入</span>
+            <h2 id="scope-title">应用作用域</h2>
+            <span id="scope-count" class="scope-count">正在读取</span>
         </div>
 
-        <div class="app-list" id="app-list" aria-busy="true">
-            <div class="app-card" data-app="qq">
-                <div class="app-identity">
-                    <div class="app-icon app-icon-qq" aria-hidden="true">
-                        <img src="ksu://icon/com.tencent.mobileqq" alt="">
-                        <span class="icon-fallback">Q</span>
-                    </div>
-                    <div class="app-info">
-                        <strong>QQ</strong>
-                        <small>com.tencent.mobileqq</small>
-                        <span class="app-state" data-state-role="badge">…</span>
-                    </div>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" disabled aria-label="启用 QQ">
+        <div class="scope-list" id="scope-list" aria-busy="true">
+            <label class="scope-item" data-scope="qq">
+                <span class="app-icon app-icon-qq">
+                    <img src="ksu://icon/com.tencent.mobileqq" alt="" aria-hidden="true">
+                    <span aria-hidden="true">QQ</span>
+                </span>
+                <span class="app-details">
+                    <strong>QQ</strong>
+                    <small>com.tencent.mobileqq</small>
+                    <small class="scope-note" hidden>该用户未安装</small>
+                </span>
+                <span class="switch">
+                    <input type="checkbox" disabled aria-label="QQ 作用域">
                     <span class="switch-track" aria-hidden="true"></span>
-                </label>
-            </div>
+                </span>
+            </label>
 
-            <div class="app-card" data-app="tim">
-                <div class="app-identity">
-                    <div class="app-icon app-icon-tim" aria-hidden="true">
-                        <img src="ksu://icon/com.tencent.tim" alt="">
-                        <span class="icon-fallback">T</span>
-                    </div>
-                    <div class="app-info">
-                        <strong>TIM</strong>
-                        <small>com.tencent.tim</small>
-                        <span class="app-state" data-state-role="badge">…</span>
-                    </div>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" disabled aria-label="启用 TIM">
+            <label class="scope-item" data-scope="tim">
+                <span class="app-icon app-icon-tim">
+                    <img src="ksu://icon/com.tencent.tim" alt="" aria-hidden="true">
+                    <span aria-hidden="true">TIM</span>
+                </span>
+                <span class="app-details">
+                    <strong>TIM</strong>
+                    <small>com.tencent.tim</small>
+                    <small class="scope-note" hidden>该用户未安装</small>
+                </span>
+                <span class="switch">
+                    <input type="checkbox" disabled aria-label="TIM 作用域">
                     <span class="switch-track" aria-hidden="true"></span>
-                </label>
-            </div>
+                </span>
+            </label>
         </div>
 
         <div id="error-panel" class="error-panel" hidden>
-            <p id="error-message">读取状态失败</p>
+            <p id="error-message">读取作用域失败</p>
             <button id="retry-button" type="button">重新加载</button>
         </div>
     </section>
 
-    <!-- 原生 Hook（PLT/GOT） -->
-    <section class="section" aria-labelledby="hook-title">
+    <!-- 原生 Hook -->
+    <section class="scope-section" aria-labelledby="hook-title">
         <div class="section-heading">
             <h2 id="hook-title">原生 Hook</h2>
-            <span class="section-hint">Zygisk 模式 · 按宿主独立控制</span>
+            <span id="hook-count" class="scope-count">正在读取</span>
         </div>
 
         <div class="hook-list" id="hook-list" aria-busy="true"></div>
-        <p class="hook-note">按 QQ / TIM 分别控制，默认启用；关闭后重启对应应用生效。</p>
     </section>
 
     <!-- 日志导出 -->
-    <section class="section" aria-labelledby="log-title">
+    <section class="scope-section" aria-labelledby="log-title">
         <div class="section-heading">
             <h2 id="log-title">日志导出</h2>
-            <span class="section-hint">如遇崩溃闪退等问题导出模块日志，发送给开发者</span>
         </div>
-        <button id="export-log-button" type="button">导出日志</button>
-        <p id="export-log-result" class="log-export-result" aria-live="polite"></p>
+
+        <div class="log-card">
+            <p class="log-desc">排查问题时导出模块日志，保存至 Download 目录</p>
+            <button id="export-log-button" type="button" class="btn-action">导出日志</button>
+            <p id="export-log-result" class="log-result" aria-live="polite" hidden></p>
+        </div>
     </section>
 
-    <!-- 生效提示 -->
-    <aside class="tip">
-        <p>更改注入目标或 Hook 开关后，重启对应应用生效。</p>
-    </aside>
-
+    <p class="restart-note">作用域及 Hook 变更将在对应应用下次启动时生效</p>
     <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>
 </main>
 
