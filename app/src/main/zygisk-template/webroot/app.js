@@ -17,6 +17,9 @@ const hooks = [
 
 const scopeList = document.querySelector("#scope-list");
 const scopeCount = document.querySelector("#scope-count");
+const compatList = document.querySelector("#compat-list");
+const compatStatus = document.querySelector("#compat-status");
+const compatInput = document.querySelector("#compat-input");
 const hookList = document.querySelector("#hook-list");
 const hookCount = document.querySelector("#hook-count");
 const errorPanel = document.querySelector("#error-panel");
@@ -26,6 +29,8 @@ const liveStatus = document.querySelector("#live-status");
 const userTabs = document.querySelector("#user-tabs");
 const exportButton = document.querySelector("#export-log-button");
 const exportResult = document.querySelector("#export-log-result");
+
+const COMPAT_MARKER_PATH = `${DATA_DIRECTORY}/compat.enable`;
 
 const DEFAULT_USER = { id: 0, name: "主用户" };
 let users = [DEFAULT_USER];
@@ -83,6 +88,7 @@ function setInputsDisabled(disabled) {
     Object.keys(apps).forEach((appName) => {
         getInput(appName).disabled = disabled || !isScopeAvailable(appName, currentUserId);
     });
+    compatInput.disabled = disabled;
     hooks.forEach((hook) => {
         Object.keys(apps).forEach((appName) => {
             getHookInput(hook.id, appName).disabled =
@@ -288,15 +294,19 @@ async function loadStates() {
     setInputsDisabled(true);
     setTabsDisabled(true);
     scopeList.setAttribute("aria-busy", "true");
+    compatList.setAttribute("aria-busy", "true");
     hookList.setAttribute("aria-busy", "true");
     scopeCount.textContent = "正在读取";
+    compatStatus.textContent = "正在读取";
     hookCount.textContent = "正在读取";
 
     if (!hasManager()) {
         showError("请在支持模块 WebUI 的管理器（KernelSU / APatch）中打开此页面");
         scopeCount.textContent = "不可用";
+        compatStatus.textContent = "不可用";
         hookCount.textContent = "不可用";
         scopeList.setAttribute("aria-busy", "false");
+        compatList.setAttribute("aria-busy", "false");
         hookList.setAttribute("aria-busy", "false");
         return;
     }
@@ -305,6 +315,7 @@ async function loadStates() {
     const appChecks = Object.values(apps)
         .map(({ marker }) => `[ -f '${getMarkerPath(userId, marker)}' ] && printf '1\\n' || printf '0\\n'`)
         .join("; ");
+    const compatCheck = `[ -f '${COMPAT_MARKER_PATH}' ] && printf '1\\n' || printf '0\\n'`;
     const hookChecks = [];
     hooks.forEach((hook) => {
         Object.keys(apps).forEach((appName) => {
@@ -313,8 +324,8 @@ async function loadStates() {
             );
         });
     });
-    const checks = [appChecks, ...hookChecks].join("; ");
-    const totalChecks = Object.keys(apps).length + hooks.length * Object.keys(apps).length;
+    const checks = [appChecks, compatCheck, ...hookChecks].join("; ");
+    const totalChecks = Object.keys(apps).length + 1 + hooks.length * Object.keys(apps).length;
 
     try {
         await loadInstalledPackages(userId);
@@ -332,7 +343,13 @@ async function loadStates() {
             getInput(appName).checked = states[index] !== "1";
         });
 
-        let hookIndex = Object.keys(apps).length;
+        // 兼容模式是 enable 文件：存在(1)表示启用(checked=true)，不存在(0)表示禁用(checked=false)
+        const compatIndex = Object.keys(apps).length;
+        const compatEnabled = states[compatIndex] === "1";
+        compatInput.checked = compatEnabled;
+        compatStatus.textContent = compatEnabled ? "已开启" : "已关闭";
+
+        let hookIndex = compatIndex + 1;
         hooks.forEach((hook) => {
             Object.keys(apps).forEach((appName) => {
                 getHookInput(hook.id, appName).checked = states[hookIndex] !== "1";
@@ -350,11 +367,13 @@ async function loadStates() {
         }
         showError("读取作用域失败，请稍后重试");
         scopeCount.textContent = "读取失败";
+        compatStatus.textContent = "读取失败";
         hookCount.textContent = "读取失败";
     } finally {
         if (userId === currentUserId) {
             setTabsDisabled(false);
             scopeList.setAttribute("aria-busy", "false");
+            compatList.setAttribute("aria-busy", "false");
             hookList.setAttribute("aria-busy", "false");
         }
     }
@@ -441,6 +460,35 @@ async function changeHookState(hook, appName, enabled) {
     }
 }
 
+async function changeCompatMode(enabled) {
+    compatInput.disabled = true;
+    hideError();
+
+    const command = enabled
+        ? `mkdir -p '${DATA_DIRECTORY}' && touch '${COMPAT_MARKER_PATH}'`
+        : `rm -f '${COMPAT_MARKER_PATH}'`;
+
+    try {
+        const result = await exec(command);
+        if (result.errno !== 0) {
+            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
+        }
+
+        compatStatus.textContent = enabled ? "已开启" : "已关闭";
+        const message = `兼容模式 ${enabled ? "已开启" : "已关闭"}`;
+        liveStatus.textContent = message;
+        toast(message);
+    } catch (error) {
+        console.error("Failed to update compatibility mode", error);
+        compatInput.checked = !enabled;
+        compatStatus.textContent = !enabled ? "已开启" : "已关闭";
+        showError("兼容模式修改失败");
+        toast("修改失败");
+    } finally {
+        compatInput.disabled = false;
+    }
+}
+
 function getUserName(userId) {
     const user = users.find((item) => item.id === userId);
     return user ? user.name : `用户 ${userId}`;
@@ -513,6 +561,10 @@ Object.keys(apps).forEach((appName) => {
     getInput(appName).addEventListener("change", (event) => {
         changeScope(appName, event.currentTarget.checked);
     });
+});
+
+compatInput.addEventListener("change", (event) => {
+    changeCompatMode(event.currentTarget.checked);
 });
 
 renderHookCards();

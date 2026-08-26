@@ -15,6 +15,7 @@ import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.api.Unhook
+import com.owo233.tcqt.loader.modern.ModernHookEngine
 import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitCache
@@ -214,11 +215,10 @@ internal object ModuleLoader {
         try {
             BaseApplicationImpl::class.java.getDeclaredMethod("onCreate").hookBefore { param ->
                 if (isInit.compareAndSet(false, true)) {
+                    installMainDispatcher()
                     val app = param.thisObject as Application
                     HookSteps.initContext(app)
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
-
-                    installMainDispatcher()
 
                     val cacheValid = DexKitCache.initCache()
                     val missingKeys = DexKitFinder.getMissingKeys()
@@ -238,7 +238,7 @@ internal object ModuleLoader {
 
     private fun installMainDispatcher() {
         if (HookEngineManager.engine !is ZygiskHookEngine) return
-
+        if (!ProcUtil.isMain && !ProcUtil.isTool) return
         runCatching {
             kotlinx.coroutines.Dispatchers::class.java
                 .getDeclaredMethod("getMain")
@@ -251,6 +251,7 @@ internal object ModuleLoader {
     }
 
     fun reload(state: Map<*, *>) {
+        installMainDispatcher()
         HookSteps.initModulePath(state["moduleApkPath"] as String)
         HookSteps.initHandleLoadPackage(
             state["hostProcessName"] as String,
@@ -262,7 +263,7 @@ internal object ModuleLoader {
 
         System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
-        if (ProcUtil.isMain) {
+        if (HookEngineManager.engine is ModernHookEngine && ProcUtil.isMain) {
             SyncUtils.runOnUiThread {
                 val topActivity = QQInterfaces.topActivity
                 val activityName = topActivity.javaClass.name

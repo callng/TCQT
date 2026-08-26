@@ -36,7 +36,7 @@
                 <span class="app-details">
                     <strong>QQ</strong>
                     <small>com.tencent.mobileqq</small>
-                    <small class="scope-note" hidden>该用户未安装</small>
+                    <small class="scope-note" hidden>该应用未安装</small>
                 </span>
                 <span class="switch">
                     <input type="checkbox" disabled aria-label="QQ 作用域">
@@ -52,7 +52,7 @@
                 <span class="app-details">
                     <strong>TIM</strong>
                     <small>com.tencent.tim</small>
-                    <small class="scope-note" hidden>该用户未安装</small>
+                    <small class="scope-note" hidden>该应用未安装</small>
                 </span>
                 <span class="switch">
                     <input type="checkbox" disabled aria-label="TIM 作用域">
@@ -64,6 +64,36 @@
         <div id="error-panel" class="error-panel" hidden>
             <p id="error-message">读取作用域失败</p>
             <button id="retry-button" type="button">重新加载</button>
+        </div>
+    </section>
+
+    <!-- 兼容模式 -->
+    <section class="scope-section" aria-labelledby="compat-title">
+        <div class="section-heading">
+            <h2 id="compat-title">兼容模式</h2>
+            <span id="compat-status" class="scope-count">正在读取</span>
+        </div>
+
+        <div class="scope-list" id="compat-list">
+            <label class="scope-item" id="compat-item">
+                <span class="app-icon app-icon-compat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </span>
+                <span class="app-details">
+                    <strong>兼容模式</strong>
+                    <small>尝试和其他 XP 模块兼容运行</small>
+                    <small>兼容模式不显示设置入口，访问 tcqt.qq.com 进入</small>
+                    <small>部分功能可能无法使用或出现异常属于正常情况</small>
+                    <small style="color: red;">此功能如启用则不接受与本功能相关的BUG反馈</small>
+                </span>
+                <span class="switch">
+                    <input type="checkbox" id="compat-input" disabled aria-label="兼容模式">
+                    <span class="switch-track" aria-hidden="true"></span>
+                </span>
+            </label>
         </div>
     </section>
 

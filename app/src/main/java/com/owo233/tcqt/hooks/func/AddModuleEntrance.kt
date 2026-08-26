@@ -25,6 +25,9 @@ import com.owo233.tcqt.impl.EasyLoginException
 import com.owo233.tcqt.impl.TicketManager
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.internals.setting.TCQTSetting
+import com.owo233.tcqt.loader.api.HookEngineManager
+import com.owo233.tcqt.loader.zygisk.ZygiskEntry
+import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 import com.owo233.tcqt.ui.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.ui.CopyTicketDialog
 import com.owo233.tcqt.ui.InfoCardDialog
@@ -97,6 +100,10 @@ class AddModuleEntrance : AlwaysRunAction() {
     }
 
     // ── Lifecycle ──────────────────────────────────────────────────────
+
+    override fun canRun(): Boolean {
+        return HookEngineManager.engine !is ZygiskHookEngine || !ZygiskEntry.isCompatMode()
+    }
 
     override fun onRun(app: Application, process: ActionProcess) {
         runCatching { hookSettingEntries() }

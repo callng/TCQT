@@ -247,29 +247,32 @@ p {
     background: #3378d3;
 }
 
+.app-icon-compat {
+    background: #546e7a;
+}
+
 .app-details {
     min-width: 0;
 }
 
-.app-details strong,
-.app-details small {
+.app-details strong {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.app-details strong {
     font-size: 15px;
     font-weight: 650;
     line-height: 1.4;
 }
 
 .app-details small {
+    display: block;
     margin-top: 3px;
     color: var(--text-secondary);
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.4;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .switch {

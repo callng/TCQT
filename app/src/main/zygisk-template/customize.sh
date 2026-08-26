@@ -67,5 +67,5 @@ else
 fi
 printf '%s' "$NEW_SO_HASH" > "$DATAPATH/so.sha1"
 set_perm "$DATAPATH/so.sha1" 0 0 0644
-
+ui_print "! 提示: 当 TCQT 使用 Zygisk 工作时， 请勿在其他框架如 LSPosed 中对 QQ/ TIM 启用任何模块，否则可能导致意想不到的问题发生。"
 ui_print "- TCQT Zygisk installed"

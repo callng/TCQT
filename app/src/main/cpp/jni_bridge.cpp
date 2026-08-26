@@ -11,6 +11,16 @@
 
 namespace tcqt {
 
+static bool s_compat_mode = false;
+
+void set_compat_mode(bool enabled) {
+    s_compat_mode = enabled;
+}
+
+bool is_compat_mode() {
+    return s_compat_mode;
+}
+
 namespace {
 
 // ── ZygiskEntry natives ──────────────────────────────────────────────────────
@@ -23,6 +33,10 @@ extern "C" void jni_native_log(JNIEnv *env, jclass, jstring j_tag, jstring j_msg
     }
     if (tag != nullptr) env->ReleaseStringUTFChars(j_tag, tag);
     if (msg != nullptr) env->ReleaseStringUTFChars(j_msg, msg);
+}
+
+extern "C" jboolean jni_native_is_compat_mode(JNIEnv *, jclass) {
+    return s_compat_mode ? JNI_TRUE : JNI_FALSE;
 }
 
 jobject get_class_loader(JNIEnv *env, jclass entry_class) {
@@ -105,8 +119,12 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeLog"),
              const_cast<char *>("(Ljava/lang/String;Ljava/lang/String;)V"),
              reinterpret_cast<void *>(jni_native_log)},
+            {const_cast<char *>("isCompatMode"), const_cast<char *>("()Z"),
+             reinterpret_cast<void *>(jni_native_is_compat_mode)},
+            {const_cast<char *>("nativeIsCompatMode"), const_cast<char *>("()Z"),
+             reinterpret_cast<void *>(jni_native_is_compat_mode)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 2);
+    jint rc = env->RegisterNatives(clazz, methods, 4);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_entry_natives: RegisterNatives failed (%d)", rc);

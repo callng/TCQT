@@ -19,6 +19,7 @@ namespace tcqt {
 constexpr const char *SHARED_PAYLOAD_APK = "/data/adb/tcqt/main.apk";
 constexpr const char *SHARED_PAYLOAD_HASH = "/data/adb/tcqt/main.apk.sha256";
 constexpr const char *SCOPE_DIR = "/data/adb/tcqt";
+constexpr const char *COMPAT_MARKER = "/data/adb/tcqt/compat.enable";
 constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
 constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
 
@@ -128,6 +129,13 @@ public:
         }
 
         log_impl_ident(api);
+
+        bool compat_mode = (access(COMPAT_MARKER, F_OK) == 0 ||
+                            access("/data/adb/tcqt/compat", F_OK) == 0);
+        set_compat_mode(compat_mode);
+        if (compat_mode) {
+            LOGI("preAppSpecialize: compatibility mode enabled via WebUI");
+        }
 
         const char *app_tag = target == TargetApp::QQ ? "qq" : "tim";
         const PltHookSpec *hook_specs = default_plt_hooks();

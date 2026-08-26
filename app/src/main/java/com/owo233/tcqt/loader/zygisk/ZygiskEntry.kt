@@ -1,6 +1,9 @@
 package com.owo233.tcqt.loader.zygisk
 
 import android.annotation.SuppressLint
+import android.app.Application
+import android.app.Instrumentation
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Process
 import android.util.Log
@@ -9,6 +12,7 @@ import com.owo233.tcqt.loader.InjectionGuard
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -27,6 +31,12 @@ object ZygiskEntry {
     private external fun nativeLog(tag: String, msg: String)
 
     @JvmStatic
+    external fun isCompatMode(): Boolean
+
+    @JvmStatic
+    external fun nativeIsCompatMode(): Boolean
+
+    @JvmStatic
     @Keep
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
@@ -39,7 +49,7 @@ object ZygiskEntry {
         }
 
         try {
-            nativeLog(TAG, "init: $processName (zygisk mode claimed)")
+            nativeLog(TAG, "init: $processName (zygisk mode claimed, compat=${isCompatMode()})")
             // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
             loadNativeLibs(apkPath, dataDir)
 
@@ -209,6 +219,15 @@ object ZygiskEntry {
 
     @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
+        if (!isCompatMode()) {
+            installInNormalMode(pkg, apkPath, processName)
+        } else {
+            installInCompatMode(pkg, apkPath, processName)
+        }
+    }
+
+    @SuppressLint("PrivateApi", "SoonBlockedPrivateApi")
+    private fun installInNormalMode(pkg: String, apkPath: String, processName: String) {
         val loadedApkClass = Class.forName("android.app.LoadedApk")
         val createAppFactory = loadedApkClass.getDeclaredMethod(
             "createAppFactory",
@@ -236,6 +255,29 @@ object ZygiskEntry {
                     processName
                 )
             }
+        }
+    }
+
+    @SuppressLint("DiscouragedPrivateApi")
+    private fun installInCompatMode(pkg: String, apkPath: String, processName: String) {
+        Instrumentation::class.java.getDeclaredMethod(
+            "callApplicationOnCreate",
+            Application::class.java
+        ).hookBefore { param ->
+            if (param.throwable != null) return@hookBefore
+            val app = param.args.getOrNull(0) as? Application ?: return@hookBefore
+            val hostLoader = app.baseContext?.classLoader ?: app.classLoader ?: return@hookBefore
+            if (hostLoader === javaClass.classLoader) return@hookBefore
+
+            ModuleLoader.reload(
+                mapOf(
+                    "moduleApkPath" to apkPath,
+                    "hostProcessName" to processName,
+                    "hostAppPackageName" to pkg,
+                    "hostClassLoader" to hostLoader,
+                    "hostApplication" to app
+                )
+            )
         }
     }
 }
