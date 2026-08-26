@@ -1,20 +1,15 @@
 package com.owo233.tcqt.loader.zygisk
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.pm.ApplicationInfo
 import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
-import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.loader.InjectionGuard
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.utils.hook.hookAfter
-import com.owo233.tcqt.utils.hook.hookBefore
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
@@ -32,9 +27,6 @@ object ZygiskEntry {
     private external fun nativeLog(tag: String, msg: String)
 
     @JvmStatic
-    private external fun nativeHideMaps(): Int
-
-    @JvmStatic
     @Keep
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
@@ -50,10 +42,6 @@ object ZygiskEntry {
             nativeLog(TAG, "init: $processName (zygisk mode claimed)")
             // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
             loadNativeLibs(apkPath, dataDir)
-
-            // 1.5 隐藏注入的 so 在 /proc/self/maps 中的路径（memfd 重映射）
-            val hidden = nativeHideMaps()
-            nativeLog(TAG, "hidden $hidden so segments from maps")
 
             // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）
             if (!nativeArtInit()) {
@@ -219,28 +207,6 @@ object ZygiskEntry {
         }
     }
 
-    private val hidePolling = AtomicBoolean(false)
-
-    private fun hideAfterHostReady() {
-        if (!ProcUtil.isMain) return
-        if (!hidePolling.compareAndSet(false, true)) return
-        Thread {
-            try {
-                var hidden: Int
-                for (attempt in 1..12) {
-                    hidden = nativeHideMaps()
-                    nativeLog(TAG, "hideAfterHostReady pass $attempt: $hidden segments")
-                    if (hidden > 0) break
-                    Thread.sleep(2000)
-                }
-            } catch (t: Throwable) {
-                nativeLog(TAG, "hideAfterHostReady failed: ${t.message}")
-            } finally {
-                hidePolling.set(false)
-            }
-        }.start()
-    }
-
     @SuppressLint("SoonBlockedPrivateApi", "PrivateApi")
     private fun installHostBootstrap(pkg: String, apkPath: String, processName: String) {
         val loadedApkClass = Class.forName("android.app.LoadedApk")
@@ -263,19 +229,12 @@ object ZygiskEntry {
             instantiate.hookAfter { p2 ->
                 if (p2.throwable != null) return@hookAfter
                 val hostLoader = p2.result as? ClassLoader ?: return@hookAfter
-                runCatching {
-                    if (ModuleLoader.initialize(
-                            hostLoader,
-                            apkPath,
-                            pkg,
-                            processName
-                        )
-                    ) {
-                        hideAfterHostReady()
-                    }
-                }.onFailure {
-                    Log.e(TAG, "ModuleLoader.initialize failed", it)
-                }
+                ModuleLoader.initialize(
+                    hostLoader,
+                    apkPath,
+                    pkg,
+                    processName
+                )
             }
         }
     }

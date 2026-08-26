@@ -8,7 +8,6 @@
 #include "log.h"
 #include "log_file.h"
 #include "payload.h"
-#include "so_hider.h"
 
 namespace tcqt {
 
@@ -64,26 +63,6 @@ extern "C" jboolean jni_native_art_init(JNIEnv *env, jclass entry_cls) {
     return JNI_TRUE;
 }
 
-// Hide the module's injected libraries from /proc/self/maps by
-// re-backing their file-backed mappings with private memfd snapshots.
-extern "C" jint jni_native_hide_maps(JNIEnv *, jclass) {
-    static const char *const kHiddenLibs[] = {
-            // Payload libraries.
-            // "libtcqtzygisk.so",
-            "libdexkit.so",
-            "libandroidx.graphics.path.so",
-
-            // Payload APK mappings.
-            "/files/.tcqt/main.apk",
-
-            // Zygisk entry library.
-            "zygisk/arm64-v8a.so",
-    };
-    const int hidden = tcqt::hide_paths(kHiddenLibs, 5);
-    LOGI("ZygiskEntry.nativeHideMaps: remapped %d segments to memfd", hidden);
-    return hidden;
-}
-
 // ── ZygiskHookBridge natives ─────────────────────────────────────────────────
 
 extern "C" jlong jni_native_get_art_method(JNIEnv *env, jclass, jobject executable) {
@@ -106,10 +85,6 @@ extern "C" jboolean jni_native_trust_dex_file(JNIEnv *env, jclass, jobject dex_f
     return art_trust_dex_file(env, dex_file) ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" void jni_native_note_dispatch(JNIEnv *, jclass, jlong hook_id) {
-    log_file_note_hook_call(static_cast<uint64_t>(hook_id));
-}
-
 extern "C" jobject jni_native_invoke_backup(JNIEnv *env, jclass, jobject backup_method,
                                             jobject this_object, jobjectArray args) {
     return art_invoke_backup(env, backup_method, this_object, args);
@@ -130,10 +105,8 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeLog"),
              const_cast<char *>("(Ljava/lang/String;Ljava/lang/String;)V"),
              reinterpret_cast<void *>(jni_native_log)},
-            {const_cast<char *>("nativeHideMaps"), const_cast<char *>("()I"),
-             reinterpret_cast<void *>(jni_native_hide_maps)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 3);
+    jint rc = env->RegisterNatives(clazz, methods, 2);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_entry_natives: RegisterNatives failed (%d)", rc);
@@ -160,13 +133,11 @@ bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeTrustDexFile"),
              const_cast<char *>("(Ldalvik/system/DexFile;)Z"),
              reinterpret_cast<void *>(jni_native_trust_dex_file)},
-            {const_cast<char *>("nativeNoteDispatch"), const_cast<char *>("(J)V"),
-             reinterpret_cast<void *>(jni_native_note_dispatch)},
             {const_cast<char *>("nativeInvokeBackup"),
              const_cast<char *>("(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;"),
              reinterpret_cast<void *>(jni_native_invoke_backup)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 6);
+    jint rc = env->RegisterNatives(clazz, methods, 5);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_hook_bridge_natives: RegisterNatives failed (%d)", rc);

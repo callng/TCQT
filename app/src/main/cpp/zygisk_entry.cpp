@@ -143,14 +143,6 @@ public:
             }
         }
 
-        // SIGABRT/SIGSEGV/SIGBUS 处理器
-        const std::string crash_marker =
-                scope_base + "/" + app_tag + ".crashhandler.disable";
-        crash_handlers_disabled_ = access(crash_marker.c_str(), F_OK) == 0;
-        if (crash_handlers_disabled_) {
-            LOGI("preAppSpecialize: crash handler disabled via WebUI (%s)",
-                 crash_marker.c_str());
-        }
 
         int apk_fd = open(SHARED_PAYLOAD_APK, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
         if (apk_fd < 0) {
@@ -208,14 +200,8 @@ public:
             return;
         }
 
-        // 本地文件日志：目录就绪后初始化（环形缓冲 + 落盘），并接管崩溃
+        // 本地文件日志：目录就绪后初始化
         log_file_init(target_dir + "/log.txt");
-        if (crash_handlers_disabled_) {
-            LOGI("postAppSpecialize: crash handler disabled via WebUI, "
-                 "signals left to system/Bugly");
-        } else {
-            log_file_install_crash_handlers();
-        }
 
         // install hooks
         if (process_name_.size() >= 4 &&
@@ -349,7 +335,6 @@ private:
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
     bool enabled_ = false;
-    bool crash_handlers_disabled_ = false;
     std::vector<std::string> disabled_hook_ids_;
     std::string process_name_;
     std::string data_dir_;

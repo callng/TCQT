@@ -131,27 +131,10 @@ Architecture:
   installed only in the `:MSF` process.
 - `app/src/main/cpp/log_file.h/.cpp` — local file logging: every `LOG*` macro
   (see `log.h`) also appends to the app's `files/.tcqt/log.txt` (1MB cap per
-  file; over the cap the file rotates to `log.1.txt`, keeping one generation)
-  plus a 128-line in-memory ring buffer; SIGABRT/SEGV/BUS handlers dump the
-  ring buffer with signal info on crash, then chain to the previous handler
-  (ART sigchain) so tombstones still fire. New log files start with a one-time
-  device header (model / Android SDK / kernel / page size). Java-side key
-  lifecycle logs reach the same file via `ZygiskEntry.nativeLog`.
-- `app/src/main/cpp/so_hider.h/.cpp` — `/proc/self/maps` hiding for the
-  module's injected libraries (`libtcqtzygisk.so`, `libdexkit.so`,
-  `libandroidx.graphics.path.so`): parses every segment from `/proc/self/maps`,
-  copies each segment's RUNTIME bytes into its OWN memfd, then `MAP_FIXED`
-  remaps it onto its original address with the original protections. One
-  memfd per segment (NOT one per library): adjacent segments overlap in
-  file offsets (ELF page alignment) and their views of the shared page
-  differ at runtime (.rodata pristine vs .data relocated), so a shared
-  memfd corrupts one of them — DexKit search then reads a polluted
-  .rodata table and crashes. Virtual addresses and in-memory content
-  (relocations/GOT hooks) are preserved; only the maps path becomes
-  `/memfd:wk (deleted)`. Exec segments are mapped with their final prot
-  directly (no non-exec window). All copies happen before any remap;
-  per-segment all-or-nothing on copy failure. Wired in via
-  `ZygiskEntry.nativeHideMaps` right after `loadNativeLibs`.
+  file; over the cap the file rotates to `log.1.txt`, keeping one generation).
+  New log files start with a one-time device header (model / Android SDK /
+  kernel / page size). Java-side key lifecycle logs reach the same file via
+  `ZygiskEntry.nativeLog`.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
   `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk`, keeps the fd
   and reads the global SHA-256 fingerprint `/data/adb/tcqt/main.apk.sha256`

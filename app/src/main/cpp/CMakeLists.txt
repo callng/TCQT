@@ -18,7 +18,6 @@ add_library(tcqtzygisk SHARED
         trampoline.cpp
         jni_bridge.cpp
         plt_hook.cpp
-        so_hider.cpp
         log_file.cpp)
 
 target_include_directories(tcqtzygisk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

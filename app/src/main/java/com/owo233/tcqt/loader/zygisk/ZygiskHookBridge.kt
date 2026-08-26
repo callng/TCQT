@@ -32,7 +32,6 @@ internal object ZygiskHookBridge {
     private external fun nativeHookMethod(targetArt: Long, backupArt: Long, bridgeArt: Long): Int
     private external fun nativeUnhookMethod(targetArt: Long, backupArt: Long): Int
     private external fun nativeTrustDexFile(dexFile: DexFile): Boolean
-    private external fun nativeNoteDispatch(hookId: Long)
     private external fun nativeInvokeBackup(backupMethod: Method, thisObject: Any?, args: Array<Any?>): Any?
 
     private enum class Mode { BEFORE, AFTER, REPLACE }
@@ -106,8 +105,6 @@ internal object ZygiskHookBridge {
                     return@run null
                 }
 
-                // 记录 hookId <-> member 映射：native 崩溃环形缓冲只记 hookId，
-                // 崩溃后靠这里把 id 还原成具体方法名，便于定位。
                 Log.d(TAG, "hooked #$hookId ${member.declaringClass?.name}.${member.name}")
 
                 val entry = HookEntry(member, pair.backupMethod)
@@ -159,9 +156,6 @@ internal object ZygiskHookBridge {
     @JvmStatic
     @Keep
     fun dispatch(hookId: Long, thisObject: Any?, args: Array<Any?>): Any? {
-        // 记录本次 hook 调用（native 环形缓冲），崩溃时随日志落盘，用于定位
-        // 崩溃前最后执行的 hook。JNI 调用开销在此热路径上可接受
-        nativeNoteDispatch(hookId)
         val entry = hooks[hookId]
             ?: run {
                 // Unhook 与进行中调用的窗口：entry 已被移除但 trampoline 入口

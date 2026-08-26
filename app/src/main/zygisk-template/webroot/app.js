@@ -13,11 +13,6 @@ const hooks = [
         label: "fopen 重定向",
         desc: "对 /proc/self/smaps 的 fopen 调用重定向到 /dev/null",
     },
-    {
-        id: "crashhandler",
-        label: "崩溃日志捕获",
-        desc: "模块接管崩溃信号记录上下文。关闭后完全交由系统与自带框架处理",
-    },
 ];
 
 const scopeList = document.querySelector("#scope-list");
