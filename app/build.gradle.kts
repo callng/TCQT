@@ -271,6 +271,8 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
     implementation(libs.compose.activity)
     implementation(libs.compose.animation)
     implementation(libs.lifecycle.viewmodel.compose)
@@ -278,6 +280,8 @@ dependencies {
     implementation(libs.miuix.ui)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.preference)
+    implementation(libs.kyant0.backdrop)
+    implementation(libs.kyant0.shapes)
 }
 
 // 解析 Android SDK 目录（local.properties 的 sdk.dir 优先，其次 ANDROID_HOME）
