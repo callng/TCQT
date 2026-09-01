@@ -22,3 +22,10 @@ add_library(tcqtzygisk SHARED
 
 target_include_directories(tcqtzygisk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tcqtzygisk log)
+
+# libtcqtmem.so — Xposed 模式下的内存扫描
+add_library(tcqtmem SHARED
+        mem_scan.cpp)
+
+target_include_directories(tcqtmem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(tcqtmem log)

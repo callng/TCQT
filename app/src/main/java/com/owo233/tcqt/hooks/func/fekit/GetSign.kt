@@ -18,6 +18,7 @@ import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.ReceiverRegistry
+import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
 import com.owo233.tcqt.utils.hook.hookAfter
@@ -36,6 +37,9 @@ import org.luckypray.dexkit.query.FindMethod
 class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
     private var pendingEditText: EditText? = null
+    private var pendingSendBtn: Button? = null
+    private var cachedSource32: String? = null
+
     private val signer by lazy {
         val method = requireMethod("getSign")
         method.declaringClass.new() to method
@@ -47,12 +51,6 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         get() = "本功能仅用于测试，正常情况下无需启用!!! 用法: 在聊天框随便打个字符然后长按发送按钮即可获取。"
     override val uiTab: String get() = "调试"
     override val processes: Set<ActionProcess> get() = setOf(ActionProcess.MAIN, ActionProcess.MSF)
-
-    /**
-     * 需要 Hook AIO 输入栏的初始化方法（InputRootInit），用户一旦进入聊天页
-     * 该方法就会执行，漏挂后长按发送按钮无反应。EARLY：onCreate 返回后立刻装，
-     * 保证先于任何聊天页创建。
-     */
     override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override fun onRun(app: Application, process: ActionProcess) {
@@ -93,17 +91,32 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         val resultReceiver = object : BroadcastReceiver() {
             @SuppressLint("SetTextI18n")
             override fun onReceive(context: Context, intent: Intent) {
-                val sign = intent.getStringExtra("sign") ?: return
                 val error = intent.getStringExtra("error")
+                if (error != null) {
+                    SyncUtils.runOnUiThread {
+                        val target = pendingEditText ?: getAIOEditText()
+                        target?.setText("签名获取失败: $error")
+                        restoreSendBtn()
+                        pendingEditText = null
+                    }
+                    return
+                }
+
+                val sign = intent.getStringExtra("sign") ?: return
+                val source32 = intent.getStringExtra("source32")
+                if (source32 != null && source32.length == SOURCE32_LENGTH * 2) {
+                    cachedSource32 = source32
+                }
                 SyncUtils.runOnUiThread {
                     val target = pendingEditText ?: getAIOEditText()
                     if (target != null) {
-                        if (error != null) {
-                            target.setText("签名获取失败: $error")
-                        } else {
-                            target.setText("${HookEnv.versionName} $sign")
-                        }
+                        val base = "${HookEnv.versionName} $sign"
+                        val withSource32 = shouldScanSource32() &&
+                            source32 != null &&
+                            source32.length == SOURCE32_LENGTH * 2
+                        target.setText(if (withSource32) "$base $source32" else base)
                     }
+                    restoreSendBtn()
                     pendingEditText = null
                 }
             }
@@ -122,13 +135,37 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         val userInput = editText.text?.toString()?.trim() ?: ""
         val cmd = if (userInput.length >= 13) userInput else "MessageSvc.PbSendMsg"
 
+        val needSource32 = shouldScanSource32()
+        val waitingForScan = needSource32 && cachedSource32 == null
+        if (waitingForScan) {
+            editText.setText("需稍等片刻...")
+            sendBtn.isEnabled = false
+            editText.isEnabled = false
+            pendingSendBtn = sendBtn
+        } else {
+            pendingSendBtn = null
+        }
+
         Intent(ACTION_REQUEST_SIGN).apply {
             putExtra("uin", QQInterfaces.currentUin)
             putExtra("cmd", cmd)
+            putExtra("needSource32", needSource32)
             setPackage(HookEnv.hostAppPackageName)
         }.also {
             HookEnv.application.sendBroadcast(it)
         }
+
+        // 超时保护：MSF 无结果（如扫描过慢）时恢复按钮，避免长期悬挂
+        editText.postDelayed({
+            if (pendingEditText === editText) {
+                pendingEditText = null
+                editText.isEnabled = true
+            }
+            if (pendingSendBtn === sendBtn) {
+                pendingSendBtn = null
+                sendBtn.isEnabled = true
+            }
+        }, 30_000L)
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -158,11 +195,24 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
                             .toHexString()
                     }
 
-                    Intent(ACTION_SIGN_RESULT).apply {
-                        putExtra("sign", sign)
-                        setPackage(context.packageName)
-                    }.also {
-                        context.sendBroadcast(it)
+                    if (intent.getBooleanExtra("needSource32", false)) {
+                        val cached = cachedSource32
+                        if (cached != null) {
+                            sendResult(context, sign, cached)
+                        } else {
+                            Thread {
+                                var source32 = cachedSource32
+                                if (source32 == null) {
+                                    source32 = scanSource32()
+                                    if (source32.length == SOURCE32_LENGTH * 2) {
+                                        cachedSource32 = source32
+                                    }
+                                }
+                                sendResult(context, sign, source32.takeIf { it.isNotEmpty() })
+                            }.start()
+                        }
+                    } else {
+                        sendResult(context, sign, null)
                     }
                 }.onFailure { e ->
                     Log.e("", e)
@@ -178,6 +228,22 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
 
         val filter = IntentFilter(ACTION_REQUEST_SIGN)
         ReceiverRegistry.register(app, requestReceiver, filter)
+    }
+
+    private fun sendResult(context: Context, sign: String, source32: String?) {
+        Intent(ACTION_SIGN_RESULT).apply {
+            putExtra("sign", sign)
+            if (source32 != null) putExtra("source32", source32)
+            setPackage(context.packageName)
+        }.also { context.sendBroadcast(it) }
+    }
+
+    private fun restoreSendBtn() {
+        val btn = pendingSendBtn ?: return
+        pendingSendBtn = null
+        btn.isEnabled = true
+        val editText = pendingEditText ?: getAIOEditText() ?: return
+        editText.isEnabled = true
     }
 
     override fun getCacheKeys(): Set<String> {
@@ -244,11 +310,44 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         return ToServiceMsg("mobileqq.service", uin, cmd)
     }
 
+    private fun shouldScanSource32(): Boolean {
+        return HookEnv.isQQ() && HookEnv.requireMinQQVersion(QQVersion.QQ_9_3_50_BETA_40120)
+    }
+
+    private external fun nativeScanSource32(): String
+
+    @Synchronized
+    private fun scanSource32(): String {
+        if (!nativeReady) {
+            Log.e("GetSign: libtcqtmem not loaded, source32 unavailable")
+            return ""
+        }
+        return try {
+            val result = nativeScanSource32()
+            result
+        } catch (e: Throwable) {
+            Log.e("GetSign: native scan error", e)
+            ""
+        }
+    }
+
     companion object {
         private const val ACTION_REQUEST_SIGN = "com.owo233.tcqt.GET_SIGN_REQUEST"
         private const val ACTION_SIGN_RESULT = "com.owo233.tcqt.GET_SIGN_RESULT"
         private const val TASK_INPUT_ROOT_INIT = "InputRootInit"
         private const val TASK_GET_SIGN = "getSign"
+
+        private const val SOURCE32_LENGTH = 32
+
+        private val nativeReady: Boolean by lazy {
+            runCatching {
+                System.loadLibrary("tcqtmem")
+                true
+            }.getOrElse { e ->
+                Log.e("GetSign: load libtcqtmem failed", e)
+                false
+            }
+        }
     }
 }
 
