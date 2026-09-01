@@ -45,7 +45,7 @@ class LiquidGlassTabBar : IAction {
     override val name: String get() = "液态玻璃导航栏"
     override val desc: String get() = "用 Compose 液态玻璃导航栏替换 QQ 原生底部导航栏。"
     override val uiTab: String get() = "界面"
-    override val priority: ActionPriority get() = ActionPriority.EARLY
+    override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     private companion object {
         const val VIEW_TAG = "TCQT_LiquidGlassTabBar"
@@ -94,11 +94,7 @@ class LiquidGlassTabBar : IAction {
     private var quiBadgeClass: Class<*>? = null
 
     override fun onInit(): Boolean {
-        return HookEnv.isNT() && HookEnv.isQQ() &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-
-        // listOf(TAB_FRAME_LAYOUT, QQ_TAB_LAYOUT, FRAME_FRAGMENT,
-        //                    BASE_ACTIVITY, SPLASH_ACTIVITY).all { load(it) != null }
+        return HookEnv.isNT() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     }
 
     override fun onRun(app: Application, process: ActionProcess) {
