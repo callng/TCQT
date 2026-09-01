@@ -29,3 +29,4 @@ add_library(tcqtmem SHARED
 
 target_include_directories(tcqtmem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tcqtmem log)
+target_compile_options(tcqtmem PRIVATE -O2 -g0 -fno-exceptions -fno-rtti)

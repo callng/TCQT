@@ -3,17 +3,13 @@
 
 #include <cerrno>
 #include <fcntl.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <unistd.h>
-
-#include <algorithm>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <utility>
-#include <vector>
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "GetSign", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "GetSign", __VA_ARGS__)
@@ -30,6 +26,11 @@ constexpr uint8_t kP256Order[kSource32Length] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84,
     0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
+};
+
+struct Region {
+    uint64_t start;
+    uint64_t end;
 };
 
 bool is_source32_candidate(uint64_t address, const uint8_t* c) {
@@ -58,145 +59,158 @@ bool is_source32_candidate(uint64_t address, const uint8_t* c) {
     return false;
 }
 
-/**
- * 通用扫描：reader 把 [chunk_start, chunk_start+read_len) 读入 buffer，
- * 返回实际读到的字节数；返回值 < kSource32Length 视为该块读取失败，跳过整个区域
- */
-template <typename Reader>
-std::string scan_regions(
-    const std::vector<std::pair<uint64_t, uint64_t>>& regions,
-    std::vector<uint8_t>& buffer, Reader reader) {
-    for (const auto& region : regions) {
-        uint64_t chunk_start = region.first;
-        const uint64_t end = region.second;
+// reader：把 [addr, addr+len) 读入 dst，返回实际读到的字节数（< kSource32Length 视为读取失败）
+typedef size_t (*ReaderFn)(uint8_t* dst, uint64_t addr, size_t len, void* ctx);
+
+// 在 rw 区域内按 1 MiB 分块（31 字节重叠）扫描候选块
+// 返回 1=命中（out 写入 64 位小写 hex + NUL），0=未命中
+int scan_regions(const Region* regions, size_t region_count,
+                 uint8_t* buffer, ReaderFn reader, void* ctx,
+                 char* out) {
+    for (size_t r = 0; r < region_count; ++r) {
+        uint64_t chunk_start = regions[r].start;
+        const uint64_t end = regions[r].end;
         while (chunk_start < end) {
-            size_t read_len = static_cast<size_t>(
-                std::min<uint64_t>(end - chunk_start,
-                                   kChunkSize + kSource32Length - 1));
-            size_t got = reader(buffer.data(), chunk_start, read_len);
-            if (got < kSource32Length) break;
-            size_t scan_len =
-                std::min(got - (kSource32Length - 1), kChunkSize);
+            uint64_t remaining = end - chunk_start;
+            size_t read_len =
+                remaining < (kChunkSize + kSource32Length - 1)
+                    ? static_cast<size_t>(remaining)
+                    : kChunkSize + kSource32Length - 1;
+            size_t got = reader(buffer, chunk_start, read_len, ctx);
+            if (got < kSource32Length) break;  // 读取失败，跳过整个区域
+            size_t scan_len = got - (kSource32Length - 1);
+            if (scan_len > kChunkSize) scan_len = kChunkSize;
             for (size_t offset = 0; offset < scan_len; ++offset) {
                 if (is_source32_candidate(chunk_start + offset,
-                                          buffer.data() + offset)) {
+                                          buffer + offset)) {
                     static const char hex[] = "0123456789abcdef";
-                    std::string out;
-                    out.reserve(kSource32Length * 2);
                     for (size_t i = 0; i < kSource32Length; ++i) {
                         uint8_t b = buffer[offset + i];
-                        out.push_back(hex[b >> 4]);
-                        out.push_back(hex[b & 0x0f]);
+                        out[i * 2] = hex[b >> 4];
+                        out[i * 2 + 1] = hex[b & 0x0f];
                     }
+                    out[kSource32Length * 2] = '\0';
                     // LOGI("hit at 0x%llx", static_cast<unsigned long long>(chunk_start + offset));
-                    return out;
+                    return 1;
                 }
             }
             chunk_start += kChunkSize;
         }
     }
-    return "";
+    return 0;
 }
 
-std::vector<std::pair<uint64_t, uint64_t>> read_rw_regions() {
-    std::vector<std::pair<uint64_t, uint64_t>> regions;
+size_t read_proc_mem(uint8_t* dst, uint64_t addr, size_t len, void* ctx) {
+    int fd = static_cast<int>(reinterpret_cast<intptr_t>(ctx));
+    ssize_t n = pread(fd, dst, len, static_cast<off_t>(addr));
+    return n > 0 ? static_cast<size_t>(n) : 0;
+}
+
+struct MincoreCtx {
+    unsigned char* vec;
+};
+
+size_t read_mincore(uint8_t* dst, uint64_t addr, size_t len, void* ctx) {
+    if (mincore(reinterpret_cast<void*>(addr), len,
+                static_cast<MincoreCtx*>(ctx)->vec) != 0) {
+        return 0;  // 含未映射页，跳过该块
+    }
+    memcpy(dst, reinterpret_cast<void*>(addr), len);
+    return len;
+}
+
+// 扫描自身内存，命中则 out 写入 64 位小写 hex 并返回 1，否则返回 0
+int scan_source32(char* out) {
+    // 1. 解析 /proc/self/maps 的 rw 区域
     FILE* maps = fopen("/proc/self/maps", "r");
     if (maps == nullptr) {
-        // LOGE("open /proc/self/maps failed");
-        return regions;
+        LOGE("open /proc/self/maps failed");
+        return 0;
     }
+    size_t cap = 1024;
+    auto* regions = static_cast<Region*>(malloc(cap * sizeof(Region)));
+    if (regions == nullptr) {
+        fclose(maps);
+        return 0;
+    }
+    size_t region_count = 0;
     char line[1024];
     while (fgets(line, sizeof(line), maps) != nullptr) {
         unsigned long long start = 0, end = 0;
         char perms[8] = {0};
-        // 行格式: start-end perms offset dev inode pathname
         if (sscanf(line, "%llx-%llx %7s", &start, &end, perms) != 3) {
             continue;
         }
         if (strncmp(perms, "rw", 2) != 0) continue;
         if (end - start < kSource32Length) continue;
-        regions.emplace_back(static_cast<uint64_t>(start),
-                             static_cast<uint64_t>(end));
+        if (region_count == cap) {
+            cap *= 2;
+            auto* grown =
+                static_cast<Region*>(realloc(regions, cap * sizeof(Region)));
+            if (grown == nullptr) break;
+            regions = grown;
+        }
+        regions[region_count].start = static_cast<uint64_t>(start);
+        regions[region_count].end = static_cast<uint64_t>(end);
+        ++region_count;
     }
     fclose(maps);
-    return regions;
-}
 
-/**
- * 方式一：/proc/self/mem + prctl(PR_SET_DUMPABLE, 1)。
- * mem_opened 输出 fd 是否成功打开（打开成功即以本次结果为准，含未命中）。
- */
-std::string scan_via_proc_mem(
-    const std::vector<std::pair<uint64_t, uint64_t>>& regions,
-    std::vector<uint8_t>& buffer, bool* mem_opened) {
-    *mem_opened = false;
+    if (region_count == 0) {
+        free(regions);
+        // LOGI("no rw regions");
+        return 0;
+    }
+    // LOGI("native scan start, regions=%zu", region_count);
+
+    auto* buffer =
+        static_cast<uint8_t*>(malloc(kChunkSize + kSource32Length - 1));
+    if (buffer == nullptr) {
+        free(regions);
+        return 0;
+    }
+
+    int hit = 0;
+
+    // 2. 方式一：/proc/self/mem + prctl(PR_SET_DUMPABLE, 1)
     int original_dumpable = prctl(PR_GET_DUMPABLE, 0, 0, 0, 0);
     if (original_dumpable != 1) {
         prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
     }
     // LOGI("dumpable original=%d", original_dumpable);
 
-    std::string result;
     int fd = open("/proc/self/mem", O_RDONLY | O_CLOEXEC);
     if (fd >= 0) {
-        *mem_opened = true;
-        result = scan_regions(
-            regions, buffer,
-            [fd](uint8_t* dst, uint64_t addr, size_t len) -> size_t {
-                ssize_t n = pread(fd, dst, len, static_cast<off_t>(addr));
-                return n > 0 ? static_cast<size_t>(n) : 0;
-            });
+        hit = scan_regions(regions, region_count, buffer, read_proc_mem,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(fd)),
+                           out);
         close(fd);
-        // LOGI("proc mem scan done, result len=%zu", result.size());
+        // LOGI("proc mem scan done, hit=%d", hit);
     } else {
-        // LOGE("open /proc/self/mem failed: %s (errno=%d)", strerror(errno), errno);
+        LOGE("open /proc/self/mem failed: %s (errno=%d)", strerror(errno),
+             errno);
+
+        // 3. 方式二：mincore 校验后直读
+        size_t vec_pages =
+            (kChunkSize + kSource32Length - 1 + kPageSize - 1) / kPageSize;
+        auto* vec = static_cast<unsigned char*>(malloc(vec_pages));
+        if (vec != nullptr) {
+            MincoreCtx ctx = {vec};
+            // LOGI("mincore fallback active");
+            hit = scan_regions(regions, region_count, buffer, read_mincore,
+                               &ctx, out);
+            free(vec);
+        }
     }
 
     if (original_dumpable != 1) {
         prctl(PR_SET_DUMPABLE, original_dumpable, 0, 0, 0);
     }
-    return result;
-}
 
-/**
- * 方式二：mincore 校验后直读（无信号方案）。
- * mincore 对含未映射页的范围返回 ENOMEM（不会 SIGSEGV）；映射完整才 memcpy，
- * 从根本上避免踩空页崩溃。映射但换出的页读时会自动换入，不丢数据。
- */
-std::string scan_via_mincore(
-    const std::vector<std::pair<uint64_t, uint64_t>>& regions,
-    std::vector<uint8_t>& buffer) {
-    // LOGI("mincore fallback active, regions=%zu", regions.size());
-    // maps 中的区域天然页对齐，mincore 的 addr 要求页对齐，天然满足
-    size_t vec_pages =
-        (kChunkSize + kSource32Length - 1 + kPageSize - 1) / kPageSize;
-    std::vector<unsigned char> vec(vec_pages);
-    return scan_regions(
-        regions, buffer,
-        [&vec](uint8_t* dst, uint64_t addr, size_t len) -> size_t {
-            if (mincore(reinterpret_cast<void*>(addr), len, vec.data()) != 0) {
-                return 0;  // 含未映射页，跳过该块
-            }
-            memcpy(dst, reinterpret_cast<void*>(addr), len);
-            return len;
-        });
-}
-
-std::string scan_source32() {
-    std::vector<std::pair<uint64_t, uint64_t>> regions = read_rw_regions();
-    if (regions.empty()) {
-        // LOGI("no rw regions");
-        return "";
-    }
-    // LOGI("native scan start, regions=%zu", regions.size());
-
-    std::vector<uint8_t> buffer(kChunkSize + kSource32Length - 1);
-
-    bool mem_opened = false;
-    std::string result = scan_via_proc_mem(regions, buffer, &mem_opened);
-    if (mem_opened) return result;  // /proc/self/mem 可用即以它为准（含未命中）
-
-    return scan_via_mincore(regions, buffer);
+    free(buffer);
+    free(regions);
+    // if (!hit) LOGI("scan finished, no hit");
+    return hit;
 }
 
 }  // namespace
@@ -204,6 +218,6 @@ std::string scan_source32() {
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_owo233_tcqt_hooks_func_fekit_GetSign_nativeScanSource32(
     JNIEnv* env, jobject /*thiz*/) {
-    std::string result = scan_source32();
-    return env->NewStringUTF(result.c_str());
+    char out[64 + 1];
+    return env->NewStringUTF(scan_source32(out) ? out : "");
 }
