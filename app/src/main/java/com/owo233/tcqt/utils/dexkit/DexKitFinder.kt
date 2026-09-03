@@ -7,9 +7,8 @@ import com.owo233.tcqt.generated.GeneratedActionList
 import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.hooks.base.Toasts
 import com.owo233.tcqt.hooks.func.ModuleCommand
-import com.owo233.tcqt.loader.api.HookEngineManager
 import com.owo233.tcqt.loader.api.Unhook
-import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
+import com.owo233.tcqt.loader.zygisk.ZygiskNativeLibs
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.log.Log
 import com.owo233.tcqt.utils.reflect.TAG
@@ -114,13 +113,11 @@ internal object DexKitFinder {
         }
     }
 
-    private fun initDexKit(): Boolean = runCatching {
-        if (HookEngineManager.engine !is ZygiskHookEngine) {
-            System.loadLibrary("dexkit")
-        }
-    }.onFailure {
-        Log.e("dexkit library failed to load", it)
-    }.isSuccess
+    private fun initDexKit(): Boolean {
+        val ok = ZygiskNativeLibs.load("dexkit")
+        if (!ok) Log.e("dexkit library failed to load")
+        return ok
+    }
 }
 
 interface DexKitTask {

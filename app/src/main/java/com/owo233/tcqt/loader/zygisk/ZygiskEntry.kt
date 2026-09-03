@@ -3,11 +3,12 @@ package com.owo233.tcqt.loader.zygisk
 import android.annotation.SuppressLint
 import android.app.Application
 import android.app.Instrumentation
-import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
+import com.owo233.tcqt.hooks.base.ProcUtil
 import com.owo233.tcqt.loader.InjectionGuard
 import com.owo233.tcqt.loader.ModuleLoader
 import com.owo233.tcqt.loader.api.HookEngineManager
@@ -50,10 +51,13 @@ object ZygiskEntry {
 
         try {
             nativeLog(TAG, "init: $processName (zygisk mode claimed, compat=${isCompatMode()})")
-            // 1. 加载模块自带的 native 库（dexkit 需要，注入进程无法 System.loadLibrary）
-            loadNativeLibs(apkPath, dataDir)
 
-            // 2. 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）
+            val nativeDir = prepareNativeLibs(apkPath, dataDir)
+            ZygiskNativeLibs.register(nativeDir)
+
+            maybePreloadGraphicsPath()
+
+            // 初始化 ART hook 引擎（布局探测 + 符号解析 + trampoline 池）
             if (!nativeArtInit()) {
                 Log.e(TAG, "nativeArtInit failed, abort")
                 nativeLog(TAG, "nativeArtInit failed, abort")
@@ -63,7 +67,7 @@ object ZygiskEntry {
             if (HookEngineManager.isInitialized) return
             HookEngineManager.engine = ZygiskHookEngine()
 
-            // 3. 等待宿主 ClassLoader 就绪后启动模块
+            // 等待宿主 ClassLoader 就绪后启动模块
             installHostBootstrap(pkg, apkPath, processName)
             Log.i(TAG, "ZygiskEntry.init: $processName bootstrap installed (apk=$apkPath)")
             nativeLog(TAG, "init done: $processName")
@@ -73,15 +77,7 @@ object ZygiskEntry {
         }
     }
 
-    /**
-     * 从注入 APK 的 lib/arm64-v8a/ 提取并加载 native libraries。
-     *
-     * Android 17 / API 37 开始，System.load() 对 native dynamic code
-     * 增加了只读检查，因此所有准备通过 System.load() 加载的 .so
-     * 都必须在加载前设置为 read-only。
-     */
-    @SuppressLint("UnsafeDynamicallyLoadedCode")
-    private fun loadNativeLibs(apkPath: String, dataDir: String) {
+    private fun prepareNativeLibs(apkPath: String, dataDir: String): File {
         val outDir = File(dataDir, "files/.tcqt").apply {
             if (!exists() && !mkdirs()) {
                 error("failed to create native library directory: $absolutePath")
@@ -126,13 +122,11 @@ object ZygiskEntry {
                         // native libraries loaded through System.load() must be read-only.
                         ensureReadOnly(outFile)
                     }
-                    System.load(outFile.absolutePath)
-                    Log.i(TAG, "loaded native library: ${outFile.name}")
                 } catch (t: Throwable) {
                     allOk = false
                     Log.e(
                         TAG,
-                        "failed to prepare/load native library: ${outFile.name}",
+                        "failed to prepare native library: ${outFile.name}",
                         t
                     )
                 }
@@ -151,6 +145,13 @@ object ZygiskEntry {
                 }
             }
         }
+
+        return outDir
+    }
+
+    private fun maybePreloadGraphicsPath() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        if (ProcUtil.isMain) ZygiskNativeLibs.load("androidx.graphics.path")
     }
 
     private fun readTrimmed(file: File): String? =

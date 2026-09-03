@@ -18,6 +18,7 @@ import com.owo233.tcqt.ext.toHexString
 import com.owo233.tcqt.hooks.base.toClass
 import com.owo233.tcqt.internals.QQInterfaces
 import com.owo233.tcqt.loader.ReceiverRegistry
+import com.owo233.tcqt.loader.zygisk.ZygiskNativeLibs
 import com.owo233.tcqt.utils.QQVersion
 import com.owo233.tcqt.utils.SyncUtils
 import com.owo233.tcqt.utils.dexkit.DexKitTask
@@ -340,13 +341,9 @@ class GetSign : IAction, DexKitTask, InputRootInitCallback {
         private const val SOURCE32_LENGTH = 32
 
         private val nativeReady: Boolean by lazy {
-            runCatching {
-                System.loadLibrary("tcqtmem")
-                true
-            }.getOrElse { e ->
-                Log.e("GetSign: load libtcqtmem failed", e)
-                false
-            }
+            val ok = ZygiskNativeLibs.load("tcqtmem")
+            if (!ok) Log.e("GetSign: load libtcqtmem failed")
+            ok
         }
     }
 }
