@@ -8,6 +8,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 .reasonix/
+.codebuddy/
 
 # --- Gradle & Build Output ---
 .gradle/
