@@ -311,6 +311,41 @@ class SettingViewModel : ViewModel() {
         }
     }
 
+    /** Generic pending integer used by feature-specific UI panels. */
+    fun setPendingIntValue(key: String, value: Int) {
+        val persisted = persistedInts[key] ?: 0
+        if (value == persisted) pendingInts.remove(key) else pendingInts[key] = value
+    }
+
+    /** Generic pending boolean used by feature-specific UI panels. */
+    fun setPendingBooleanValue(key: String, value: Boolean) {
+        val persisted = persistedBooleans[key] ?: false
+        if (value == persisted) pendingBooleans.remove(key) else pendingBooleans[key] = value
+    }
+
+    /** Read the effective value including unsaved edits. */
+    fun effectiveIntValue(key: String, fallback: Int = 0): Int = effectiveInt(key, fallback)
+
+    /** Read the effective value including unsaved edits. */
+    fun effectiveBooleanValue(key: String, fallback: Boolean = false): Boolean =
+        pendingBooleans[key] ?: persistedBooleans[key] ?: fallback
+
+    /** Scale is safe to apply live, so persist it as the slider moves. */
+    fun setFloatingBarScaleImmediately(key: String, value: Int) {
+        val normalized = value.coerceIn(80, 120)
+        TCQTSetting.setValue(key, normalized)
+        persistedInts[key] = normalized
+        pendingInts.remove(key)
+    }
+
+    /** Blur is safe to apply live, so persist it as the slider moves. */
+    fun setFloatingBarBlurImmediately(key: String, value: Int) {
+        val normalized = value.coerceIn(0, 100)
+        TCQTSetting.setValue(key, normalized)
+        persistedInts[key] = normalized
+        pendingInts.remove(key)
+    }
+
     fun setTextValue(key: String, value: String) {
         val persisted = persistedStrings[key].orEmpty()
         if (value == persisted) {
@@ -561,6 +596,13 @@ class SettingViewModel : ViewModel() {
     private fun hasPendingFor(feature: SettingFeature): Boolean {
         if (pendingBooleans.containsKey(feature.key)) return true
         if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
+        if (feature.key == "liquid_glass_tab_bar") {
+            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY)) return true
+            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY)) return true
+            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY)) return true
+            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY)) return true
+            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY)) return true
+        }
         return feature.textAreas.any { pendingStrings.containsKey(it.key) }
     }
 

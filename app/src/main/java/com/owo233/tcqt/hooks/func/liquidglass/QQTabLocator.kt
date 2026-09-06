@@ -1,17 +1,19 @@
 package com.owo233.tcqt.hooks.func.liquidglass
 
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.core.view.children
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
 import com.owo233.tcqt.ext.isFlagEnabled
 import com.owo233.tcqt.internals.setting.TCQTSetting
 import com.owo233.tcqt.utils.hook.hookReplace
 import com.owo233.tcqt.utils.log.Log
 import java.lang.reflect.Method
+import java.util.Collections
 import kotlin.math.abs
-import androidx.core.view.isVisible
-import androidx.core.view.isGone
 
 /**
  * QQ 原生底部导航栏的定位与解析。
@@ -54,9 +56,26 @@ internal object QQTabLocator {
     /** 底栏视图类名列表，供入口逐一尝试挂钩。 */
     val tabViewClasses: List<String> get() = TAB_VIEW_CLASSES
 
-    /** 页切换平滑滚动的钩子只允许安装一次。 */
+    /** 每种 pager 实现只挂钩一次；QQ 可能同时存在多个实现类。 */
+    private val pagerHookedClasses = Collections.synchronizedSet(mutableSetOf<Class<*>>())
+
+    /**
+     * 底栏切换授权只在短窗口内有效，并绑定到发起切换时的 pager 和目标页。
+     * QQ 某些版本会把 setCurrentItem 投递到下一帧，不能用 ThreadLocal 限制
+     * 授权的生命周期；短窗口和一次性消费可避免误伤初始化、恢复等内部调用。
+     */
+    private data class SmoothArm(
+        val pager: ViewGroup,
+        val target: Int,
+        val expiresAt: Long,
+    )
+
     @Volatile
-    private var pagerHooked = false
+    private var armedSmoothTarget: SmoothArm? = null
+
+    private const val SMOOTH_ARM_TIMEOUT_MS = 300L
+    /** QQ 主 Pager 通常有四个 Tab；仅在 adapter 尚未暴露数量时作为兜底。 */
+    private const val PRELOAD_FALLBACK_OFFSCREEN_PAGE_LIMIT = 3
 
     /** 按类名精确匹配底栏视图；宿主带热补丁机制，按身份判断会静默失效，名称则始终成立。 */
     fun isTabView(view: View?): Boolean =
@@ -281,6 +300,33 @@ internal object QQTabLocator {
         return -1
     }
 
+    /** 为当前底栏切换授权一次目标页平滑切换，并确保所有 Tab 页预先保活。 */
+    fun armSmoothTarget(index: Int) {
+        armedSmoothTarget = null
+        if (!TCQTSetting.getInt(LIQUID_GLASS_CONFIG_KEY).isFlagEnabled(SMOOTH_PAGE_SWITCH)) {
+            return
+        }
+        val pager = activePager() ?: return
+        ensurePagesPreloaded(pager)
+        val arm = SmoothArm(
+            pager = pager,
+            target = index,
+            expiresAt = SystemClock.uptimeMillis() + SMOOTH_ARM_TIMEOUT_MS,
+        )
+        armedSmoothTarget = arm
+        pager.postDelayed({
+            if (armedSmoothTarget === arm && SystemClock.uptimeMillis() >= arm.expiresAt) {
+                armedSmoothTarget = null
+            }
+        }, SMOOTH_ARM_TIMEOUT_MS)
+    }
+
+    /** 底栏切换结束时清理已消费或已过期授权；未消费授权留给下一帧。 */
+    fun clearSmoothTarget() {
+        val arm = armedSmoothTarget ?: return
+        if (arm.expiresAt <= SystemClock.uptimeMillis()) armedSmoothTarget = null
+    }
+
     /**
      * 底栏当前选中槽位：优先读子项选中态，其次反射调用 `getCurrentTab()`。
      *
@@ -299,23 +345,25 @@ internal object QQTabLocator {
     /**
      * 为背景页面容器安装平滑切页钩子。
      *
-     * 宿主在 Tab 点击时以 `setCurrentItem(index, false)` 硬切页面；把该
-     * 布尔参数改写为 true 即可将滑动过渡交还页容器，与液滴动画形成连贯的
-     * 横向联动。方法绑定在类而非实例上，因此钩子只装一次、每次调用时比对
-     * 实例归属，避免影响应用内其它同类型页容器（如资料卡轮播等）原本的
-     * 瞬时跳转行为。
-     *
-     * 是否生效以 [SMOOTH_PAGE_SWITCH] 开关为准
+     * 底栏触发的切换统一交给 ViewPager2 的平滑路径处理；页间距离不再限制为 1，
+     * pager 正在移动时也继续传递 `setCurrentItem(index, true)`，由 ViewPager2
+     * 自己重新定位当前动画目标，避免中途硬切造成回退。页面在安装和点击前通过
+     * 离屏策略预加载，保留 QQ 页面的懒加载初始化时序。
      */
     fun tryHookPager(pager: ViewGroup?) {
         if (!TCQTSetting.getInt(LIQUID_GLASS_CONFIG_KEY).isFlagEnabled(SMOOTH_PAGE_SWITCH)) return
-        if (pagerHooked || pager == null) return
+        if (pager == null) return
+        var hookedClass: Class<*>? = null
         runCatching {
             var method: Method? = null
             var cls: Class<*>? = pager.javaClass
             while (cls != null && cls != Any::class.java) {
                 method = runCatching {
-                    cls.getDeclaredMethod("setCurrentItem", Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+                    cls.getDeclaredMethod(
+                        "setCurrentItem",
+                        Int::class.javaPrimitiveType,
+                        Boolean::class.javaPrimitiveType,
+                    )
                 }.getOrNull()
                 if (method != null) break
                 cls = cls.superclass
@@ -323,15 +371,68 @@ internal object QQTabLocator {
             val target = method ?: return@runCatching Log.w(
                 "页容器上无 setCurrentItem(int, boolean)，切页将保持硬切"
             )
+            val hookClass = target.declaringClass
+            hookedClass = hookClass
+            ensurePagesPreloaded(pager)
+            if (!pagerHookedClasses.add(hookClass)) return@runCatching
             target.hookReplace { chain ->
-                if (chain.thisObject !== GlassBarInstaller.currentPager()) {
+                val requested = chain.args.getOrNull(0) as? Int
+                val arm = armedSmoothTarget
+                if (arm == null || arm.expiresAt <= SystemClock.uptimeMillis()) {
+                    if (arm != null) armedSmoothTarget = null
                     return@hookReplace chain.proceed()
                 }
+                if (chain.thisObject !== arm.pager || !isCurrentPager(chain.thisObject) ||
+                    requested != arm.target
+                ) return@hookReplace chain.proceed()
+
+                armedSmoothTarget = null
                 if (chain.args.getOrNull(1) == false) chain.args[1] = true
                 chain.proceed()
             }
-            pagerHooked = true
-            Log.i("已挂钩 ${target.declaringClass.name}.setCurrentItem(int, boolean) 用于平滑切页")
-        }.onFailure { Log.w("平滑切页钩子安装失败: $it") }
+            Log.i("已挂钩 ${target.declaringClass.name}.setCurrentItem(int, boolean) 用于安全平滑切页")
+        }.onFailure {
+            hookedClass?.let(pagerHookedClasses::remove)
+            Log.w("平滑切页钩子安装失败: $it")
+        }
     }
+
+    private fun isCurrentPager(pager: Any): Boolean =
+        pager === activePager()
+
+    private fun activePager(): ViewGroup? {
+        return if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
+            NewViewBarInstaller.currentPager()
+        } else {
+            GlassBarInstaller.currentPager()
+        }
+    }
+
+    /** Keep all main ViewPager2 pages bound so any-distance animation has a ready target. */
+    private fun ensurePagesPreloaded(pager: ViewGroup) {
+        runCatching {
+            val adapter = pager.javaClass.methods.firstOrNull {
+                it.name == "getAdapter" && it.parameterTypes.isEmpty()
+            }?.invoke(pager)
+            val itemCount = adapter?.javaClass?.methods?.firstOrNull {
+                it.name == "getItemCount" && it.parameterTypes.isEmpty()
+            }?.invoke(adapter) as? Int
+            val requiredLimit = ((itemCount ?: (PRELOAD_FALLBACK_OFFSCREEN_PAGE_LIMIT + 1)) - 1)
+                .coerceAtLeast(1)
+            val currentLimit = pager.javaClass.methods.firstOrNull {
+                it.name == "getOffscreenPageLimit" && it.parameterTypes.isEmpty()
+            }?.invoke(pager) as? Int
+            if (currentLimit != null && currentLimit >= requiredLimit) return@runCatching
+
+            val setter = pager.javaClass.methods.firstOrNull {
+                it.name == "setOffscreenPageLimit" &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0] == Int::class.javaPrimitiveType
+            } ?: return@runCatching
+            setter.invoke(pager, requiredLimit)
+            pager.requestLayout()
+            Log.i("平滑切页已启用全部 Tab 页预加载: count=${itemCount ?: "unknown"} limit=$requiredLimit")
+        }.onFailure { Log.w("Tab 页预加载设置失败，保持宿主默认离屏策略: $it") }
+    }
+
 }

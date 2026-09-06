@@ -19,7 +19,6 @@ import com.owo233.tcqt.utils.log.Log
 import java.util.HashMap
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 import androidx.core.graphics.withTranslation
 
 /**
@@ -137,7 +136,9 @@ internal class GlassBarHostLayout(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
-        val cornerRadius = min(h * 0.46f, 30f * density)
+        // KernelSU's CircleShape uses an equal-radius ellipse: half of the
+        // actual bar height, with no width-dependent cap.
+        val cornerRadius = (h - shadowPad * 2).coerceAtLeast(0) * 0.5f
         // 玻璃层位于投影内边距之内，回调时扣除该内边距。
         renderer?.onSize(w - shadowPad * 2, h - shadowPad * 2, cornerRadius)
     }

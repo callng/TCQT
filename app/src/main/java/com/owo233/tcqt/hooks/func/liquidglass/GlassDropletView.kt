@@ -60,13 +60,8 @@ internal class GlassDropletView(
     private val node = RenderNode("GlassDroplet")
     /** 仅含模糊页面的独立层，清晰 Tab 副本叠加于其上。 */
     private val backdropNode = RenderNode("GlassDropletBackdrop")
-    private val backdropEffect: RenderEffect = RenderEffect.createBlurEffect(
-        BLUR_DP * density, BLUR_DP * density,
-        RenderEffect.createColorFilterEffect(
-            ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(BACKDROP_SATURATION) })
-        ),
-        Shader.TileMode.CLAMP,
-    )
+    private var blurPercent = 100
+    private var backdropEffect: RenderEffect = createBackdropEffect()
 
     private var lensShader: RuntimeShader? = null
     private var innerShadowShader: RuntimeShader? = null
@@ -139,6 +134,26 @@ internal class GlassDropletView(
         pillSurfacePaint.color = if (night) 0x662C2C2E else 0x66F2F2F7
         washPaint.color = if (night) 0x1AFFFFFF else 0x1A000000
         invalidate()
+    }
+
+    fun setBlurPercent(percent: Int) {
+        val normalized = percent.coerceIn(0, 100)
+        if (blurPercent == normalized) return
+        blurPercent = normalized
+        backdropEffect = createBackdropEffect()
+        invalidate()
+    }
+
+    private fun createBackdropEffect(): RenderEffect {
+        val saturation = RenderEffect.createColorFilterEffect(
+            ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(BACKDROP_SATURATION) })
+        )
+        val blur = BLUR_DP * density * (blurPercent / 100f)
+        return if (blur <= 0f) {
+            saturation
+        } else {
+            RenderEffect.createBlurEffect(blur, blur, saturation, Shader.TileMode.CLAMP)
+        }
     }
 
     /** 按压进度更新；translationX 由渲染线程移动视图本身，不触发重绘。 */
@@ -573,7 +588,7 @@ internal class GlassDropletView(
         /** 折射带相对液滴高度的比例上限。 */
         const val REFRACTION_FRACTION = 0.18f
 
-        /** 与药丸一致的背景模糊与饱和度，保证材质统一。 */
+        /** 与药丸一致的背景模糊基准与饱和度，强度由设置项缩放。 */
         const val BLUR_DP = 4f
         const val BACKDROP_SATURATION = 1.5f
 

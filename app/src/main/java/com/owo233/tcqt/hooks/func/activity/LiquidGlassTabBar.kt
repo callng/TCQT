@@ -15,37 +15,82 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
+import com.owo233.tcqt.ext.IntSetting
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.base.load
 import com.owo233.tcqt.hooks.func.liquidglass.GlassBarInstaller
 import com.owo233.tcqt.hooks.func.liquidglass.QQTabLocator
+import com.owo233.tcqt.hooks.func.liquidglass.BottomBarImplementation
+import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore
+import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarMode
+import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarPosition
+import com.owo233.tcqt.hooks.func.liquidglass.NewViewBarInstaller
 import com.owo233.tcqt.utils.hook.hookAfter
+import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
 
 @RegisterAction
 class LiquidGlassTabBar : IAction {
 
     override val key: String get() = "liquid_glass_tab_bar"
-    override val name: String get() = "液态玻璃导航栏"
-    override val desc: String get() = "使用液态玻璃导航栏替换 QQ 原生底部导航栏。"
+    override val name: String get() = "悬浮底栏"
+    override val desc: String get() = "使用悬浮底栏替换 QQ 原生底部导航栏；可选择 Lasted 或 NewView 外观。"
     override val uiTab: String get() = "界面"
     override val priority: ActionPriority get() = ActionPriority.EARLY
 
     override val settings: List<Setting<*>>
         get() = listOf(
+            IntSetting(
+                key = FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
+                name = "底栏样式",
+                defaultValue = FloatingBottomBarConfigStore.DEFAULT_IMPLEMENTATION,
+                options = listOf("Lasted", "NewView"),
+                isHide = true,
+            ),
+            IntSetting(
+                key = FloatingBottomBarConfigStore.MODE_KEY,
+                name = "悬浮底栏模式",
+                defaultValue = FloatingBottomBarConfigStore.DEFAULT_MODE,
+                options = listOf("Normal", "Liquid Glass"),
+                isHide = true,
+            ),
+            IntSetting(
+                key = FloatingBottomBarConfigStore.SCALE_KEY,
+                name = "悬浮底栏缩放",
+                defaultValue = FloatingBottomBarConfigStore.DEFAULT_SCALE_PERCENT,
+                options = listOf("80%", "90%", "100%", "110%", "120%"),
+                isHide = true,
+            ),
+            IntSetting(
+                key = FloatingBottomBarConfigStore.BLUR_KEY,
+                name = "底栏背景模糊",
+                defaultValue = FloatingBottomBarConfigStore.DEFAULT_BLUR_PERCENT,
+                options = listOf("0%", "25%", "50%", "75%", "100%"),
+                isHide = true,
+            ),
+            IntSetting(
+                key = FloatingBottomBarConfigStore.POSITION_KEY,
+                name = "底栏位置",
+                defaultValue = FloatingBottomBarConfigStore.DEFAULT_POSITION,
+                options = listOf("适中", "靠底"),
+                isHide = true,
+            ),
             MultiIntSetting(
                 key = QQTabLocator.LIQUID_GLASS_CONFIG_KEY,
-                name = "液态玻璃导航栏配置",
+                name = "悬浮底栏配置",
                 desc = "放置其他可调整的配置",
-                options = listOf("平滑切页(可能触发BUG)"),
-            )
+                options = listOf("平滑切页"),
+            ),
         )
 
-    /** 折射管线依赖 RuntimeShader，最低 Android 13。 */
+    /** Lasted 的折射管线依赖 RuntimeShader；NewView Normal 可在更低版本工作。 */
     override fun onInit(): Boolean {
         // 在 TIM 上 有些 BUG 但我们不做屏蔽处理
-        return HookEnv.isNT() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val config = FloatingBottomBarConfigStore.read()
+        return HookEnv.isNT() &&
+            (config.implementation == BottomBarImplementation.NEW_VIEW ||
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
     }
 
     override fun onRun(app: Application, process: ActionProcess) {
@@ -71,10 +116,19 @@ class LiquidGlassTabBar : IAction {
                 Log.w("底栏类未声明 ${QQTabLocator.SWITCH_METHOD}(int): $className")
                 continue
             }
+            method.hookBefore { param ->
+                val index = param.args.getOrNull(0) as? Int ?: return@hookBefore
+                QQTabLocator.armSmoothTarget(index)
+            }
             method.hookAfter { param ->
+                QQTabLocator.clearSmoothTarget()
                 val view = param.thisObject as? View ?: return@hookAfter
                 val index = param.args.getOrNull(0) as? Int ?: return@hookAfter
-                GlassBarInstaller.onTabChanged(view, index)
+                if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
+                    NewViewBarInstaller.onTabChanged(view, index)
+                } else {
+                    GlassBarInstaller.onTabChanged(view, index)
+                }
             }
             hooked++
         }
@@ -87,7 +141,7 @@ class LiquidGlassTabBar : IAction {
      * 挂钩 Activity 恢复回调。
      *
      * 主界面构建为异步过程，底栏可能在恢复后数秒才出现，此处触发
-     * 限时轮询兜底；切页钩子才是首选的安装触发点。
+     * 限时轮询兜底；底栏切换钩子才是首选的安装触发点。
      */
     private fun hookActivityResume() {
         Instrumentation::class.java
@@ -95,7 +149,11 @@ class LiquidGlassTabBar : IAction {
             .hookAfter { param ->
                 val activity = param.args.getOrNull(0) as? Activity ?: return@hookAfter
                 if (activity.javaClass.name == QQTabLocator.LAUNCHER_ACTIVITY) {
-                    GlassBarInstaller.scheduleInstall(activity)
+                    if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
+                        NewViewBarInstaller.scheduleInstall(activity)
+                    } else {
+                        GlassBarInstaller.scheduleInstall(activity)
+                    }
                 }
             }
     }

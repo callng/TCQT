@@ -486,6 +486,62 @@ private fun PageContent(
                     onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
                     onClearError = { viewModel.clearActionError(item.key) },
                     onFeatureClick = { onFeatureClick(item.key) },
+                    customDetails = if (item.key == "liquid_glass_tab_bar") {
+                        {
+                            FloatingBottomBarSettingsPanel(
+                                implementation = viewModel.effectiveIntValue(
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_IMPLEMENTATION,
+                                ),
+                                mode = viewModel.effectiveIntValue(
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY,
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_MODE,
+                                ),
+                                position = viewModel.effectiveIntValue(
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY,
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_POSITION,
+                                ),
+                                scalePercent = viewModel.effectiveIntValue(
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY,
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_SCALE_PERCENT,
+                                ),
+                                blurPercent = viewModel.effectiveIntValue(
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY,
+                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_BLUR_PERCENT,
+                                ),
+                                onImplementationChange = { value ->
+                                    viewModel.setPendingIntValue(
+                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
+                                        value,
+                                    )
+                                },
+                                onModeChange = { value ->
+                                    viewModel.setPendingIntValue(
+                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY,
+                                        value,
+                                    )
+                                },
+                                onPositionChange = { value ->
+                                    viewModel.setPendingIntValue(
+                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY,
+                                        value,
+                                    )
+                                },
+                                onScaleChange = { value ->
+                                    viewModel.setFloatingBarScaleImmediately(
+                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY,
+                                        value,
+                                    )
+                                },
+                                onBlurChange = { value ->
+                                    viewModel.setFloatingBarBlurImmediately(
+                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY,
+                                        value,
+                                    )
+                                },
+                            )
+                        }
+                    } else null,
                     forceExpanded = isSearchActive,
                 )
             }
@@ -1396,6 +1452,7 @@ private fun FeatureCard(
     onTextValueChange: (String, String) -> Unit,
     onClearError: () -> Unit,
     onFeatureClick: () -> Unit,
+    customDetails: (@Composable () -> Unit)? = null,
     forceExpanded: Boolean = false,
 ) {
     var searchExpanded by remember(item.key, searchQuery, forceExpanded) {
@@ -1432,6 +1489,7 @@ private fun FeatureCard(
                         onOptionValueChange = onOptionValueChange,
                         onTextValueChange = onTextValueChange,
                         onClearError = onClearError,
+                        customDetails = customDetails,
                     )
                 }
             }
@@ -1579,6 +1637,7 @@ private fun FeaturePreferenceDetails(
     onOptionValueChange: (Int) -> Unit,
     onTextValueChange: (String, String) -> Unit,
     onClearError: () -> Unit,
+    customDetails: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1632,6 +1691,7 @@ private fun FeaturePreferenceDetails(
                         onValueChange = { value -> onTextValueChange(area.key, value) },
                     )
                 }
+                customDetails?.invoke()
             }
         }
 

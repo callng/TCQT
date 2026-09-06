@@ -55,6 +55,8 @@ internal class DropletGestureDriver(
     /** 速度采样：按位置（Tab 单位）在时间上的差分计量。 */
     private var lastSampleMs = 0L
     private var lastSampleValue = 0f
+    private val tabRowLocation = IntArray(2)
+    private val parentLocation = IntArray(2)
 
     fun setPill(pill: View?) {
         pillRef = WeakReference(pill)
@@ -290,8 +292,13 @@ internal class DropletGestureDriver(
         // 设定尺寸，下次布局前 getWidth() 仍为 0，会把首帧位置错开半个 Tab。
         val first = QQTabLocator.tabAt(tabRow, 0) ?: return
         val dropletWidth = droplet.layoutParams?.width?.takeIf { it > 0 } ?: droplet.width
-        val originX = tabRow.left + first.left + (first.width - dropletWidth) * 0.5f
-        droplet.translationX = originX + position.value * tabWidth
+        val parent = droplet.parent as? View ?: return
+        tabRow.getLocationOnScreen(tabRowLocation)
+        parent.getLocationOnScreen(parentLocation)
+        val rowLeft = (tabRowLocation[0] - parentLocation[0]).toFloat()
+        val desiredX = rowLeft + first.left + (first.width - dropletWidth) * 0.5f + position.value * tabWidth
+        // translationX is relative to the indicator's laid-out left edge.
+        droplet.translationX = desiredX - droplet.left
 
         // 速度产生的拉伸形变：纵向放大、横向缩小的互补形变模拟液体的惯性。
         val v = velocity.value / 10f

@@ -27,7 +27,7 @@ import androidx.core.graphics.withClip
  * 渲染管线：以 `RenderNode` 捕获背景页面的绘制指令，先经
  * 「饱和度提升 → 高斯模糊」的 RenderEffect 链，再交给 AGSL 透镜做
  * 圆角矩形边缘折射，最后在其上叠加表面色垫、描边高光与拖拽时的
- * 交互辉光。表面色垫才是可读性的主要来源，模糊刻意保持轻微。
+ * 交互辉光。表面色垫才是可读性的主要来源，模糊强度由设置页实时调节。
  *
  * 透镜采样范围超出自身边界，捕获区域需向四周各外扩一个折射量；
  * 绘制时再平移回来，使折射带内的采样坐标始终落在有效内容上。
@@ -58,6 +58,7 @@ internal class GlassPillView(
     private var effectChain: RenderEffect? = null
     private var chainWidth = 0
     private var chainHeight = 0
+    private var blurPercent = 100
 
     private val saturateEffect: RenderEffect = RenderEffect.createColorFilterEffect(
         ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(SATURATION) })
@@ -105,6 +106,14 @@ internal class GlassPillView(
         highlightPaint.style = Paint.Style.STROKE
         highlightPaint.strokeWidth = density
         highlightPaint.color = if (dark) 0x1FFFFFFF else 0x2EFFFFFF
+        invalidate()
+    }
+
+    fun setBlurPercent(percent: Int) {
+        val normalized = percent.coerceIn(0, 100)
+        if (blurPercent == normalized) return
+        blurPercent = normalized
+        effectChain = null
         invalidate()
     }
 
@@ -263,11 +272,16 @@ internal class GlassPillView(
                 setFloatUniform("refractionAmount", -REFRACTION_DP * density)
                 setFloatUniform("depthEffect", 0f)
             }
-            val blur = BLUR_DP * density
-            effectChain = RenderEffect.createChainEffect(
-                RenderEffect.createRuntimeShaderEffect(lensShader!!, "content"),
-                RenderEffect.createBlurEffect(blur, blur, saturateEffect, Shader.TileMode.CLAMP),
-            )
+            val blur = BLUR_DP * density * (blurPercent / 100f)
+            val lensEffect = RenderEffect.createRuntimeShaderEffect(lensShader!!, "content")
+            effectChain = if (blur <= 0f) {
+                RenderEffect.createChainEffect(lensEffect, saturateEffect)
+            } else {
+                RenderEffect.createChainEffect(
+                    lensEffect,
+                    RenderEffect.createBlurEffect(blur, blur, saturateEffect, Shader.TileMode.CLAMP),
+                )
+            }
             chainWidth = w
             chainHeight = h
         }
@@ -284,7 +298,7 @@ internal class GlassPillView(
         /** 折射带宽度与折射位移量（dp）。 */
         const val REFRACTION_DP = 24f
 
-        /** 背景模糊半径（dp），轻模糊保证内容仍可辨识。 */
+        /** 背景模糊半径（dp），由设置页的强度百分比缩放。 */
         const val BLUR_DP = 4f
 
         /** 饱和度提升系数。 */
