@@ -74,8 +74,6 @@ internal object QQTabLocator {
     private var armedSmoothTarget: SmoothArm? = null
 
     private const val SMOOTH_ARM_TIMEOUT_MS = 300L
-    /** QQ 主 Pager 通常有四个 Tab；仅在 adapter 尚未暴露数量时作为兜底。 */
-    private const val PRELOAD_FALLBACK_OFFSCREEN_PAGE_LIMIT = 3
 
     /** 按类名精确匹配底栏视图；宿主带热补丁机制，按身份判断会静默失效，名称则始终成立。 */
     fun isTabView(view: View?): Boolean =
@@ -307,7 +305,7 @@ internal object QQTabLocator {
             return
         }
         val pager = activePager() ?: return
-        ensurePagesPreloaded(pager)
+        ensureNeighborPagesPreloaded(pager)
         val arm = SmoothArm(
             pager = pager,
             target = index,
@@ -347,8 +345,8 @@ internal object QQTabLocator {
      *
      * 底栏触发的切换统一交给 ViewPager2 的平滑路径处理；页间距离不再限制为 1，
      * pager 正在移动时也继续传递 `setCurrentItem(index, true)`，由 ViewPager2
-     * 自己重新定位当前动画目标，避免中途硬切造成回退。页面在安装和点击前通过
-     * 离屏策略预加载，保留 QQ 页面的懒加载初始化时序。
+     * 自己重新定位当前动画目标，避免中途硬切造成回退。切换前仅把相邻页预加载，
+     * 远距离页仍由 ViewPager2 按需创建。
      */
     fun tryHookPager(pager: ViewGroup?) {
         if (!TCQTSetting.getInt(LIQUID_GLASS_CONFIG_KEY).isFlagEnabled(SMOOTH_PAGE_SWITCH)) return
@@ -373,7 +371,7 @@ internal object QQTabLocator {
             )
             val hookClass = target.declaringClass
             hookedClass = hookClass
-            ensurePagesPreloaded(pager)
+            ensureNeighborPagesPreloaded(pager)
             if (!pagerHookedClasses.add(hookClass)) return@runCatching
             target.hookReplace { chain ->
                 val requested = chain.args.getOrNull(0) as? Int
@@ -408,31 +406,22 @@ internal object QQTabLocator {
         }
     }
 
-    /** Keep all main ViewPager2 pages bound so any-distance animation has a ready target. */
-    private fun ensurePagesPreloaded(pager: ViewGroup) {
+    /** 只保证相邻页已预加载，避免把全部 Tab 页提前实例化。 */
+    private fun ensureNeighborPagesPreloaded(pager: ViewGroup) {
         runCatching {
-            val adapter = pager.javaClass.methods.firstOrNull {
-                it.name == "getAdapter" && it.parameterTypes.isEmpty()
-            }?.invoke(pager)
-            val itemCount = adapter?.javaClass?.methods?.firstOrNull {
-                it.name == "getItemCount" && it.parameterTypes.isEmpty()
-            }?.invoke(adapter) as? Int
-            val requiredLimit = ((itemCount ?: (PRELOAD_FALLBACK_OFFSCREEN_PAGE_LIMIT + 1)) - 1)
-                .coerceAtLeast(1)
             val currentLimit = pager.javaClass.methods.firstOrNull {
                 it.name == "getOffscreenPageLimit" && it.parameterTypes.isEmpty()
             }?.invoke(pager) as? Int
-            if (currentLimit != null && currentLimit >= requiredLimit) return@runCatching
+            if (currentLimit != null && currentLimit >= 1) return@runCatching
 
             val setter = pager.javaClass.methods.firstOrNull {
                 it.name == "setOffscreenPageLimit" &&
                     it.parameterTypes.size == 1 &&
                     it.parameterTypes[0] == Int::class.javaPrimitiveType
             } ?: return@runCatching
-            setter.invoke(pager, requiredLimit)
-            pager.requestLayout()
-            Log.i("平滑切页已启用全部 Tab 页预加载: count=${itemCount ?: "unknown"} limit=$requiredLimit")
-        }.onFailure { Log.w("Tab 页预加载设置失败，保持宿主默认离屏策略: $it") }
+            setter.invoke(pager, 1)
+            Log.i("平滑切页已预加载相邻页: offscreenPageLimit=1")
+        }.onFailure { Log.w("相邻页预加载设置失败，保持宿主默认离屏策略: $it") }
     }
 
 }

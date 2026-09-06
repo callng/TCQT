@@ -34,7 +34,7 @@ class LiquidGlassTabBar : IAction {
 
     override val key: String get() = "liquid_glass_tab_bar"
     override val name: String get() = "悬浮底栏"
-    override val desc: String get() = "使用悬浮底栏替换 QQ 原生底部导航栏；可选择 Lasted 或 NewView 外观。"
+    override val desc: String get() = "使用悬浮底栏替换 QQ 原生底部导航栏。"
     override val uiTab: String get() = "界面"
     override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
@@ -44,13 +44,17 @@ class LiquidGlassTabBar : IAction {
                 key = FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
                 name = "底栏样式",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_IMPLEMENTATION,
-                options = listOf("Lasted", "NewView"),
+                options = listOf("经典", "新视图"),
             ),
             IntSetting(
                 key = FloatingBottomBarConfigStore.MODE_KEY,
                 name = "渲染模式",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_MODE,
-                options = listOf("Normal", "Liquid Glass"),
+                options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    listOf("普通", "液态玻璃")
+                } else {
+                    listOf("普通")
+                },
             ),
             IntSliderSetting(
                 key = FloatingBottomBarConfigStore.SCALE_KEY,
@@ -69,6 +73,7 @@ class LiquidGlassTabBar : IAction {
                 max = 100,
                 step = 25,
                 suffix = "%",
+                isHide = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU,
             ),
             IntSetting(
                 key = FloatingBottomBarConfigStore.POSITION_KEY,
@@ -84,7 +89,7 @@ class LiquidGlassTabBar : IAction {
             ),
         )
 
-    /** Lasted 的折射管线依赖 RuntimeShader；NewView Normal 可在更低版本工作。 */
+    /** 经典实现的折射管线依赖 RuntimeShader；新视图的普通模式可在更低版本工作。 */
     override fun onInit(): Boolean {
         // 在 TIM 上 有些 BUG 但我们不做屏蔽处理
         val config = FloatingBottomBarConfigStore.read()

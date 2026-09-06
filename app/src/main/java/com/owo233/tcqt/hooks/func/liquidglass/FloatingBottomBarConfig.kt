@@ -2,9 +2,9 @@ package com.owo233.tcqt.hooks.func.liquidglass
 
 import com.owo233.tcqt.internals.setting.TCQTSetting
 
-/** The two bottom-bar implementations exposed in the floating bottom-bar card. */
+/** 悬浮底栏的两种实现。 */
 internal enum class BottomBarImplementation(val storedValue: Int) {
-    LASTED(1),
+    CLASSIC(1),
     NEW_VIEW(2),
 }
 
@@ -26,7 +26,7 @@ internal enum class FloatingBottomBarPosition(val storedValue: Int) {
 }
 
 internal data class FloatingBottomBarConfig(
-    val implementation: BottomBarImplementation = BottomBarImplementation.LASTED,
+    val implementation: BottomBarImplementation = BottomBarImplementation.CLASSIC,
     val mode: FloatingBottomBarMode = FloatingBottomBarMode.NORMAL,
     val scale: Float = 1f,
     val blurPercent: Int = 100,
@@ -53,7 +53,7 @@ internal object FloatingBottomBarConfigStore {
     fun read(): FloatingBottomBarConfig {
         val implementation = when (TCQTSetting.getInt(IMPLEMENTATION_KEY)) {
             BottomBarImplementation.NEW_VIEW.storedValue -> BottomBarImplementation.NEW_VIEW
-            else -> BottomBarImplementation.LASTED
+            else -> BottomBarImplementation.CLASSIC
         }
         val mode = when (TCQTSetting.getInt(MODE_KEY)) {
             FloatingBottomBarMode.LIQUID_GLASS.storedValue -> FloatingBottomBarMode.LIQUID_GLASS

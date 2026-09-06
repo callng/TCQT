@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TabWidget
 import android.widget.TextView
 import androidx.core.view.children
+import com.owo233.tcqt.R
 import com.owo233.tcqt.utils.log.Log
 import java.lang.ref.WeakReference
 import kotlin.math.abs
@@ -55,15 +56,15 @@ internal object GlassBarInstaller {
 
     /** 列表末行越过药丸后的额外余量（dp）。 */
     private const val LAST_ROW_GAP_DP = 8f
-    private const val PAGE_EXTEND_RETRY_TAG = 0x7F5A0005
+    private val PAGE_EXTEND_RETRY_TAG = R.id.tcqt_tag_page_extend_retry
     private const val PAGE_EXTEND_RETRY_DELAY_MS = 100L
 
     /** 逐帧复用坐标缓冲；全部调用位于 UI 线程。 */
     private val tmpLoc = IntArray(2)
 
     /** 可逆几何修改的视图 tag 键。 */
-    private const val EXTEND_TAG = 0x7F5A0002
-    private const val ICON_TRANSLATION_TAG = 0x7F5A0003
+    private val EXTEND_TAG = R.id.tcqt_tag_extend
+    private val ICON_TRANSLATION_TAG = R.id.tcqt_tag_icon_translation
 
     // ---- 安装状态：以弱引用持有宿主视图，Activity 重建后自动失效并重装 ----
 

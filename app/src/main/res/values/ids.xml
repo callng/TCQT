@@ -9,4 +9,8 @@
     <item name="check_ban_url" type="id" />
     <item name="account_get_ticket" type="id" />
     <item name="open_info_card" type="id" />
+    <item name="tcqt_tag_extend" type="id" />
+    <item name="tcqt_tag_icon_translation" type="id" />
+    <item name="tcqt_tag_content_translation" type="id" />
+    <item name="tcqt_tag_page_extend_retry" type="id" />
 </resources>

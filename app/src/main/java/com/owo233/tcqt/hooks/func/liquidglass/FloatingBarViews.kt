@@ -13,7 +13,6 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.graphics.withTranslation
 import androidx.core.view.children
 import kotlin.math.max
 import kotlin.math.min
@@ -235,15 +234,14 @@ internal class FloatingBarHostLayout(
     private val shadowPath = Path()
     private var shadowClipWidth = -1
     private var shadowClipHeight = -1
-    private var shadowOffsetY = 0f
-    private var shadowAlpha = 255
     private var dragHandler: GlassBarHostLayout.DragHandler? = null
     private var downX = 0f
     private var downY = 0f
     private var ancestorsBlocked = false
     private var baseShadowPadding = (14f * density).roundToInt()
 
-    val isDarkTheme: Boolean = runCatching { com.owo233.tcqt.HookEnv.isNightMode() }.getOrDefault(false)
+    var isDarkTheme: Boolean = runCatching { com.owo233.tcqt.HookEnv.isNightMode() }.getOrDefault(false)
+        private set
     var shadowPadding: Int = baseShadowPadding
         private set
 
@@ -258,6 +256,13 @@ internal class FloatingBarHostLayout(
     fun setupShadow() {
         applyShadowColour()
         setGeometryScale(1f)
+    }
+
+    fun setDarkTheme(dark: Boolean) {
+        if (isDarkTheme == dark) return
+        isDarkTheme = dark
+        applyShadowColour()
+        invalidate()
     }
 
     fun setDragHandler(handler: GlassBarHostLayout.DragHandler?) {
@@ -289,7 +294,7 @@ internal class FloatingBarHostLayout(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (shadowAlpha == 0 || shadowPadding <= 0 || shadowOffsetY == Float.MAX_VALUE) return
+        if (shadowPadding <= 0) return
         val left = shadowPadding.toFloat()
         val top = shadowPadding.toFloat()
         val right = width - shadowPadding.toFloat()
@@ -302,13 +307,10 @@ internal class FloatingBarHostLayout(
             shadowClipWidth = width
             shadowClipHeight = height
         }
-        canvas.withTranslation(0f, shadowOffsetY) {
-            clipOutPath(shadowPath)
-            val oldAlpha = shadowPaint.alpha
-            shadowPaint.alpha = shadowAlpha
-            drawRoundRect(left, top, right, bottom, radius, radius, shadowPaint)
-            shadowPaint.alpha = oldAlpha
-        }
+        canvas.save()
+        canvas.clipOutPath(shadowPath)
+        canvas.drawRoundRect(left, top, right, bottom, radius, radius, shadowPaint)
+        canvas.restore()
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {

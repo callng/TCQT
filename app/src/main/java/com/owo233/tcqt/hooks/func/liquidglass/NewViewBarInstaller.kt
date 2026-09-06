@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.TabWidget
 import androidx.core.view.children
 import androidx.core.view.isGone
+import com.owo233.tcqt.R
 import com.owo233.tcqt.utils.log.Log
 import java.lang.ref.WeakReference
 import java.util.IdentityHashMap
@@ -21,7 +22,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * NewView's renderer on top of the same structural replacement used by Lasted.
+ * NewView's renderer on top of the same structural replacement used by the classic implementation.
  * The QQ TabView remains the source of all labels, icons, badges and click
  * listeners; this class only changes its parent, geometry and visual layers.
  */
@@ -33,7 +34,7 @@ internal object NewViewBarInstaller {
     private const val ICON_ONLY_BASIS_DP = 24f
     private const val BASE_SHADOW_DP = 14f
     private const val BAR_HEIGHT_DP = 64f
-    private const val CONTENT_TRANSLATION_TAG = 0x7F5A0004
+    private val CONTENT_TRANSLATION_TAG = R.id.tcqt_tag_content_translation
 
     private var hostRef = WeakReference<FloatingBarHostLayout?>(null)
     private var tabViewRef = WeakReference<ViewGroup?>(null)
@@ -49,16 +50,18 @@ internal object NewViewBarInstaller {
     private var originalTabParams: ViewGroup.LayoutParams? = null
     private var originalTabPadding = intArrayOf(0, 0, 0, 0)
     private var originalTabBackground: Drawable? = null
+    private var originalStripEnabled = true
+    private var originalDividerDrawable: Drawable? = null
     private var originalTabAlpha = 1f
     private var originalRowPadding = intArrayOf(0, 0, 0, 0)
     private var originalChildren = emptyList<OriginalChildLayout>()
     private val originalBackgrounds = IdentityHashMap<View, Drawable?>()
     private val hiddenChrome = IdentityHashMap<View, Int>()
 
-    private var baseBarWidth = 0
     private var baseBarHeight = 0
     private var baseTabWidth = 0
     private var appliedScale = 0f
+    private var appliedDark: Boolean? = null
     private var installedMode: FloatingBottomBarMode? = null
     private var installedPosition: FloatingBottomBarPosition? = null
     /** Captured before the native TabView is detached; detached views often report zero insets. */
@@ -106,7 +109,7 @@ internal object NewViewBarInstaller {
             if (installedMode != config.mode) {
                 restore()
             } else {
-                applyScale(config.scale)
+                applyScale(config.scale, config.position)
                 applyPosition(config.position)
                 return
             }
@@ -132,7 +135,7 @@ internal object NewViewBarInstaller {
             }
             return
         }
-        applyScale(config.scale)
+        applyScale(config.scale, config.position)
     }
 
     private fun install(activity: Activity, tabView: ViewGroup): Boolean {
@@ -156,6 +159,10 @@ internal object NewViewBarInstaller {
         originalTabParams = tabView.layoutParams
         originalTabPadding = intArrayOf(tabView.paddingLeft, tabView.paddingTop, tabView.paddingRight, tabView.paddingBottom)
         originalTabBackground = tabView.background
+        (tabView as? TabWidget)?.let {
+            originalStripEnabled = it.isStripEnabled
+            originalDividerDrawable = it.dividerDrawable
+        }
         originalTabAlpha = tabView.alpha
         originalRowPadding = intArrayOf(row.paddingLeft, row.paddingTop, row.paddingRight, row.paddingBottom)
         originalChildren = row.children.map { child ->
@@ -163,18 +170,18 @@ internal object NewViewBarInstaller {
             OriginalChildLayout(child, lp?.width ?: 0, lp?.height ?: 0, (lp as? LinearLayout.LayoutParams)?.weight ?: 0f)
         }.toList()
         originalBackgrounds.clear()
-        captureBackgrounds(tabView, 0)
+        captureBackgrounds(tabView)
         hiddenChrome.clear()
 
         val barWidth = hugContentWidth(row, density) ?: return false
 
-        baseBarWidth = barWidth
         baseBarHeight = resolvedHeight
         val horizontalPad = (4f * density).roundToInt().coerceAtLeast(1)
         baseTabWidth = max(1, (barWidth - horizontalPad * 2) / visibleTabs.size)
 
         val host = FloatingBarHostLayout(context)
         host.setupShadow()
+        appliedDark = host.isDarkTheme
         val config = FloatingBottomBarConfigStore.read()
         val mode = config.mode
         val liquid = mode == FloatingBottomBarMode.LIQUID_GLASS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -281,11 +288,19 @@ internal object NewViewBarInstaller {
                     }
                 }
                 else -> {
-                    val scaleChanged = applyScale(current.scale)
+                    val scaleChanged = applyScale(current.scale, current.position)
                     applyPosition(current.position)
                     centerTabContent(row)
                     keepOwnBarChromeHidden(parent, tabView)
-                    (surfaceRef.get() as? FloatingBarSurfaceView)?.update(current.mode, host.isDarkTheme)
+                    val dark = runCatching { com.owo233.tcqt.HookEnv.isNightMode() }.getOrDefault(false)
+                    if (appliedDark != dark) {
+                        appliedDark = dark
+                        host.setDarkTheme(dark)
+                        (surfaceRef.get() as? FloatingBarSurfaceView)?.update(current.mode, dark)
+                        (surfaceRef.get() as? GlassPillView)?.setTheme(dark)
+                        (indicatorRef.get() as? GlassDropletView)?.setTheme(dark)
+                        (indicatorRef.get() as? FloatingBarIndicatorView)?.setTheme(dark)
+                    }
                     (surfaceRef.get() as? GlassPillView)?.setBlurPercent(current.blurPercent)
                     (indicatorRef.get() as? GlassDropletView)?.setBlurPercent(current.blurPercent)
                     if (indicator.visibility != View.VISIBLE) indicator.visibility = View.VISIBLE
@@ -318,10 +333,7 @@ internal object NewViewBarInstaller {
         runCatching {
             (tabView.parent as? ViewGroup)?.removeView(tabView)
             (host.parent as? ViewGroup)?.removeView(host)
-            if (tabView.parent == null) {
-                val index = originalIndex.coerceIn(0, parent.childCount)
-                originalTabParams?.let { parent.addView(tabView, index, it) } ?: parent.addView(tabView, index)
-            }
+            restoreViews(tabView, parent)
         }
     }
 
@@ -333,27 +345,7 @@ internal object NewViewBarInstaller {
         driver = null
         (tabView.parent as? ViewGroup)?.removeView(tabView)
         (host.parent as? ViewGroup)?.removeView(host)
-
-        originalChildren.forEach { saved ->
-            val lp = saved.view.layoutParams ?: return@forEach
-            lp.width = saved.width
-            lp.height = saved.height
-            (lp as? LinearLayout.LayoutParams)?.weight = saved.weight
-            saved.view.layoutParams = lp
-        }
-        restoreTabContentTranslations()
-        restoreBackgrounds()
-        tabView.setPadding(originalTabPadding[0], originalTabPadding[1], originalTabPadding[2], originalTabPadding[3])
-        tabView.alpha = originalTabAlpha
-        tabView.background = originalTabBackground
-        QQTabLocator.findTabRow(tabView)?.setPadding(
-            originalRowPadding[0], originalRowPadding[1], originalRowPadding[2], originalRowPadding[3],
-        )
-        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
-        if (tabView.parent == null) {
-            val index = originalIndex.coerceIn(0, parent.childCount)
-            originalTabParams?.let { parent.addView(tabView, index, it) } ?: parent.addView(tabView, index)
-        }
+        restoreViews(tabView, parent)
 
         hostRef = WeakReference(null)
         tabViewRef = WeakReference(null)
@@ -366,6 +358,7 @@ internal object NewViewBarInstaller {
         originalBackgrounds.clear()
         hiddenChrome.clear()
         appliedScale = 0f
+        appliedDark = null
         installedMode = null
         installedPosition = null
         layoutSyncPending = false
@@ -374,7 +367,34 @@ internal object NewViewBarInstaller {
         Log.i("NewView 悬浮底栏已恢复原生父级")
     }
 
-    private fun applyScale(scale: Float): Boolean {
+    private fun restoreViews(tabView: ViewGroup, parent: ViewGroup) {
+        originalChildren.forEach { saved ->
+            val lp = saved.view.layoutParams ?: return@forEach
+            lp.width = saved.width
+            lp.height = saved.height
+            (lp as? LinearLayout.LayoutParams)?.weight = saved.weight
+            saved.view.layoutParams = lp
+        }
+        restoreTabContentTranslations()
+        restoreBackgrounds()
+        tabView.setPadding(originalTabPadding[0], originalTabPadding[1], originalTabPadding[2], originalTabPadding[3])
+        tabView.alpha = originalTabAlpha
+        tabView.background = originalTabBackground
+        if (tabView is TabWidget) {
+            tabView.setStripEnabled(originalStripEnabled)
+            tabView.dividerDrawable = originalDividerDrawable
+        }
+        QQTabLocator.findTabRow(tabView)?.setPadding(
+            originalRowPadding[0], originalRowPadding[1], originalRowPadding[2], originalRowPadding[3],
+        )
+        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
+        if (tabView.parent == null) {
+            val index = originalIndex.coerceIn(0, parent.childCount)
+            originalTabParams?.let { parent.addView(tabView, index, it) } ?: parent.addView(tabView, index)
+        }
+    }
+
+    private fun applyScale(scale: Float, position: FloatingBottomBarPosition): Boolean {
         val host = hostRef.get() ?: return false
         val tabView = tabViewRef.get() ?: return false
         val row = tabRowRef.get() ?: return false
@@ -394,7 +414,6 @@ internal object NewViewBarInstaller {
         hostLp.width = geometry.totalWidth + geometry.shadowPadding * 2
         hostLp.height = geometry.barHeight + geometry.shadowPadding * 2
         val inset = effectiveNavigationInset(tabView)
-        val position = FloatingBottomBarConfigStore.read().position
         hostLp.bottomMargin = floatingOffset(position, inset, density) - geometry.shadowPadding + inset
         host.layoutParams = hostLp
         val tabLp = tabView.layoutParams as? FrameLayout.LayoutParams ?: return false
@@ -634,10 +653,9 @@ internal object NewViewBarInstaller {
         }
     }
 
-    private fun captureBackgrounds(view: View, depth: Int) {
-        if (depth > 3) return
+    private fun captureBackgrounds(view: View) {
         originalBackgrounds[view] = view.background
-        if (view is ViewGroup) view.children.forEach { captureBackgrounds(it, depth + 1) }
+        if (view is ViewGroup) view.children.forEach { captureBackgrounds(it) }
     }
 
     private fun restoreBackgrounds() {
