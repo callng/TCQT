@@ -20,13 +20,11 @@ import com.owo233.tcqt.ext.IntSliderSetting
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.base.load
-import com.owo233.tcqt.hooks.func.liquidglass.GlassBarInstaller
-import com.owo233.tcqt.hooks.func.liquidglass.QQTabLocator
 import com.owo233.tcqt.hooks.func.liquidglass.BottomBarImplementation
 import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore
-import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarMode
-import com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarPosition
+import com.owo233.tcqt.hooks.func.liquidglass.GlassBarInstaller
 import com.owo233.tcqt.hooks.func.liquidglass.NewViewBarInstaller
+import com.owo233.tcqt.hooks.func.liquidglass.QQTabLocator
 import com.owo233.tcqt.utils.hook.hookAfter
 import com.owo233.tcqt.utils.hook.hookBefore
 import com.owo233.tcqt.utils.log.Log
@@ -38,7 +36,7 @@ class LiquidGlassTabBar : IAction {
     override val name: String get() = "悬浮底栏"
     override val desc: String get() = "使用悬浮底栏替换 QQ 原生底部导航栏；可选择 Lasted 或 NewView 外观。"
     override val uiTab: String get() = "界面"
-    override val priority: ActionPriority get() = ActionPriority.EARLY
+    override val priority: ActionPriority get() = ActionPriority.CRITICAL
 
     override val settings: List<Setting<*>>
         get() = listOf(
