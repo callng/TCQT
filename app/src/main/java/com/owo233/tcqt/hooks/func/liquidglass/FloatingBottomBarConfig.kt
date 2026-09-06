@@ -13,13 +13,16 @@ internal enum class FloatingBottomBarMode(val storedValue: Int) {
     LIQUID_GLASS(2),
 }
 
-/** Vertical placement of the floating bar relative to the window bottom.
- * Stored values stay stable; visual mapping follows the labels in settings:
- * 适中 is close to the bottom and 靠底 keeps the moderate gap.
- */
+/** 悬浮底栏距屏幕底部的垂直位置。 */
 internal enum class FloatingBottomBarPosition(val storedValue: Int) {
     MODERATE(1),
-    BOTTOM(2),
+    BOTTOM(2);
+
+    /** 距底部锚点的间隙（dp），按有无导航栏区分。 */
+    fun offsetDp(hasNavBar: Boolean): Float = when (this) {
+        BOTTOM -> if (hasNavBar) 8f else 12f
+        MODERATE -> if (hasNavBar) 12f else 28f
+    }
 }
 
 internal data class FloatingBottomBarConfig(

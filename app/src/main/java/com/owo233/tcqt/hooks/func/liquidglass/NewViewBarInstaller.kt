@@ -28,13 +28,6 @@ import kotlin.math.roundToInt
 internal object NewViewBarInstaller {
     private const val MAX_INSTALL_ATTEMPTS = 40
     private const val RETRY_DELAY_MS = 250L
-    // Keep the floating placement and item width aligned with KernelSU's Miuix bar.
-    private const val FLOAT_OFFSET_NO_NAV_DP = 28f
-    private const val FLOAT_OFFSET_WITH_NAV_DP = 8f
-    // The stored "适中" value follows KernelSU's close-to-bottom anchor;
-    // "靠底" keeps the former moderate gap for compatibility with saved values.
-    private const val MODERATE_OFFSET_NO_NAV_DP = 12f
-    private const val MODERATE_OFFSET_WITH_NAV_DP = 12f
     private const val SCREEN_MARGIN_DP = 28f
     private const val TAB_MIN_WIDTH_DP = 76f
     private const val ICON_ONLY_BASIS_DP = 24f
@@ -389,7 +382,6 @@ internal object NewViewBarInstaller {
         if (abs(appliedScale - normalized) < 0.001f) return false
         val density = host.resources.displayMetrics.density
         val geometry = FloatingBarGeometry.fromBase(
-            baseTotalWidth = baseBarWidth,
             baseBarHeight = baseBarHeight,
             baseTabWidth = baseTabWidth,
             baseTabHeight = baseBarHeight,
@@ -704,11 +696,8 @@ internal object NewViewBarInstaller {
         return max(live, navigationInset)
     }
 
-    private fun floatingOffset(position: FloatingBottomBarPosition, inset: Int, density: Float): Int {
-        val moderate = if (inset != 0) MODERATE_OFFSET_WITH_NAV_DP else MODERATE_OFFSET_NO_NAV_DP
-        val bottom = if (inset != 0) FLOAT_OFFSET_WITH_NAV_DP else FLOAT_OFFSET_NO_NAV_DP
-        return ((if (position == FloatingBottomBarPosition.MODERATE) bottom else moderate) * density).roundToInt()
-    }
+    private fun floatingOffset(position: FloatingBottomBarPosition, inset: Int, density: Float): Int =
+        (position.offsetDp(inset != 0) * density).roundToInt()
 
     private data class OriginalChildLayout(val view: View, val width: Int, val height: Int, val weight: Float)
 }

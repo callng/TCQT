@@ -18,6 +18,7 @@ import androidx.core.view.children
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.core.graphics.withClip
 
 /** Logical dimensions shared by the runtime bar and the settings preview. */
 internal data class FloatingBarGeometry(
@@ -31,7 +32,6 @@ internal data class FloatingBarGeometry(
 ) {
     companion object {
         fun fromBase(
-            baseTotalWidth: Int,
             baseBarHeight: Int,
             baseTabWidth: Int,
             baseTabHeight: Int,
@@ -115,7 +115,7 @@ internal class FloatingBarIndicatorView(context: Context) : View(context) {
 }
 
 /** A bounded preview item with the same icon/text grouping as a native tab. */
-private class FloatingBarPreviewItem(context: Context, private val iconKind: IconKind, title: String) : LinearLayout(context) {
+private class FloatingBarPreviewItem(context: Context, iconKind: IconKind, title: String) : LinearLayout(context) {
     private val icon = PreviewTabIconView(context, iconKind)
     private val label = TextView(context)
     private val density = resources.displayMetrics.density
@@ -278,12 +278,6 @@ internal class FloatingBarHostLayout(
         requestLayout()
     }
 
-    fun setShadowOffsetY(translationY: Float, alpha: Float) {
-        shadowOffsetY = translationY
-        shadowAlpha = (255f * alpha.coerceIn(0f, 1f)).roundToInt()
-        invalidate()
-    }
-
     private fun applyShadowColour() {
         shadowPaint.setShadowLayer(
             10f * density,
@@ -357,7 +351,6 @@ internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(cont
     private val density = resources.displayMetrics.density
     private val baseBarHeight = (64f * density).roundToInt()
     private val baseTabWidth = (76f * density).roundToInt()
-    private val baseTotalWidth = baseTabWidth * 4 + (8f * density).roundToInt()
     private val backdrop = FrameLayout(context)
     private val barHost = FrameLayout(context)
     private val pagePreview = PreviewPageView(context)
@@ -388,7 +381,6 @@ internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(cont
     private var liquidDriver: DropletGestureDriver? = null
     private var liquidDragging = false
     private var geometry = FloatingBarGeometry.fromBase(
-        baseTotalWidth = baseTotalWidth,
         baseBarHeight = baseBarHeight,
         baseTabWidth = baseTabWidth,
         baseTabHeight = baseBarHeight,
@@ -468,16 +460,16 @@ internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(cont
     private fun setRenderer(requestedMode: FloatingBottomBarMode) {
         val useGlass = requestedMode == FloatingBottomBarMode.LIQUID_GLASS &&
             glassSurface != null && glassIndicator != null
-        activeIndicator = if (useGlass) glassIndicator!! else normalIndicator
+        activeIndicator = if (useGlass) glassIndicator else normalIndicator
         activeIndicator.animate().cancel()
-        normalSurface.visibility = if (useGlass) View.GONE else View.VISIBLE
-        normalIndicator.visibility = if (useGlass) View.GONE else View.VISIBLE
-        glassSurface?.visibility = if (useGlass) View.VISIBLE else View.GONE
-        glassIndicator?.visibility = if (useGlass) View.VISIBLE else View.GONE
+        normalSurface.visibility = if (useGlass) GONE else VISIBLE
+        normalIndicator.visibility = if (useGlass) GONE else VISIBLE
+        glassSurface?.visibility = if (useGlass) VISIBLE else GONE
+        glassIndicator?.visibility = if (useGlass) VISIBLE else GONE
         if (useGlass) {
             // Surface below the native content, selected indicator above it.
             row.bringToFront()
-            glassIndicator?.bringToFront()
+            glassIndicator.bringToFront()
             liquidDriver?.animateToIndex(selected, true)
         } else {
             row.bringToFront()
@@ -489,7 +481,6 @@ internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(cont
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(0)
         geometry = FloatingBarGeometry.fromBase(
-            baseTotalWidth = baseTotalWidth,
             baseBarHeight = baseBarHeight,
             baseTabWidth = baseTabWidth,
             baseTabHeight = baseBarHeight,
@@ -531,9 +522,8 @@ internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(cont
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         backdrop.layout(0, 0, width, height)
         barLeft = (width - barWidth) / 2
-        // "适中" is the KernelSU close-to-bottom anchor; "靠底" keeps
-        // the former moderate gap for compatibility with saved values.
-        val bottomOffset = if (position == FloatingBottomBarPosition.MODERATE) 8f else 12f
+        // 预览无导航栏，直接用无导航栏的偏移。
+        val bottomOffset = position.offsetDp(hasNavBar = false)
         barTop = height - barHeight - (bottomOffset * density).roundToInt()
         barTop = barTop.coerceAtLeast(0)
         barHost.layout(barLeft, barTop, barLeft + barWidth, barTop + barHeight)
@@ -672,15 +662,14 @@ private class PreviewPageView(context: Context) : View(context) {
         framePath.reset()
         framePath.addRoundRect(frame, radius, radius, Path.Direction.CW)
         paint.color = if (dark) 0xFF242528.toInt() else 0xFFE9EBEF.toInt()
-        canvas.save()
-        canvas.clipPath(framePath)
-        canvas.drawRoundRect(frame, radius, radius, paint)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = density
-        paint.color = if (dark) 0x336B6D72 else 0x33484B52
-        canvas.drawRoundRect(frame, radius, radius, paint)
-        paint.style = Paint.Style.FILL
-        canvas.restore()
+        canvas.withClip(framePath) {
+            drawRoundRect(frame, radius, radius, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = density.toFloat()
+            paint.color = if (dark) 0x336B6D72 else 0x33484B52
+            drawRoundRect(frame, radius, radius, paint)
+            paint.style = Paint.Style.FILL
+        }
 
         paint.color = if (dark) 0x18FFFFFF else 0x18000000
         canvas.drawRoundRect(side + 10f * density, top + 16f * density, w - side - 10f * density, top + 40f * density, 12f * density, 12f * density, paint)

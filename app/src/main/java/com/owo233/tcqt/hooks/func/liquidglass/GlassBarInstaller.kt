@@ -40,12 +40,6 @@ internal object GlassBarInstaller {
     /** 原生底栏的隐藏窗口期上限，超时后交还，避免闪烁变永久不可见。 */
     private const val REVEAL_TIMEOUT_MS = 8000L
 
-    /** 药丸底边距屏幕底边的距离（dp）。 */
-    private const val FLOAT_OFFSET_DP = 12f
-    /** KernelSU-compatible close-to-bottom placement. */
-    private const val BOTTOM_OFFSET_NO_NAV_DP = 28f
-    private const val BOTTOM_OFFSET_WITH_NAV_DP = 8f
-
     /** 内容定宽后每个 Tab 两侧的呼吸空间（dp）。 */
     private const val TAB_BREATHING_DP = 32f
 
@@ -1225,9 +1219,5 @@ internal object GlassBarInstaller {
         position: FloatingBottomBarPosition,
         inset: Int,
         density: Float,
-    ): Int {
-        val moderate = FLOAT_OFFSET_DP
-        val bottom = if (inset != 0) BOTTOM_OFFSET_WITH_NAV_DP else BOTTOM_OFFSET_NO_NAV_DP
-        return ((if (position == FloatingBottomBarPosition.BOTTOM) bottom else moderate) * density).roundToInt()
-    }
+    ): Int = (position.offsetDp(inset != 0) * density).roundToInt()
 }
