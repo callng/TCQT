@@ -47,7 +47,11 @@ class SettingViewModel : ViewModel() {
     private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
     private val optionGroupByKey: Map<String, FeatureOptionGroup> = allFeatures
-        .mapNotNull { it.optionGroup }
+        .flatMap { it.optionGroups }
+        .associateBy { it.key }
+
+    private val sliderByKey: Map<String, FeatureSliderField> = allFeatures
+        .flatMap { it.sliders }
         .associateBy { it.key }
 
     // ───── Category tree ─────
@@ -311,39 +315,16 @@ class SettingViewModel : ViewModel() {
         }
     }
 
-    /** Generic pending integer used by feature-specific UI panels. */
-    fun setPendingIntValue(key: String, value: Int) {
+    /** Slider 值按自身 min/max 收敛后进入待保存状态。 */
+    fun setSliderValue(key: String, value: Int) {
+        val slider = sliderByKey[key]
+        val clamped = slider?.let { value.coerceIn(it.min, it.max) } ?: value
         val persisted = persistedInts[key] ?: 0
-        if (value == persisted) pendingInts.remove(key) else pendingInts[key] = value
-    }
+        if (clamped == persisted) pendingInts.remove(key) else pendingInts[key] = clamped
 
-    /** Generic pending boolean used by feature-specific UI panels. */
-    fun setPendingBooleanValue(key: String, value: Boolean) {
-        val persisted = persistedBooleans[key] ?: false
-        if (value == persisted) pendingBooleans.remove(key) else pendingBooleans[key] = value
-    }
-
-    /** Read the effective value including unsaved edits. */
-    fun effectiveIntValue(key: String, fallback: Int = 0): Int = effectiveInt(key, fallback)
-
-    /** Read the effective value including unsaved edits. */
-    fun effectiveBooleanValue(key: String, fallback: Boolean = false): Boolean =
-        pendingBooleans[key] ?: persistedBooleans[key] ?: fallback
-
-    /** Scale is safe to apply live, so persist it as the slider moves. */
-    fun setFloatingBarScaleImmediately(key: String, value: Int) {
-        val normalized = value.coerceIn(80, 120)
-        TCQTSetting.setValue(key, normalized)
-        persistedInts[key] = normalized
-        pendingInts.remove(key)
-    }
-
-    /** Blur is safe to apply live, so persist it as the slider moves. */
-    fun setFloatingBarBlurImmediately(key: String, value: Int) {
-        val normalized = value.coerceIn(0, 100)
-        TCQTSetting.setValue(key, normalized)
-        persistedInts[key] = normalized
-        pendingInts.remove(key)
+        if (isSearchActive && searchQuery.isNotBlank()) {
+            pendingKeywordsToSave.add(searchQuery.trim())
+        }
     }
 
     fun setTextValue(key: String, value: String) {
@@ -575,8 +556,19 @@ class SettingViewModel : ViewModel() {
             enabled = initReady && effectiveBoolean(feature.key),
             expanded = expandedKeys[feature.key] == true,
             hasPending = hasPendingFor(feature),
-            optionGroup = feature.optionGroup,
-            optionValue = feature.optionGroup?.let(::currentOptionValue),
+            optionGroups = feature.optionGroups,
+            optionValues = feature.optionGroups.associate { it.key to currentOptionValue(it) },
+            sliders = feature.sliders.map { field ->
+                FeatureSliderUiState(
+                    key = field.key,
+                    label = field.label,
+                    min = field.min,
+                    max = field.max,
+                    step = field.step,
+                    suffix = field.suffix,
+                    value = effectiveInt(field.key, field.defaultValue).coerceIn(field.min, field.max)
+                )
+            },
             textAreas = feature.textAreas.map { area ->
                 TextAreaUiState(
                     key = area.key,
@@ -595,14 +587,8 @@ class SettingViewModel : ViewModel() {
 
     private fun hasPendingFor(feature: SettingFeature): Boolean {
         if (pendingBooleans.containsKey(feature.key)) return true
-        if (feature.optionGroup != null && pendingInts.containsKey(feature.optionGroup.key)) return true
-        if (feature.key == "liquid_glass_tab_bar") {
-            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY)) return true
-            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY)) return true
-            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY)) return true
-            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY)) return true
-            if (pendingInts.containsKey(com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY)) return true
-        }
+        if (feature.optionGroups.any { pendingInts.containsKey(it.key) }) return true
+        if (feature.sliders.any { pendingInts.containsKey(it.key) }) return true
         return feature.textAreas.any { pendingStrings.containsKey(it.key) }
     }
 

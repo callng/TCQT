@@ -16,6 +16,7 @@ import com.owo233.tcqt.ext.ActionPriority
 import com.owo233.tcqt.ext.ActionProcess
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.IntSliderSetting
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.Setting
 import com.owo233.tcqt.hooks.base.load
@@ -46,35 +47,36 @@ class LiquidGlassTabBar : IAction {
                 name = "底栏样式",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_IMPLEMENTATION,
                 options = listOf("Lasted", "NewView"),
-                isHide = true,
             ),
             IntSetting(
                 key = FloatingBottomBarConfigStore.MODE_KEY,
-                name = "悬浮底栏模式",
+                name = "渲染模式",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_MODE,
                 options = listOf("Normal", "Liquid Glass"),
-                isHide = true,
             ),
-            IntSetting(
+            IntSliderSetting(
                 key = FloatingBottomBarConfigStore.SCALE_KEY,
                 name = "悬浮底栏缩放",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_SCALE_PERCENT,
-                options = listOf("80%", "90%", "100%", "110%", "120%"),
-                isHide = true,
+                min = 80,
+                max = 120,
+                step = 10,
+                suffix = "%",
             ),
-            IntSetting(
+            IntSliderSetting(
                 key = FloatingBottomBarConfigStore.BLUR_KEY,
-                name = "底栏背景模糊",
+                name = "背景模糊",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_BLUR_PERCENT,
-                options = listOf("0%", "25%", "50%", "75%", "100%"),
-                isHide = true,
+                min = 0,
+                max = 100,
+                step = 25,
+                suffix = "%",
             ),
             IntSetting(
                 key = FloatingBottomBarConfigStore.POSITION_KEY,
                 name = "底栏位置",
                 defaultValue = FloatingBottomBarConfigStore.DEFAULT_POSITION,
                 options = listOf("适中", "靠底"),
-                isHide = true,
             ),
             MultiIntSetting(
                 key = QQTabLocator.LIQUID_GLASS_CONFIG_KEY,

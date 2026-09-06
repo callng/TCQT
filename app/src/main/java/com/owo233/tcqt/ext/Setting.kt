@@ -5,8 +5,8 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
 /**
  * 功能配置项的公共声明基类（sealed，不可直接实例化）。
  *
- * 功能开发时引用的是本包（[com.owo233.tcqt.ext]）下的四个子类：
- * [BooleanSetting]、[StringSetting]、[IntSetting]、[MultiIntSetting]。
+ * 功能开发时引用的是本包（[com.owo233.tcqt.ext]）下的五个子类：
+ * [BooleanSetting]、[StringSetting]、[IntSetting]、[MultiIntSetting]、[IntSliderSetting]。
  * 注意它们并不在 `TCQTSetting.Setting` 里 —— 后者是模块内部负责 FastKV
  * 持久化的底层包装类，由 [com.owo233.tcqt.ActionManager] 在初始化时根据各
  * 功能的 [IAction.settings] 自动生成，功能代码不需要也不应该直接构造它。
@@ -19,11 +19,11 @@ import com.owo233.tcqt.internals.setting.TCQTSetting
  * 3. Hook 代码运行时通过 `TCQTSetting.getBoolean/getInt/getString(key)`
  *    读取持久化后的值。
  *
- * 约定：一个功能最多声明一个选项组（[IntSetting] 或 [MultiIntSetting]），
- * 设置界面只取 `settings` 中第一个选项组渲染；[StringSetting] 可以声明多个，
- * 会全部渲染为多行文本输入框；[BooleanSetting] 只作为持久化的布尔配置项，
- * 不会渲染成界面组件。将 [isHide] 置为 true 的组件不会在设置界面渲染，
- * 但仍会注册进 [TCQTSetting.settingMap]，Hook 读写不受影响。
+ * 约定：[IntSetting] / [MultiIntSetting] 渲染为选项组，[IntSliderSetting] 渲染为
+ * 滑块，均可声明多个、全部渲染；[StringSetting] 可声明多个，全部渲染为多行文本
+ * 输入框；[BooleanSetting] 只作为持久化的布尔配置项，不渲染成界面组件。将
+ * [isHide] 置为 true 的组件不会在设置界面渲染，但仍会注册进
+ * [TCQTSetting.settingMap]，Hook 读写不受影响。
  */
 sealed class Setting<T : Any> {
 
@@ -243,5 +243,23 @@ class MultiIntSetting(
     override val desc: String = "",
     val options: List<String>,
     val forcedSelections: Map<Int, List<Int>> = emptyMap(),
+    override val isHide: Boolean = false
+) : Setting<Int>()
+
+/**
+ * 滑块配置项，在设置界面渲染为一个带数值标签的 Slider。
+ *
+ * 存储值为 [min]..[max] 内的整数；[step] 大于 1 时按步进生成吸附点。
+ * 读取用 `TCQTSetting.getInt(key)`，写入用 `TCQTSetting.setValue(key, value)`。
+ */
+class IntSliderSetting(
+    override val key: String,
+    override val name: String,
+    override val defaultValue: Int = 0,
+    override val desc: String = "",
+    val min: Int,
+    val max: Int,
+    val step: Int = 1,
+    val suffix: String = "",
     override val isHide: Boolean = false
 ) : Setting<Int>()

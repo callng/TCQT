@@ -26,14 +26,15 @@ data class SettingFeature(
     val categoryPath: List<String>,
     val uiType: ActionUiType,
     val textAreas: List<TextAreaField>,
-    val optionGroup: FeatureOptionGroup?
+    val optionGroups: List<FeatureOptionGroup>,
+    val sliders: List<FeatureSliderField>
 ) {
 
     val desc: String
         get() = com.owo233.tcqt.ActionManager.getSettingDesc(key, staticDesc)
 
     val expandable: Boolean
-        get() = desc.isNotBlank() || textAreas.isNotEmpty() || optionGroup != null
+        get() = desc.isNotBlank() || textAreas.isNotEmpty() || optionGroups.isNotEmpty() || sliders.isNotEmpty()
 
     val labelLower: String
         get() = label.lowercase()
@@ -49,8 +50,9 @@ data class FeatureItemUiState(
     val enabled: Boolean,
     val expanded: Boolean,
     val hasPending: Boolean,
-    val optionGroup: FeatureOptionGroup?,
-    val optionValue: Int?,
+    val optionGroups: List<FeatureOptionGroup>,
+    val optionValues: Map<String, Int>,
+    val sliders: List<FeatureSliderUiState>,
     val textAreas: List<TextAreaUiState>,
     val uiType: ActionUiType,
     val error: FeatureErrorUiState?,
@@ -84,6 +86,7 @@ data class TextAreaField(
 @Immutable
 data class FeatureOptionGroup(
     val key: String,
+    val title: String,
     val isMulti: Boolean,
     val fallbackValue: Int,
     val options: List<OptionItem>,
@@ -126,6 +129,28 @@ data class FeatureOptionGroup(
 @Immutable
 data class OptionItem(
     val label: String,
+    val value: Int
+)
+
+@Immutable
+data class FeatureSliderField(
+    val key: String,
+    val label: String,
+    val min: Int,
+    val max: Int,
+    val step: Int = 1,
+    val suffix: String = "",
+    val defaultValue: Int = 0
+)
+
+@Immutable
+data class FeatureSliderUiState(
+    val key: String,
+    val label: String,
+    val min: Int,
+    val max: Int,
+    val step: Int,
+    val suffix: String,
     val value: Int
 )
 

@@ -3,6 +3,7 @@ package com.owo233.tcqt
 import android.app.Application
 import android.os.SystemClock
 import com.owo233.tcqt.activity.FeatureOptionGroup
+import com.owo233.tcqt.activity.FeatureSliderField
 import com.owo233.tcqt.activity.OptionItem
 import com.owo233.tcqt.activity.SettingFeature
 import com.owo233.tcqt.activity.TextAreaField
@@ -13,6 +14,7 @@ import com.owo233.tcqt.ext.ActionUiType
 import com.owo233.tcqt.ext.BooleanSetting
 import com.owo233.tcqt.ext.IAction
 import com.owo233.tcqt.ext.IntSetting
+import com.owo233.tcqt.ext.IntSliderSetting
 import com.owo233.tcqt.ext.MultiIntSetting
 import com.owo233.tcqt.ext.StringSetting
 import com.owo233.tcqt.generated.GeneratedActionList
@@ -289,6 +291,7 @@ internal object ActionManager {
                     is BooleanSetting -> TCQTSetting.SettingType.BOOLEAN
                     is StringSetting -> TCQTSetting.SettingType.STRING
                     is IntSetting -> TCQTSetting.SettingType.INT
+                    is IntSliderSetting -> TCQTSetting.SettingType.INT
                     is MultiIntSetting -> TCQTSetting.SettingType.INT_MULTI
                 }
                 map[s.key] = TCQTSetting.Setting(
@@ -317,25 +320,40 @@ internal object ActionManager {
                     )
                 }
 
-            val optionSetting = action.settings.find {
-                (it is IntSetting || it is MultiIntSetting) && !it.isHide
-            }
-            val optionGroup = optionSetting?.let { s ->
-                val options = when (s) {
-                    is IntSetting -> s.options
-                    is MultiIntSetting -> s.options
-                    else -> emptyList()
+            val optionGroups = action.settings
+                .filter { (it is IntSetting || it is MultiIntSetting) && !it.isHide }
+                .map { s ->
+                    val options = when (s) {
+                        is IntSetting -> s.options
+                        is MultiIntSetting -> s.options
+                        else -> emptyList()
+                    }
+                    FeatureOptionGroup(
+                        key = s.key,
+                        title = s.name,
+                        isMulti = s is MultiIntSetting,
+                        fallbackValue = s.defaultValue as Int,
+                        options = options.mapIndexed { i, label ->
+                            OptionItem(label = label, value = i + 1)
+                        },
+                        forcedSelections = (s as? MultiIntSetting)?.forcedSelections.orEmpty()
+                    )
                 }
-                FeatureOptionGroup(
-                    key = s.key,
-                    isMulti = s is MultiIntSetting,
-                    fallbackValue = s.defaultValue as Int,
-                    options = options.mapIndexed { i, label ->
-                        OptionItem(label = label, value = i + 1)
-                    },
-                    forcedSelections = (s as? MultiIntSetting)?.forcedSelections.orEmpty()
-                )
-            }
+
+            val sliders = action.settings
+                .filterIsInstance<IntSliderSetting>()
+                .filterNot { it.isHide }
+                .map { s ->
+                    FeatureSliderField(
+                        key = s.key,
+                        label = s.name,
+                        min = s.min,
+                        max = s.max,
+                        step = s.step,
+                        suffix = s.suffix,
+                        defaultValue = s.defaultValue
+                    )
+                }
 
             val categoryPath =
                 action.uiTab.trim().split("/").map { it.trim() }.filter { it.isNotEmpty() }
@@ -351,7 +369,8 @@ internal object ActionManager {
                     categoryPath = categoryPath,
                     uiType = action.uiType,
                     textAreas = textAreas,
-                    optionGroup = optionGroup
+                    optionGroups = optionGroups,
+                    sliders = sliders
                 )
             )
         }

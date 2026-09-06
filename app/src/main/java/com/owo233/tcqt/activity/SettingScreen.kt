@@ -93,6 +93,7 @@ import com.owo233.tcqt.ui.miuix.MaterialTheme
 import com.owo233.tcqt.ui.miuix.TextButton
 import com.owo233.tcqt.utils.PlatformTools
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.DropdownImpl
@@ -107,6 +108,8 @@ import top.yukonga.miuix.kmp.basic.SearchBarDefaults
 import top.yukonga.miuix.kmp.basic.SnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
 import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
@@ -482,66 +485,11 @@ private fun PageContent(
                     searchQuery = pageState.searchQuery,
                     onToggleExpanded = { viewModel.toggleExpanded(item.key) },
                     onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
-                    onOptionValueChange = { item.optionGroup?.let { g -> viewModel.setOptionValue(g.key, it) } },
+                    onOptionValueChange = { key, value -> viewModel.setOptionValue(key, value) },
+                    onSliderValueChange = { key, value -> viewModel.setSliderValue(key, value) },
                     onTextValueChange = { key, value -> viewModel.setTextValue(key, value) },
                     onClearError = { viewModel.clearActionError(item.key) },
                     onFeatureClick = { onFeatureClick(item.key) },
-                    customDetails = if (item.key == "liquid_glass_tab_bar") {
-                        {
-                            FloatingBottomBarSettingsPanel(
-                                implementation = viewModel.effectiveIntValue(
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_IMPLEMENTATION,
-                                ),
-                                mode = viewModel.effectiveIntValue(
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY,
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_MODE,
-                                ),
-                                position = viewModel.effectiveIntValue(
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY,
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_POSITION,
-                                ),
-                                scalePercent = viewModel.effectiveIntValue(
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY,
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_SCALE_PERCENT,
-                                ),
-                                blurPercent = viewModel.effectiveIntValue(
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY,
-                                    com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.DEFAULT_BLUR_PERCENT,
-                                ),
-                                onImplementationChange = { value ->
-                                    viewModel.setPendingIntValue(
-                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.IMPLEMENTATION_KEY,
-                                        value,
-                                    )
-                                },
-                                onModeChange = { value ->
-                                    viewModel.setPendingIntValue(
-                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.MODE_KEY,
-                                        value,
-                                    )
-                                },
-                                onPositionChange = { value ->
-                                    viewModel.setPendingIntValue(
-                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.POSITION_KEY,
-                                        value,
-                                    )
-                                },
-                                onScaleChange = { value ->
-                                    viewModel.setFloatingBarScaleImmediately(
-                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.SCALE_KEY,
-                                        value,
-                                    )
-                                },
-                                onBlurChange = { value ->
-                                    viewModel.setFloatingBarBlurImmediately(
-                                        com.owo233.tcqt.hooks.func.liquidglass.FloatingBottomBarConfigStore.BLUR_KEY,
-                                        value,
-                                    )
-                                },
-                            )
-                        }
-                    } else null,
                     forceExpanded = isSearchActive,
                 )
             }
@@ -1448,11 +1396,11 @@ private fun FeatureCard(
     searchQuery: String,
     onToggleExpanded: () -> Unit,
     onFeatureEnabledChange: (Boolean) -> Unit,
-    onOptionValueChange: (Int) -> Unit,
+    onOptionValueChange: (String, Int) -> Unit,
+    onSliderValueChange: (String, Int) -> Unit,
     onTextValueChange: (String, String) -> Unit,
     onClearError: () -> Unit,
     onFeatureClick: () -> Unit,
-    customDetails: (@Composable () -> Unit)? = null,
     forceExpanded: Boolean = false,
 ) {
     var searchExpanded by remember(item.key, searchQuery, forceExpanded) {
@@ -1469,7 +1417,7 @@ private fun FeatureCard(
         }
     }
     val feature = item.feature
-    val hasDetails = initReady && (item.error != null || item.optionGroup != null || item.textAreas.isNotEmpty())
+    val hasDetails = initReady && (item.error != null || item.optionGroups.isNotEmpty() || item.sliders.isNotEmpty() || item.textAreas.isNotEmpty())
     val query = searchQuery.trim()
     val featureTitleColor =
         if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -1487,9 +1435,9 @@ private fun FeatureCard(
                         item = item,
                         expanded = effectivelyExpanded,
                         onOptionValueChange = onOptionValueChange,
+                        onSliderValueChange = onSliderValueChange,
                         onTextValueChange = onTextValueChange,
                         onClearError = onClearError,
-                        customDetails = customDetails,
                     )
                 }
             }
@@ -1634,10 +1582,10 @@ private fun ForcedDisabledHint() {
 private fun FeaturePreferenceDetails(
     item: FeatureItemUiState,
     expanded: Boolean,
-    onOptionValueChange: (Int) -> Unit,
+    onOptionValueChange: (String, Int) -> Unit,
+    onSliderValueChange: (String, Int) -> Unit,
     onTextValueChange: (String, String) -> Unit,
     onClearError: () -> Unit,
-    customDetails: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1659,7 +1607,8 @@ private fun FeaturePreferenceDetails(
         AnimatedVisibility(
             visible = expanded && (
                 item.error != null ||
-                    item.optionGroup != null ||
+                    item.optionGroups.isNotEmpty() ||
+                    item.sliders.isNotEmpty() ||
                     item.textAreas.isNotEmpty()
                 ),
         ) {
@@ -1677,11 +1626,17 @@ private fun FeaturePreferenceDetails(
                 item.error?.let { error ->
                     FeatureErrorPanel(error = error, onClear = onClearError)
                 }
-                item.optionGroup?.let { group ->
+                item.optionGroups.forEach { group ->
                     OptionGroup(
                         group = group,
-                        currentValue = item.optionValue ?: group.fallbackValue,
-                        onValueChange = onOptionValueChange,
+                        currentValue = item.optionValues[group.key] ?: group.fallbackValue,
+                        onValueChange = { value -> onOptionValueChange(group.key, value) },
+                    )
+                }
+                item.sliders.forEach { slider ->
+                    FeatureSlider(
+                        slider = slider,
+                        onValueChange = { value -> onSliderValueChange(slider.key, value) },
                     )
                 }
                 item.textAreas.forEach { area ->
@@ -1691,7 +1646,6 @@ private fun FeaturePreferenceDetails(
                         onValueChange = { value -> onTextValueChange(area.key, value) },
                     )
                 }
-                customDetails?.invoke()
             }
         }
 
@@ -1865,6 +1819,13 @@ private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueCha
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
+            if (group.title.isNotBlank()) {
+                Text(
+                    text = group.title,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+            }
             group.options.forEachIndexed { index, option ->
                 val mask = group.resolveMask(option, index)
                 val selected = if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
@@ -1896,6 +1857,40 @@ private fun OptionGroup(group: FeatureOptionGroup, currentValue: Int, onValueCha
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FeatureSlider(slider: FeatureSliderUiState, onValueChange: (Int) -> Unit) {
+    val points = if (slider.step > 1) {
+        (slider.min..slider.max step slider.step).toList()
+    } else {
+        listOf(slider.min, slider.max)
+    }
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(slider.label, color = MaterialTheme.colorScheme.onSurface)
+                Text("${slider.value}${slider.suffix}", color = MaterialTheme.colorScheme.primary)
+            }
+            Slider(
+                value = slider.value.toFloat().coerceIn(slider.min.toFloat(), slider.max.toFloat()),
+                onValueChange = { onValueChange(it.roundToInt()) },
+                valueRange = slider.min.toFloat()..slider.max.toFloat(),
+                showKeyPoints = slider.step > 1,
+                keyPoints = points.map { it.toFloat() },
+                magnetThreshold = if (slider.step > 1) 1f else 0f,
+                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+            )
         }
     }
 }
