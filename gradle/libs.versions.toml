@@ -16,7 +16,7 @@ kyant0-shapes = "1.2.1"
 
 # Kotlin
 kotlin = "2.4.20"
-ksp = "2.3.11"
+ksp = "2.3.12"
 
 # KotlinX
 kotlinx-coroutines = "1.11.0"
