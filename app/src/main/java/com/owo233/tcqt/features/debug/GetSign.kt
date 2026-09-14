@@ -42,7 +42,7 @@ object GetSign : Feature(
     desc = "本功能仅用于测试，正常情况下无需启用!!! 用法: 在聊天框随便打个字符然后长按发送按钮即可获取。",
     processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
     priority = ActionPriority.EARLY,
-), DexKitTask, InputRootInitCallback {
+), DexKitTask {
 
     private var pendingEditText: WeakReference<EditText>? = null
     private var pendingSendBtn: WeakReference<Button>? = null
@@ -96,7 +96,10 @@ object GetSign : Feature(
 
         val resultReceiver = object : BroadcastReceiver() {
             @SuppressLint("SetTextI18n")
-            override fun onReceive(context: Context, intent: Intent) {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
                 val error = intent.getStringExtra("error")
 
                 if (error != null) {
@@ -121,7 +124,8 @@ object GetSign : Feature(
                     if (target != null) {
                         val base = "${HookEnv.versionName} $sign"
                         val withSource32 =
-                            source32 != null && source32.length == SOURCE32_LENGTH * 2
+                            source32 != null &&
+                                    source32.length == SOURCE32_LENGTH * 2
 
                         if (shouldScanSource32()) {
                             target.setText(
@@ -151,7 +155,7 @@ object GetSign : Feature(
     }
 
     @SuppressLint("SetTextI18n")
-    override fun onBtnLongClick(
+    private fun onBtnLongClick(
         sendBtn: Button,
         editText: EditText,
     ) {
@@ -207,12 +211,17 @@ object GetSign : Feature(
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initMsfProcess(app: Application) {
         val requestReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
                 runCatching {
                     val uin = intent.getStringExtra("uin") ?: "0"
                     val cmd = intent.getStringExtra("cmd")
 
-                    val buffer = "000000160A08120608D48BCAE5031206080110001800".hex2ByteArray()
+                    val buffer =
+                        "000000160A08120608D48BCAE5031206080110001800"
+                            .hex2ByteArray()
 
                     val seq = MsfService.getCore().nextSeq
 
@@ -372,7 +381,7 @@ object GetSign : Feature(
                             "sendBtn",
                         )
                     }
-                }
+                },
             ).singleOrNull()?.descriptor
 
             cache[TASK_INPUT_ROOT_INIT] = found
@@ -387,7 +396,7 @@ object GetSign : Feature(
                                 "inputRoot.findViewById(R.id.send_btn)",
                             )
                         }
-                    }
+                    },
                 ).singleOrNull()?.descriptor
                         ?: ""
         }
@@ -399,7 +408,7 @@ object GetSign : Feature(
         init: FindMethod.() -> Unit,
     ) {
         findMethod(
-            FindMethod().apply(init)
+            FindMethod().apply(init),
         )
             .singleOrNull()
             ?.descriptor
@@ -467,17 +476,13 @@ object GetSign : Feature(
         }
     }
 
-    private const val ACTION_REQUEST_SIGN =
-        "com.owo233.tcqt.GET_SIGN_REQUEST"
+    private const val ACTION_REQUEST_SIGN = "com.owo233.tcqt.GET_SIGN_REQUEST"
 
-    private const val ACTION_SIGN_RESULT =
-        "com.owo233.tcqt.GET_SIGN_RESULT"
+    private const val ACTION_SIGN_RESULT = "com.owo233.tcqt.GET_SIGN_RESULT"
 
-    private const val TASK_INPUT_ROOT_INIT =
-        "InputRootInit"
+    private const val TASK_INPUT_ROOT_INIT = "InputRootInit"
 
-    private const val TASK_GET_SIGN =
-        "getSign"
+    private const val TASK_GET_SIGN = "getSign"
 
     private const val SOURCE32_LENGTH = 32
 
@@ -485,18 +490,7 @@ object GetSign : Feature(
 
     private val nativeReady: Boolean by lazy {
         val ok = NativeLibs.load("tcqtmem")
-
-        if (!ok) {
-            Log.e("GetSign: load libtcqtmem failed")
-        }
-
+        if (!ok) Log.e("GetSign: load libtcqtmem failed")
         ok
     }
-}
-
-fun interface InputRootInitCallback {
-    fun onBtnLongClick(
-        sendBtn: Button,
-        editText: EditText,
-    )
 }

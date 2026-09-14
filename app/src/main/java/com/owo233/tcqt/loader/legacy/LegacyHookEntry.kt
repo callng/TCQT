@@ -25,7 +25,7 @@ class LegacyHookEntry : IXposedHookLoadPackage, IXposedHookZygoteInit {
             return
         }
 
-        if (HostTypeEnum.contain(lpparam.packageName)) {
+        if (HostTypeEnum.contain(lpparam.packageName) && lpparam.isFirstApplication) {
             if (HookEngineManager.isInitialized) return
             HookEngineManager.engine = LegacyHookEngine()
 

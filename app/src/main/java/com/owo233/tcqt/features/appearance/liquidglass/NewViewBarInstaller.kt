@@ -131,7 +131,7 @@ internal object NewViewBarInstaller {
             if (attempt < MAX_INSTALL_ATTEMPTS) {
                 decor.postDelayed({ reconcile(activity, decor, attempt + 1) }, RETRY_DELAY_MS)
             } else {
-                Log.w("NewView 底栏安装条件未满足，放弃本次安装")
+                // Log.w("NewView 底栏安装条件未满足，放弃本次安装")
             }
             return
         }
@@ -327,7 +327,7 @@ internal object NewViewBarInstaller {
         }
         refreshListener = listener
         host.viewTreeObserver.addOnPreDrawListener(listener)
-        Log.i("NewView 悬浮底栏已安装，复用原生 Tab 内容")
+        // Log.i("NewView 悬浮底栏已安装，复用原生 Tab 内容")
         return true
     }
 
@@ -366,7 +366,7 @@ internal object NewViewBarInstaller {
         layoutSyncPending = false
         navigationInset = 0
         reinstallPosted = false
-        Log.i("NewView 悬浮底栏已恢复原生父级")
+        // Log.i("NewView 悬浮底栏已恢复原生父级")
     }
 
     private fun restoreViews(tabView: ViewGroup, parent: ViewGroup) {
@@ -448,7 +448,7 @@ internal object NewViewBarInstaller {
         appliedScale = normalized
         layoutSyncPending = true
         host.requestLayout()
-        Log.i("NewView 底栏几何缩放: ${FloatingBottomBarConfigStore.percent(normalized)}%")
+        // Log.i("NewView 底栏几何缩放: ${FloatingBottomBarConfigStore.percent(normalized)}%")
         return true
     }
 

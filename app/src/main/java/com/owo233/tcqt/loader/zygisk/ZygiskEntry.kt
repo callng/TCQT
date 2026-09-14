@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Process
 import android.util.Log
 import androidx.annotation.Keep
+import com.owo233.tcqt.core.env.HostTypeEnum
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.hook.HookEngineManager
@@ -23,8 +24,6 @@ import java.util.zip.ZipFile
 object ZygiskEntry {
 
     private const val TAG = "ZygiskEntry"
-    private const val QQ_PACKAGE = "com.tencent.mobileqq"
-    private const val TIM_PACKAGE = "com.tencent.tim"
 
     @JvmStatic
     private external fun nativeArtInit(): Boolean
@@ -42,7 +41,7 @@ object ZygiskEntry {
     @Keep
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
-        if (pkg != QQ_PACKAGE && pkg != TIM_PACKAGE) return
+        if (!HostTypeEnum.contain(pkg)) return
 
         if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_ZYGISK)) {
             nativeLog(TAG, "init blocked: ${InjectionGuard.activeMode()} already active")

@@ -15,6 +15,7 @@ import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
+import com.owo233.tcqt.core.hook.HookFramework
 import com.owo233.tcqt.core.hook.MethodHookParam
 import com.owo233.tcqt.core.hook.Unhook
 import com.owo233.tcqt.core.hook.hookAfter
@@ -27,7 +28,6 @@ import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.loader.modern.ModernHookEngine
-import com.owo233.tcqt.loader.zygisk.ZygiskHookEngine
 import com.owo233.tcqt.ui.parasitic.ParasiticActivity
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
@@ -57,6 +57,7 @@ internal object ModuleLoader {
         if (sLoaded.get()) return true
 
         if (!isHostClassLoaderReady(hostClassLoader)) {
+            Log.e("host class not found!!!")
             return false
         }
 
@@ -71,38 +72,26 @@ internal object ModuleLoader {
         return true
     }
 
-    private fun isHostClassLoaderReady(
-        classLoader: ClassLoader
-    ): Boolean {
-        if (classLoader === this.javaClass.classLoader) {
-            return false
-        }
-
-        if (classLoader !is BaseDexClassLoader) {
-            return false
-        }
-
-        return try {
-            classLoader.loadClass(QFIX_PROXY_CLASS)
-            true
-        } catch (_: ClassNotFoundException) {
-            try {
-                classLoader.loadClass(QFIX_IMPL_CLASS)
-                true
-            } catch (_: ClassNotFoundException) {
-                false
-            }
-        } catch (_: LinkageError) {
-            false
-        } catch (_: SecurityException) {
-            false
-        }
+    private fun isHostClassLoaderReady(classLoader: ClassLoader): Boolean {
+        return !(classLoader === this.javaClass.classLoader || classLoader !is BaseDexClassLoader) &&
+                sequenceOf(
+                    QFIX_PROXY_CLASS,
+                    QFIX_IMPL_CLASS,
+                ).any { className ->
+                    try {
+                        classLoader.loadClass(className)
+                        true
+                    } catch (_: ClassNotFoundException) {
+                        false
+                    }
+                }
     }
 
     private fun nextInit(hostClassLoader: ClassLoader): Boolean {
-        val classNames = listOf(QFIX_PROXY_CLASS, QFIX_IMPL_CLASS)
-
-        for (className in classNames) {
+        return listOf(
+            QFIX_PROXY_CLASS,
+            QFIX_IMPL_CLASS,
+        ).any { className ->
             try {
                 val clazz = hostClassLoader.loadClass(className)
                 val method = clazz.getDeclaredMethod(
@@ -110,14 +99,14 @@ internal object ModuleLoader {
                     Context::class.java
                 )
                 hookQFixAttach(method)
-                return true
+                true
             } catch (_: ClassNotFoundException) {
+                false
             } catch (th: Throwable) {
                 Log.e("nextInit Failure: $className", th)
+                false
             }
         }
-
-        return false
     }
 
     private fun hookQFixAttach(attach: Method) {
@@ -242,7 +231,7 @@ internal object ModuleLoader {
     }
 
     private fun installMainDispatcher() {
-        if (HookEngineManager.engine !is ZygiskHookEngine) return
+        if (HookEngineManager.engine.frameworkName != HookFramework.ZYGISK) return
         if (!ProcUtil.isMain && !ProcUtil.isTool) return
         runCatching {
             kotlinx.coroutines.Dispatchers::class.java

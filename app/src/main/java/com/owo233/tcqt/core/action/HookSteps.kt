@@ -132,10 +132,9 @@ internal object HookSteps {
     }
 
     private fun getRealVersionCode(packageInfo: PackageInfo): Long {
-        val quaVersion = QUA.getQUA3()
-            .split("_")
-            .getOrNull(4)
-            ?.toLongOrNull() ?: 0L
+        val quaVersion = runCatching {
+            QUA.getQUA3().split("_").getOrNull(4)?.toLongOrNull() ?: 0L
+        }.getOrDefault(0L)
 
         val contextVersion = PackageInfoCompat.getLongVersionCode(packageInfo)
 

@@ -21,14 +21,15 @@ internal object PipelineDecorators {
     }
 
     /** 发现全部实现了 [type] 的装饰器，按 `decoratorOrder` 稳定排序。 */
+    @Suppress("UNCHECKED_CAST")
     fun <T : PipelineDecorator> all(type: Class<T>): List<T> {
         val fromRegistry = ActionRegistry.allActionClasses()
-            .mapNotNull { ActionRegistry.instanceOf(it) }
+            .mapNotNull(ActionRegistry::instanceOf)
 
         return (fromRegistry + registered)
             .filterIsInstance<PipelineDecorator>()
             .filter { type.isInstance(it) }
             .sortedBy { it.decoratorOrder }
-            .map { type.cast(it) }
+            .map { it as T }
     }
 }

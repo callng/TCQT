@@ -2,11 +2,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 #include "jni_bridge.h"
 #include "log.h"
@@ -23,19 +25,35 @@ constexpr const char *COMPAT_MARKER = "/data/adb/tcqt/compat.enable";
 constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
 constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
 
-enum class TargetApp { NONE, QQ, TIM };
+enum class TargetApp {
+    NONE,
+    QQ,
+    TIM
+};
 
-TargetApp match_target(const std::string &process_name) {
-    const char *prefixes[] = {"com.tencent.mobileqq", "com.tencent.tim"};
+struct TargetInfo {
+    std::string_view package;
+    TargetApp app;
+};
 
-    for (size_t i = 0; i < 2; ++i) {
-        const char *prefix = prefixes[i];
-        if (process_name == prefix ||
-            (process_name.rfind(prefix, 0) == 0 &&
-             process_name[std::strlen(prefix)] == ':')) {
-            return i == 0 ? TargetApp::QQ : TargetApp::TIM;
+constexpr std::array TARGETS{
+    TargetInfo{"com.tencent.mobileqq", TargetApp::QQ},
+    TargetInfo{"com.tencent.tim", TargetApp::TIM},
+};
+
+TargetApp match_target(std::string_view process_name) {
+    for (const auto &[package, app] : TARGETS) {
+        if (process_name == package) {
+            return app;
+        }
+
+        if (process_name.size() > package.size() &&
+            process_name.starts_with(package) &&
+            process_name[package.size()] == ':') {
+            return app;
         }
     }
+
     return TargetApp::NONE;
 }
 

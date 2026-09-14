@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Handler
@@ -48,8 +49,20 @@ object PlatformTools {
 
     fun getHostChannel(ctx: Context = HookEnv.hostAppContext): String {
         // "537309838#3F9351D357E4AFF5#2017#GuanWang#fffffffffffffffffffffffffffff"
-        val application = ctx.packageManager.getApplicationInfo(ctx.packageName, 128)
-        return application.metaData!!.getString("AppSetting_params")!!.split("#")[3]
+        return try {
+            val application = ctx.packageManager.getApplicationInfo(
+                ctx.packageName,
+                PackageManager.GET_META_DATA
+            )
+            val raw = application.metaData
+                ?.getString("AppSetting_params")
+                ?: return "Unknown"
+            val parts = raw.split("#")
+            parts.getOrNull(3) ?: "Unknown"
+        } catch (e: Exception) {
+            Log.e("Failed to get host channel", e)
+            "Unknown"
+        }
     }
 
     fun getClientVersion(ctx: Context = HookEnv.hostAppContext): String =

@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(tcqtzygisk CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Zygisk modules are loaded into the Zygote process. Statically link libc++
-# so the module never depends on a runtime libc++ shared object that could
-# conflict with the host process.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -ffunction-sections -fdata-sections -Wall -Wno-unused-parameter")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g0 -fno-exceptions -fno-rtti -DNDEBUG")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 add_library(tcqtzygisk SHARED
         zygisk_entry.cpp
@@ -20,13 +22,49 @@ add_library(tcqtzygisk SHARED
         plt_hook.cpp
         log_file.cpp)
 
-target_include_directories(tcqtzygisk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(tcqtzygisk log)
+target_compile_features(tcqtzygisk PRIVATE cxx_std_20)
 
-# libtcqtmem.so — Xposed 模式下的内存扫描
+target_compile_options(tcqtzygisk PRIVATE
+        -fvisibility=hidden
+        -ffunction-sections
+        -fdata-sections
+        -Wall
+        -Wno-unused-parameter)
+
+target_link_options(tcqtzygisk PRIVATE
+        -Wl,--gc-sections)
+
+target_include_directories(tcqtzygisk PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(tcqtzygisk
+        log)
+
+add_custom_command(TARGET tcqtzygisk POST_BUILD
+        COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:tcqtzygisk>)
+
+
+# libtcqtmem.so
 add_library(tcqtmem SHARED
         mem_scan.cpp)
 
-target_include_directories(tcqtmem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(tcqtmem log)
-target_compile_options(tcqtmem PRIVATE -O2 -g0 -fno-exceptions -fno-rtti)
+target_compile_features(tcqtmem PRIVATE cxx_std_20)
+
+target_compile_options(tcqtmem PRIVATE
+        -fvisibility=hidden
+        -ffunction-sections
+        -fdata-sections
+        -Wall
+        -Wno-unused-parameter)
+
+target_link_options(tcqtmem PRIVATE
+        -Wl,--gc-sections)
+
+target_include_directories(tcqtmem PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(tcqtmem
+        log)
+
+add_custom_command(TARGET tcqtmem POST_BUILD
+        COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:tcqtmem>)

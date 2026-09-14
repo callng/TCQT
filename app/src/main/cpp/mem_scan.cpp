@@ -378,7 +378,7 @@ namespace {
 }  // namespace
 
 extern "C"
-JNIEXPORT jstring JNICALL
+JNIEXPORT jstring
 Java_com_owo233_tcqt_features_debug_GetSign_nativeScanSource32(
         JNIEnv* env,
         jobject /* thiz */) {
