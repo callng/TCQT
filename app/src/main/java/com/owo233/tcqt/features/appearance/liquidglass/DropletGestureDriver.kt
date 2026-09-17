@@ -57,6 +57,9 @@ internal class DropletGestureDriver(
     private val tabRowLocation = IntArray(2)
     private val parentLocation = IntArray(2)
 
+    /** 宿主坐标系缓冲；全部调用位于 UI 线程。 */
+    private val geometryPos = IntArray(2)
+
     fun setPill(pill: View?) {
         pillRef = WeakReference(pill)
     }
@@ -288,11 +291,21 @@ internal class DropletGestureDriver(
         val first = QQTabLocator.tabAt(tabRow, 0) ?: return
         val dropletWidth = droplet.layoutParams?.width?.takeIf { it > 0 } ?: droplet.width
         val parent = droplet.parent as? View ?: return
-        tabRow.getLocationOnScreen(tabRowLocation)
-        parent.getLocationOnScreen(parentLocation)
-        val rowLeft = (tabRowLocation[0] - parentLocation[0]).toFloat()
-        val desiredX = rowLeft + first.left + (first.width - dropletWidth) * 0.5f + position.value * tabWidth
-        // translationX is relative to the indicator's laid-out left edge.
+        // 行相对宿主的横坐标按纯布局偏移逐级累加：宿主那圈 14dp 投影内边距长在宿主上，
+        // 而 QQ 的 Tab 行本身就是底栏，它的 left 已经含了这圈内边距——只读一层会把它
+        // 计两次（液滴整体右偏 14dp）。屏幕坐标同样不可用：按压时施加在宿主上的缩放会
+        // 污染它，布局偏移不会。
+        val host = hostRef.get()
+        val rowLeft = if (host != null && ViewGeometry.positionIn(tabRow, host, geometryPos)) {
+            geometryPos[0].toFloat()
+        } else {
+            tabRow.getLocationOnScreen(tabRowLocation)
+            parent.getLocationOnScreen(parentLocation)
+            (tabRowLocation[0] - parentLocation[0]).toFloat()
+        }
+        val desiredX = rowLeft + first.left + (first.width - dropletWidth) * 0.5f +
+            position.value * tabWidth
+        // translationX 相对液滴自身的布局左边沿给出。
         droplet.translationX = desiredX - droplet.left
 
         // 速度产生的拉伸形变：纵向放大、横向缩小的互补形变模拟液体的惯性。

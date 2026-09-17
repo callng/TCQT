@@ -41,6 +41,36 @@ internal object ViewGeometry {
     }
 
     /**
+     * 视图左上角在 [ancestor] 自身坐标系中的位置，只累加纯布局偏移——不含缩放，
+     * 也不含屏幕原点。
+     *
+     * 这是宿主子项需要的形态：只读一层 `left`/`top` 仅在两者是父子关系时成立。宿主的
+     * 阴影内边距长在宿主上，位于宿主下一层的视图（QQ 的 `QQTabWidget` 自身即 Tab 行）
+     * 报告的偏移里已经含了它；逐级累加到宿主再减掉宿主内边距，无论宿主这一版是哪种
+     * 树形都只计一次。
+     *
+     * 屏幕坐标在此处不可用：祖先的缩放（按压缩放施加在宿主上）会污染它，而布局偏移不会。
+     *
+     * @return [view] 不是 [ancestor] 的后代时返回 false，调用方可据此回退，
+     *   而不是信任一个只填了一半的数组。
+     */
+    fun positionIn(view: View?, ancestor: View?, out: IntArray): Boolean {
+        if (view == null || ancestor == null) return false
+        var x = 0f
+        var y = 0f
+        var current: View? = view
+        while (current != null && current !== ancestor) {
+            x += current.left
+            y += current.top
+            current = current.parent as? View
+        }
+        if (current !== ancestor) return false
+        out[0] = x.roundToInt()
+        out[1] = y.roundToInt()
+        return true
+    }
+
+    /**
      * 视图实际被绘制时的累计缩放系数（含全部祖先）。
      *
      * 视图自身的 `scaleX` 并不足够：液滴同时携带自身的按压缩放与宿主容器的缩放。

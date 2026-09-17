@@ -19,6 +19,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.core.view.isVisible
 
 /**
  * 玻璃栏的安装与生命周期协调。
@@ -54,11 +55,23 @@ internal object GlassBarInstaller {
 
     /** 列表末行越过药丸后的额外余量（dp）。 */
     private const val LAST_ROW_GAP_DP = 8f
+
+    /** 逐帧维持的滚动容器数量上限，避免长时间运行后无界增长。 */
+    private const val MAX_TRACKED_SCROLLERS = 16
+
+    /** 页面拉伸的重跑间隔（帧）；宿主静默重施页面尺寸时的修复周期。 */
+    private const val PAGE_EXTENT_TICK_FRAMES = 30
+
+    /** 绑定行不可用时的容忍帧数；超过即认为旧绑定已死。 */
+    private const val TAB_ROW_EMPTY_FRAME_LIMIT = 120
     private val PAGE_EXTEND_RETRY_TAG = R.id.tcqt_tag_page_extend_retry
     private const val PAGE_EXTEND_RETRY_DELAY_MS = 100L
 
     /** 逐帧复用坐标缓冲；全部调用位于 UI 线程。 */
     private val tmpLoc = IntArray(2)
+
+    /** 逐帧复用的宿主坐标系缓冲；全部调用位于 UI 线程。 */
+    private val tmpPos = IntArray(2)
 
     /** 可逆几何修改的视图 tag 键。 */
     private val EXTEND_TAG = R.id.tcqt_tag_extend
@@ -80,11 +93,31 @@ internal object GlassBarInstaller {
     private var structureSignature = 0
     private var structureRefreshPosted = false
 
+    /** 绑定行暂时不可用时已等待的帧数；超过上限即放弃旧绑定。 */
+    private var tabRowEmptyFrames = 0
+
     /** 安装时记录的内容高度，用于皮肤刷新后的高度复位。 */
     private var barHeight = 0
 
     /** 液滴在宿主容器内的基础纵坐标（不含底栏平移）。 */
     private var dropletBaseY = 0f
+
+    /** 液滴尺寸与偏移最后一次测量所依据的几何指纹。 */
+    private var dropletGeometryKey = 0
+    private var dropletLogged = false
+
+    /**
+     * 已被补充底部留白的滚动容器，及最后使用的留白量。
+     *
+     * 留在这里是为了让逐帧路径不必再走一遍视图树：宿主会在自己的布局回合里恢复自己的
+     * 视图状态，而一个悄悄变回 `clipToPadding = true` 的滚动容器会把留白带画成一条
+     * 不透明色块——就是滚动到一半时糊在内容上的那块白斑。
+     */
+    private val paddedScrollers = ArrayList<WeakReference<ViewGroup>>()
+    private var scrollerPad = 0
+
+    /** 页面拉伸的慢速重跑节拍；见 [maintainPageExtent]。 */
+    private var extentTick = 0
 
     /** 最近一次非零的导航栏内边距，跨 Activity 重建保持。 */
     private var navigationInset = 0
@@ -174,9 +207,15 @@ internal object GlassBarInstaller {
         dragDriver = null
         structureSignature = 0
         structureRefreshPosted = false
+        tabRowEmptyFrames = 0
         barHeight = 0
         lastIndex = -1
         dropletBaseY = 0f
+        dropletGeometryKey = 0
+        dropletLogged = false
+        paddedScrollers.clear()
+        scrollerPad = 0
+        extentTick = 0
         Log.i("检测到上个界面的残留状态，已重置并重新安装")
     }
 
@@ -421,6 +460,11 @@ internal object GlassBarInstaller {
                 if (restoreBarContentHeight(host)) return@addOnPreDrawListener true
                 followBarOffset(host)
                 if (scheduleStructureRefreshIfNeeded(host)) return@addOnPreDrawListener true
+                // 逐帧保持诚实：宿主会在自己的布局回合里撤销一部分页面手术——滚动容器的
+                // 裁剪内边距、页面的延伸高度——且都不以布局变化的形式通知出来。
+                maintainScrollerPadding()
+                maintainPageExtent()
+                maintainDropletGeometry()
                 val tabRow = tabRowRef.get()
                 val selected = QQTabLocator.selectedIndex(tabRow)
                 if (selected >= 0 && selected != lastIndex) {
@@ -472,6 +516,11 @@ internal object GlassBarInstaller {
 
     /**
      * 依据 Tab 尺寸设定液滴的尺寸与纵向位置；横向位置与全部运动归手势驱动的弹簧管理。
+     *
+     * 一切以宿主为基准测量，而宿主的子项从它的投影内边距起排。只读一层 `top` 仅在 Tab 行
+     * 位于底栏内部时成立；QQ 的 Tab 行本身就是底栏（`QQTabWidget`），那个 `top` 已经含了
+     * 宿主的内边距，再加一次便把这圈内边距计了两遍，液滴整体下偏 14dp——连同横向上的同一个
+     * 表达式一起探出胶囊，也就是「液滴错位」。逐级累加到宿主再减掉宿主内边距，两种形状都只计一次。
      */
     private fun syncDropletSize(index: Int) {
         runCatching {
@@ -482,10 +531,17 @@ internal object GlassBarInstaller {
             val tab = QQTabLocator.tabAt(tabRow, index) ?: return
             if (tab.width == 0) return
 
+            // 药丸的内框：外侧全是本模块自绘的投影内边距，液滴既不能算进去，也不能越出去。
+            val pillTop = host.paddingTop
+            val pillBottom = host.height - host.paddingBottom
+            if (pillBottom <= pillTop || !ViewGeometry.positionIn(tab, host, tmpPos)) return
+
             val density = host.resources.displayMetrics.density
             val inset = (density * 4f).roundToInt()
             val w = tab.width
-            val h = tab.height - inset * 2
+            // Tab 列可能比药丸还高——QQ 按旧的贴底高度给 Tab 定尺寸、由底栏裁切——
+            // 因此液滴高度以药丸内高封顶，而不是跟着 Tab 探出药丸下缘。
+            val h = min(tab.height, pillBottom - pillTop) - inset * 2
             if (w <= 0 || h <= 0) return
 
             val lp = droplet.layoutParams
@@ -494,10 +550,96 @@ internal object GlassBarInstaller {
                 lp.height = h
                 droplet.layoutParams = lp
             }
-            dropletBaseY = (tab.top + tabRow.top + inset).toFloat()
+            // 液滴由宿主按其内边距原点布局，故此处给出的平移量相对该原点。
+            var top = tmpPos[1] + inset
+            if (top + h > pillBottom) top = pillBottom - h
+            if (top < pillTop) top = pillTop
+            dropletBaseY = (top - pillTop).toFloat()
             droplet.translationY = dropletBaseY
             droplet.visibility = View.VISIBLE
+            dropletGeometryKey = computeDropletGeometryKey(host, tab)
+            if (!dropletLogged) {
+                dropletLogged = true
+                Log.i(
+                    "液滴已就位: tab=${tmpPos[0]},${tmpPos[1]} size=${w}x$h " +
+                            "pill=$pillTop..$pillBottom hostPad=${host.paddingLeft},${host.paddingTop} " +
+                            "tabH=${tab.height}"
+                )
+            }
         }.onFailure { Log.e("液滴尺寸同步失败", it) }
+    }
+
+    /** 液滴上次定尺寸时所依据的底栏几何指纹。 */
+    private fun computeDropletGeometryKey(host: GlassBarHostLayout, tab: View): Int {
+        var key = tab.width
+        key = key * 131 + tab.height
+        key = key * 131 + tmpPos[1]
+        key = key * 131 + host.height
+        return key
+    }
+
+    /**
+     * 底栏自己在液滴脚下挪动过时，重新摆放液滴。
+     *
+     * 宿主会按自己的节奏重建底栏的一部分——QQ 会把 Tab 打回停靠高度——而这些都不以选中
+     * 变化的形式通知出来。没有这一步，液滴会一直沿用按旧底栏量出的尺寸与偏移直到下一次
+     * 切页，那正是「玻璃挂在底栏外面」的样子。
+     */
+    private fun maintainDropletGeometry() {
+        if (lastIndex < 0 || dropletRef.get() == null) return
+        val tabRow = tabRowRef.get() ?: return
+        val host = hostRef.get() ?: return
+        val tab = QQTabLocator.tabAt(tabRow, lastIndex) ?: return
+        if (!ViewGeometry.positionIn(tab, host, tmpPos)) return
+        if (computeDropletGeometryKey(host, tab) == dropletGeometryKey) return
+        syncDropletSize(lastIndex)
+    }
+
+    /**
+     * 逐帧重申滚动容器的底部留白与裁剪开关。
+     *
+     * 宿主在自己的布局回合里会把两者恢复回原样，且不会有任何我们监听到的布局变化。
+     * 常态下只花几次属性比较。
+     */
+    private fun maintainScrollerPadding() {
+        val pad = scrollerPad
+        if (pad <= 0) return
+        for (i in paddedScrollers.indices) {
+            val scroller = paddedScrollers[i].get() ?: continue
+            if (scroller.clipToPadding) scroller.clipToPadding = false
+            if (scroller.paddingBottom != pad) {
+                scroller.setPadding(
+                    scroller.paddingLeft, scroller.paddingTop,
+                    scroller.paddingRight, pad,
+                )
+            }
+        }
+    }
+
+    /** 记录需要逐帧维持留白的滚动容器；重复登记被忽略。 */
+    private fun trackPaddedScroller(scroller: ViewGroup) {
+        for (i in paddedScrollers.indices) {
+            if (paddedScrollers[i].get() === scroller) return
+        }
+        if (paddedScrollers.size >= MAX_TRACKED_SCROLLERS) paddedScrollers.removeAt(0)
+        paddedScrollers.add(WeakReference(scroller))
+    }
+
+    /**
+     * 按慢速节拍重跑页面拉伸。
+     *
+     * 宿主每次重新布局都会悄悄重施自己的页面尺寸，且不会在任何我们监听的视图上产生布局
+     * 变化。此时页面重新缩回原高，底栏让出的那条带子便露出窗口自身的底色：药丸下方那条
+     * 白边，以及列表滑到底部时那块灰白斑块。
+     *
+     * 本身极廉价：[extendPagesToBottom] 内部每一步都会在自己的缺口已闭合时提前返回，
+     * 所以常态下这里只花一次比较；真被改动了也能在半秒内修好，而不必等下一次切页。
+     */
+    private fun maintainPageExtent() {
+        val pager = pagerRef.get() ?: return
+        if (!pager.isAttachedToWindow) return
+        if (++extentTick % PAGE_EXTENT_TICK_FRAMES != 0) return
+        pager.post { if (pagerRef.get() === pager) extendPagesToBottom(pager) }
     }
 
     // ---- 逐帧维持 ----
@@ -621,9 +763,18 @@ internal object GlassBarInstaller {
         if (current == null || current.visibility != View.VISIBLE ||
             QQTabLocator.tabCount(current) == 0
         ) {
-            // 宿主应用设置的瞬间会短暂拆空行容器，保持旧绑定，下帧重试。
-            return tabRowRef.get() != null
+            // 宿主应用设置的瞬间会短暂拆空行容器，保持旧绑定，下帧重试；但不能无限重试：
+            // 一个再也不会回来的行会让本方法永远返回 true，连带把选中观察器与液滴一起冻住。
+            val bound = tabRowRef.get()
+            val boundUsable = bound != null && bound.isAttachedToWindow &&
+                    bound.isVisible && QQTabLocator.tabCount(bound) > 0
+            if (boundUsable) {
+                tabRowEmptyFrames = 0
+                return true
+            }
+            return ++tabRowEmptyFrames < TAB_ROW_EMPTY_FRAME_LIMIT
         }
+        tabRowEmptyFrames = 0
         if (structureRefreshPosted) return true
         if (current === tabRowRef.get() && tabStructureSignature(current) == structureSignature) {
             return false
@@ -1031,6 +1182,10 @@ internal object GlassBarInstaller {
                             scroller.paddingLeft, scroller.paddingTop,
                             scroller.paddingRight, pad,
                         )
+                    }
+                    if (pad > 0) {
+                        scrollerPad = pad
+                        trackPaddedScroller(scroller)
                     }
                 }
 
