@@ -2,14 +2,17 @@ package com.owo233.tcqt.features.cleanup
 
 import android.content.Context
 import android.view.View
+import android.view.ViewGroup
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.load
-import com.owo233.tcqt.core.env.loadOrThrow
+import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.hookAfter
+import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.hook.hookMethodBefore
+import com.owo233.tcqt.core.reflect.findMethod
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 
@@ -20,7 +23,6 @@ object HideQzoneAD : Feature(
     desc = "隐藏好友动态里那无时无刻不在显示的广告。",
     processes = setOf(ActionProcess.MAIN, ActionProcess.QZONE),
 ) {
-
 
     override fun install() {
         if (HookEnv.isQQ()) {
@@ -42,9 +44,12 @@ object HideQzoneAD : Feature(
                     ?.hookAfter { param ->
                         val view = param.thisObject as View
                         view.visibility = View.GONE
-                        view.layoutParams.apply {
-                            height = 0
-                            width = 0
+                        val lp = view.layoutParams
+                        if (lp != null) {
+                            lp.height = 0
+                            lp.width = 0
+                        } else {
+                            view.layoutParams = ViewGroup.LayoutParams(0, 0)
                         }
                     }
             }
@@ -65,14 +70,12 @@ object HideQzoneAD : Feature(
         }
 
         if (HookEnv.isTIM()) {
-            loadOrThrow("com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt")
-                .hookMethodBefore({
-                    name = "isShowingRecommendAd"
-                    paramTypes = arrayOf(BusinessFeedData::class.java)
-                }) { param ->
-                    param.result = true
-                }
+            "com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt".toClass.findMethod {
+                name = "isShowingRecommendAd"
+                paramTypes(BusinessFeedData::class.java)
+            }.hookBefore { param ->
+                param.result = true
+            }
         }
     }
-
 }
