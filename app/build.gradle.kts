@@ -264,6 +264,7 @@ dependencies {
     ksp(projects.libs.processor)
 
     implementation(projects.libs.annotations)
+    implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.core)

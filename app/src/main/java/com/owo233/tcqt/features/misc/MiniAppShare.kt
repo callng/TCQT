@@ -15,7 +15,6 @@ object MiniAppShare : Feature(
     processes = setOf(ActionProcess.ALL),
 ) {
 
-
     override fun install() {
         loadOrThrow("eipc.EIPCClient").hookMethodBefore(
             "callServer",
