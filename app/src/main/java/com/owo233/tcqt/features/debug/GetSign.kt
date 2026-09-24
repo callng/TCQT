@@ -12,6 +12,7 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.action.ActionProcess
+import com.owo233.tcqt.core.dexkit.DexKitLookupTracker
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.NativeLibs
@@ -349,24 +350,29 @@ object GetSign : Feature(
     override fun execute(
         bridge: DexKitBridge,
         cache: MutableMap<String, String>,
+        tracker: DexKitLookupTracker
     ) {
         if (HookEnv.isTIM()) {
             return
         }
 
-        with(bridge) {
-            findAndCache(cache, TASK_GET_SIGN) {
-                searchPackages("com.tencent.mobileqq.msf.core")
+        lookup(TASK_GET_SIGN, bridge, cache, tracker) {
+            findMethod(
+                FindMethod().apply {
+                    searchPackages("com.tencent.mobileqq.msf.core")
 
-                matcher {
-                    usingEqStrings(
-                        "invoke getSign start",
-                        "invoke getSign end",
-                    )
-                }
-            }
+                    matcher {
+                        usingEqStrings(
+                            "invoke getSign start",
+                            "invoke getSign end",
+                        )
+                    }
+                },
+            ).singleOrNull()?.descriptor
+        }
 
-            val found = findMethod(
+        lookup(TASK_INPUT_ROOT_INIT, bridge, cache, tracker) {
+            findMethod(
                 FindMethod().apply {
                     searchPackages(
                         "com.tencent.mobileqq.aio.input.simpleui",
@@ -383,8 +389,6 @@ object GetSign : Feature(
                     }
                 },
             ).singleOrNull()?.descriptor
-
-            cache[TASK_INPUT_ROOT_INIT] = found
                 ?: findMethod(
                     FindMethod().apply {
                         searchPackages(
@@ -398,23 +402,7 @@ object GetSign : Feature(
                         }
                     },
                 ).singleOrNull()?.descriptor
-                        ?: ""
         }
-    }
-
-    private fun DexKitBridge.findAndCache(
-        cache: MutableMap<String, String>,
-        key: String,
-        init: FindMethod.() -> Unit,
-    ) {
-        findMethod(
-            FindMethod().apply(init),
-        )
-            .singleOrNull()
-            ?.descriptor
-            .let {
-                cache[key] = it ?: ""
-            }
     }
 
     @SuppressLint("DiscouragedApi")

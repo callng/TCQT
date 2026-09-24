@@ -7,6 +7,7 @@ package com.owo233.tcqt.features.message
 
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
+import com.owo233.tcqt.core.dexkit.DexKitLookupTracker
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.QQVersion
@@ -120,38 +121,48 @@ object EmotionSharePanelDownload : Feature(
         }
     }
 
-    override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
+    override fun execute(
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>,
+        tracker: DexKitLookupTracker
+    ) {
         if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_30)) {
-            cache[EMOTION_DETAIL_AI] = bridge.findClass {
-                searchPackages("com.tencent.mobileqq.emotionintegrate")
-                matcher {
-                    usingStrings("MsgEmoticonPreviewData", "doRestoreSaveInstanceState")
-                }
-            }.findMethod {
-                matcher {
-                    returnType(Boolean::class.java)
-                    usingNumbers(14)
-                }
-            }.single().descriptor
-            cache[EMOTION_SAVE_FILE] = bridge.findMethod {
-                searchPackages("com.tencent.mobileqq.emotionintegrate")
-                matcher {
-                    declaredClass("com.tencent.mobileqq.emotionintegrate.AIOEmotionFragment")
-                    returnType(File::class.java)
-                    paramTypes = listOf("com.tencent.mobileqq.data.MessageRecord")
-                }
-            }.single().descriptor
+            lookup(EMOTION_DETAIL_AI, bridge, cache, tracker) {
+                findClass {
+                    searchPackages("com.tencent.mobileqq.emotionintegrate")
+                    matcher {
+                        usingStrings("MsgEmoticonPreviewData", "doRestoreSaveInstanceState")
+                    }
+                }.findMethod {
+                    matcher {
+                        returnType(Boolean::class.java)
+                        usingNumbers(14)
+                    }
+                }.singleOrNull()?.descriptor
+            }
+
+            lookup(EMOTION_SAVE_FILE, bridge, cache, tracker) {
+                findMethod {
+                    searchPackages("com.tencent.mobileqq.emotionintegrate")
+                    matcher {
+                        declaredClass("com.tencent.mobileqq.emotionintegrate.AIOEmotionFragment")
+                        returnType(File::class.java)
+                        paramTypes = listOf("com.tencent.mobileqq.data.MessageRecord")
+                    }
+                }.singleOrNull()?.descriptor
+            }
         } else {
-            cache[EMOTION_DOWNLOAD_DISABLE_SWITCH] = bridge.findMethod {
-                searchPackages("com.tencent.mobileqq.emotionintegrate")
-                matcher {
-                    returnType(Boolean::class.java)
-                    usingStrings("emotion_download_disable_8980_887036489")
-                }
-            }.single().descriptor
+            lookup(EMOTION_DOWNLOAD_DISABLE_SWITCH, bridge, cache, tracker) {
+                findMethod {
+                    searchPackages("com.tencent.mobileqq.emotionintegrate")
+                    matcher {
+                        returnType(Boolean::class.java)
+                        usingStrings("emotion_download_disable_8980_887036489")
+                    }
+                }.singleOrNull()?.descriptor
+            }
         }
     }
-
 
     private const val EMOTION_DETAIL_AI = "EmotionDetailAi "
     private const val EMOTION_DOWNLOAD_DISABLE_SWITCH = "EmotionDownloadDisableSwitch"

@@ -378,7 +378,7 @@ internal object QQTabLocator {
                 if (chain.args.getOrNull(1) == false) chain.args[1] = true
                 chain.proceed()
             }
-            Log.i("已挂钩 ${target.declaringClass.name}.setCurrentItem(int, boolean) 用于安全平滑切页")
+            // Log.i("已挂钩 ${target.declaringClass.name}.setCurrentItem(int, boolean) 用于安全平滑切页")
         }.onFailure {
             hookedClass?.let(pagerHookedClasses::remove)
             Log.w("平滑切页钩子安装失败: $it")
@@ -410,7 +410,7 @@ internal object QQTabLocator {
                     it.parameterTypes[0] == Int::class.javaPrimitiveType
             } ?: return@runCatching
             setter.invoke(pager, 1)
-            Log.i("平滑切页已预加载相邻页: offscreenPageLimit=1")
+            // Log.i("平滑切页已预加载相邻页: offscreenPageLimit=1")
         }.onFailure { Log.w("相邻页预加载设置失败，保持宿主默认离屏策略: $it") }
     }
 

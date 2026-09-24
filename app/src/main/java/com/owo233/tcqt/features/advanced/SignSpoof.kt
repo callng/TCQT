@@ -3,6 +3,7 @@ package com.owo233.tcqt.features.advanced
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
+import com.owo233.tcqt.core.dexkit.DexKitLookupTracker
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.hook.hookReplace
 import com.owo233.tcqt.core.hook.invokeOriginal
@@ -70,9 +71,17 @@ object SignSpoof : Feature(
 
     override fun getCacheKeys(): Set<String> = setOf(TASK_SIGN, TASK_AUTH_SIGN)
 
-    override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        cache[TASK_SIGN] = bridge.findMethod(signQuery()).singleOrNull()?.descriptor ?: ""
-        cache[TASK_AUTH_SIGN] = bridge.findMethod(authSignQuery()).singleOrNull()?.descriptor ?: ""
+    override fun execute(
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>,
+        tracker: DexKitLookupTracker
+    ) {
+        lookup(TASK_SIGN, bridge, cache, tracker) {
+            findMethod(signQuery()).singleOrNull()?.descriptor
+        }
+        lookup(TASK_AUTH_SIGN, bridge, cache, tracker) {
+            findMethod(authSignQuery()).singleOrNull()?.descriptor
+        }
     }
 
     // 9.3.55 com.tencent.mobileqq.forward.bs.e(Context, String) String

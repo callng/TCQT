@@ -21,6 +21,21 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 import kotlin.time.Duration.Companion.seconds
 
+class DexKitLookupTracker {
+
+    private val succeeded = mutableSetOf<String>()
+
+    fun isSucceeded(name: String): Boolean = name in succeeded
+
+    fun markSucceeded(name: String) {
+        succeeded += name
+    }
+
+    fun markAllSucceeded(names: Collection<String>) {
+        succeeded += names
+    }
+}
+
 internal object DexKitFinder {
 
     private var unhook: Unhook? = null
@@ -77,7 +92,9 @@ internal object DexKitFinder {
         unhook?.unhook().also { unhook = null }
 
         ModuleScope.launchIO(TAG) {
-            val tasks = if (DexKitCache.isVersionMatched) {
+            val partialFind = DexKitCache.isVersionMatched
+
+            val tasks = if (partialFind) {
                 getTasks(getMissingKeys())
             } else {
                 getTasks(null)
@@ -86,10 +103,15 @@ internal object DexKitFinder {
             val oldCache = DexKitCache.cacheMap.toMap()
             val newCache = DexKitCache.cacheMap.toMutableMap()
 
+            val tracker = DexKitLookupTracker()
+            if (partialFind) {
+                tracker.markAllSucceeded(newCache.filterValues { it.isNotEmpty() }.keys)
+            }
+
             runCatching {
                 DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
                     tasks.forEach { task ->
-                        runCatching { task.execute(bridge, newCache) }
+                        runCatching { task.execute(bridge, newCache, tracker) }
                             .onFailure { Log.e("", it) }
                     }
                 }
@@ -126,27 +148,43 @@ interface DexKitTask {
     /** 通常与 execute 一起重写。 */
     fun getCacheKeys(): Set<String> = getQueryMap().keys
 
-    /** 重写 execute 时必须同时重写 getCacheKeys。 */
-    fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>) {
-        getQueryMap().forEach { (name, query) ->
-            when (query) {
-                is FindClass -> {
-                    val result = bridge.findClass(query).singleOrNull()
-                    if (result != null) {
-                        cache[name] = result.descriptor
-                    } else {
-                        Log.e("$name: No class found matching query")
-                        cache[name] = ""
-                    }
-                }
+    /**
+     * 自定义 execute 时的统一查找入口:
+     * 自带同名去重判断 + 成功/失败落库,只有真正命中才 markSucceeded。
+     */
+    fun lookup(
+        name: String,
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>,
+        tracker: DexKitLookupTracker,
+        query: DexKitBridge.() -> String?
+    ) {
+        if (tracker.isSucceeded(name)) return
 
-                is FindMethod -> {
-                    val result = bridge.findMethod(query).singleOrNull()
-                    if (result != null) {
-                        cache[name] = result.descriptor
-                    } else {
-                        Log.e("$name: No method found matching query")
-                        cache[name] = ""
+        val descriptor = bridge.query()
+        if (descriptor.isNullOrEmpty()) {
+            Log.e("$name: No result found matching query")
+            cache[name] = ""
+        } else {
+            cache[name] = descriptor
+            tracker.markSucceeded(name)
+        }
+    }
+
+    /** 重写 execute 时必须同时重写 getCacheKeys。 */
+    fun execute(
+        bridge: DexKitBridge,
+        cache: MutableMap<String, String>,
+        tracker: DexKitLookupTracker
+    ) {
+        getQueryMap().forEach { (name, matcher) ->
+            lookup(name, bridge, cache, tracker) {
+                when (matcher) {
+                    is FindClass -> findClass(matcher).singleOrNull()?.descriptor
+                    is FindMethod -> findMethod(matcher).singleOrNull()?.descriptor
+                    else -> {
+                        Log.e("$name: unsupported matcher type: ${matcher.javaClass.name}")
+                        null
                     }
                 }
             }
