@@ -37,9 +37,10 @@ class PipelineDecoratorDiscoveryTest {
         // RecallHeaderTip 是非注册装饰器，需由 loader 显式登记；
         // 这里只断言注册 Action 的发现结果（迁移前的顺序也是先 ShowMsgInfo）。
         assertEquals(
-            listOf("ShowMsgInfo", "AitChameleon"),
+            listOf("ShowMsgInfo", "AitChameleon", "ScriptCore"),
             names(OnAIOViewUpdate::class.java),
-            "AIO 视图装饰器的装配顺序变了 —— 视图条的先后会跟着变",
+            "AIO 视图装饰器的装配顺序变了 —— 视图条的先后会跟着变" +
+                    "（ScriptCore 用 OnAIOViewUpdate 把消息派发给脚本，顺序 500，排在内置装饰器之后）",
         )
     }
 
@@ -48,7 +49,7 @@ class PipelineDecoratorDiscoveryTest {
         PipelineDecorators.register(RecallHeaderTip())
 
         assertEquals(
-            listOf("ShowMsgInfo", "RecallHeaderTip", "AitChameleon"),
+            listOf("ShowMsgInfo", "RecallHeaderTip", "AitChameleon", "ScriptCore"),
             names(OnAIOViewUpdate::class.java),
             "RecallHeaderTip 的装配位置变了（它应排在顺序 200）",
         )
@@ -57,18 +58,18 @@ class PipelineDecoratorDiscoveryTest {
     @Test
     fun `加号菜单装饰器按 PttForward 再 RepeatMessage 装配`() {
         assertEquals(
-            listOf("PttForward", "RepeatMessage"),
+            listOf("PttForward", "RepeatMessage", "ScriptCore"),
             names(OnMenuBuilder::class.java),
-            "加号菜单项的先后变了",
+            "加号菜单项的先后变了（脚本菜单项应排在模块内置菜单项之后）",
         )
     }
 
     @Test
-    fun `发送前管线目前只有 RenameBaseApk`() {
+    fun `发送前管线为 RenameBaseApk 与脚本引擎`() {
         assertEquals(
-            listOf("RenameBaseApk"),
+            listOf("RenameBaseApk", "ScriptCore"),
             names(OnAIOSendMsgBefore::class.java),
-            "发送前管线的装饰器集合变了",
+            "发送前管线的装饰器集合变了（脚本的 getMsg 文本改写依赖本管线）",
         )
     }
 

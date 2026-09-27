@@ -2,12 +2,10 @@ package com.owo233.tcqt.features.message
 
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
-import com.owo233.tcqt.core.action.ActionProcess
-import com.owo233.tcqt.core.hook.hookMethodAfter
+import com.owo233.tcqt.core.message.KernelServiceReady
 import com.owo233.tcqt.host.service.AntiRecallConfig
 import com.owo233.tcqt.host.service.NTServiceFetcher
 import com.tencent.qqnt.kernel.api.IKernelService
-import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import mqq.app.MobileQQ
 
 @RegisterAction
@@ -16,7 +14,6 @@ object MsgAntiRecall : Feature(
     name = "消息防撤回",
     desc = "阻止消息被撤回后删除，需要保活进程。",
     uiOrder = 1,
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
     /**
@@ -34,12 +31,13 @@ object MsgAntiRecall : Feature(
     override fun install() {
         AntiRecallConfig.migrateLegacyOptions()
 
-        KernelServiceImpl::class.java.hookMethodAfter("initService") {
-            // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook
-            val service = it.thisObject as IKernelService
+        // initService 的 hook 已集中在 KernelMessageBridge（全进程装一次），
+        // 防撤回只订阅内核就绪事件，不再自己 hook 同一个方法。
+        KernelServiceReady.once("MsgAntiRecall") { service ->
             NTServiceFetcher.onFetch(service)
         }
 
+        // 内核在本功能安装之前就已就绪时（模块后加载 / 热重载）补一次。
         runCatching {
             val runtime = MobileQQ.getMobileQQ().peekAppRuntime()
             if (runtime != null && runtime.isLogin) {

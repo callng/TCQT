@@ -1,0 +1,30 @@
+# ── BeanShell 脚本引擎 ──────────────────────────────────────────────────────
+# 解释器全程走反射：类名解析、成员查找、方法重载匹配都由 bsh 在运行期完成。
+# 模块自身包（com.owo233.tcqt.**）已由 rules.keep 整包保留，这里要保住两类外部类型。
+
+-keep class bsh.** { *; }
+-dontwarn bsh.**
+
+# 1) 脚本 API 的参数类型
+#
+# ScriptNamespace 里的 sendMsg(Contact, String) 等重载，BeanShell 是按**参数类型名**
+# 在运行期挑重载的；而脚本拿到的是宿主原始对象（MsgData.contact 就是这个类型）。
+# 若不保留，R8 会把参数类型改名，脚本调用这些重载时会静默匹配失败。
+# qqinterface 是 compileOnly，所以这些类型只存在于这里能命中的那部分输入里。
+# -keep class com.tencent.qqnt.kernelpublic.nativeinterface.** { *; }
+
+# 2) 消息入口的接口签名
+#
+# MessageCore 用 DexKit 按「方法名 + 参数类型」找承载 onRecvMsg/onAddSendMsg 的
+# 混淆实现类，这两个方法声明在 IKernelMsgService 桩里；DexKit 需要能读到它们。
+# -keep class com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.MsgRecord { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.MsgElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.TextElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.PicElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.PttElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.FileElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.VideoElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.ArkElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.ReplyElement { *; }
+# -keep class com.tencent.qqnt.kernel.nativeinterface.MsgConstant { *; }

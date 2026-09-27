@@ -12,6 +12,7 @@ import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.dexkit.DexKitFinder
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostBridge
+import com.owo233.tcqt.core.script.DynamicActivityPort
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
@@ -28,6 +29,7 @@ import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.loader.modern.ModernHookEngine
+import com.owo233.tcqt.ui.parasitic.DynamicActivityRegistry
 import com.owo233.tcqt.ui.parasitic.ParasiticActivity
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
@@ -256,6 +258,12 @@ internal object ModuleLoader {
         HostBridge.onHostApplicationReady { app ->
             ParasiticActivity.initForStubActivity(app)
         }
+        // 脚本的 registerActivity 需要动态注册宿主壳 Activity；features 层不能直接
+        // 依赖 ui.parasitic，因此在这里注入实现（与 HostBridge 同一模式）。
+        DynamicActivityPort.install(
+            register = { DynamicActivityRegistry.register(it) },
+            unregister = { DynamicActivityRegistry.unregister(it) },
+        )
     }
 
     fun reload(state: Map<*, *>) {
