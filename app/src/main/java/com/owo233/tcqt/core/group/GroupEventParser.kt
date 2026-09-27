@@ -58,8 +58,18 @@ object GroupEventParser {
     /**
      * 解析拍一拍推送。
      *
-     * 群里内容是一段类似 XML 的文本（`uin_str1` / `uin_str2`），私聊则在数组里
-     * 找 `uin_str2` 的取值。找不到或不是拍我，返回 null。
+     * 真实结构（真机抓包核对，QQ 9.3.70）：
+     * ```
+     * 1.1.1   = 群号（私聊时是对方 QQ）
+     * 1.1.5   = 本机（被拍者）QQ
+     * 1.2.1/2 = 732/20（群）或 528/290（私聊）
+     * 1.3.2.7 = 键值对数组：[{1:"uin_str1",2:"发起者QQ"}, {1:"uin_str2",2:"被拍者QQ"},
+     *                        {1:"action_str",2:"戳了戳"}, …]
+     * 1.3.2.8 = [ 二进制, "<gtip …>XML…" ]
+     * ```
+     *
+     * **不解析 XML / 不做正则**：`1.3.2.7` 里已经是结构化的键值对，直接取最稳。
+     * （早期版本曾按 `uin_str1="X"` 抠字符串，真实数据里该字符串根本不在 `1.3.2` 上。）
      */
     fun parsePaiYiPai(payload: ByteArray, selfUin: String): GroupEvent.PaiYiPai? {
         val root = decode(payload)
@@ -68,86 +78,48 @@ object GroupEventParser {
         val tag1 = head.getOrNull(1)?.asLongOrNull() ?: return null
         val tag2 = head.getOrNull(2)?.asLongOrNull() ?: return null
 
-        // 会话标识：群聊是群号，私聊是对方 QQ 号
-        val peer = root.getOrNull(1, 1, 1)?.asNumberText().orEmpty()
+        val chatType = when {
+            tag1 == PAI_GROUP_TAG_1.toLong() && tag2 == PAI_GROUP_TAG_2.toLong() ->
+                ScriptChatType.GROUP
 
-        val chatType: Int
-        val fromUin: String
-        val toUin: String
-
-        when {
-            tag1 == PAI_GROUP_TAG_1.toLong() && tag2 == PAI_GROUP_TAG_2.toLong() -> {
-                chatType = ScriptChatType.GROUP
-                val content = paiContent(root)
-                fromUin = extractUin(content, "1")
-                toUin = extractUin(content, "2")
-            }
-
-            tag1 == PAI_FRIEND_TAG_1.toLong() && tag2 == PAI_FRIEND_TAG_2.toLong() -> {
-                chatType = ScriptChatType.FRIEND
-                fromUin = peer
-                toUin = extractToUinFromList(root.getOrNull(1, 3, 2, 7))
-            }
+            tag1 == PAI_FRIEND_TAG_1.toLong() && tag2 == PAI_FRIEND_TAG_2.toLong() ->
+                ScriptChatType.FRIEND
 
             else -> return null
         }
 
+        // 会话标识：群聊是群号，私聊是对方 QQ
+        val peer = root.getOrNull(1, 1, 1)?.asNumberText().orEmpty()
+
+        // 键值对数组：uin_str1 = 发起者，uin_str2 = 被拍者
+        val fields = parseKeyValuePairs(root.getOrNull(1, 3, 2, 7))
+        val fromUin = fields["uin_str1"].orEmpty()
+        val toUin = fields["uin_str2"].orEmpty()
+            // 兜底：1.1.5 是本机（被拍者）
+            .ifEmpty { root.getOrNull(1, 1, 5)?.asNumberText().orEmpty() }
+
         if (!QQ_PATTERN.matches(fromUin)) return null
-        if (selfUin.isNotEmpty() && toUin != selfUin) return null
+        if (selfUin.isNotEmpty() && toUin.isNotEmpty() && toUin != selfUin) return null
 
         return GroupEvent.PaiYiPai(groupUin = peer, chatType = chatType, fromUin = fromUin)
     }
 
     /**
-     * 取群里拍一拍的文本内容。
+     * 解析 `[{1:"key",2:"value"}, …]` 形态的键值对数组。
      *
-     * 真实推送里 `1.3.2` 就是那段文本；但无描述符解码器遇到「恰好能解析成
-     * protobuf 的文本」时会把它当嵌套消息解出来，此时值落到子消息的 tag 2。
-     * 两种形态都兼容，避免解码器差异导致事件丢失。
+     * 值可能是字符串，也可能是被解成嵌套消息的字节串，两种都兼容。
      */
-    private fun paiContent(root: ProtoMap): String {
-        val node = root.getOrNull(1, 3, 2) ?: return ""
+    fun parseKeyValuePairs(node: com.owo233.tcqt.core.proto.ProtoValue?): Map<String, String> {
+        val list = runCatching { node?.asList }.getOrNull() ?: return emptyMap()
 
-        runCatching { node.asString.toStringUtf8() }.getOrNull()
-            ?.takeIf { it.contains("uin_str") }
-            ?.let { return it }
-
-        val nested = node.asMapOrNull() ?: return ""
-        return nested.getOrNull(2)?.asText().orEmpty()
-    }
-
-    /** 从 `uin_strN=123456` 形态的文本里抠出 QQ 号。 */
-    private fun extractUin(target: String, which: String): String {
-        val key = "uin_str$which"
-        val keyIndex = target.indexOf(key)
-        if (keyIndex < 0) return ""
-
-        val start = keyIndex + key.length
-        val digits = target.drop(start).indexOfFirst { it.isDigit() }
-        if (digits < 0) return ""
-
-        val realStart = start + digits
-
-        // 结束位置：逗号（真实推送的分隔符）或引号（值被引号包裹时），取最近的
-        val endComma = target.indexOf(',', realStart).takeIf { it >= 0 } ?: target.length
-        val endQuote = target.indexOf('"', realStart).takeIf { it >= 0 } ?: target.length
-        val realEnd = minOf(endComma, endQuote)
-
-        return target.substring(realStart, realEnd)
-    }
-
-    /** 私聊形态：在数组里找 `1 = "uin_str2"` 那一项，取它的 `2`。 */
-    private fun extractToUinFromList(node: com.owo233.tcqt.core.proto.ProtoValue?): String {
-        val list = runCatching { node?.asList }.getOrNull() ?: return ""
-
+        val result = linkedMapOf<String, String>()
         repeat(list.size()) { index ->
             val item = runCatching { list[index] }.getOrNull()?.asMapOrNull() ?: return@repeat
             val key = item.getOrNull(1)?.asText().orEmpty()
-            if (key == "uin_str2") {
-                return item.getOrNull(2)?.asText().orEmpty()
-            }
+            if (key.isEmpty()) return@repeat
+            result[key] = item.getOrNull(2)?.asText().orEmpty()
         }
-        return ""
+        return result
     }
 
     /** 入群推送（来自 `TroopMemberAddPushProcessor` 的字节参数）。 */
@@ -195,8 +167,31 @@ object GroupEventParser {
         )
     }
 
-    private fun decode(payload: ByteArray): ProtoMap =
-        ProtoUtils.decodeFromByteArray(payload, ProtoDecodeMode.COMPATIBLE)
+    /** 诊断用：解码整个推送体。 */
+    fun decodeForDiag(payload: ByteArray): ProtoMap = decode(payload)
+
+    /**
+     * 解码推送体。
+     *
+     * 部分推送（真机抓包确认）前面带 **4 字节大端长度前缀**，其值等于「总长」；
+     * 直接当 protobuf 解会因为 tag=0 非法而失败，所以这里识别并剥掉。
+     */
+    private fun decode(payload: ByteArray): ProtoMap {
+        val body = stripLengthPrefix(payload)
+        return ProtoUtils.decodeFromByteArray(body, ProtoDecodeMode.COMPATIBLE)
+    }
+
+    /** 若前 4 字节是大端长度且正好等于总长，则剥掉；否则原样返回。 */
+    private fun stripLengthPrefix(payload: ByteArray): ByteArray {
+        if (payload.size <= 4) return payload
+
+        val declared = ((payload[0].toInt() and 0xff) shl 24) or
+                ((payload[1].toInt() and 0xff) shl 16) or
+                ((payload[2].toInt() and 0xff) shl 8) or
+                (payload[3].toInt() and 0xff)
+
+        return if (declared == payload.size) payload.copyOfRange(4, payload.size) else payload
+    }
 
     // ── ProtoValue 读取辅助（容错：类型对不上就当没有）─────────────────────
 

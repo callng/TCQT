@@ -57,6 +57,9 @@ object ScriptAioEntry : InfraTask(
 
     private fun onAioShow(delegate: Any) {
         val contact = ScriptAioContactParser.fromDelegate(delegate, fallbackUin = fallbackUin())
+        LogUtils.androidNoFilter.i(
+            "悬浮菜单: onAioShow 触发 valid=${contact.isValid} chatType=${contact.chatType} peer=${contact.peerUin}"
+        )
         if (!contact.isValid) return
 
         currentContact = contact
@@ -68,14 +71,16 @@ object ScriptAioEntry : InfraTask(
         ScriptEvents.onChatInterface(contact)
 
         // 只有真的注册了 addItem 才挂球
+        val runtimes = ScriptRegistry.runtimes()
+        val withItems = runtimes.count { it.menuItems.isNotEmpty() }
+        LogUtils.androidNoFilter.i(
+            "悬浮菜单: 运行中脚本=${runtimes.size} 其中带菜单项=$withItems"
+        )
         if (!ScriptMenus.hasAnyItem()) return
 
         val activity = QQInterfaces.topActivity
-        if (activity == null) {
-            LogUtils.androidNoFilter.w("脚本悬浮菜单: 顶层 Activity 不可用，本次不挂载")
-            return
-        }
 
+        LogUtils.androidNoFilter.i("悬浮菜单: 开始挂载 activity=${activity.javaClass.simpleName}")
         ScriptMenuView(activity).also {
             menuView = it
             it.show()

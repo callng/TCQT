@@ -87,7 +87,7 @@ internal class ScriptMenuView(private val activity: Activity) {
             addView(ball)
         }
 
-        restorePosition(ball)
+        restorePosition()
         container.setOnTouchListener { _, event -> handleTouch(ball, event) }
         ball.setOnTouchListener { _, event -> handleTouch(ball, event) }
 
@@ -100,6 +100,7 @@ internal class ScriptMenuView(private val activity: Activity) {
 
         runCatching {
             ballWindow?.showAtLocation(activity.window.decorView, Gravity.NO_GRAVITY, lastX, lastY)
+            LogUtils.androidNoFilter.i("悬浮菜单: 球已挂载于 ($lastX, $lastY) size=${size}px")
         }.onFailure {
             LogUtils.androidNoFilter.w("脚本悬浮菜单: 挂载失败", it)
             ballWindow = null
@@ -209,7 +210,13 @@ internal class ScriptMenuView(private val activity: Activity) {
 
     // ── 位置持久化 ───────────────────────────────────────────────────────
 
-    private fun restorePosition(ball: View) {
+    /**
+     * 计算球的左上角坐标（用于 `showAtLocation`）。
+     *
+     * 注意**不能**在这里设 `View.x` / `View.y`：那是相对父容器的偏移，
+     * 会把球推出 121x121 的 PopupWindow 范围，表现为"窗口在但看不见"。
+     */
+    private fun restorePosition() {
         val metrics = activity.resources.displayMetrics
         val (savedX, savedY) = ScriptMenuPosition.load()
 
@@ -221,10 +228,6 @@ internal class ScriptMenuView(private val activity: Activity) {
             lastY = savedY
         }
         clampInto(lastX, lastY)
-
-        // 让球在首帧就有正确位置
-        ball.x = lastX.toFloat()
-        ball.y = lastY.toFloat()
     }
 
     private fun clampInto(x: Int, y: Int) {

@@ -1,6 +1,7 @@
 package com.owo233.tcqt.features.script
 
 import com.owo233.tcqt.core.group.GroupEvent
+import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.message.MessageEvent
 import com.owo233.tcqt.core.message.MessageKind
 import com.owo233.tcqt.features.script.bean.MsgData
@@ -142,7 +143,16 @@ internal object ScriptEvents {
         record: MsgRecord,
     ) {
         runtimes.forEach { runtime ->
-            val data = runCatching { MsgData(record) }.getOrNull() ?: return@forEach
+            // 构造失败必须留痕：静默丢弃会让"某类消息完全没有推送"变得无法排查
+            val data = runCatching { MsgData(record) }
+                .onFailure {
+                    LogUtils.androidNoFilter.w(
+                        "脚本事件: MsgData 构造失败 msgType=${record.msgType} " +
+                                "chatType=${record.chatType}",
+                        it,
+                    )
+                }
+                .getOrNull() ?: return@forEach
             runtime.invoke(callback, arrayOf(Any::class.java), arrayOf(data))
         }
     }

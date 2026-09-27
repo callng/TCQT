@@ -1,8 +1,11 @@
 package com.owo233.tcqt.core.group
 
 import com.owo233.tcqt.core.env.runOnce
+import com.owo233.tcqt.core.group.GroupEventCore.uidToUinResolver
 import com.owo233.tcqt.core.hook.hookMethodAfter
 import com.owo233.tcqt.core.log.LogUtils
+import com.owo233.tcqt.core.proto.asLong
+import com.owo233.tcqt.core.proto.asMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -113,6 +116,10 @@ object GroupEventCore {
     fun onMsfPush(command: String, payload: ByteArray) {
         val selfUin = runCatching { selfUinProvider?.invoke().orEmpty() }.getOrDefault("")
 
+        // 临时诊断：记录所有候选推送（拍一拍 732/20、528/290；禁言 732/12），
+        // 用于确认推送是否到达 —— 解析失败时也要能看到"收到过"。
+        runCatching { logCandidate(command, payload) }
+
         when (val event = GroupEventParser.parsePush(command, payload, selfUin)) {
             is GroupEvent.ShutUp ->
                 GroupEventDispatcher.dispatch(event.copy(memberUin = resolveUin(event.memberUid)))
@@ -121,6 +128,30 @@ object GroupEventCore {
 
             else -> Unit
         }
+    }
+
+    /** 临时诊断：打印候选推送的头与结构（732/528 段全记，避免漏未知子类型）。 */
+    private fun logCandidate(command: String, payload: ByteArray) {
+        if (!command.contains("OlPushService.MsgPush")) return
+
+        val root = runCatching {
+            GroupEventParser.decodeForDiag(payload)
+        }.getOrNull() ?: run {
+            LogUtils.androidNoFilter.w("推送诊断: 解码失败 len=${payload.size}")
+            return
+        }
+
+        val head = runCatching { root.getOrNull(1, 2)?.asMap }.getOrNull()
+        val t1 = head?.let { runCatching { it.getOrNull(1)?.asLong }.getOrNull() } ?: return
+        val t2 = head.let { runCatching { it.getOrNull(2)?.asLong }.getOrNull() } ?: return
+
+        // 只关心 732 / 528 段（消息头族），其它推送太杂
+        if (t1 != 732L && t1 != 528L) return
+
+        val json = runCatching { root.toJson().toString() }.getOrDefault("")
+        LogUtils.androidNoFilter.i(
+            "推送诊断: head=$t1/$t2 len=${payload.size} json=${json.take(1200)}"
+        )
     }
 
     /** `ArrayList<Byte>` → `ByteArray`；元素类型不对时返回 null。 */

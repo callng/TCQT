@@ -126,14 +126,22 @@ class GroupEventParserTest {
         toUin: String = "1286819801",
         tag2: Long = 20L,
     ): ByteArray {
-        val content = "<gtip uin_str1=\"$fromUin\",uin_str2=\"$toUin\"/>"
+        // 按真实结构：1.3.2.7 是键值对数组（uin_str1 = 发起者，uin_str2 = 被拍者）。
+        // 早期版本把文本放在 1.3.2，造出"测试全绿但真机解析不出来"的假象。
+        // 真实字节回归见 PokeRealPayloadTest。
+        val kv = com.owo233.tcqt.core.proto.ProtoList()
+        kv.add(ProtoMap().apply { this[1] = "uin_str1".proto; this[2] = fromUin.proto })
+        kv.add(ProtoMap().apply { this[1] = "uin_str2".proto; this[2] = toUin.proto })
+        kv.add(ProtoMap().apply { this[1] = "action_str".proto; this[2] = "戳了戳".proto })
+
         return ProtoMap().apply {
             this[1, 1, 1] = 709073105L
+            this[1, 1, 5] = toUin.toLong()
             this[1, 2] = ProtoMap().apply {
                 this[1] = 732L
                 this[2] = tag2
             }
-            this[1, 3, 2] = ProtoMap().apply { this[2] = content.proto }
+            this[1, 3, 2, 7] = kv
         }.toByteArray()
     }
 
