@@ -28,15 +28,16 @@
 package bsh;
 
 class BSHSwitchLabel extends SimpleNode {
+    private static final long serialVersionUID = 1L;
+
     boolean isDefault;
 
-    public BSHSwitchLabel(int id) {
-        super(id);
-    }
+    public BSHSwitchLabel(int id) { super(id); }
 
     public Object eval(
-            CallStack callstack, Interpreter interpreter) throws EvalError {
-        return jjtGetChild(0).eval(callstack, interpreter);
+        CallStack callstack, Interpreter interpreter) throws EvalError
+    {
+        return jjtGetChild(0).eval( callstack, interpreter );
     }
 
     @Override

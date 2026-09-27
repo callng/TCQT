@@ -36,65 +36,63 @@ package bsh.org.objectweb.asm;
  */
 public abstract class FieldVisitor {
 
-    /**
-     * The ASM API version implemented by this visitor. The value of this field must be one of {@link
-     * Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link Opcodes#ASM7_EXPERIMENTAL}.
-     */
-    protected final int api;
+  /**
+   * The ASM API version implemented by this visitor. The value of this field must be one of {@link
+   * Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link Opcodes#ASM7_EXPERIMENTAL}.
+   */
+  protected final int api;
 
-    /**
-     * The field visitor to which this visitor must delegate method calls. May be null.
-     */
-    protected FieldVisitor fv;
+  /** The field visitor to which this visitor must delegate method calls. May be null. */
+  protected FieldVisitor fv;
 
-    /**
-     * Constructs a new {@link FieldVisitor}.
-     *
-     * @param api the ASM API version implemented by this visitor. Must be one of {@link
-     *            Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link
-     *            Opcodes#ASM7_EXPERIMENTAL}.
-     */
-    public FieldVisitor(final int api) {
-        this(api, null);
+  /**
+   * Constructs a new {@link FieldVisitor}.
+   *
+   * @param api the ASM API version implemented by this visitor. Must be one of {@link
+   *     Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link
+   *     Opcodes#ASM7_EXPERIMENTAL}.
+   */
+  public FieldVisitor(final int api) {
+    this(api, null);
+  }
+
+  /**
+   * Constructs a new {@link FieldVisitor}.
+   *
+   * @param api the ASM API version implemented by this visitor. Must be one of {@link
+   *     Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link
+   *     Opcodes#ASM7_EXPERIMENTAL}.
+   * @param fieldVisitor the field visitor to which this visitor must delegate method calls. May be
+   *     null.
+   */
+  public FieldVisitor(final int api, final FieldVisitor fieldVisitor) {
+    if (api != Opcodes.ASM6
+        && api != Opcodes.ASM5
+        && api != Opcodes.ASM4) {
+      throw new IllegalArgumentException();
     }
+    this.api = api;
+    this.fv = fieldVisitor;
+  }
 
-    /**
-     * Constructs a new {@link FieldVisitor}.
-     *
-     * @param api          the ASM API version implemented by this visitor. Must be one of {@link
-     *                     Opcodes#ASM4}, {@link Opcodes#ASM5}, {@link Opcodes#ASM6} or {@link
-     *                     Opcodes#ASM7_EXPERIMENTAL}.
-     * @param fieldVisitor the field visitor to which this visitor must delegate method calls. May be
-     *                     null.
-     */
-    public FieldVisitor(final int api, final FieldVisitor fieldVisitor) {
-        if (api != Opcodes.ASM6
-                && api != Opcodes.ASM5
-                && api != Opcodes.ASM4) {
-            throw new IllegalArgumentException();
-        }
-        this.api = api;
-        this.fv = fieldVisitor;
+  /**
+   * Visits a non standard attribute of the field.
+   *
+   * @param attribute an attribute.
+   */
+  public void visitAttribute(final Attribute attribute) {
+    if (fv != null) {
+      fv.visitAttribute(attribute);
     }
+  }
 
-    /**
-     * Visits a non standard attribute of the field.
-     *
-     * @param attribute an attribute.
-     */
-    public void visitAttribute(final Attribute attribute) {
-        if (fv != null) {
-            fv.visitAttribute(attribute);
-        }
+  /**
+   * Visits the end of the field. This method, which is the last one to be called, is used to inform
+   * the visitor that all the annotations and attributes of the field have been visited.
+   */
+  public void visitEnd() {
+    if (fv != null) {
+      fv.visitEnd();
     }
-
-    /**
-     * Visits the end of the field. This method, which is the last one to be called, is used to inform
-     * the visitor that all the annotations and attributes of the field have been visited.
-     */
-    public void visitEnd() {
-        if (fv != null) {
-            fv.visitEnd();
-        }
-    }
+  }
 }

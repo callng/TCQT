@@ -31,214 +31,208 @@ package bsh.org.objectweb.asm;
  * A {@link FieldVisitor} that generates a corresponding 'field_info' structure, as defined in the
  * Java Virtual Machine Specification (JVMS).
  *
- * @author Eric Bruneton
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html#jvms-4.5">JVMS
- * 4.5</a>
+ *     4.5</a>
+ * @author Eric Bruneton
  */
 final class FieldWriter extends FieldVisitor {
 
-    /**
-     * Where the constants used in this FieldWriter must be stored.
-     */
-    private final SymbolTable symbolTable;
+  /** Where the constants used in this FieldWriter must be stored. */
+  private final SymbolTable symbolTable;
 
-    // Note: fields are ordered as in the field_info structure, and those related to attributes are
-    // ordered as in Section 4.7 of the JVMS.
+  // Note: fields are ordered as in the field_info structure, and those related to attributes are
+  // ordered as in Section 4.7 of the JVMS.
 
-    /**
-     * The access_flags field of the field_info JVMS structure. This field can contain ASM specific
-     * access flags, such as {@link Opcodes#ACC_DEPRECATED}, which are removed when generating the
-     * ClassFile structure.
-     */
-    private final int accessFlags;
+  /**
+   * The access_flags field of the field_info JVMS structure. This field can contain ASM specific
+   * access flags, such as {@link Opcodes#ACC_DEPRECATED}, which are removed when generating the
+   * ClassFile structure.
+   */
+  private final int accessFlags;
 
-    /**
-     * The name_index field of the field_info JVMS structure.
-     */
-    private final int nameIndex;
+  /** The name_index field of the field_info JVMS structure. */
+  private final int nameIndex;
 
-    /**
-     * The descriptor_index field of the field_info JVMS structure.
-     */
-    private final int descriptorIndex;
+  /** The descriptor_index field of the field_info JVMS structure. */
+  private final int descriptorIndex;
 
-    /**
-     * The signature_index field of the Signature attribute of this field_info, or 0 if there is no
-     * Signature attribute.
-     */
-    private int signatureIndex;
+  /**
+   * The signature_index field of the Signature attribute of this field_info, or 0 if there is no
+   * Signature attribute.
+   */
+  private int signatureIndex;
 
-    /**
-     * The constantvalue_index field of the ConstantValue attribute of this field_info, or 0 if there
-     * is no ConstantValue attribute.
-     */
-    private int constantValueIndex;
+  /**
+   * The constantvalue_index field of the ConstantValue attribute of this field_info, or 0 if there
+   * is no ConstantValue attribute.
+   */
+  private int constantValueIndex;
 
-    /**
-     * The first non standard attribute of this field. The next ones can be accessed with the {@link
-     * Attribute#nextAttribute} field. May be <tt>null</tt>.
-     *
-     * <p><b>WARNING</b>: this list stores the attributes in the <i>reverse</i> order of their visit.
-     * firstAttribute is actually the last attribute visited in {@link #visitAttribute}. The {@link
-     * #putFieldInfo} method writes the attributes in the order defined by this list, i.e. in the
-     * reverse order specified by the user.
-     */
-    private Attribute firstAttribute;
+  /**
+   * The first non standard attribute of this field. The next ones can be accessed with the {@link
+   * Attribute#nextAttribute} field. May be <tt>null</tt>.
+   *
+   * <p><b>WARNING</b>: this list stores the attributes in the <i>reverse</i> order of their visit.
+   * firstAttribute is actually the last attribute visited in {@link #visitAttribute}. The {@link
+   * #putFieldInfo} method writes the attributes in the order defined by this list, i.e. in the
+   * reverse order specified by the user.
+   */
+  private Attribute firstAttribute;
 
-    // -----------------------------------------------------------------------------------------------
-    // Constructor
-    // -----------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------------
+  // Constructor
+  // -----------------------------------------------------------------------------------------------
 
-    /**
-     * Constructs a new {@link FieldWriter}.
-     *
-     * @param symbolTable   where the constants used in this FieldWriter must be stored.
-     * @param access        the field's access flags (see {@link Opcodes}).
-     * @param name          the field's name.
-     * @param descriptor    the field's descriptor (see {@link Type}).
-     * @param signature     the field's signature. May be <tt>null</tt>.
-     * @param constantValue the field's constant value. May be <tt>null</tt>.
-     */
-    FieldWriter(
-            final SymbolTable symbolTable,
-            final int access,
-            final String name,
-            final String descriptor,
-            final String signature,
-            final Object constantValue) {
-        super(Opcodes.ASM6);
-        this.symbolTable = symbolTable;
-        this.accessFlags = access;
-        this.nameIndex = symbolTable.addConstantUtf8(name);
-        this.descriptorIndex = symbolTable.addConstantUtf8(descriptor);
-        if (signature != null) {
-            this.signatureIndex = symbolTable.addConstantUtf8(signature);
-        }
-        if (constantValue != null) {
-            this.constantValueIndex = symbolTable.addConstant(constantValue).index;
-        }
+  /**
+   * Constructs a new {@link FieldWriter}.
+   *
+   * @param symbolTable where the constants used in this FieldWriter must be stored.
+   * @param access the field's access flags (see {@link Opcodes}).
+   * @param name the field's name.
+   * @param descriptor the field's descriptor (see {@link Type}).
+   * @param signature the field's signature. May be <tt>null</tt>.
+   * @param constantValue the field's constant value. May be <tt>null</tt>.
+   */
+  FieldWriter(
+      final SymbolTable symbolTable,
+      final int access,
+      final String name,
+      final String descriptor,
+      final String signature,
+      final Object constantValue) {
+    super(Opcodes.ASM6);
+    this.symbolTable = symbolTable;
+    this.accessFlags = access;
+    this.nameIndex = symbolTable.addConstantUtf8(name);
+    this.descriptorIndex = symbolTable.addConstantUtf8(descriptor);
+    if (signature != null) {
+      this.signatureIndex = symbolTable.addConstantUtf8(signature);
     }
-
-    // -----------------------------------------------------------------------------------------------
-    // Implementation of the FieldVisitor abstract class
-    // -----------------------------------------------------------------------------------------------
-
-    @Override
-    public void visitAttribute(final Attribute attribute) {
-        // Store the attributes in the <i>reverse</i> order of their visit by this method.
-        attribute.nextAttribute = firstAttribute;
-        firstAttribute = attribute;
+    if (constantValue != null) {
+      this.constantValueIndex = symbolTable.addConstant(constantValue).index;
     }
+  }
 
-    @Override
-    public void visitEnd() {
-        // Nothing to do.
+  // -----------------------------------------------------------------------------------------------
+  // Implementation of the FieldVisitor abstract class
+  // -----------------------------------------------------------------------------------------------
+
+  @Override
+  public void visitAttribute(final Attribute attribute) {
+    // Store the attributes in the <i>reverse</i> order of their visit by this method.
+    attribute.nextAttribute = firstAttribute;
+    firstAttribute = attribute;
+  }
+
+  @Override
+  public void visitEnd() {
+    // Nothing to do.
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Utility methods
+  // -----------------------------------------------------------------------------------------------
+
+  /**
+   * Returns the size of the field_info JVMS structure generated by this FieldWriter. Also adds the
+   * names of the attributes of this field in the constant pool.
+   *
+   * @return the size in bytes of the field_info JVMS structure.
+   */
+  int computeFieldInfoSize() {
+    // The access_flags, name_index, descriptor_index and attributes_count fields use 8 bytes.
+    int size = 8;
+    // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
+    if (constantValueIndex != 0) {
+      // ConstantValue attributes always use 8 bytes.
+      symbolTable.addConstantUtf8(Constants.CONSTANT_VALUE);
+      size += 8;
     }
-
-    // -----------------------------------------------------------------------------------------------
-    // Utility methods
-    // -----------------------------------------------------------------------------------------------
-
-    /**
-     * Returns the size of the field_info JVMS structure generated by this FieldWriter. Also adds the
-     * names of the attributes of this field in the constant pool.
-     *
-     * @return the size in bytes of the field_info JVMS structure.
-     */
-    int computeFieldInfoSize() {
-        // The access_flags, name_index, descriptor_index and attributes_count fields use 8 bytes.
-        int size = 8;
-        // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
-        if (constantValueIndex != 0) {
-            // ConstantValue attributes always use 8 bytes.
-            symbolTable.addConstantUtf8(Constants.CONSTANT_VALUE);
-            size += 8;
-        }
-        // Before Java 1.5, synthetic fields are represented with a Synthetic attribute.
-        if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0
-                && symbolTable.getMajorVersion() < Opcodes.V1_5) {
-            // Synthetic attributes always use 6 bytes.
-            symbolTable.addConstantUtf8(Constants.SYNTHETIC);
-            size += 6;
-        }
-        if (signatureIndex != 0) {
-            // Signature attributes always use 8 bytes.
-            symbolTable.addConstantUtf8(Constants.SIGNATURE);
-            size += 8;
-        }
-        // ACC_DEPRECATED is ASM specific, the ClassFile format uses a Deprecated attribute instead.
-        if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
-            // Deprecated attributes always use 6 bytes.
-            symbolTable.addConstantUtf8(Constants.DEPRECATED);
-            size += 6;
-        }
-        if (firstAttribute != null) {
-            size += firstAttribute.computeAttributesSize(symbolTable);
-        }
-        return size;
+    // Before Java 1.5, synthetic fields are represented with a Synthetic attribute.
+    if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0
+        && symbolTable.getMajorVersion() < Opcodes.V1_5) {
+      // Synthetic attributes always use 6 bytes.
+      symbolTable.addConstantUtf8(Constants.SYNTHETIC);
+      size += 6;
     }
-
-    /**
-     * Puts the content of the field_info JVMS structure generated by this FieldWriter into the given
-     * ByteVector.
-     *
-     * @param output where the field_info structure must be put.
-     */
-    void putFieldInfo(final ByteVector output) {
-        boolean useSyntheticAttribute = symbolTable.getMajorVersion() < Opcodes.V1_5;
-        // Put the access_flags, name_index and descriptor_index fields.
-        int mask = useSyntheticAttribute ? Opcodes.ACC_SYNTHETIC : 0;
-        output.putShort(accessFlags & ~mask).putShort(nameIndex).putShort(descriptorIndex);
-        // Compute and put the attributes_count field.
-        // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
-        int attributesCount = 0;
-        if (constantValueIndex != 0) {
-            ++attributesCount;
-        }
-        if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0 && useSyntheticAttribute) {
-            ++attributesCount;
-        }
-        if (signatureIndex != 0) {
-            ++attributesCount;
-        }
-        if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
-            ++attributesCount;
-        }
-        if (firstAttribute != null) {
-            attributesCount += firstAttribute.getAttributeCount();
-        }
-        output.putShort(attributesCount);
-        // Put the field_info attributes.
-        // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
-        if (constantValueIndex != 0) {
-            output
-                    .putShort(symbolTable.addConstantUtf8(Constants.CONSTANT_VALUE))
-                    .putInt(2)
-                    .putShort(constantValueIndex);
-        }
-        if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0 && useSyntheticAttribute) {
-            output.putShort(symbolTable.addConstantUtf8(Constants.SYNTHETIC)).putInt(0);
-        }
-        if (signatureIndex != 0) {
-            output
-                    .putShort(symbolTable.addConstantUtf8(Constants.SIGNATURE))
-                    .putInt(2)
-                    .putShort(signatureIndex);
-        }
-        if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
-            output.putShort(symbolTable.addConstantUtf8(Constants.DEPRECATED)).putInt(0);
-        }
-        if (firstAttribute != null) {
-            firstAttribute.putAttributes(symbolTable, output);
-        }
+    if (signatureIndex != 0) {
+      // Signature attributes always use 8 bytes.
+      symbolTable.addConstantUtf8(Constants.SIGNATURE);
+      size += 8;
     }
-
-    /**
-     * Collects the attributes of this field into the given set of attribute prototypes.
-     *
-     * @param attributePrototypes a set of attribute prototypes.
-     */
-    final void collectAttributePrototypes(final Attribute.Set attributePrototypes) {
-        attributePrototypes.addAttributes(firstAttribute);
+    // ACC_DEPRECATED is ASM specific, the ClassFile format uses a Deprecated attribute instead.
+    if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
+      // Deprecated attributes always use 6 bytes.
+      symbolTable.addConstantUtf8(Constants.DEPRECATED);
+      size += 6;
     }
+    if (firstAttribute != null) {
+      size += firstAttribute.computeAttributesSize(symbolTable);
+    }
+    return size;
+  }
+
+  /**
+   * Puts the content of the field_info JVMS structure generated by this FieldWriter into the given
+   * ByteVector.
+   *
+   * @param output where the field_info structure must be put.
+   */
+  void putFieldInfo(final ByteVector output) {
+    boolean useSyntheticAttribute = symbolTable.getMajorVersion() < Opcodes.V1_5;
+    // Put the access_flags, name_index and descriptor_index fields.
+    int mask = useSyntheticAttribute ? Opcodes.ACC_SYNTHETIC : 0;
+    output.putShort(accessFlags & ~mask).putShort(nameIndex).putShort(descriptorIndex);
+    // Compute and put the attributes_count field.
+    // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
+    int attributesCount = 0;
+    if (constantValueIndex != 0) {
+      ++attributesCount;
+    }
+    if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0 && useSyntheticAttribute) {
+      ++attributesCount;
+    }
+    if (signatureIndex != 0) {
+      ++attributesCount;
+    }
+    if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
+      ++attributesCount;
+    }
+    if (firstAttribute != null) {
+      attributesCount += firstAttribute.getAttributeCount();
+    }
+    output.putShort(attributesCount);
+    // Put the field_info attributes.
+    // For ease of reference, we use here the same attribute order as in Section 4.7 of the JVMS.
+    if (constantValueIndex != 0) {
+      output
+          .putShort(symbolTable.addConstantUtf8(Constants.CONSTANT_VALUE))
+          .putInt(2)
+          .putShort(constantValueIndex);
+    }
+    if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0 && useSyntheticAttribute) {
+      output.putShort(symbolTable.addConstantUtf8(Constants.SYNTHETIC)).putInt(0);
+    }
+    if (signatureIndex != 0) {
+      output
+          .putShort(symbolTable.addConstantUtf8(Constants.SIGNATURE))
+          .putInt(2)
+          .putShort(signatureIndex);
+    }
+    if ((accessFlags & Opcodes.ACC_DEPRECATED) != 0) {
+      output.putShort(symbolTable.addConstantUtf8(Constants.DEPRECATED)).putInt(0);
+    }
+    if (firstAttribute != null) {
+      firstAttribute.putAttributes(symbolTable, output);
+    }
+  }
+
+  /**
+   * Collects the attributes of this field into the given set of attribute prototypes.
+   *
+   * @param attributePrototypes a set of attribute prototypes.
+   */
+  final void collectAttributePrototypes(final Attribute.Set attributePrototypes) {
+    attributePrototypes.addAttributes(firstAttribute);
+  }
 }

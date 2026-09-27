@@ -33,46 +33,47 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * The map of extended features supported by the runtime in which we live.
- * <p>
- * <p>
- * This class should be independent of all other bsh classes!
- * <p>
- * <p>
- * Note that tests for class existence here do *not* use the
- * BshClassManager, as it may require other optional class files to be
- * loaded.
- */
-public class Capabilities implements Supplier<Boolean>, Consumer<Boolean> {
-    static final Capabilities instance = new Capabilities();
-    private static final ThreadLocal<Boolean> ACCESSIBILITY = ThreadLocal.withInitial(Capabilities.instance);
-    private static final Map<String, Class<?>> classes = new WeakHashMap<>();
-    private volatile boolean accessibility = true;
+    The map of extended features supported by the runtime in which we live.
+    <p>
 
-    private Capabilities() {
-    }
+    This class should be independent of all other bsh classes!
+    <p>
+
+    Note that tests for class existence here do *not* use the
+    BshClassManager, as it may require other optional class files to be
+    loaded.
+*/
+public class Capabilities implements Supplier<Boolean>, Consumer<Boolean>
+{
+    static final Capabilities instance = new Capabilities();
+    private volatile boolean accessibility = true;
+    private static final ThreadLocal<Boolean> ACCESSIBILITY = ThreadLocal.withInitial(Capabilities.instance);
+
+    private Capabilities() {}
 
     public static boolean haveSwing() {
         // classExists caches info for us
-        return classExists("javax.swing.JButton");
+        return classExists( "javax.swing.JButton" );
     }
 
     /**
-     * If accessibility is enabled
-     * determine if the accessibility mechanism exists and if we have
-     * the optional bsh package to use it.
-     * Note that even if both are true it does not necessarily mean that we
-     * have runtime permission to access the fields... Java security has
-     * a say in it.
-     *
-     * @see bsh.Reflect
-     */
-    public static boolean haveAccessibility() {
+        If accessibility is enabled
+        determine if the accessibility mechanism exists and if we have
+        the optional bsh package to use it.
+        Note that even if both are true it does not necessarily mean that we
+        have runtime permission to access the fields... Java security has
+        a say in it.
+        @see bsh.Reflect
+    */
+    public static boolean haveAccessibility()
+    {
         return ACCESSIBILITY.get();
     }
 
-    public static void setAccessibility(boolean b) {
-        if (b == false) {
+    public static void setAccessibility( boolean b )
+    {
+        if ( b == false )
+        {
             ACCESSIBILITY.set(Boolean.FALSE);
         } else {
             String.class.getDeclaredMethods(); // test basic access
@@ -88,31 +89,44 @@ public class Capabilities implements Supplier<Boolean>, Consumer<Boolean> {
         BshClassManager.memberCache.clear();
     }
 
+    private static final Map<String, Class<?>> classes = new WeakHashMap<>();
     /**
-     * Use direct Class.forName() to test for the existence of a class.
-     * We should not use BshClassManager here because:
-     * a) the systems using these tests would probably not load the
-     * classes through it anyway.
-     * b) bshclassmanager is heavy and touches other class files.
-     * this capabilities code must be light enough to be used by any
-     * system **including the remote applet**.
-     */
-    public static boolean classExists(String name) {
-        if (!classes.containsKey(name)) try {
+        Use direct Class.forName() to test for the existence of a class.
+        We should not use BshClassManager here because:
+            a) the systems using these tests would probably not load the
+            classes through it anyway.
+            b) bshclassmanager is heavy and touches other class files.
+            this capabilities code must be light enough to be used by any
+            system **including the remote applet**.
+    */
+    public static boolean classExists( String name ) {
+        if ( !classes.containsKey(name) ) try {
             /*
                 Note: do *not* change this to
                 BshClassManager plainClassForName() or equivalent.
                 This class must not touch any other bsh classes.
             */
-            classes.put(name, Class.forName(name));
-        } catch (ClassNotFoundException e) {
+            classes.put(name, Class.forName( name ));
+        } catch ( ClassNotFoundException e ) {
             classes.put(name, null);
         }
-        return getExisting(name) != null;
+        return getExisting( name ) != null;
     }
 
     public static Class<?> getExisting(String name) {
         return classes.get(name);
+    }
+    /**
+        An attempt was made to use an unavailable capability supported by
+        an optional package.  The normal operation is to test before attempting
+        to use these packages... so this is runtime exception.
+    */
+    public static class Unavailable extends UtilEvalError
+    {
+        public Unavailable(String s ){ super(s); }
+        public Unavailable( String s, Throwable cause ) {
+            super(s,cause);
+        }
     }
 
     @Override
@@ -123,21 +137,6 @@ public class Capabilities implements Supplier<Boolean>, Consumer<Boolean> {
     @Override
     public void accept(Boolean t) {
         this.accessibility = t.booleanValue();
-    }
-
-    /**
-     * An attempt was made to use an unavailable capability supported by
-     * an optional package.  The normal operation is to test before attempting
-     * to use these packages... so this is runtime exception.
-     */
-    public static class Unavailable extends UtilEvalError {
-        public Unavailable(String s) {
-            super(s);
-        }
-
-        public Unavailable(String s, Throwable cause) {
-            super(s, cause);
-        }
     }
 }
 

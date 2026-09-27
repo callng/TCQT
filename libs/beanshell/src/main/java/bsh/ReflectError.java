@@ -25,18 +25,12 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class ReflectError extends RuntimeException {
-    public ReflectError() {
-        super();
-    }
-
-    public ReflectError(String s) {
-        super(s);
-    }
-
-    public ReflectError(String s, Throwable t) {
-        super(s, t);
-    }
+class ReflectError extends RuntimeException
+{
+    public ReflectError() { super(); }
+    public ReflectError(String s) { super(s); }
+    public ReflectError(String s,Throwable t) { super(s,t); }
 }

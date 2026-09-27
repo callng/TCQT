@@ -25,46 +25,50 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
 /**
- * name [ = initializer ]
- * evaluate name and return optional initializer
- */
-class BSHVariableDeclarator extends SimpleNode {
+    name [ = initializer ]
+    evaluate name and return optional initializer
+*/
+class BSHVariableDeclarator extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     // The token.image text of the name... never changes.
     public String name;
     public int dimensions = 0;
 
-    BSHVariableDeclarator(int id) {
-        super(id);
-    }
+    BSHVariableDeclarator(int id) { super(id); }
 
     /**
-     * Evaluate the optional initializer value.
-     * (The name was set at parse time.)
-     * <p>
-     * A variable declarator can be evaluated with or without preceding
-     * type information. Currently the type info is only used by array
-     * initializers in the case where there is no explicitly declared type.
-     *
-     * @param typeNode is the BSHType node.  Its info is passed through to any
-     *                 variable intializer children for the case where the array initializer
-     *                 does not declare the type explicitly. e.g.
-     *                 int [] a = { 1, 2 };
-     *                 typeNode may be null to indicate no type information available.
-     */
+        Evaluate the optional initializer value.
+        (The name was set at parse time.)
+
+        A variable declarator can be evaluated with or without preceding
+        type information. Currently the type info is only used by array
+        initializers in the case where there is no explicitly declared type.
+
+        @param typeNode is the BSHType node.  Its info is passed through to any
+        variable intializer children for the case where the array initializer
+        does not declare the type explicitly. e.g.
+            int [] a = { 1, 2 };
+        typeNode may be null to indicate no type information available.
+    */
     public Object eval(
-            BSHType typeNode, Modifiers modifiers, CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        BSHType typeNode, Modifiers modifiers, CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         // null value means no value
         Object value = modifiers.hasModifier("final")
                 ? null
                 : Primitive.isWrapperType(typeNode.getBaseType())
-                ? null
-                : Primitive.getDefaultValue(typeNode.getBaseType());
+                    ? null
+                    : Primitive.getDefaultValue(typeNode.getBaseType());
 
-        if (jjtGetNumChildren() > 0) {
+        if ( jjtGetNumChildren() > 0 )
+        {
             Node initializer = jjtGetChild(0);
 
             /*
@@ -73,23 +77,23 @@ class BSHVariableDeclarator extends SimpleNode {
                 (This allows array initializer to handle the problem...
                 allowing for future enhancements in loosening types there).
             */
-            if (initializer instanceof BSHArrayInitializer)
-                value = ((BSHArrayInitializer) initializer).eval(typeNode.getBaseType(),
-                        this.getArrayDims(typeNode), callstack, interpreter);
+            if ( initializer instanceof BSHArrayInitializer )
+                value = ((BSHArrayInitializer)initializer).eval(typeNode.getBaseType(),
+                    this.getArrayDims(typeNode), callstack, interpreter);
             else
-                value = initializer.eval(callstack, interpreter);
+                value = initializer.eval( callstack, interpreter);
         }
 
-        if (value == Primitive.VOID)
-            throw new EvalException("Void initializer.", this, callstack);
+        if ( value == Primitive.VOID )
+            throw new EvalException("Void initializer.", this, callstack );
 
         return value;
     }
 
     private int getArrayDims(BSHType typeNode) {
-        if (dimensions > 0)
+        if ( dimensions > 0 )
             return dimensions;
-        if (typeNode.getArrayDims() > 0)
+        if ( typeNode.getArrayDims() > 0 )
             return typeNode.getArrayDims();
         return -1;
     }

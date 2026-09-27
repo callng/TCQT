@@ -27,47 +27,81 @@
 
 package bsh;
 
-class BSHMethodDeclaration extends SimpleNode {
+import java.lang.reflect.Array;
+
+class BSHMethodDeclaration extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     public String name;
 
     // Begin Child node structure evaluated by insureNodesParsed
-    public Modifiers modifiers = new Modifiers(Modifiers.METHOD);
+
     BSHReturnType returnTypeNode;
     BSHFormalParameters paramsNode;
     BSHBlock blockNode;
-
-    // End Child node structure evaluated by insureNodesParsed
     // index of the first throws clause child node
     int firstThrowsClause;
+
+    // End Child node structure evaluated by insureNodesParsed
+
+    public Modifiers modifiers = new Modifiers(Modifiers.METHOD);
+
     // Unsafe caching of type here.
     Class<?> returnType;  // null (none), Void.TYPE, or a Class
     int numThrows = 0;
     boolean isVarArgs;
     private boolean isScriptedObject;
 
-    BSHMethodDeclaration(int id) {
-        super(id);
-    }
+    boolean isExtension;
+    String receiverText;
+    Class<?> receiverType;
+
+    BSHMethodDeclaration(int id) { super(id); }
 
     /**
-     * Set the returnTypeNode, paramsNode, and blockNode based on child
-     * node structure.  No evaluation is done here.
-     */
-    synchronized void insureNodesParsed() {
-        if (paramsNode != null) // there is always a paramsNode
+        Set the returnTypeNode, paramsNode, and blockNode based on child
+        node structure.  No evaluation is done here.
+    */
+    synchronized void insureNodesParsed()
+    {
+        if ( paramsNode != null ) // there is always a paramsNode
             return;
 
-        Object firstNode = jjtGetChild(0);
-        firstThrowsClause = 1;
-        if (firstNode instanceof BSHReturnType) {
-            returnTypeNode = (BSHReturnType) firstNode;
-            paramsNode = (BSHFormalParameters) jjtGetChild(1);
-            if (jjtGetNumChildren() > 2 + numThrows)
-                blockNode = (BSHBlock) jjtGetChild(2 + numThrows); // skip throws
-            ++firstThrowsClause;
-        } else {
-            paramsNode = (BSHFormalParameters) jjtGetChild(0);
-            blockNode = (BSHBlock) jjtGetChild(1 + numThrows); // skip throws
+        int childIndex = 0;
+        Node firstNode = jjtGetChild(childIndex);
+
+        if ( firstNode instanceof BSHReturnType )
+        {
+            returnTypeNode = (BSHReturnType)firstNode;
+            childIndex++;
+            firstNode = jjtGetChild(childIndex);
+        }
+
+        if ( firstNode instanceof BSHAmbiguousName )
+        {
+            String fullName = ((BSHAmbiguousName)firstNode).text;
+            int dot = fullName.lastIndexOf('.');
+            if ( dot >= 0 ) {
+                this.isExtension = true;
+                this.receiverText = fullName.substring(0, dot);
+                this.name = fullName.substring(dot + 1);
+            }
+            else
+            {
+                this.isExtension = false;
+                this.receiverText = null;
+                this.name = fullName;
+            }
+            childIndex++;
+        }
+
+        paramsNode = (BSHFormalParameters)jjtGetChild(childIndex);
+
+        childIndex++;
+        firstThrowsClause = childIndex;
+        if ( jjtGetNumChildren() > childIndex + numThrows ) {
+            blockNode = (BSHBlock)jjtGetChild(childIndex + numThrows);
         }
 
         if (null != blockNode && blockNode.jjtGetNumChildren() > 0) {
@@ -75,7 +109,7 @@ class BSHMethodDeclaration extends SimpleNode {
             if (crnt instanceof BSHReturnStatement)
                 while (crnt.hasNext())
                     if ((crnt = crnt.next()) instanceof BSHAmbiguousName)
-                        isScriptedObject = ((BSHAmbiguousName) crnt).text.startsWith("this");
+                        isScriptedObject = ((BSHAmbiguousName)crnt).text.startsWith("this");
         }
 
         paramsNode.insureParsed();
@@ -83,27 +117,75 @@ class BSHMethodDeclaration extends SimpleNode {
     }
 
     /**
-     * Evaluate the return type node.
-     *
-     * @return the type or null indicating loosely typed return
-     */
-    Class<?> evalReturnType(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        Evaluate the return type node.
+        @return the type or null indicating loosely typed return
+    */
+    Class<?> evalReturnType( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
         insureNodesParsed();
-        if (returnTypeNode != null)
-            return returnTypeNode.evalReturnType(callstack, interpreter);
+        if ( returnTypeNode != null )
+            return returnTypeNode.evalReturnType( callstack, interpreter );
         else
             return null;
     }
 
-    String getReturnTypeDescriptor(
-            CallStack callstack, Interpreter interpreter, String defaultPackage) {
+    /**
+        Evaluate the receiver type for an extension method declaration.
+        @return the receiver class, or null if this is not an extension method
+     */
+    Class<?> evalReceiverType( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
         insureNodesParsed();
-        if (returnTypeNode == null)
+        if ( isExtension && receiverText != null ) {
+            try {
+                String baseText = receiverText;
+
+                int dimensions = 0;
+                while ( baseText.endsWith("[]") ) {
+                    dimensions++;
+                    baseText = baseText.substring(0, baseText.length() - 2);
+                }
+
+                Class<?> clas;
+                switch (baseText) {
+                    case "boolean": clas = boolean.class; break;
+                    case "char":    clas = char.class; break;
+                    case "byte":    clas = byte.class; break;
+                    case "short":   clas = short.class; break;
+                    case "int":     clas = int.class; break;
+                    case "long":    clas = long.class; break;
+                    case "float":   clas = float.class; break;
+                    case "double":  clas = double.class; break;
+                    default:
+                        clas = callstack.top().getClass( baseText );
+                        if ( clas == null ) {
+                            throw new UtilEvalError("Extension receiver type not found: " + baseText);
+                        }
+                        break;
+                }
+
+                if ( dimensions == 0 )
+                    return clas;
+                else
+                    return Array.newInstance(clas, new int[dimensions]).getClass();
+            } catch ( UtilEvalError e ) {
+                throw e.toEvalError( this, callstack );
+            }
+        }
+        return null;
+    }
+
+    String getReturnTypeDescriptor(
+        CallStack callstack, Interpreter interpreter, String defaultPackage )
+    {
+        insureNodesParsed();
+        if ( returnTypeNode == null )
             return null;
         else
             return returnTypeNode.getTypeDescriptor(
-                    callstack, interpreter, defaultPackage);
+                callstack, interpreter, defaultPackage );
     }
 
     BSHReturnType getReturnTypeNode() {
@@ -112,13 +194,15 @@ class BSHMethodDeclaration extends SimpleNode {
     }
 
     /**
-     * Evaluate the declaration of the method.  That is, determine the
-     * structure of the method and install it into the caller's namespace.
-     */
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
-        returnType = evalReturnType(callstack, interpreter);
-        evalNodes(callstack, interpreter);
+        Evaluate the declaration of the method.  That is, determine the
+        structure of the method and install it into the caller's namespace.
+    */
+    public Object eval( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
+        returnType = evalReturnType( callstack, interpreter );
+        receiverType = evalReceiverType( callstack, interpreter );
+        evalNodes( callstack, interpreter );
 
         // Install an *instance* of this method in the namespace.
         // See notes in BshMethod
@@ -128,7 +212,7 @@ class BSHMethodDeclaration extends SimpleNode {
 // so that we can re-eval params, etc. when classloader changes
 // look into this
         NameSpace namespace = callstack.top();
-        BshMethod bshMethod = new BshMethod(this, namespace, modifiers, isScriptedObject);
+        BshMethod bshMethod = new BshMethod( this, namespace, modifiers, isScriptedObject );
         if (!namespace.isMethod && !namespace.isClass)
             interpreter.getClassManager().addListener(bshMethod);
         else if (namespace.isMethod && !paramsNode.isListener()) {
@@ -136,39 +220,41 @@ class BSHMethodDeclaration extends SimpleNode {
             paramsNode.setListener(true);
         }
 
-        namespace.setMethod(bshMethod);
+        namespace.setMethod( bshMethod );
 
         return Primitive.VOID;
     }
 
-    private void evalNodes(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+    private void evalNodes( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
         insureNodesParsed();
 
         // validate that the throws names are class names
-        for (int i = firstThrowsClause; i < numThrows + firstThrowsClause; i++)
-            ((BSHAmbiguousName) jjtGetChild(i)).toClass(
-                    callstack, interpreter);
+        for(int i=firstThrowsClause; i<numThrows+firstThrowsClause; i++)
+            ((BSHAmbiguousName)jjtGetChild(i)).toClass(
+                callstack, interpreter );
 
-        paramsNode.eval(callstack, interpreter);
+        paramsNode.eval( callstack, interpreter );
 
         // if strictJava mode, check for loose parameters and return type
-        if (interpreter.getStrictJava()) {
-            for (int i = 0; i < paramsNode.paramTypes.length; i++)
-                if (paramsNode.paramTypes[i] == null)
+        if ( interpreter.getStrictJava() )
+        {
+            for(int i=0; i<paramsNode.paramTypes.length; i++)
+                if ( paramsNode.paramTypes[i] == null )
                     // Warning: Null callstack here.  Don't think we need
                     // a stack trace to indicate how we sourced the method.
                     throw new EvalException(
-                            "(Strict Java Mode) Undeclared argument type, parameter: " +
-                                    paramsNode.getParamNames()[i] + " in method: "
-                                    + name, this, null);
+                "(Strict Java Mode) Undeclared argument type, parameter: " +
+                    paramsNode.getParamNames()[i] + " in method: "
+                    + name, this, null );
 
-            if (returnType == null)
+            if ( returnType == null )
                 // Warning: Null callstack here.  Don't think we need
                 // a stack trace to indicate how we sourced the method.
                 throw new EvalException(
-                        "(Strict Java Mode) Undeclared return type for method: "
-                                + name, this, null);
+                "(Strict Java Mode) Undeclared return type for method: "
+                    + name, this, null );
         }
     }
 

@@ -29,28 +29,22 @@ import java.io.PrintStream;
 import java.io.Reader;
 
 /**
- * The capabilities of a minimal console for BeanShell.
- * Stream I/O and optimized print for output.
- * <p>
- * A simple console may ignore some of these or map them to trivial
- * implementations.  e.g. print() with color can be mapped to plain text.
- *
- * @see bsh.util.GUIConsoleInterface
- */
+    The capabilities of a minimal console for BeanShell.
+    Stream I/O and optimized print for output.
+
+    A simple console may ignore some of these or map them to trivial
+    implementations.  e.g. print() with color can be mapped to plain text.
+    @see bsh.util.GUIConsoleInterface
+*/
 public interface ConsoleInterface {
     Reader getIn();
-
     PrintStream getOut();
-
     PrintStream getErr();
+    void println( Object o );
+    void print( Object o );
+    void error( Object o );
 
-    void println(Object o);
-
-    void print(Object o);
-
-    void error(Object o);
-
-    default void prompt(String prompt) {
+    default void prompt( String prompt ) {
         print(prompt);
     }
 }

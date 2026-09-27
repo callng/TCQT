@@ -25,62 +25,93 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHUnaryExpression extends SimpleNode implements ParserConstants {
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
+class BSHUnaryExpression extends SimpleNode implements ParserConstants
+{
+    private static final long serialVersionUID = 1L;
+
     public int kind;
     public boolean postfix = false;
 
-    BSHUnaryExpression(int id) {
-        super(id);
-    }
+    BSHUnaryExpression(int id) { super(id); }
 
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+    public Object eval( CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         Node node = jjtGetChild(0);
 
         // If this is a unary increment of decrement (either pre or postfix)
         // then we need an LHS to which to assign the result.  Otherwise
         // just do the unary operation for the value.
         try {
-            if (kind == INCR || kind == DECR) {
-                LHS lhs = ((BSHPrimaryExpression) node).toLHS(
-                        callstack, interpreter);
-                return lhsUnaryOperation(lhs, interpreter.getStrictJava());
+            if ( kind == INCR || kind == DECR ) {
+                LHS lhs = ((BSHPrimaryExpression)node).toLHS(
+                    callstack, interpreter );
+                return lhsUnaryOperation( lhs, interpreter.getStrictJava() );
             } else
                 return
-                        unaryOperation(node.eval(callstack, interpreter), kind);
-        } catch (UtilEvalError e) {
-            throw e.toEvalError(this, callstack);
+                    unaryOperation( node.eval(callstack, interpreter), kind );
+        } catch ( UtilEvalError e ) {
+            throw e.toEvalError( this, callstack );
         }
     }
 
-    private Object lhsUnaryOperation(LHS lhs, boolean strictJava)
-            throws UtilEvalError {
+    private Object lhsUnaryOperation( LHS lhs, boolean strictJava )
+        throws UtilEvalError
+    {
         Interpreter.debug("lhsUnaryOperation");
         Object prevalue, postvalue;
         prevalue = lhs.getValue();
         postvalue = unaryOperation(prevalue, kind);
 
         Object retVal;
-        if (postfix)
+        if ( postfix )
             retVal = prevalue;
         else
             retVal = postvalue;
 
-        lhs.assign(postvalue, strictJava);
+        lhs.assign( postvalue, strictJava );
         return retVal;
     }
 
-    private Object unaryOperation(Object op, int kind) throws UtilEvalError {
-        if (op instanceof Boolean)
+    private Object unaryOperation( Object op, int kind ) throws UtilEvalError
+    {
+        boolean primitive = op instanceof Primitive;
+        if ( op instanceof Boolean )
             op = (Boolean) op ? Primitive.TRUE : Primitive.FALSE;
+        else if ( op instanceof Byte )
+            op = new Primitive(((Byte) op).byteValue());
+        else if ( op instanceof Short )
+            op = new Primitive(((Short) op).shortValue());
+        else if ( op instanceof Character )
+            op = new Primitive(((Character) op).charValue());
+        else if ( op instanceof Integer )
+            op = new Primitive(((Integer) op).intValue());
+        else if ( op instanceof Long )
+            op = new Primitive(((Long) op).longValue());
+        else if ( op instanceof Float )
+            op = new Primitive(((Float) op).floatValue());
+        else if ( op instanceof Double )
+            op = new Primitive(((Double) op).doubleValue());
+        else if ( op instanceof BigInteger )
+            op = new Primitive((BigInteger) op);
+        else if ( op instanceof BigDecimal )
+            op = new Primitive((BigDecimal) op);
 
-        if (!(op instanceof Primitive))
-            throw new UtilEvalError("Unary operation " + tokenImage[kind]
-                    + " inappropriate for object");
+        if ( !(op instanceof Primitive) )
+            throw new UtilEvalError( "Unary operation " + tokenImage[kind]
+                + " inappropriate for object" );
 
-        return Operators.unaryOperation((Primitive) op, kind);
+        Primitive result = Operators.unaryOperation((Primitive) op, kind);
+        // Box updated reference values for assignment and prefix results.
+        if ( !primitive && (kind == INCR || kind == DECR) )
+            return result.getValue();
+        return result;
     }
 
     @Override

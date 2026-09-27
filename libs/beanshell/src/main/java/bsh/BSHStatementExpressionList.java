@@ -25,17 +25,21 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHStatementExpressionList extends SimpleNode {
-    BSHStatementExpressionList(int id) {
-        super(id);
-    }
+class BSHStatementExpressionList extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
+    BSHStatementExpressionList(int id) { super(id); }
 
     public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        throws EvalError
+    {
         int n = jjtGetNumChildren();
-        for (int i = 0; i < n; i++) {
+        for(int i=0; i<n; i++)
+        {
             jjtGetChild(i).eval(callstack, interpreter);
         }
         return Primitive.VOID;

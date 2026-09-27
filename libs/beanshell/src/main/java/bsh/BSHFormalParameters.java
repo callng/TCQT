@@ -28,32 +28,34 @@
 package bsh;
 
 class BSHFormalParameters extends SimpleNode implements BshClassManager.Listener {
-    /**
-     * For loose type parameters the paramTypes are null.
-     */
-    // unsafe caching of types
-    Class<?>[] paramTypes;
-    int numArgs;
-    String[] typeDescriptors;
-    boolean isVarArgs;
-    private String[] paramNames;
-    private Modifiers[] paramModifiers;
+    private static final long serialVersionUID = 1L;
+
+    private String [] paramNames;
+    private Modifiers [] paramModifiers;
     private boolean listener;
+    /**
+        For loose type parameters the paramTypes are null.
+    */
+    // unsafe caching of types
+    Class<?> [] paramTypes;
+    int numArgs;
+    String [] typeDescriptors;
+    boolean isVarArgs;
 
-    BSHFormalParameters(int id) {
-        super(id);
-    }
+    BSHFormalParameters(int id) { super(id); }
 
-    void insureParsed() {
-        if (paramNames != null)
+    void insureParsed()
+    {
+        if ( paramNames != null )
             return;
 
         this.numArgs = jjtGetNumChildren();
-        String[] paramNames = new String[numArgs];
-        Modifiers[] paramModifiers = new Modifiers[numArgs];
+        String [] paramNames = new String[numArgs];
+        Modifiers [] paramModifiers = new Modifiers[numArgs];
 
-        for (int i = 0; i < numArgs; i++) {
-            BSHFormalParameter param = (BSHFormalParameter) jjtGetChild(i);
+        for(int i=0; i<numArgs; i++)
+        {
+            BSHFormalParameter param = (BSHFormalParameter)jjtGetChild(i);
             isVarArgs = param.isVarArgs;
             paramNames[i] = param.name;
             paramModifiers[i] = new Modifiers(Modifiers.PARAMETER);
@@ -64,28 +66,30 @@ class BSHFormalParameters extends SimpleNode implements BshClassManager.Listener
         this.paramModifiers = paramModifiers;
     }
 
-    public Modifiers[] getParamModifiers() {
+    public Modifiers [] getParamModifiers() {
         insureParsed();
         return paramModifiers;
     }
 
-    public String[] getParamNames() {
+    public String [] getParamNames() {
         insureParsed();
         return paramNames;
     }
 
-    public String[] getTypeDescriptors(
-            CallStack callstack, Interpreter interpreter, String defaultPackage) {
-        if (typeDescriptors != null)
+    public String [] getTypeDescriptors(
+        CallStack callstack, Interpreter interpreter, String defaultPackage )
+    {
+        if ( typeDescriptors != null )
             return typeDescriptors;
 
         insureParsed();
-        String[] typeDesc = new String[numArgs];
+        String [] typeDesc = new String[numArgs];
 
-        for (int i = 0; i < numArgs; i++) {
-            BSHFormalParameter param = (BSHFormalParameter) jjtGetChild(i);
+        for(int i=0; i<numArgs; i++)
+        {
+            BSHFormalParameter param = (BSHFormalParameter)jjtGetChild(i);
             typeDesc[i] = param.getTypeDescriptor(
-                    callstack, interpreter, defaultPackage);
+                callstack, interpreter, defaultPackage );
         }
 
         this.typeDescriptors = typeDesc;
@@ -93,20 +97,22 @@ class BSHFormalParameters extends SimpleNode implements BshClassManager.Listener
     }
 
     /**
-     * Evaluate the types.
-     * Note that type resolution does not require the interpreter instance.
-     */
-    public Class<?>[] eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
-        if (paramTypes != null)
+        Evaluate the types.
+        Note that type resolution does not require the interpreter instance.
+    */
+    public Class<?>[] eval( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
+        if ( paramTypes != null )
             return paramTypes;
 
         insureParsed();
-        Class<?>[] paramTypes = new Class[numArgs];
+        Class<?> [] paramTypes = new Class[numArgs];
 
-        for (int i = 0; i < numArgs; i++) {
-            BSHFormalParameter param = (BSHFormalParameter) jjtGetChild(i);
-            paramTypes[i] = (Class<?>) param.eval(callstack, interpreter);
+        for(int i=0; i<numArgs; i++)
+        {
+            BSHFormalParameter param = (BSHFormalParameter)jjtGetChild(i);
+            paramTypes[i] = (Class<?>)param.eval( callstack, interpreter );
         }
 
         this.paramTypes = paramTypes;
@@ -114,27 +120,19 @@ class BSHFormalParameters extends SimpleNode implements BshClassManager.Listener
         return paramTypes;
     }
 
-    /**
-     * Property getter for listener.
-     *
-     * @return boolean return the listener
-     */
+    /** Property getter for listener.
+     * @return boolean return the listener */
     public boolean isListener() {
         return listener;
     }
 
-    /**
-     * Property setter for listener.
-     *
-     * @param listener the listener to set
-     */
+    /** Property setter for listener.
+     * @param listener the listener to set */
     public void setListener(boolean listener) {
         this.listener = listener;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void classLoaderChanged() {
         paramTypes = null;

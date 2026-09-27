@@ -92,6 +92,9 @@ public class ClassGeneratorUtil implements Opcodes {
             ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED;
 
     private static final String OBJECT = "Ljava/lang/Object;";
+    private static final String GENERATED_CLASS_DESC = Type.getDescriptor(GeneratedClass.class);
+    private static final String PRIMITIVE_NAME = Type.getInternalName(Primitive.class);
+    private static final String PRIMITIVE_DESC = Type.getDescriptor(Primitive.class);
 
     private final String className;
     private final String classDescript;
@@ -113,9 +116,9 @@ public class ClassGeneratorUtil implements Opcodes {
      * @param packageName e.g. "com.foo.bar"
      */
     public ClassGeneratorUtil(Modifiers classModifiers, String className,
-                              String packageName, Class<?> superClass, Class<?>[] interfaces,
-                              Variable[] vars, DelayedEvalBshMethod[] bshmethods,
-                              NameSpace classStaticNameSpace, ClassGenerator.Type type) {
+            String packageName, Class<?> superClass, Class<?>[] interfaces,
+            Variable[] vars, DelayedEvalBshMethod[] bshmethods,
+            NameSpace classStaticNameSpace, ClassGenerator.Type type) {
         this.classModifiers = classModifiers;
         this.className = className;
         this.type = type;
@@ -123,7 +126,7 @@ public class ClassGeneratorUtil implements Opcodes {
             this.fqClassName = packageName.replace('.', '/') + "/" + className;
         else
             this.fqClassName = className;
-        this.classDescript = "L" + fqClassName.replace('.', '/') + ";";
+        this.classDescript = "L"+fqClassName.replace('.', '/')+";";
 
         if (superClass == null)
             if (type == ENUM)
@@ -165,294 +168,19 @@ public class ClassGeneratorUtil implements Opcodes {
     }
 
     /**
-     * Translate bsh.Modifiers into ASM modifier bitflags.
-     * Only a subset of modifiers are baked into classes.
-     */
-    private static int getASMModifiers(Modifiers modifiers) {
-        int mods = 0;
-
-        if (modifiers.hasModifier(ACC_PUBLIC))
-            mods |= ACC_PUBLIC;
-        if (modifiers.hasModifier(ACC_PRIVATE))
-            mods |= ACC_PRIVATE;
-        if (modifiers.hasModifier(ACC_PROTECTED))
-            mods |= ACC_PROTECTED;
-        if (modifiers.hasModifier(ACC_STATIC))
-            mods |= ACC_STATIC;
-        if (modifiers.hasModifier(ACC_SYNCHRONIZED))
-            mods |= ACC_SYNCHRONIZED;
-        if (modifiers.hasModifier(ACC_ABSTRACT))
-            mods |= ACC_ABSTRACT;
-
-        // if no access modifiers declared then we make it public
-        if ((modifiers.getModifiers() & ACCESS_MODIFIERS) == 0) {
-            mods |= ACC_PUBLIC;
-            modifiers.addModifier(ACC_PUBLIC);
-        }
-
-        return mods;
-    }
-
-    /**
-     * Generate a field - static or instance.
-     */
-    private static void generateField(String fieldName, String type, int modifiers, ClassWriter cw) {
-        generateField(fieldName, type, modifiers, null/*value*/, cw);
-    }
-
-    /**
-     * Generate field and assign initial value.
-     */
-    private static void generateField(String fieldName, String type, int modifiers, Object value, ClassWriter cw) {
-        cw.visitField(modifiers, fieldName, type, null/*signature*/, value);
-    }
-
-    /**
-     * Build the signature for the supplied parameter types.
-     *
-     * @param paramTypes list of parameter types
-     * @return parameter type signature
-     */
-    private static String getTypeParameterSignature(String[] paramTypes) {
-        StringBuilder sb = new StringBuilder("<");
-        for (final String pt : paramTypes)
-            sb.append(pt).append(":");
-        return sb.toString();
-    }
-
-    // push the class static This object
-    private static void pushBshStatic(String fqClassName, String className, MethodVisitor cv) {
-        cv.visitFieldInsn(GETSTATIC, fqClassName, BSHSTATIC + className, "Lbsh/This;");
-    }
-
-    // push the class instance This object
-    private static void pushBshThis(String fqClassName, String className, MethodVisitor cv) {
-        // Push 'this'
-        cv.visitVarInsn(ALOAD, 0);
-        // Get the instance field
-        cv.visitFieldInsn(GETFIELD, fqClassName, BSHTHIS + className, "Lbsh/This;");
-    }
-
-    private static String getMethodDescriptor(String returnType, String[] paramTypes) {
-        StringBuilder sb = new StringBuilder("(");
-        for (String paramType : paramTypes)
-            sb.append(paramType);
-
-        sb.append(')').append(returnType);
-        return sb.toString();
-    }
-
-    /**
-     * Validate abstract method implementation.
-     * Check that class is abstract or implements all abstract methods.
-     * BSH classes are not abstract which allows us to instantiate abstract
-     * classes. Also applies inheritance rules @see checkInheritanceRules().
-     *
-     * @param type The class to check.
-     * @throws RuntimException if validation fails.
-     */
-    static void checkAbstractMethodImplementation(Class<?> type) {
-        final List<Method> meths = new ArrayList<>();
-        class Reflector {
-            void gatherMethods(Class<?> type) {
-                if (null != type.getSuperclass())
-                    gatherMethods(type.getSuperclass());
-                meths.addAll(Arrays.asList(type.getDeclaredMethods()));
-                for (Class<?> i : type.getInterfaces())
-                    gatherMethods(i);
-            }
-        }
-        new Reflector().gatherMethods(type);
-        // for each filtered abstract method
-        meths.stream().filter(m -> (m.getModifiers() & ACC_ABSTRACT) > 0)
-                .forEach(method -> {
-                    Method[] meth = meths.stream()
-                            // find methods of the same name
-                            .filter(m -> method.getName().equals(m.getName())
-                                    // not abstract nor private
-                                    && (m.getModifiers() & (ACC_ABSTRACT | ACC_PRIVATE)) == 0
-                                    // with matching parameters
-                                    && Types.areSignaturesEqual(
-                                    method.getParameterTypes(), m.getParameterTypes()))
-                            // sort most visible methods to the top
-                            // comparator: -1 if a is public or b not public or protected
-                            //              0 if access modifiers for a and b are equal
-                            .sorted((a, b) -> (a.getModifiers() & ACC_PUBLIC) > 0
-                                    || (b.getModifiers() & (ACC_PUBLIC | ACC_PROTECTED)) == 0
-                                    ? -1 : (a.getModifiers() & ACCESS_MODIFIERS) ==
-                                    (b.getModifiers() & ACCESS_MODIFIERS)
-                                    ? 0 : 1)
-                            .toArray(Method[]::new);
-                    // with no overriding methods class must be abstract
-                    if (meth.length == 0 && !Reflect.getClassModifiers(type)
-                            .hasModifier("abstract"))
-                        throw new RuntimeException(type.getSimpleName()
-                                + " is not abstract and does not override abstract method "
-                                + method.getName() + "() in "
-                                + method.getDeclaringClass().getSimpleName());
-                    // apply inheritance rules to most visible method at index 0
-                    if (meth.length > 0)
-                        checkInheritanceRules(method.getModifiers(),
-                                meth[0].getModifiers(), method.getDeclaringClass());
-                });
-    }
-
-    /**
-     * Apply inheritance rules. Overridden methods may not reduce visibility.
-     *
-     * @param parentModifiers     parent modifiers of method being overridden
-     * @param overriddenModifiers overridden modifiers of new method
-     * @param parentClass         parent class name
-     * @return true if visibility is not reduced
-     * @throws RuntimeException if validation fails
-     */
-    static boolean checkInheritanceRules(int parentModifiers, int overriddenModifiers, Class<?> parentClass) {
-        int prnt = parentModifiers & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED);
-        int chld = overriddenModifiers & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED);
-
-        if (chld == prnt || prnt == ACC_PRIVATE || chld == ACC_PUBLIC || prnt == 0 && chld != ACC_PRIVATE)
-            return true;
-
-        throw new RuntimeException("Cannot reduce the visibility of the inherited method from "
-                + parentClass.getName());
-    }
-
-    /**
-     * Check if method name and type descriptor signature is overridden.
-     *
-     * @param clas       super class
-     * @param methodName name of method
-     * @param paramTypes type descriptor of parameter types
-     * @return matching method or null if not found
-     */
-    static Method classContainsMethod(Class<?> clas, String methodName, String[] paramTypes) {
-        while (clas != null) {
-            for (Method method : clas.getDeclaredMethods())
-                if (method.getName().equals(methodName)
-                        && paramTypes.length == method.getParameterCount()) {
-                    String[] methodParamTypes = getTypeDescriptors(method.getParameterTypes());
-                    boolean found = true;
-                    for (int j = 0; j < paramTypes.length; j++)
-                        if (false == (found = paramTypes[j].equals(methodParamTypes[j])))
-                            break;
-                    if (found) return method;
-                }
-            clas = clas.getSuperclass();
-        }
-        return null;
-    }
-
-    /**
-     * Generate return code for a normal bytecode
-     *
-     * @param returnType expect type descriptor string
-     * @param cv         the code visitor to be used to generate the bytecode.
-     */
-    private static void generatePlainReturnCode(String returnType, MethodVisitor cv) {
-        if (returnType.equals("V"))
-            cv.visitInsn(RETURN);
-        else if (isPrimitive(returnType)) {
-            int opcode = IRETURN;
-            if (returnType.equals("D"))
-                opcode = DRETURN;
-            else if (returnType.equals("F"))
-                opcode = FRETURN;
-            else if (returnType.equals("J")) //long
-                opcode = LRETURN;
-
-            cv.visitInsn(opcode);
-        } else {
-            cv.visitTypeInsn(CHECKCAST, descriptorToClassName(returnType));
-            cv.visitInsn(ARETURN);
-        }
-    }
-
-    /**
-     * Does the type descriptor string describe a primitive type?
-     */
-    private static boolean isPrimitive(String typeDescriptor) {
-        return typeDescriptor.length() == 1; // right?
-    }
-
-    /**
-     * Returns type descriptors for the parameter types.
-     *
-     * @param cparams class list of parameter types
-     * @return String list of type descriptors
-     */
-    static String[] getTypeDescriptors(Class<?>[] cparams) {
-        String[] sa = new String[cparams.length];
-        for (int i = 0; i < sa.length; i++)
-            sa[i] = BSHType.getTypeDescriptor(cparams[i]);
-        return sa;
-    }
-
-    /**
-     * If a non-array object type, remove the prefix "L" and suffix ";".
-     *
-     * @param s expect type descriptor string.
-     * @return class name
-     */
-    private static String descriptorToClassName(String s) {
-        if (s.startsWith("[") || !s.startsWith("L"))
-            return s;
-        return s.substring(1, s.length() - 1);
-    }
-
-    /**
-     * Attempt to load a script named for the class: e.g. Foo.class Foo.bsh.
-     * The script is expected to (at minimum) initialize the class body.
-     * That is, it should contain the scripted class definition.
-     * <p>
-     * This method relies on the fact that the ClassGenerator generateClass()
-     * method will detect that the generated class already exists and
-     * initialize it rather than recreating it.
-     * <p>
-     * The only interact that this method has with the process is to initially
-     * cache the correct class in the class manager for the interpreter to
-     * insure that it is found and associated with the scripted body.
-     */
-    public static void startInterpreterForClass(Class<?> genClass) {
-        String fqClassName = genClass.getName();
-        String baseName = Name.suffix(fqClassName, 1);
-        String resName = baseName + ".bsh";
-
-        URL url = genClass.getResource(resName);
-        if (null == url)
-            throw new InterpreterError("Script (" + resName + ") for BeanShell generated class: " + genClass + " not found.");
-
-        // Set up the interpreter
-        try (Reader reader = new FileReader(genClass.getResourceAsStream(resName))) {
-            Interpreter bsh = new Interpreter();
-            NameSpace globalNS = bsh.getNameSpace();
-            globalNS.setName("class_" + baseName + "_global");
-            globalNS.getClassManager().associateClass(genClass);
-
-            // Source the script
-            bsh.eval(reader, globalNS, resName);
-        } catch (TargetError e) {
-            System.out.println("Script threw exception: " + e);
-            if (e.inNativeCode())
-                e.printStackTrace(System.err);
-        } catch (IOException | EvalError e) {
-            System.out.println("Evaluation Error: " + e);
-        }
-    }
-
-    /**
      * This method provides a hook for the class generator implementation to
      * store additional information in the class's bsh static namespace.
      * Currently this is used to store an array of consructors corresponding
      * to the constructor switch in the generated class.
-     * <p>
+     *
      * This method must be called to initialize the static space even if we
      * are using a previously generated class.
      */
     public void initStaticNameSpace(NameSpace classStaticNameSpace, BSHBlock instanceInitBlock) {
         try {
-            classStaticNameSpace.setLocalVariable("" + BSHCLASSMODIFIERS, classModifiers, false/*strict*/);
-            classStaticNameSpace.setLocalVariable("" + BSHCONSTRUCTORS, constructors, false/*strict*/);
-            classStaticNameSpace.setLocalVariable("" + BSHINIT, instanceInitBlock, false/*strict*/);
+            classStaticNameSpace.setLocalVariable(""+BSHCLASSMODIFIERS, classModifiers, false/*strict*/);
+            classStaticNameSpace.setLocalVariable(""+BSHCONSTRUCTORS, constructors, false/*strict*/);
+            classStaticNameSpace.setLocalVariable(""+BSHINIT, instanceInitBlock, false/*strict*/);
         } catch (UtilEvalError e) {
             throw new InterpreterError("Unable to init class static block: " + e, e);
         }
@@ -471,7 +199,7 @@ public class ClassGeneratorUtil implements Opcodes {
             classMods |= ACC_FINAL | ACC_SUPER | ACC_ENUM;
         else {
             classMods |= ACC_SUPER;
-            if ((classMods & ACC_ABSTRACT) > 0)
+            if ( (classMods & ACC_ABSTRACT) > 0 )
                 // bsh classes are not abstract
                 classMods -= ACC_ABSTRACT;
         }
@@ -487,14 +215,14 @@ public class ClassGeneratorUtil implements Opcodes {
         interfaceNames[interfaces.length] = Type.getInternalName(GeneratedClass.class);
 
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        String signature = type == ENUM ? "Ljava/lang/Enum<" + classDescript + ">;" : null;
+        String signature = type == ENUM ? "Ljava/lang/Enum<"+classDescript+">;" : null;
         cw.visit(V1_8, classMods, fqClassName, signature, superClassName, interfaceNames);
 
-        if (type != INTERFACE)
+        if ( type != INTERFACE )
             // Generate the bsh instance 'This' reference holder field
-            generateField(BSHTHIS + className, "Lbsh/This;", ACC_PUBLIC, cw);
+            generateField(BSHTHIS+className, "Lbsh/This;", ACC_PUBLIC, cw);
         // Generate the static bsh static This reference holder field
-        generateField(BSHSTATIC + className, "Lbsh/This;", ACC_PUBLIC + ACC_STATIC + ACC_FINAL, cw);
+        generateField(BSHSTATIC+className, "Lbsh/This;", ACC_PUBLIC + ACC_STATIC + ACC_FINAL, cw);
         // Generate class UUID
         generateField("UUID", "Ljava/lang/String;", ACC_PUBLIC + ACC_STATIC + ACC_FINAL, this.uuid, cw);
 
@@ -507,12 +235,12 @@ public class ClassGeneratorUtil implements Opcodes {
             String fType = var.getTypeDescriptor();
             int modifiers = getASMModifiers(var.getModifiers());
 
-            if (type == INTERFACE) {
+            if ( type == INTERFACE ) {
                 var.setConstant();
                 classStaticNameSpace.setVariableImpl(var);
                 // keep constant fields virtual
                 continue;
-            } else if (type == ENUM && var.hasModifier("enum")) {
+            } else if ( type == ENUM && var.hasModifier("enum") ) {
                 modifiers |= ACC_ENUM | ACC_FINAL;
                 fType = classDescript;
             }
@@ -535,37 +263,39 @@ public class ClassGeneratorUtil implements Opcodes {
 
             int modifiers = getASMModifiers(constructors[i].getModifiers());
             if (constructors[i].isVarArgs())
-                modifiers |= ACC_VARARGS;
+               modifiers |= ACC_VARARGS;
             generateConstructor(i, constructors[i].getParamTypeDescriptors(), modifiers, cw);
             hasConstructor = true;
         }
 
         // If no other constructors, generate a default constructor
-        if (type == CLASS && !hasConstructor)
+        if ( type == CLASS && !hasConstructor )
             generateConstructor(DEFAULTCONSTRUCTOR/*index*/, new String[0], ACC_PUBLIC, cw);
 
         // Generate methods
         for (DelayedEvalBshMethod method : methods) {
+            if (method.isExtension)
+                continue;
 
             // Don't generate private methods
             if (method.hasModifier("private"))
                 continue;
 
-            if (type == INTERFACE
+            if ( type == INTERFACE
                     && !method.hasModifier("static")
                     && !method.hasModifier("default")
-                    && !method.hasModifier("abstract"))
+                    && !method.hasModifier("abstract") )
                 method.getModifiers().addModifier("abstract");
             int modifiers = getASMModifiers(method.getModifiers());
             if (method.isVarArgs())
-                modifiers |= ACC_VARARGS;
+               modifiers |= ACC_VARARGS;
             boolean isStatic = (modifiers & ACC_STATIC) > 0;
 
             generateMethod(className, fqClassName, method.getName(), method.getReturnTypeDescriptor(),
                     method.getParamTypeDescriptors(), modifiers, cw);
 
             // check if method overrides existing method and generate super delegate.
-            if (null != classContainsMethod(superClass, method.getName(), method.getParamTypeDescriptors()) && !isStatic)
+            if ( null != classContainsMethod(superClass, method.getName(), method.getParamTypeDescriptors()) && !isStatic )
                 generateSuperDelegateMethod(superClass, superClassName, method.getName(), method.getReturnTypeDescriptor(),
                         method.getParamTypeDescriptors(), ACC_PUBLIC, cw);
         }
@@ -574,25 +304,70 @@ public class ClassGeneratorUtil implements Opcodes {
     }
 
     /**
-     * Generate support code needed for Enum types.
+     * Translate bsh.Modifiers into ASM modifier bitflags.
+     * Only a subset of modifiers are baked into classes.
+     */
+    private static int getASMModifiers(Modifiers modifiers) {
+        int mods = 0;
+
+        if (modifiers.hasModifier(ACC_PUBLIC))
+            mods |= ACC_PUBLIC;
+        if (modifiers.hasModifier(ACC_PRIVATE))
+            mods |= ACC_PRIVATE;
+        if (modifiers.hasModifier(ACC_PROTECTED))
+            mods |= ACC_PROTECTED;
+        if (modifiers.hasModifier(ACC_STATIC))
+            mods |= ACC_STATIC;
+        if (modifiers.hasModifier(ACC_SYNCHRONIZED))
+            mods |= ACC_SYNCHRONIZED;
+        if (modifiers.hasModifier(ACC_ABSTRACT))
+            mods |= ACC_ABSTRACT;
+
+        // if no access modifiers declared then we make it public
+        if ( ( modifiers.getModifiers() & ACCESS_MODIFIERS ) == 0 ) {
+            mods |= ACC_PUBLIC;
+            modifiers.addModifier(ACC_PUBLIC);
+        }
+
+        return mods;
+    }
+
+    /** Generate a field - static or instance. */
+    private static void generateField(String fieldName, String type, int modifiers, ClassWriter cw) {
+        generateField(fieldName, type, modifiers, null/*value*/, cw);
+    }
+    /** Generate field and assign initial value. */
+    private static void generateField(String fieldName, String type, int modifiers, Object value, ClassWriter cw) {
+        cw.visitField(modifiers, fieldName, type, null/*signature*/, value);
+    }
+
+    /**
+     * Build the signature for the supplied parameter types.
+     * @param paramTypes list of parameter types
+     * @return parameter type signature
+     */
+    private static String getTypeParameterSignature(String[] paramTypes) {
+        // TODO: Generate a real generic Signature when generic metadata is preserved.
+        return null;
+    }
+
+    /** Generate support code needed for Enum types.
      * Generates enum values and valueOf methods, default private constructor with initInstance call.
      * Instead of maintaining a synthetic array of enum values we greatly reduce the required bytecode
      * needed by delegating to This.enumValues and building the array dynamically.
-     *
-     * @param fqClassName   fully qualified class name
-     * @param className     class name string
+     * @param fqClassName fully qualified class name
+     * @param className class name string
      * @param classDescript class descriptor string
-     * @param cw            current class writer
-     */
+     * @param cw current class writer */
     private void generateEnumSupport(String fqClassName, String className, String classDescript, ClassWriter cw) {
         // generate enum values() method delegated to static This.enumValues.
-        MethodVisitor cv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "values", "()[" + classDescript, null, null);
+        MethodVisitor cv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "values", "()["+classDescript, null, null);
         pushBshStatic(fqClassName, className, cv);
         cv.visitMethodInsn(INVOKEVIRTUAL, "bsh/This", "enumValues", "()[Ljava/lang/Object;", false);
-        generatePlainReturnCode("[" + classDescript, cv);
+        generatePlainReturnCode("["+classDescript, cv);
         cv.visitMaxs(0, 0);
         // generate Enum.valueOf delegate method
-        cv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "valueOf", "(Ljava/lang/String;)" + classDescript, null, null);
+        cv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "valueOf", "(Ljava/lang/String;)"+classDescript, null, null);
         cv.visitLdcInsn(Type.getType(classDescript));
         cv.visitVarInsn(ALOAD, 0);
         cv.visitMethodInsn(INVOKESTATIC, "java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", false);
@@ -607,32 +382,28 @@ public class ClassGeneratorUtil implements Opcodes {
         cv.visitVarInsn(ALOAD, 0);
         cv.visitLdcInsn(className);
         generateParameterReifierCode(new String[0], false/*isStatic*/, cv);
-        cv.visitMethodInsn(INVOKESTATIC, "bsh/This", "initInstance", "(Lbsh/GeneratedClass;Ljava/lang/String;[Ljava/lang/Object;)V", false);
+        cv.visitMethodInsn(INVOKESTATIC, "bsh/This", "initInstance", "(" + GENERATED_CLASS_DESC + "Ljava/lang/String;[Ljava/lang/Object;)V", false);
         cv.visitInsn(RETURN);
         cv.visitMaxs(0, 0);
     }
 
-    /**
-     * Generate the static initialization of the enum constants. Called from clinit.
-     *
-     * @param fqClassName   fully qualified class name
+    /** Generate the static initialization of the enum constants. Called from clinit.
+     * @param fqClassName fully qualified class name
      * @param classDescript class descriptor string
-     * @param cv            clinit method visitor
-     */
+     * @param cv clinit method visitor */
     private void generateEnumStaticInit(String fqClassName, String classDescript, MethodVisitor cv) {
         int ordinal = ICONST_0;
-        for (Variable var : vars)
-            if (var.hasModifier("enum")) {
-                cv.visitTypeInsn(NEW, fqClassName);
-                cv.visitInsn(DUP);
-                cv.visitLdcInsn(var.getName());
-                if (ICONST_5 >= ordinal)
-                    cv.visitInsn(ordinal++);
-                else
-                    cv.visitIntInsn(BIPUSH, ordinal++ - ICONST_0);
-                cv.visitMethodInsn(INVOKESPECIAL, fqClassName, "<init>", "(Ljava/lang/String;I)V", false);
-                cv.visitFieldInsn(PUTSTATIC, fqClassName, var.getName(), classDescript);
-            }
+        for ( Variable var : vars ) if ( var.hasModifier("enum") ) {
+            cv.visitTypeInsn(NEW, fqClassName);
+            cv.visitInsn(DUP);
+            cv.visitLdcInsn(var.getName());
+            if ( ICONST_5 >= ordinal )
+                cv.visitInsn(ordinal++);
+            else
+                cv.visitIntInsn(BIPUSH, ordinal++ - ICONST_0);
+            cv.visitMethodInsn(INVOKESPECIAL, fqClassName, "<init>", "(Ljava/lang/String;I)V", false);
+            cv.visitFieldInsn(PUTSTATIC, fqClassName, var.getName(), classDescript);
+        }
     }
 
     /**
@@ -660,7 +431,7 @@ public class ClassGeneratorUtil implements Opcodes {
             return;
 
         // Generate code to push the BSHTHIS or BSHSTATIC field
-        if (isStatic || type == INTERFACE)
+        if ( isStatic||type == INTERFACE )
             pushBshStatic(fqClassName, className, cv);
         else
             pushBshThis(fqClassName, className, cv);
@@ -720,7 +491,7 @@ public class ClassGeneratorUtil implements Opcodes {
         cv.visitVarInsn(ALOAD, argsVar);
 
         // invoke the initInstance() method
-        cv.visitMethodInsn(INVOKESTATIC, "bsh/This", "initInstance", "(Lbsh/GeneratedClass;Ljava/lang/String;[Ljava/lang/Object;)V", false);
+        cv.visitMethodInsn(INVOKESTATIC, "bsh/This", "initInstance", "(" + GENERATED_CLASS_DESC + "Ljava/lang/String;[Ljava/lang/Object;)V", false);
 
         cv.visitInsn(RETURN);
 
@@ -739,9 +510,9 @@ public class ClassGeneratorUtil implements Opcodes {
         // initialize _bshStaticThis
         cv.visitFieldInsn(GETSTATIC, fqClassName, "UUID", "Ljava/lang/String;");
         cv.visitMethodInsn(INVOKESTATIC, "bsh/This", "pullBshStatic", "(Ljava/lang/String;)Lbsh/This;", false);
-        cv.visitFieldInsn(PUTSTATIC, fqClassName, BSHSTATIC + className, "Lbsh/This;");
+        cv.visitFieldInsn(PUTSTATIC, fqClassName, BSHSTATIC+className, "Lbsh/This;");
 
-        if (type == ENUM)
+        if ( type == ENUM )
             generateEnumStaticInit(fqClassName, classDescript, cv);
 
         // equivalent of my.ClassName.class
@@ -770,12 +541,12 @@ public class ClassGeneratorUtil implements Opcodes {
      * actual arguments as well as the index of the constructor to call.
      */
     void generateConstructorSwitch(int consIndex, int argsVar, int consArgsVar,
-                                   MethodVisitor cv) {
+            MethodVisitor cv) {
         Label defaultLabel = new Label();
         Label endLabel = new Label();
         List<Invocable> superConstructors = BshClassManager.memberCache
                 .get(superClass).members(superClass.getName());
-        int cases = superConstructors.size() + constructors.length;
+        int cases =  superConstructors.size() + constructors.length;
 
         Label[] labels = new Label[cases];
         for (int i = 0; i < cases; i++)
@@ -828,21 +599,31 @@ public class ClassGeneratorUtil implements Opcodes {
         cv.visitLabel(endLabel);
     }
 
-    /**
-     * Generate a branch of the constructor switch.
+    // push the class static This object
+    private static void pushBshStatic(String fqClassName, String className, MethodVisitor cv) {
+        cv.visitFieldInsn(GETSTATIC, fqClassName, BSHSTATIC + className, "Lbsh/This;");
+    }
+
+    // push the class instance This object
+    private static void pushBshThis(String fqClassName, String className, MethodVisitor cv) {
+        // Push 'this'
+        cv.visitVarInsn(ALOAD, 0);
+        // Get the instance field
+        cv.visitFieldInsn(GETFIELD, fqClassName, BSHTHIS + className, "Lbsh/This;");
+    }
+
+    /** Generate a branch of the constructor switch.
      * This method is called by generateConstructorSwitch. The code generated by this method assumes
      * that the argument array is on the stack.
-     *
-     * @param index           label index
+     * @param index label index
      * @param targetClassName class name
-     * @param paramTypes      array of type descriptor strings
-     * @param endLabel        jump label
-     * @param labels          visit labels
-     * @param consArgsVar     constructor args
-     * @param cv              the code visitor to be used to generate the bytecode.
-     */
+     * @param paramTypes array of type descriptor strings
+     * @param endLabel jump label
+     * @param labels visit labels
+     * @param consArgsVar constructor args
+     * @param cv the code visitor to be used to generate the bytecode. */
     private void doSwitchBranch(int index, String targetClassName, String[] paramTypes, Label endLabel,
-                                Label[] labels, int consArgsVar, MethodVisitor cv) {
+            Label[] labels, int consArgsVar, MethodVisitor cv) {
         cv.visitLabel(labels[index]);
 
         cv.visitVarInsn(ALOAD, 0); // push this before args
@@ -890,6 +671,15 @@ public class ClassGeneratorUtil implements Opcodes {
         cv.visitJumpInsn(GOTO, endLabel);
     }
 
+    private static String getMethodDescriptor(String returnType, String[] paramTypes) {
+        StringBuilder sb = new StringBuilder("(");
+        for (String paramType : paramTypes)
+            sb.append(paramType);
+
+        sb.append(')').append(returnType);
+        return sb.toString();
+    }
+
     /**
      * Generate a superclass method delegate accessor method.
      * These methods are specially named methods which allow access to
@@ -929,17 +719,127 @@ public class ClassGeneratorUtil implements Opcodes {
         cv.visitMaxs(0, 0);
     }
 
-    /**
-     * Generates the code to reify the arguments of the given method.
+    /** Validate abstract method implementation.
+     * Check that class is abstract or implements all abstract methods.
+     * BSH classes are not abstract which allows us to instantiate abstract
+     * classes. Also applies inheritance rules @see checkInheritanceRules().
+     * @param type The class to check.
+     * @throws RuntimException if validation fails. */
+    static void checkAbstractMethodImplementation(Class<?> type) {
+        final List<Method> meths = new ArrayList<>();
+        class Reflector {
+            void gatherMethods(Class<?> type) {
+                if (null != type.getSuperclass())
+                    gatherMethods(type.getSuperclass());
+                meths.addAll(Arrays.asList(type.getDeclaredMethods()));
+                for (Class<?> i : type.getInterfaces())
+                    gatherMethods(i);
+            }
+        }
+        new Reflector().gatherMethods(type);
+        // for each filtered abstract method
+        meths.stream().filter( m -> ( m.getModifiers() & ACC_ABSTRACT ) > 0 )
+        .forEach( method -> {
+            Method[] meth = meths.stream()
+                    // find methods of the same name
+                .filter( m -> method.getName().equals(m.getName() )
+                    // not abstract nor private
+                    && ( m.getModifiers() & (ACC_ABSTRACT|ACC_PRIVATE) ) == 0
+                    // with matching parameters
+                    && Types.areSignaturesEqual(
+                            method.getParameterTypes(), m.getParameterTypes()))
+                // sort most visible methods to the top
+                // comparator: -1 if a is public or b not public or protected
+                //              0 if access modifiers for a and b are equal
+                .sorted( (a, b) -> ( a.getModifiers() & ACC_PUBLIC ) > 0
+                      || ( b.getModifiers() & (ACC_PUBLIC|ACC_PROTECTED) ) == 0
+                            ? -1 : ( a.getModifiers() & ACCESS_MODIFIERS ) ==
+                                   ( b.getModifiers() & ACCESS_MODIFIERS )
+                            ?  0 : 1 )
+                .toArray(Method[]::new);
+            // with no overriding methods class must be abstract
+            if ( meth.length == 0 && !Reflect.getClassModifiers(type)
+                    .hasModifier("abstract") )
+                throw new RuntimeException(type.getSimpleName()
+                    + " is not abstract and does not override abstract method "
+                    + method.getName() + "() in "
+                    + method.getDeclaringClass().getSimpleName());
+            // apply inheritance rules to most visible method at index 0
+            if ( meth.length > 0)
+                checkInheritanceRules(method.getModifiers(),
+                        meth[0].getModifiers(), method.getDeclaringClass());
+        });
+    }
+
+    /** Apply inheritance rules. Overridden methods may not reduce visibility.
+     * @param parentModifiers parent modifiers of method being overridden
+     * @param overriddenModifiers overridden modifiers of new method
+     * @param parentClass parent class name
+     * @return true if visibility is not reduced
+     * @throws RuntimeException if validation fails */
+    static boolean checkInheritanceRules(int parentModifiers, int overriddenModifiers, Class<?> parentClass) {
+        int prnt = parentModifiers & ( ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED );
+        int chld = overriddenModifiers & ( ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED );
+
+        if ( chld == prnt || prnt == ACC_PRIVATE || chld == ACC_PUBLIC || prnt == 0 && chld != ACC_PRIVATE )
+            return true;
+
+        throw new RuntimeException("Cannot reduce the visibility of the inherited method from "
+                + parentClass.getName());
+    }
+
+    /** Check if method name and type descriptor signature is overridden.
+     * @param clas super class
+     * @param methodName name of method
+     * @param paramTypes type descriptor of parameter types
+     * @return matching method or null if not found */
+    static Method classContainsMethod(Class<?> clas, String methodName, String[] paramTypes) {
+        while ( clas != null ) {
+            for ( Method method : clas.getDeclaredMethods() )
+                if ( method.getName().equals(methodName)
+                        && paramTypes.length == method.getParameterCount() ) {
+                    String[] methodParamTypes = getTypeDescriptors(method.getParameterTypes());
+                    boolean found = true;
+                    for ( int j = 0; j < paramTypes.length; j++ )
+                        if (false == (found = paramTypes[j].equals(methodParamTypes[j])))
+                            break;
+                    if (found) return method;
+                }
+            clas = clas.getSuperclass();
+        }
+        return null;
+    }
+
+    /** Generate return code for a normal bytecode
+     * @param returnType expect type descriptor string
+     * @param cv the code visitor to be used to generate the bytecode. */
+    private static void generatePlainReturnCode(String returnType, MethodVisitor cv) {
+        if (returnType.equals("V"))
+            cv.visitInsn(RETURN);
+        else if (isPrimitive(returnType)) {
+            int opcode = IRETURN;
+            if (returnType.equals("D"))
+                opcode = DRETURN;
+            else if (returnType.equals("F"))
+                opcode = FRETURN;
+            else if (returnType.equals("J")) //long
+                opcode = LRETURN;
+
+            cv.visitInsn(opcode);
+        } else {
+            cv.visitTypeInsn(CHECKCAST, descriptorToClassName(returnType));
+            cv.visitInsn(ARETURN);
+        }
+    }
+
+    /**  Generates the code to reify the arguments of the given method.
      * For a method "int m (int i, String s)", this code is the bytecode
      * corresponding to the "new Object[] { new bsh.Primitive(i), s }"
      * expression.
-     *
-     * @param cv       the code visitor to be used to generate the bytecode.
-     * @param isStatic the enclosing methods is static
      * @author Eric Bruneton
      * @author Pat Niemeyer
-     */
+     * @param cv the code visitor to be used to generate the bytecode.
+     * @param isStatic the enclosing methods is static */
     private void generateParameterReifierCode(String[] paramTypes, boolean isStatic, final MethodVisitor cv) {
         cv.visitIntInsn(SIPUSH, paramTypes.length);
         cv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
@@ -959,7 +859,7 @@ public class ClassGeneratorUtil implements Opcodes {
                 else
                     opcode = ILOAD;
 
-                String type = "bsh/Primitive";
+                String type = PRIMITIVE_NAME;
                 cv.visitTypeInsn(NEW, type);
                 cv.visitInsn(DUP);
                 cv.visitVarInsn(opcode, localVarIndex);
@@ -970,7 +870,7 @@ public class ClassGeneratorUtil implements Opcodes {
                 cv.visitVarInsn(ALOAD, localVarIndex);
                 Label isnull = new Label();
                 cv.visitJumpInsn(IFNONNULL, isnull);
-                cv.visitFieldInsn(GETSTATIC, "bsh/Primitive", "NULL", "Lbsh/Primitive;");
+                cv.visitFieldInsn(GETSTATIC, PRIMITIVE_NAME, "NULL", PRIMITIVE_DESC);
                 cv.visitInsn(AASTORE);
                 // else store parameter as Object.
                 Label notnull = new Label();
@@ -984,16 +884,13 @@ public class ClassGeneratorUtil implements Opcodes {
         }
     }
 
-    /**
-     * Generates the code to unreify the result of the given method.
+    /** Generates the code to unreify the result of the given method.
      * For a method "int m (int i, String s)", this code is the bytecode
      * corresponding to the "((Integer)...).intValue()" expression.
-     *
-     * @param returnType expect type descriptor string
-     * @param cv         the code visitor to be used to generate the bytecode.
      * @author Eric Bruneton
      * @author Pat Niemeyer
-     */
+     * @param returnType expect type descriptor string
+     * @param cv the code visitor to be used to generate the bytecode. */
     private void generateReturnCode(String returnType, MethodVisitor cv) {
         if (returnType.equals("V")) {
             cv.visitInsn(POP);
@@ -1011,7 +908,7 @@ public class ClassGeneratorUtil implements Opcodes {
             } else if (returnType.equals("B")) {
                 type = "java/lang/Byte";
                 meth = "byteValue";
-            } else if (returnType.equals("S")) {
+            } else if (returnType.equals("S") ) {
                 type = "java/lang/Short";
                 meth = "shortValue";
             } else if (returnType.equals("F")) {
@@ -1038,6 +935,72 @@ public class ClassGeneratorUtil implements Opcodes {
         } else {
             cv.visitTypeInsn(CHECKCAST, descriptorToClassName(returnType));
             cv.visitInsn(ARETURN);
+        }
+    }
+
+    /**
+     * Does the type descriptor string describe a primitive type?
+     */
+    private static boolean isPrimitive(String typeDescriptor) {
+        return typeDescriptor.length() == 1; // right?
+    }
+
+    /** Returns type descriptors for the parameter types.
+     * @param cparams class list of parameter types
+     * @return String list of type descriptors */
+    static String[] getTypeDescriptors(Class<?>[] cparams) {
+        String[] sa = new String[cparams.length];
+        for (int i = 0; i < sa.length; i++)
+            sa[i] = BSHType.getTypeDescriptor(cparams[i]);
+        return sa;
+    }
+
+    /** If a non-array object type, remove the prefix "L" and suffix ";".
+     * @param s expect type descriptor string.
+     * @return class name */
+    private static String descriptorToClassName(String s) {
+        if (s.startsWith("[") || !s.startsWith("L"))
+            return s;
+        return s.substring(1, s.length() - 1);
+    }
+
+    /**
+     * Attempt to load a script named for the class: e.g. Foo.class Foo.bsh.
+     * The script is expected to (at minimum) initialize the class body.
+     * That is, it should contain the scripted class definition.
+     *
+     * This method relies on the fact that the ClassGenerator generateClass()
+     * method will detect that the generated class already exists and
+     * initialize it rather than recreating it.
+     *
+     * The only interact that this method has with the process is to initially
+     * cache the correct class in the class manager for the interpreter to
+     * insure that it is found and associated with the scripted body.
+     */
+    public static void startInterpreterForClass(Class<?> genClass) {
+        String fqClassName = genClass.getName();
+        String baseName = Name.suffix(fqClassName, 1);
+        String resName = baseName + ".bsh";
+
+        URL url = genClass.getResource(resName);
+        if (null == url)
+            throw new InterpreterError("Script (" + resName + ") for BeanShell generated class: " + genClass + " not found.");
+
+        // Set up the interpreter
+        try (Reader reader = new FileReader(genClass.getResourceAsStream(resName))) {
+            Interpreter bsh = new Interpreter();
+            NameSpace globalNS = bsh.getNameSpace();
+            globalNS.setName("class_" + baseName + "_global");
+            globalNS.getClassManager().associateClass(genClass);
+
+            // Source the script
+            bsh.eval(reader, globalNS, resName);
+        } catch (TargetError e) {
+            System.out.println("Script threw exception: " + e);
+            if (e.inNativeCode())
+                e.printStackTrace(System.err);
+        } catch (IOException | EvalError e) {
+            System.out.println("Evaluation Error: " + e);
         }
     }
 }

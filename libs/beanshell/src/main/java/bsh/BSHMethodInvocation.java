@@ -29,36 +29,39 @@ package bsh;
 
 import java.lang.reflect.InvocationTargetException;
 
-class BSHMethodInvocation extends SimpleNode {
-    BSHMethodInvocation(int id) {
-        super(id);
-    }
+class BSHMethodInvocation extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
+    BSHMethodInvocation (int id) { super(id); }
 
     BSHAmbiguousName getNameNode() {
-        return (BSHAmbiguousName) jjtGetChild(0);
+        return (BSHAmbiguousName)jjtGetChild(0);
     }
 
     BSHArguments getArgsNode() {
-        return (BSHArguments) jjtGetChild(1);
+        return (BSHArguments)jjtGetChild(1);
     }
 
     /**
-     * Evaluate the method invocation with the specified callstack and
-     * interpreter
-     */
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        Evaluate the method invocation with the specified callstack and
+        interpreter
+    */
+    public Object eval( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
         NameSpace namespace = callstack.top();
         BSHAmbiguousName nameNode = getNameNode();
 
         // get caller info for assert fail
-        if ("fail".equals(nameNode.text))
+        if ("fail".equals(nameNode.text)) {
             interpreter.getNameSpace().setNode(this);
+        }
 
         // Do not evaluate methods this() or super() in class instance space
         // (i.e. inside a constructor)
-        if (namespace.getParent() != null && namespace.getParent().isClass
-                && (nameNode.text.equals("super") || nameNode.text.equals("this"))
+        if ( namespace.getParent() != null && namespace.getParent().isClass
+            && ( nameNode.text.equals("super") || nameNode.text.equals("this") )
         )
             return Primitive.VOID;
 
@@ -66,16 +69,16 @@ class BSHMethodInvocation extends SimpleNode {
         Object[] args = getArgsNode().getArguments(callstack, interpreter);
 
         try {
-            return name.invokeMethod(interpreter, args, callstack, this);
+            return name.invokeMethod( interpreter, args, callstack, this);
         } catch (ReflectError e) {
             throw new EvalException(
-                    "Error in method invocation: " + e.getMessage(),
+                "Error in method invocation: " + e.getMessage(),
                     this, callstack, e);
         } catch (InvocationTargetException e) {
             throw Reflect.targetErrorFromTargetException(
-                    e, name.toString(), callstack, this);
-        } catch (UtilEvalError e) {
-            throw e.toEvalError(this, callstack);
+                e, name.toString(), callstack, this);
+        } catch ( UtilEvalError e ) {
+            throw e.toEvalError( this, callstack );
         }
     }
 }

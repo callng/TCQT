@@ -27,25 +27,26 @@
 
 package bsh;
 
-import static bsh.ClassGenerator.Type;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import static bsh.ClassGenerator.Type;
 
 /**
- *
- */
-class BSHClassDeclaration extends SimpleNode {
+*/
+class BSHClassDeclaration extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     /**
-     * The class instance initializer method name.
-     * A BshMethod by this name is installed by the class delcaration into
-     * the static class body namespace.
-     * It is called once to initialize the static members of the class space
-     * and each time an instances is created to initialize the instance
-     * members.
-     */
+        The class instance initializer method name.
+        A BshMethod by this name is installed by the class delcaration into
+        the static class body namespace.
+        It is called once to initialize the static members of the class space
+        and each time an instances is created to initialize the instance
+        members.
+    */
     static final String CLASSINITNAME = "_bshClassInit";
 
     String name;
@@ -55,14 +56,11 @@ class BSHClassDeclaration extends SimpleNode {
     Type type;
     private Class<?> generatedClass;
 
-    BSHClassDeclaration(int id) {
-        super(id);
-    }
+    BSHClassDeclaration(int id) { super(id); }
 
     /**
-     *
-     */
-    public synchronized Object eval(final CallStack callstack, final Interpreter interpreter) throws EvalError {
+    */
+    public synchronized Object eval(final CallStack callstack, final Interpreter interpreter ) throws EvalError {
         if (generatedClass == null) {
             generatedClass = generateClass(callstack, interpreter);
         }
@@ -77,9 +75,9 @@ class BSHClassDeclaration extends SimpleNode {
         // resolve superclass if any
         Class<?> superClass = null;
         final List<BshMethod> meths = new ArrayList<>(0);
-        if (extend) {
-            BSHAmbiguousName superNode = (BSHAmbiguousName) jjtGetChild(child++);
-            superClass = superNode.toClass(callstack, interpreter);
+        if ( extend ) {
+            BSHAmbiguousName superNode = (BSHAmbiguousName)jjtGetChild(child++);
+            superClass = superNode.toClass( callstack, interpreter );
 
             // Validate if can extend this class
             try {
@@ -92,23 +90,23 @@ class BSHClassDeclaration extends SimpleNode {
                 // Validate final classes should not be extended
                 if (Reflect.getClassModifiers(superClass).hasModifier("final"))
                     throw new EvalException("Cannot inherit from final class "
-                            + superClass.getName(), null, null);
+                        + superClass.getName(), null, null);
                 // Collect final methods from all super class namespaces
                 meths.addAll(Stream.of(Reflect.getDeclaredMethods(superClass))
-                        .filter(m -> m.hasModifier("final") && !m.hasModifier("private"))
-                        .collect(Collectors.toList()));
+                    .filter(m->m.hasModifier("final")&&!m.hasModifier("private"))
+                    .collect(Collectors.toList()));
             }
         }
 
         // Get interfaces
         Class<?>[] interfaces = new Class[numInterfaces];
-        for (int i = 0; i < numInterfaces; i++) {
-            BSHAmbiguousName node = (BSHAmbiguousName) jjtGetChild(child++);
+        for( int i=0; i<numInterfaces; i++) {
+            BSHAmbiguousName node = (BSHAmbiguousName)jjtGetChild(child++);
             interfaces[i] = node.toClass(callstack, interpreter);
-            if (!interfaces[i].isInterface())
+            if ( !interfaces[i].isInterface() )
                 throw new EvalException(
-                        "Type: " + node.text + " is not an interface!",
-                        this, callstack);
+                    "Type: "+node.text+" is not an interface!",
+                    this, callstack );
 
             // Validate if can implement this interface
             try {
@@ -121,17 +119,17 @@ class BSHClassDeclaration extends SimpleNode {
         BSHBlock block = (BSHBlock) jjtGetChild(child);
 
         if (type == Type.INTERFACE) // this should ideally happen in the parser
-            modifiers.changeContext(Modifiers.INTERFACE);
+                modifiers.changeContext(Modifiers.INTERFACE);
 
         Class<?> clas = ClassGenerator.getClassGenerator().generateClass(
-                name, modifiers, interfaces, superClass, block, type,
-                callstack, interpreter);
+            name, modifiers, interfaces, superClass, block, type,
+            callstack, interpreter );
 
         // Validate final methods should not be overridden
         for (BshMethod m : meths)
-            if (null != Reflect.getDeclaredMethod(clas, m.getName(), m.getParameterTypes()))
-                throw new EvalException("Cannot override " + m.getName() + "() in " +
-                        StringUtil.typeString(superClass) + " overridden method is final", null, null);
+           if (null != Reflect.getDeclaredMethod(clas, m.getName(), m.getParameterTypes()))
+               throw new EvalException("Cannot override "+m.getName()+"() in " +
+                   StringUtil.typeString(superClass) + " overridden method is final", null, null);
 
         return clas;
     }

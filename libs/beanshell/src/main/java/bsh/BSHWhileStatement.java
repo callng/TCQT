@@ -29,6 +29,7 @@ package bsh;
  * This class handles both {@code while} statements and {@code do..while} statements.
  */
 class BSHWhileStatement extends SimpleNode implements ParserConstants {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Set by Parser, default {@code false}
@@ -55,15 +56,15 @@ class BSHWhileStatement extends SimpleNode implements ParserConstants {
             body = numChild > 1 ? jjtGetChild(1) : null;
         }
         boolean doOnceFlag = isDoStatement;
-        while (!Thread.interrupted()
-                && (doOnceFlag || BSHIfStatement.evaluateCondition(condExp, callstack, interpreter))) {
+        while ( !Thread.interrupted()
+                && ( doOnceFlag || BSHIfStatement.evaluateCondition(condExp, callstack, interpreter)) ) {
             doOnceFlag = false;
             if (body == null) continue; // no body
             Object ret = body instanceof BSHBlock
-                    ? ((BSHBlock) body).eval(callstack, interpreter, false)
-                    : body.eval(callstack, interpreter);
+                ? ((BSHBlock)body).eval(callstack, interpreter, null)
+                : body.eval(callstack, interpreter);
             if (ret instanceof ReturnControl) {
-                ReturnControl control = (ReturnControl) ret;
+                ReturnControl control = (ReturnControl)ret;
 
                 if (null != control.label)
                     if (null == label || !label.equals(control.label))

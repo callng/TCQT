@@ -30,10 +30,13 @@ package bsh;
 import java.lang.reflect.Array;
 
 /**
- * A formal parameter declaration.
- * For loose variable declaration type is null.
- */
-class BSHFormalParameter extends SimpleNode {
+    A formal parameter declaration.
+    For loose variable declaration type is null.
+*/
+class BSHFormalParameter extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     public static final Class UNTYPED = null;
     public String name;
     // unsafe caching of type here
@@ -42,28 +45,34 @@ class BSHFormalParameter extends SimpleNode {
     boolean isVarArgs = false;
     int dimensions = 0;
 
-    BSHFormalParameter(int id) {
-        super(id);
-    }
+    BSHFormalParameter(int id) { super(id); }
 
     public String getTypeDescriptor(
-            CallStack callstack, Interpreter interpreter, String defaultPackage) {
-        if (jjtGetNumChildren() > 0)
-            return (isVarArgs ? "[" : "") + ((BSHType) jjtGetChild(0)).getTypeDescriptor(
-                    callstack, interpreter, defaultPackage);
+        CallStack callstack, Interpreter interpreter, String defaultPackage )
+    {
+        StringBuilder prefix = new StringBuilder();
+        for (int i = 0; i < dimensions + (isVarArgs ? 1 : 0); i++)
+            prefix.append('[');
+        if ( jjtGetNumChildren() > 0 )
+            return prefix.toString() + ((BSHType)jjtGetChild(0)).getTypeDescriptor(
+                callstack, interpreter, defaultPackage );
         else
             // this will probably not get used
-            return (isVarArgs ? "[" : "") + "Ljava/lang/Object;";  // Object type
+            return prefix.toString() + "Ljava/lang/Object;";  // Object type
     }
 
     /**
-     * Evaluate the type.
-     */
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
-        if (jjtGetNumChildren() > 0)
-            type = ((BSHType) jjtGetChild(0)).getType(callstack, interpreter);
-        else
+        Evaluate the type.
+    */
+    public Object eval( CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
+        if ( jjtGetNumChildren() > 0 ) {
+            type = ((BSHType)jjtGetChild(0)).getType( callstack, interpreter );
+            // Brackets after the name add to any dimensions on the type.
+            if (dimensions > 0)
+                type = Array.newInstance(type, new int[dimensions]).getClass();
+        } else
             type = UNTYPED;
 
         if (isVarArgs)
@@ -77,4 +86,3 @@ class BSHFormalParameter extends SimpleNode {
         return super.toString() + ": " + name + ", final=" + isFinal + ", varargs=" + isVarArgs;
     }
 }
-

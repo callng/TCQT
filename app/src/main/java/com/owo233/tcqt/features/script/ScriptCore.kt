@@ -9,6 +9,7 @@ import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.message.MessageDispatcher
 import com.owo233.tcqt.core.message.MessageEvent
 import com.owo233.tcqt.core.message.MessageListener
@@ -24,6 +25,7 @@ import com.owo233.tcqt.features.script.bean.ScriptInfo
 import com.owo233.tcqt.host.service.api.GroupService
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -178,11 +180,43 @@ object ScriptCore : InfraTask(
         saveAutoLoadIds()
     }
 
+    /**
+     * 按自动装载位启动脚本，失败会重试。
+     *
+     * `install()` 跑在宿主启动早期，此时 `appRuntime` 可能还没就绪（MSF 尤其明显），
+     * 脚本首轮必然失败。**只跑一次就放弃会让脚本永远起不来**，所以这里做退避重试，
+     * 并把结果写进日志 —— 否则「脚本没跑」这件事在真机上完全不可见。
+     */
     private fun startAutoLoad() {
         ModuleScope.launchIO("ScriptAutoLoad") {
-            scripts()
-                .filter { isAutoLoad(it) && !it.isRunning }
-                .forEach { start(it) }
+            repeat(AUTO_LOAD_TRIES) { attempt ->
+                val pending = scripts().filter { isAutoLoad(it) && !it.isRunning }
+                if (pending.isEmpty()) {
+                    if (attempt == 0) {
+                        LogUtils.androidNoFilter.i(
+                            "ScriptCore: 自动装载完成，运行中 ${scripts().count { it.isRunning }} 个脚本"
+                        )
+                    }
+                    return@launchIO
+                }
+
+                val failed = pending.filterNot { start(it) }
+                if (failed.isEmpty()) {
+                    LogUtils.androidNoFilter.i(
+                        "ScriptCore: 自动装载完成，启动 ${pending.size} 个脚本"
+                    )
+                    return@launchIO
+                }
+
+                if (attempt < AUTO_LOAD_TRIES - 1) {
+                    delay(AUTO_LOAD_RETRY_DELAY_MS)
+                } else {
+                    LogUtils.androidNoFilter.w(
+                        "ScriptCore: 以下脚本启动失败（已重试 $AUTO_LOAD_TRIES 次）：" +
+                                failed.joinToString { it.id }
+                    )
+                }
+            }
         }
     }
 
@@ -386,6 +420,10 @@ object ScriptCore : InfraTask(
     private val AIO_MSG_ITEM: Class<*> by lazy {
         HookEnv.hostClassLoader.loadClass("com.tencent.mobileqq.aio.msg.AIOMsgItem")
     }
+
+    /** 自动装载的退避重试次数与间隔：宿主 startup 早期 appRuntime 可能还没就绪。 */
+    private const val AUTO_LOAD_TRIES = 6
+    private const val AUTO_LOAD_RETRY_DELAY_MS = 3_000L
 
     private const val DEFAULT_SCRIPT = """log("脚本开始运行");
 toast("Hello TCQT");

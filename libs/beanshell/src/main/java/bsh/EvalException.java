@@ -28,36 +28,37 @@
 package bsh;
 
 /**
- * EvalException indicates that the script has encountered a
- * runtime exception and the current node cannot be successfully
- * evaluated.
- * <p>
- * EvalException may be thrown for a script syntax error, an evaluation
- * error such as referring to an undefined variable.  Errors such as this
- * mean that the current node cannot continue, but the interpreter is
- * still ok.
- * <p>
- * Exceptions where the interpreter has been corrupted or where execution
- * cannot continue are handled by {@link EvalError}.
- *
- * @see EvalError
- * @see TargetError
+ EvalException indicates that the script has encountered a
+ runtime exception and the current node cannot be successfully
+ evaluated.
+
+ EvalException may be thrown for a script syntax error, an evaluation
+ error such as referring to an undefined variable.  Errors such as this
+ mean that the current node cannot continue, but the interpreter is
+ still ok.
+
+ Exceptions where the interpreter has been corrupted or where execution
+ cannot continue are handled by {@link EvalError}.
+
+ @see EvalError
+ @see TargetError
  */
-public class EvalException extends EvalError {
-    public EvalException(String s, Node node, CallStack callstack, Throwable cause) {
+public class EvalException extends EvalError
+{
+    public EvalException( String s, Node node, CallStack callstack, Throwable cause ) {
         super(s, node, callstack, cause);
     }
 
-    public EvalException(String s, Node node, CallStack callstack) {
+    public EvalException( String s, Node node, CallStack callstack ) {
         super(s, node, callstack);
     }
 
     /**
-     * Return the error to re-throw, prepending the specified message.
-     * Method does not throw itself as this messes with the tooling.
+     Return the error to re-throw, prepending the specified message.
+     Method does not throw itself as this messes with the tooling.
      */
-    public EvalException reThrow(String msg) {
-        prependMessage(msg);
+    public EvalException reThrow( String msg ) {
+        prependMessage( msg );
         return this;
     }
 }

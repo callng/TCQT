@@ -25,18 +25,17 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHPrimitiveType extends SimpleNode {
+class BSHPrimitiveType extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     public Class<?> type;
 
-    BSHPrimitiveType(int id) {
-        super(id);
-    }
-
-    public Class<?> getType() {
-        return type;
-    }
+    BSHPrimitiveType(int id) { super(id); }
+    public Class<?> getType() { return type; }
 
     @Override
     public String toString() {

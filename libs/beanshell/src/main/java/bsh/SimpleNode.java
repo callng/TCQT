@@ -46,86 +46,56 @@ import java.util.NoSuchElementException;
 */
 class SimpleNode implements Node, Serializable {
 
-    /**
-     * Serialization ID
-     */
+    /** Serialization ID */
     private static final long serialVersionUID = 1L;
+
+    /** The first and last tokens */
+    transient Token firstToken, lastToken;
+
+    /** the source of the text from which this was parsed */
+    private String sourceFile;
+
     protected Node parent;
     protected Node[] children;
     protected int id;
-    protected Parser parser;
-    /**
-     * The first and last tokens
-     */
-    Token firstToken, lastToken;
-    /**
-     * the source of the text from which this was parsed
-     */
-    private String sourceFile;
+    protected transient Parser parser;
     private int cursor = 0, lastRet = -1;
 
-    /**
-     * Default constructor supplying the node with its type id.
-     *
-     * @param i type index of ParserTreeConstants.jjtNodeName
-     */
-    public SimpleNode(int i) {
-        id = i;
-    }
+    /** Default constructor supplying the node with its type id.
+     * @param i type index of ParserTreeConstants.jjtNodeName */
+    public SimpleNode(int i) { id = i; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean hasPrevious() {
-        return cursor > 0;
-    }
+    public boolean hasPrevious() { return cursor > 0; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean hasNext() {
-        return cursor < jjtGetNumChildren();
-    }
+    public boolean hasNext() { return cursor < jjtGetNumChildren(); }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public int nextIndex() {
-        return cursor;
-    }
+    public int nextIndex() { return cursor; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public int previousIndex() {
-        return cursor - 1;
-    }
+    public int previousIndex() { return cursor - 1; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Node next() {
         if (!hasNext()) throw new NoSuchElementException();
         return children[lastRet = cursor++];
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Node previous() {
         if (!hasPrevious()) throw new NoSuchElementException();
         return children[lastRet = --cursor];
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void remove() {
         if (lastRet < 0) throw new IllegalStateException();
@@ -137,62 +107,42 @@ class SimpleNode implements Node, Serializable {
         lastRet = -1;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void set(Node e) {
         if (lastRet < 0) throw new IllegalStateException();
         children[lastRet] = e;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void add(Node e) {
         Node c[] = new Node[jjtGetNumChildren() + 1];
         System.arraycopy(children, 0, c, 0, cursor);
-        System.arraycopy(children, cursor, c, cursor + 1, c.length - cursor - 1);
+        System.arraycopy(children, cursor, c, cursor +1, c.length - cursor -1);
         children = c;
         children[cursor++] = e;
         lastRet = -1;
         e.jjtSetParent(this);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void jjtOpen() {
-    }
+    public void jjtOpen() { }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void jjtClose() {
-    }
+    public void jjtClose() { }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void jjtSetParent(Node n) {
-        parent = n;
-    }
+    public void jjtSetParent(Node n) { parent = n; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Node jjtGetParent() {
-        return parent;
-    }
+    public Node jjtGetParent() { return parent; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void jjtAddChild(Node n, int i) {
         if (children == null)
@@ -205,51 +155,32 @@ class SimpleNode implements Node, Serializable {
         children[i] = n;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Node jjtGetChild(int i) {
-        return children[i];
-    }
+    public Node jjtGetChild(int i) { return children[i]; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Node[] jjtGetChildren() {
-        if (null == children)
+        if ( null == children )
             children = new Node[0];
         return children;
     }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int jjtGetNumChildren() {
         return jjtGetChildren().length;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public String toString() {
-        return ParserTreeConstants.jjtNodeName[id];
-    }
+    public String toString() { return ParserTreeConstants.jjtNodeName[id]; }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public String toString(String prefix) {
-        return prefix + toString();
-    }
+    public String toString(String prefix) { return prefix + toString(); }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void dump(String prefix) {
         System.out.println(toString(prefix));
@@ -260,23 +191,25 @@ class SimpleNode implements Node, Serializable {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Object eval(CallStack callstack, Interpreter interpreter)
             throws EvalError {
         throw new InterpreterError(
-                "Unimplemented or inappropriate for " + getClass().getName());
+            "Unimplemented or inappropriate for " + getClass().getName() );
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void setSourceFile(String sourceFile) {
+        this.sourceFile = sourceFile;
+    }
+
+    /** {@inheritDoc} */
     @Override
     public String getSourceFile() {
-        if (sourceFile == null)
-            if (parent != null)
+        if ( sourceFile == null )
+            if ( parent != null )
                 return parent.getSourceFile();
             else
                 return "<unknown file>";
@@ -284,48 +217,40 @@ class SimpleNode implements Node, Serializable {
             return sourceFile;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setSourceFile(String sourceFile) {
-        this.sourceFile = sourceFile;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int getLineNumber() {
-        return firstToken.beginLine;
+        if ( firstToken != null )
+            return firstToken.beginLine;
+        return -1;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public String getText() {
-        StringBuilder text = new StringBuilder();
+    public String getText()
+    {
         Token t = firstToken;
-        while (t != null) {
-            text.append(t.image);
-            if (!t.image.equals("."))
-                text.append(" ");
-            if (t == lastToken ||
-                    t.image.equals("{") || t.image.equals(";"))
-                break;
-            t = t.next;
+        if ( t!=null ) {
+            StringBuilder text = new StringBuilder();
+            while ( t!=null ) {
+                text.append(t.image);
+                if ( t==lastToken ||
+                    t.image.equals("{") || t.image.equals(";") )
+                    break;
+                Token next=t.next;
+                if ( next==null )
+                    break;
+                if ( next.beginLine > t.endLine ||
+                    next.beginColumn > t.endColumn + 1 )
+                    text.append(" ");
+                t=next;
+            }
+            return text.toString();
         }
-
-        return text.toString();
+        return toString();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public int getId() {
-        return this.id;
-    }
+    public int getId() { return this.id; }
 }
-

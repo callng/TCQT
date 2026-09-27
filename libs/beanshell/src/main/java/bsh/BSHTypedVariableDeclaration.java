@@ -29,68 +29,80 @@ package bsh;
 
 class BSHTypedVariableDeclaration extends SimpleNode {
     private static final long serialVersionUID = 1L;
+
     public Modifiers modifiers = new Modifiers(Modifiers.FIELD);
     private BSHVariableDeclarator[] bvda;
 
-    BSHTypedVariableDeclaration(int id) {
-        super(id);
-    }
+    BSHTypedVariableDeclaration(int id) { super(id); }
 
     private BSHType getTypeNode() {
-        return ((BSHType) jjtGetChild(0));
+        return ((BSHType)jjtGetChild(0));
     }
 
-    Class<?> evalType(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+    private boolean isValType( BSHType typeNode ) {
+        Node type = typeNode.getTypeNode();
+        return type instanceof BSHAmbiguousName
+            && "val".equals(((BSHAmbiguousName) type).text);
+    }
+
+    Class<?> evalType( CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
         BSHType typeNode = getTypeNode();
-        return typeNode.getType(callstack, interpreter);
+        return typeNode.getType( callstack, interpreter );
     }
 
-    BSHVariableDeclarator[] getDeclarators() {
+    BSHVariableDeclarator [] getDeclarators()
+    {
         if (null != bvda)
             return bvda;
         int n = jjtGetNumChildren();
-        int start = 1;
-        bvda = new BSHVariableDeclarator[n - start];
-        for (int i = start; i < n; i++) {
-            bvda[i - start] = (BSHVariableDeclarator) jjtGetChild(i);
+        int start=1;
+        bvda = new BSHVariableDeclarator[ n-start ];
+        for (int i = start; i < n; i++)
+        {
+            bvda[i-start] = (BSHVariableDeclarator)jjtGetChild(i);
         }
         return bvda;
     }
 
     /**
-     * evaluate the type and one or more variable declarations, e.g.:
-     * int a, b=5, c;
-     */
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        evaluate the type and one or more variable declarations, e.g.:
+            int a, b=5, c;
+    */
+    public Object eval( CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         Object value = Primitive.VOID;
         try {
             NameSpace namespace = callstack.top();
             BSHType typeNode = getTypeNode();
-            Class<?> type = typeNode.getType(callstack, interpreter);
+            Class<?> type = typeNode.getType( callstack, interpreter );
+            if ( isValType(typeNode) && !modifiers.hasModifier("final") )
+                modifiers.addModifier("final");
 
-            BSHVariableDeclarator[] bvda = getDeclarators();
-            for (int i = 0; i < bvda.length; i++) {
+            BSHVariableDeclarator [] bvda = getDeclarators();
+            for (int i = 0; i < bvda.length; i++)
+            {
                 BSHVariableDeclarator dec = bvda[i];
 
                 // Type node is passed down the chain for array initializers
                 // which need it under some circumstances
-                value = dec.eval(typeNode, modifiers, callstack, interpreter);
+                value = dec.eval( typeNode, modifiers, callstack, interpreter);
                 try {
                     LHS lhs = null;
-                    if (namespace.isClass)
-                        if (null != namespace.classInstance)
+                    if ( namespace.isClass )
+                        if ( null != namespace.classInstance )
                             lhs = new LHS(namespace.classInstance,
-                                    Reflect.resolveJavaField(
-                                            namespace.classStatic,
-                                            dec.name, modifiers.hasModifier("static")));
+                                Reflect.resolveJavaField(
+                                    namespace.classStatic,
+                                dec.name, modifiers.hasModifier("static")));
                         else
                             lhs = new LHS(namespace.classStatic,
-                                    Reflect.resolveJavaField(namespace.classStatic,
-                                            dec.name, modifiers.hasModifier("static")));
+                                Reflect.resolveJavaField(namespace.classStatic,
+                                dec.name, modifiers.hasModifier("static")));
 
-                    if (null != lhs && null != lhs.field) {
+                    if ( null != lhs && null != lhs.field ) {
                         Variable var = new Variable(dec.name, type, lhs);
                         var.modifiers = modifiers;
                         var.setValue(value, Variable.ASSIGNMENT);
@@ -102,19 +114,19 @@ class BSHTypedVariableDeclaration extends SimpleNode {
                             value = Primitive.castNumberStrictJava(type,
                                     ((Primitive) value).numberValue());
                         namespace.setTypedVariable(
-                                dec.name, type, value, modifiers);
+                                dec.name, type, value, modifiers );
                         if (!namespace.isMethod)
                             interpreter.getClassManager().addListener(
-                                    namespace.getVariableImpl(dec.name, false));
+                                namespace.getVariableImpl(dec.name, false));
                     }
                     if (!namespace.isClass)
                         value = namespace.getVariable(dec.name);
-                } catch (UtilEvalError e) {
-                    throw e.toEvalError(this, callstack);
+                } catch ( UtilEvalError e ) {
+                    throw e.toEvalError( this, callstack );
                 }
             }
-        } catch (EvalError e) {
-            throw e.reThrow("Typed variable declaration");
+        } catch ( EvalError e ) {
+            throw e.reThrow( "Typed variable declaration" );
         }
         return value;
     }

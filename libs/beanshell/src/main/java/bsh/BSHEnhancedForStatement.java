@@ -29,13 +29,14 @@ import java.util.Iterator;
 
 /**
  * Implementation of the enhanced for(:) statement.
- * This statement uses Iterator to support iteration over a wide variety
- * of iterable types.
+ *  This statement uses Iterator to support iteration over a wide variety
+ *  of iterable types.
  *
  * @author Daniel Leuck
  * @author Pat Niemeyer
  */
 class BSHEnhancedForStatement extends SimpleNode implements ParserConstants {
+    private static final long serialVersionUID = 1L;
 
     final int blockId;
     String varName, label;
@@ -70,24 +71,25 @@ class BSHEnhancedForStatement extends SimpleNode implements ParserConstants {
         final CollectionManager cm = CollectionManager.getCollectionManager();
         final Iterator<?> iterator = cm.getBshIterator(iteratee);
         try {
-            while (!Thread.interrupted() && iterator.hasNext()) {
+            NameSpace eachNameSpace = BlockNameSpace.getInstance(enclosingNameSpace, blockId);
+            callstack.swap(eachNameSpace);
+            while ( !Thread.interrupted() && iterator.hasNext() ) {
                 try {
-                    NameSpace eachNameSpace = BlockNameSpace.getInstance(enclosingNameSpace, blockId);
-                    callstack.swap(eachNameSpace);
                     Object value = iterator.next();
-                    if (value == null) value = Primitive.NULL;
+                    if ( value == null ) value = Primitive.NULL;
+                    eachNameSpace.clear();
                     eachNameSpace.setTypedVariable(
-                            varName, elementType, value, modifiers);
-                } catch (UtilEvalError e) {
+                        varName, elementType, value, modifiers);
+                } catch ( UtilEvalError e ) {
                     throw e.toEvalError(
-                            "for loop iterator variable:" + varName, this, callstack);
+                        "for loop iterator variable:"+ varName, this, callstack );
                 }
                 if (statement == null) continue; // not empty statement
                 Object ret = statement instanceof BSHBlock
-                        ? ((BSHBlock) statement).eval(callstack, interpreter, false)
-                        : statement.eval(callstack, interpreter);
+                    ? ((BSHBlock)statement).eval(callstack, interpreter, null)
+                    : statement.eval(callstack, interpreter);
                 if (ret instanceof ReturnControl) {
-                    ReturnControl control = (ReturnControl) ret;
+                    ReturnControl control = (ReturnControl)ret;
 
                     if (null != control.label)
                         if (null == label || !label.equals(control.label))

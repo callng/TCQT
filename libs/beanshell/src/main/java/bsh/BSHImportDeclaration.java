@@ -25,33 +25,35 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHImportDeclaration extends SimpleNode {
+class BSHImportDeclaration extends SimpleNode
+{
     private static final long serialVersionUID = 1L;
+
     public boolean importPackage;
     public boolean staticImport;
     public boolean superImport;
 
-    BSHImportDeclaration(int id) {
-        super(id);
-    }
+    BSHImportDeclaration(int id) { super(id); }
 
     public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        throws EvalError
+    {
         NameSpace namespace = callstack.top();
-        if (superImport) try {
+        if ( superImport ) try {
             namespace.doSuperImport();
-        } catch (UtilEvalError e) {
-            throw e.toEvalError(this, callstack);
+        } catch ( UtilEvalError e ) {
+            throw e.toEvalError( this, callstack  );
         }
         else {
             BSHAmbiguousName ambigName = (BSHAmbiguousName) jjtGetChild(0);
-            if (staticImport) {
-                if (importPackage) {
+            if ( staticImport ) {
+                if ( importPackage ) {
                     // import all (*) static members
-                    Class<?> clas = ambigName.toClass(callstack, interpreter);
-                    namespace.importStatic(clas);
+                    Class<?> clas = ambigName.toClass( callstack, interpreter );
+                    namespace.importStatic( clas );
                 } else {
                     Object obj = null;
                     Class<?> clas = null;
@@ -66,29 +68,29 @@ class BSHImportDeclaration extends SimpleNode {
                     } catch (Exception e) { /* ignore try method instead */ }
                     try { // import static method from Name
                         if (null == obj)
-                            obj = ambigName.toObject(callstack, interpreter);
+                            obj = ambigName.toObject( callstack, interpreter );
                     } catch (Exception e) { /* ignore try field instead */ }
                     // do we have a method
-                    if (obj instanceof BshMethod) {
-                        namespace.setMethod((BshMethod) obj);
+                    if ( obj instanceof BshMethod ) {
+                        namespace.setMethod( (BshMethod) obj );
                         return Primitive.VOID;
                     }
-                    if (!(obj instanceof LHS))
+                    if ( !(obj instanceof LHS) )
                         // import static field from Name
-                        obj = ambigName.toLHS(callstack, interpreter);
+                        obj = ambigName.toLHS( callstack, interpreter );
                     // do we have a field
-                    if (obj instanceof LHS && ((LHS) obj).isStatic()) {
-                        namespace.setVariableImpl(((LHS) obj).getVariable());
+                    if ( obj instanceof LHS && ((LHS) obj).isStatic() ) {
+                        namespace.setVariableImpl( ((LHS) obj).getVariable() );
                         return Primitive.VOID;
                     }
                     // no static member found
                     throw new EvalException(ambigName.text
-                            + " is not a static member of a class",
-                            this, callstack);
+                                        + " is not a static member of a class",
+                                        this, callstack );
                 }
             } else { // import package
                 String name = ambigName.text;
-                if (importPackage)
+                if ( importPackage )
                     namespace.importPackage(name);
                 else
                     namespace.importClass(name);

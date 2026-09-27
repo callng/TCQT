@@ -25,27 +25,30 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHReturnStatement extends SimpleNode implements ParserConstants {
+class BSHReturnStatement extends SimpleNode implements ParserConstants
+{
+    private static final long serialVersionUID = 1L;
+
     public int kind;
     public String label;
 
-    BSHReturnStatement(int id) {
-        super(id);
-    }
+    BSHReturnStatement(int id) { super(id); }
 
     public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        throws EvalError
+    {
         if (null != label)
             return new ReturnControl(kind, label, this);
         Object value;
-        if (jjtGetNumChildren() > 0)
+        if(jjtGetNumChildren() > 0)
             value = jjtGetChild(0).eval(callstack, interpreter);
         else
             value = Primitive.VOID;
 
-        return new ReturnControl(kind, value, this);
+        return new ReturnControl( kind, value, this );
     }
 
     @Override

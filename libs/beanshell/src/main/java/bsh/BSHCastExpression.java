@@ -25,28 +25,29 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
 /**
- * Implement casts.
- * <p>
- * I think it should be possible to simplify some of the code here by
- * using the Types.getAssignableForm() method, but I haven't looked
- * into it.
- */
-class BSHCastExpression extends SimpleNode {
+    Implement casts.
 
-    public BSHCastExpression(int id) {
-        super(id);
-    }
+    I think it should be possible to simplify some of the code here by
+    using the Types.getAssignableForm() method, but I haven't looked
+    into it.
+*/
+class BSHCastExpression extends SimpleNode {
+    private static final long serialVersionUID = 1L;
+
+    public BSHCastExpression(int id) { super(id); }
 
     /**
-     * @return the result of the cast.
-     */
+        @return the result of the cast.
+    */
     public Object eval(
-            CallStack callstack, Interpreter interpreter) throws EvalError {
-        Class toType = ((BSHType) jjtGetChild(0)).getType(
-                callstack, interpreter);
+        CallStack callstack, Interpreter interpreter ) throws EvalError
+    {
+        Class toType = ((BSHType)jjtGetChild(0)).getType(
+            callstack, interpreter );
         Node expression = jjtGetChild(1);
 
         // evaluate the expression
@@ -55,9 +56,9 @@ class BSHCastExpression extends SimpleNode {
         // TODO: need to add isJavaCastable() test for strictJava
         // (as opposed to isJavaAssignable())
         try {
-            return Types.castObject(fromValue, toType, Types.CAST);
-        } catch (UtilEvalError e) {
-            throw e.toEvalError(this, callstack);
+            return Types.castObject( fromValue, toType, Types.CAST );
+        } catch ( UtilEvalError e ) {
+            throw e.toEvalError( this, callstack  );
         }
     }
 

@@ -35,6 +35,8 @@ import java.util.List;
 
 public final class ClassGenerator {
 
+    enum Type { CLASS, INTERFACE, ENUM }
+
     private static ClassGenerator cg;
 
     public static ClassGenerator getClassGenerator() {
@@ -43,6 +45,24 @@ public final class ClassGenerator {
         }
 
         return cg;
+    }
+
+    /**
+     * Parse the BSHBlock for the class definition and generate the class.
+     */
+    public Class<?> generateClass(String name, Modifiers modifiers, Class<?>[] interfaces, Class<?> superClass, BSHBlock block, Type type, CallStack callstack, Interpreter interpreter) throws EvalError {
+        // Delegate to the static method
+        return generateClassImpl(name, modifiers, interfaces, superClass, block, type, callstack, interpreter);
+    }
+
+    /**
+     * Invoke a super.method() style superclass method on an object instance.
+     * This is not a normal function of the Java reflection API and is
+     * provided by generated class accessor methods.
+     */
+    public Object invokeSuperclassMethod(BshClassManager bcm, Object instance, Class<?> classStatic, String methodName, Object[] args) throws UtilEvalError, ReflectError, InvocationTargetException {
+        // Delegate to the static method
+        return invokeSuperclassMethodImpl(bcm, instance, classStatic, methodName, args);
     }
 
     /**
@@ -120,7 +140,7 @@ public final class ClassGenerator {
     private static void saveClasses(String className, byte[] code) {
         String dir = Interpreter.getSaveClassesDir();
         if (dir != null) try
-                (FileOutputStream out = new FileOutputStream(dir + "/" + className + ".class")) {
+        ( FileOutputStream out = new FileOutputStream(dir + "/" + className + ".class") ) {
             out.write(code);
         } catch (IOException e) {
             e.printStackTrace();
@@ -161,15 +181,15 @@ public final class ClassGenerator {
     }
 
     static DelayedEvalBshMethod[] getDeclaredMethods(BSHBlock body,
-                                                     CallStack callstack, Interpreter interpreter, String defaultPackage,
-                                                     Class<?> superClass) throws EvalError {
+            CallStack callstack, Interpreter interpreter, String defaultPackage,
+            Class<?> superClass) throws EvalError {
         List<DelayedEvalBshMethod> methods = new ArrayList<>();
-        if (callstack.top().getName().indexOf("$anon") > -1) {
+        if ( callstack.top().getName().indexOf("$anon") > -1 ) {
             // anonymous classes need super constructor
             String classBaseName = Types.getBaseName(callstack.top().getName());
             Invocable con = BshClassManager.memberCache.get(superClass)
                     .findMethod(superClass.getName(),
-                            This.CONTEXT_ARGS.get().get(classBaseName));
+                        This.CONTEXT_ARGS.get().get(classBaseName));
             DelayedEvalBshMethod bm = new DelayedEvalBshMethod(classBaseName, con, callstack.top());
             methods.add(bm);
         }
@@ -186,6 +206,9 @@ public final class ClassGenerator {
                 String[] paramTypes = paramTypesNode.getTypeDescriptors(callstack, interpreter, defaultPackage);
 
                 DelayedEvalBshMethod bm = new DelayedEvalBshMethod(name, returnType, returnTypeNode, md.paramsNode.getParamNames(), paramTypes, paramTypesNode, md.blockNode, null/*declaringNameSpace*/, modifiers, md.isVarArgs, callstack, interpreter);
+                bm.isExtension = md.isExtension;
+                if (bm.isExtension)
+                    bm.receiverType = md.evalReceiverType(callstack, interpreter);
 
                 methods.add(bm);
             }
@@ -193,48 +216,6 @@ public final class ClassGenerator {
         return methods.toArray(new DelayedEvalBshMethod[methods.size()]);
     }
 
-    /**
-     * Find and invoke the super class delegate method.
-     */
-    public static Object invokeSuperclassMethodImpl(BshClassManager bcm,
-                                                    Object instance, Class<?> classStatic, String methodName, Object[] args)
-            throws UtilEvalError, ReflectError, InvocationTargetException {
-        Class<?> superClass = classStatic.getSuperclass();
-        Class<?> clas = instance.getClass();
-        String superName = BSHSUPER + superClass.getSimpleName() + methodName;
-
-        // look for the specially named super delegate method
-        Invocable superMethod = Reflect.resolveJavaMethod(clas, superName,
-                Types.getTypes(args), false/*onlyStatic*/);
-        if (superMethod != null) return superMethod.invoke(instance, args);
-
-        // No super method, try to invoke regular method
-        // could be a superfluous "super." which is legal.
-        superMethod = Reflect.resolveExpectedJavaMethod(bcm, superClass, instance,
-                methodName, args, false/*onlyStatic*/);
-        return superMethod.invoke(instance, args);
-    }
-
-    /**
-     * Parse the BSHBlock for the class definition and generate the class.
-     */
-    public Class<?> generateClass(String name, Modifiers modifiers, Class<?>[] interfaces, Class<?> superClass, BSHBlock block, Type type, CallStack callstack, Interpreter interpreter) throws EvalError {
-        // Delegate to the static method
-        return generateClassImpl(name, modifiers, interfaces, superClass, block, type, callstack, interpreter);
-    }
-
-    /**
-     * Invoke a super.method() style superclass method on an object instance.
-     * This is not a normal function of the Java reflection API and is
-     * provided by generated class accessor methods.
-     */
-    public Object invokeSuperclassMethod(BshClassManager bcm, Object instance, Class<?> classStatic, String methodName, Object[] args) throws UtilEvalError, ReflectError, InvocationTargetException {
-        // Delegate to the static method
-        return invokeSuperclassMethodImpl(bcm, instance, classStatic, methodName, args);
-    }
-
-
-    enum Type {CLASS, INTERFACE, ENUM}
 
     /**
      * A node filter that filters nodes for either a class body static
@@ -242,11 +223,14 @@ public final class ClassGenerator {
      * members are passed, etc.
      */
     static class ClassNodeFilter implements BSHBlock.NodeFilter {
+        private enum Context { STATIC, INSTANCE, CLASSES }
+        private enum Types { ALL, METHODS, FIELDS }
         public static ClassNodeFilter CLASSSTATICFIELDS = new ClassNodeFilter(Context.STATIC, Types.FIELDS);
         public static ClassNodeFilter CLASSSTATICMETHODS = new ClassNodeFilter(Context.STATIC, Types.METHODS);
         public static ClassNodeFilter CLASSINSTANCEFIELDS = new ClassNodeFilter(Context.INSTANCE, Types.FIELDS);
         public static ClassNodeFilter CLASSINSTANCEMETHODS = new ClassNodeFilter(Context.INSTANCE, Types.METHODS);
         public static ClassNodeFilter CLASSCLASSES = new ClassNodeFilter(Context.CLASSES);
+
         Context context;
         Types types = Types.ALL;
 
@@ -274,8 +258,8 @@ public final class ClassGenerator {
         }
 
         private boolean isStatic(Node node) {
-            if (node.jjtGetParent().jjtGetParent() instanceof BSHClassDeclaration
-                    && ((BSHClassDeclaration) node.jjtGetParent().jjtGetParent()).type == Type.INTERFACE)
+            if ( node.jjtGetParent().jjtGetParent() instanceof BSHClassDeclaration
+                    && ((BSHClassDeclaration) node.jjtGetParent().jjtGetParent()).type == Type.INTERFACE )
                 return true;
 
             if (node instanceof BSHTypedVariableDeclaration)
@@ -304,10 +288,26 @@ public final class ClassGenerator {
                 return !((BSHMethodDeclaration) node).modifiers.hasModifier("static");
             return false;
         }
+    }
 
-        private enum Context {STATIC, INSTANCE, CLASSES}
+    /** Find and invoke the super class delegate method. */
+    public static Object invokeSuperclassMethodImpl(BshClassManager bcm,
+            Object instance, Class<?> classStatic, String methodName, Object[] args)
+                throws UtilEvalError, ReflectError, InvocationTargetException {
+        Class<?> superClass = classStatic.getSuperclass();
+        Class<?> clas = instance.getClass();
+        String superName = BSHSUPER + superClass.getSimpleName() + methodName;
 
-        private enum Types {ALL, METHODS, FIELDS}
+        // look for the specially named super delegate method
+        Invocable superMethod = Reflect.resolveJavaMethod(clas, superName,
+                Types.getTypes(args), false/*onlyStatic*/);
+        if (superMethod != null) return superMethod.invoke(instance, args);
+
+        // No super method, try to invoke regular method
+        // could be a superfluous "super." which is legal.
+        superMethod = Reflect.resolveExpectedJavaMethod(bcm, superClass, instance,
+                methodName, args, false/*onlyStatic*/);
+        return superMethod.invoke(instance, args);
     }
 
 }

@@ -25,23 +25,26 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
-class BSHThrowStatement extends SimpleNode {
-    BSHThrowStatement(int id) {
-        super(id);
-    }
+class BSHThrowStatement extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
 
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+    BSHThrowStatement(int id) { super(id); }
+
+    public Object eval( CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         Object obj = jjtGetChild(0).eval(callstack, interpreter);
 
-        if (!(obj instanceof Throwable))
+        if(!(obj instanceof Throwable))
             throw new EvalException("Expression in 'throw' must be Throwable type",
-                    this, callstack);
+                this, callstack );
 
         // wrap the exception in a TargetException to propagate it up
-        throw new TargetError((Throwable) obj, this, callstack);
+        throw new TargetError( (Throwable) obj, this, callstack );
     }
 }
 

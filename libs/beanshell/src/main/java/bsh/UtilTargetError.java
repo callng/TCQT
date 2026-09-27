@@ -25,38 +25,41 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
 /**
- * UtilTargetError is an error corresponding to a TargetError but thrown by a
- * utility or other class that does not have the caller context (Node)
- * available to it.  See UtilEvalError for an explanation of the difference
- * between UtilEvalError and EvalError.
- * <p>
- *
- * @see UtilEvalError
- */
-public class UtilTargetError extends UtilEvalError {
-    public UtilTargetError(String message, Throwable t) {
-        super(message);
+    UtilTargetError is an error corresponding to a TargetError but thrown by a
+    utility or other class that does not have the caller context (Node)
+    available to it.  See UtilEvalError for an explanation of the difference
+    between UtilEvalError and EvalError.
+    <p>
+
+    @see UtilEvalError
+*/
+public class UtilTargetError extends UtilEvalError
+{
+    public UtilTargetError( String message, Throwable t ) {
+        super( message );
         this.initCause(t);
     }
 
-    public UtilTargetError(Throwable t) {
-        this(t.getMessage(), t);
+    public UtilTargetError( Throwable t ) {
+        this( t.getMessage(), t );
     }
 
     /**
-     * Override toEvalError to throw TargetError type.
-     */
+        Override toEvalError to throw TargetError type.
+    */
     public EvalError toEvalError(
-            String msg, Node node, CallStack callstack) {
-        if (null == msg)
+        String msg, Node node, CallStack callstack  )
+    {
+        if ( null == msg )
             msg = this.getMessage();
         else
             msg += ": " + this.getMessage();
 
-        return new TargetError(msg, this.getCause(), node, callstack, false);
+        return new TargetError( msg, this.getCause(), node, callstack, false );
     }
 }
 

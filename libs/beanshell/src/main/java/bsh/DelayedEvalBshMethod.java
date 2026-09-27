@@ -27,11 +27,12 @@
 
 package bsh;
 
-public class DelayedEvalBshMethod extends BshMethod {
+public class DelayedEvalBshMethod extends BshMethod
+{
     private static final long serialVersionUID = 1L;
     String returnTypeDescriptor;
     BSHReturnType returnTypeNode;
-    String[] paramTypeDescriptors;
+    String [] paramTypeDescriptors;
     BSHFormalParameters paramTypesNode;
 
     // used for the delayed evaluation...
@@ -43,12 +44,12 @@ public class DelayedEvalBshMethod extends BshMethod {
 
 
     /**
-     * This constructor is used in class generation.  It supplies String type
-     * descriptors for return and parameter class types and allows delay of
-     * the evaluation of those types until they are requested.  It does this
-     * by holding BSHType nodes, as well as an evaluation callstack, and
-     * interpreter which are called when the class types are requested.
-     */
+        This constructor is used in class generation.  It supplies String type
+        descriptors for return and parameter class types and allows delay of
+        the evaluation of those types until they are requested.  It does this
+        by holding BSHType nodes, as well as an evaluation callstack, and
+        interpreter which are called when the class types are requested.
+    */
     /*
         Note: technically I think we could get by passing in only the
         current namespace or perhaps BshClassManager here instead of
@@ -56,17 +57,17 @@ public class DelayedEvalBshMethod extends BshMethod {
         of future changes - anywhere you eval a node you need these.
     */
     DelayedEvalBshMethod(
-            String name,
-            String returnTypeDescriptor, BSHReturnType returnTypeNode,
-            String[] paramNames,
-            String[] paramTypeDescriptors, BSHFormalParameters paramTypesNode,
-            BSHBlock methodBody,
-            NameSpace declaringNameSpace, Modifiers modifiers,
-            boolean isVarArgs,
-            CallStack callstack, Interpreter interpreter
+        String name,
+        String returnTypeDescriptor, BSHReturnType returnTypeNode,
+        String [] paramNames,
+        String [] paramTypeDescriptors, BSHFormalParameters paramTypesNode,
+        BSHBlock methodBody,
+        NameSpace declaringNameSpace, Modifiers modifiers,
+        boolean isVarArgs,
+        CallStack callstack, Interpreter interpreter
     ) {
-        super(name, null/*returnType*/, paramNames, null/*paramTypes*/,
-                null/*paramModifiers*/, methodBody, declaringNameSpace, modifiers, isVarArgs);
+        super( name, null/*returnType*/, paramNames, null/*paramTypes*/,
+               null/*paramModifiers*/, methodBody, declaringNameSpace, modifiers, isVarArgs );
 
         this.returnTypeDescriptor = returnTypeDescriptor;
         this.returnTypeNode = returnTypeNode;
@@ -76,19 +77,16 @@ public class DelayedEvalBshMethod extends BshMethod {
         this.interpreter = interpreter;
     }
 
-    /**
-     * Wrap super constructor as a BshMethod.
-     *
-     * @param name               constructor name
-     * @param con                the super constructor
-     * @param declaringNameSpace the name space
-     */
+    /** Wrap super constructor as a BshMethod.
+     * @param name constructor name
+     * @param con the super constructor
+     * @param declaringNameSpace the name space */
     DelayedEvalBshMethod(String name, Invocable con,
-                         NameSpace declaringNameSpace) {
+            NameSpace declaringNameSpace) {
         this(name, con.getReturnTypeDescriptor(), null,
-                new String[con.getParameterCount()], con.getParamTypeDescriptors(),
-                null, new BSHBlock(0), declaringNameSpace, null, con.isVarArgs(),
-                null, null);
+            new String[con.getParameterCount()], con.getParamTypeDescriptors(),
+             null, new BSHBlock(0), declaringNameSpace, null, con.isVarArgs(),
+             null, null);
 
         this.constructor = con;
         this.modifiers = new Modifiers(Modifiers.CONSTRUCTOR);
@@ -98,51 +96,49 @@ public class DelayedEvalBshMethod extends BshMethod {
         this.constructorArgs = This.CONTEXT_ARGS.get().remove(name);
     }
 
-    public String getReturnTypeDescriptor() {
-        return returnTypeDescriptor;
-    }
+    public String getReturnTypeDescriptor() { return returnTypeDescriptor; }
 
-    public Class<?> getReturnType() {
-        if (returnTypeNode == null)
+    public Class<?> getReturnType()
+    {
+        if ( returnTypeNode == null )
             return null;
 
         // BSHType will cache the type for us
         try {
-            return returnTypeNode.evalReturnType(callstack, interpreter);
-        } catch (EvalError e) {
-            throw new InterpreterError("can't eval return type: " + e, e);
+            return returnTypeNode.evalReturnType( callstack, interpreter );
+        } catch ( EvalError e ) {
+            throw new InterpreterError("can't eval return type: "+e, e);
         }
     }
 
-    public String[] getParamTypeDescriptors() {
-        return paramTypeDescriptors;
-    }
+    public String [] getParamTypeDescriptors() { return paramTypeDescriptors; }
 
-    public Class<?>[] getParameterTypes() {
-        if (null != this.constructor)
+    public Class<?>[] getParameterTypes()
+    {
+        if ( null != this.constructor )
             return this.constructor.getParameterTypes();
         // BSHFormalParameters will cache the type for us
         try {
-            return (Class[]) paramTypesNode.eval(callstack, interpreter);
-        } catch (EvalError e) {
-            throw new InterpreterError("can't eval param types: " + e, e);
+            return (Class [])paramTypesNode.eval( callstack, interpreter );
+        } catch ( EvalError e ) {
+            throw new InterpreterError("can't eval param types: "+e, e);
         }
     }
 
     public String getAltConstructor() {
-        if (null != this.constructor)
+        if ( null != this.constructor )
             return "super";
-        if (this.methodBody.jjtGetNumChildren() == 0)
+        if ( this.methodBody.jjtGetNumChildren() == 0 )
             return null;
         Node firstStatement = this.methodBody.jjtGetChild(0);
-        while (!(firstStatement instanceof BSHMethodInvocation)
-                && firstStatement.jjtGetNumChildren() > 0)
+        while ( !(firstStatement instanceof BSHMethodInvocation)
+                && firstStatement.jjtGetNumChildren() > 0 )
             firstStatement = firstStatement.jjtGetChild(0);
 
-        if (firstStatement instanceof BSHMethodInvocation) {
+        if ( firstStatement instanceof BSHMethodInvocation ) {
             BSHMethodInvocation methodNode = (BSHMethodInvocation) firstStatement;
             String methodName = methodNode.getNameNode().text;
-            if (methodName.equals("super") || methodName.equals("this")) {
+            if ( methodName.equals("super") || methodName.equals("this") ) {
                 this.argsNode = methodNode.getArgsNode();
                 return methodName;
             }
@@ -166,22 +162,27 @@ public class DelayedEvalBshMethod extends BshMethod {
             return true;
         if (o.getClass() != this.getClass())
             return false;
-        DelayedEvalBshMethod m = (DelayedEvalBshMethod) o;
-        if (!getName().equals(m.getName())
-                || getParameterCount() != m.getParameterCount())
+        DelayedEvalBshMethod m = (DelayedEvalBshMethod)o;
+        if( !getName().equals(m.getName()) || getParameterCount() != m.getParameterCount() )
             return false;
-        for (int i = 0; i < this.getParamTypeDescriptors().length; i++)
-            if (!equal(this.getParamTypeDescriptors()[i],
-                    m.getParamTypeDescriptors()[i]))
-                return false;
+        if (isExtension != m.isExtension)
+            return false;
+        if (isExtension && !equal(receiverType, m.receiverType))
+            return false;
         if (isVarArgs != m.isVarArgs)
             return false;
+        for (int i = 0; i < this.getParamTypeDescriptors().length; i++)
+            if (!equal(this.getParamTypeDescriptors()[i], m.getParamTypeDescriptors()[i]))
+                return false;
         return true;
     }
 
     @Override
     public int hashCode() {
         int h = getName().hashCode() + getClass().hashCode();
+        h = 31 * h + Boolean.hashCode(isExtension);
+        h = 31 * h + (receiverType == null ? 0 : receiverType.hashCode());
+        h = 31 * h + Boolean.hashCode(isVarArgs);
         for (final String cparamType : getParamTypeDescriptors())
             h += 3 + (cparamType == null ? 0 : cparamType.hashCode());
         return h + getParameterCount();

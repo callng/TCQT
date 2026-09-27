@@ -36,13 +36,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-import bsh.classpath.BshLoaderManager;
-
-/**
- * A namespace in which methods, variables, and imports (class names) live.
+/** A namespace in which methods, variables, and imports (class names) live.
  * This is package public because it is used in the implementation of some bsh
  * commands. However for normal use you should be using methods on
  * bsh.Interpreter to interact with your scripts.
@@ -51,166 +46,134 @@ import bsh.classpath.BshLoaderManager;
  * Interpreter instance. Together they comprise a Bsh scripted object context.
  * <p>
  * Note: Dropping support for JDK 1.1. in favour of Collections
- * Note: This class has gotten too big. It should be broken down a bit.
- */
+ * Note: This class has gotten too big. It should be broken down a bit. */
 public class NameSpace
         implements Serializable, BshClassManager.Listener, NameSource, Cloneable {
 
-    /**
-     * The Constant JAVACODE.
-     */
+    /** The Constant serialVersionUID. */
+    private static final long serialVersionUID = 1L;
+    /** The Constant JAVACODE. */
     public static final NameSpace JAVACODE =
             new NameSpace(null, null, "Called from compiled Java code.");
-    /**
-     * The Constant serialVersionUID.
-     */
-    private static final long serialVersionUID = 1L;
-
     static {
         JAVACODE.isMethod = true;
     }
     // Begin instance data
     // Note: if we add something here we should reset it in the clear() method.
-
-    /**
-     * The imported classes.
-     */
-    protected Map<String, String> importedClasses = new ConcurrentHashMap<>();
-    /**
-     * The node associated with the creation of this namespace. This is used
-     * support getInvocationLine() and getInvocationText().
-     */
+    /** The name of this namespace. If the namespace is a method body namespace
+     * then this is the name of the method. If it's a class or class instance
+     * then it's the name of the class. */
+    private String nsName;
+    /** The parent. */
+    private NameSpace parent;
+    /** The variables. */
+    private Map<String, Variable> variables = new HashMap<>();
+    /** The methods. */
+    private Map<String, List<BshMethod>> methods = new HashMap<>();
+    /** The imported classes. */
+    protected Map<String, String> importedClasses = new HashMap<>();
+    /** The imported packages. */
+    private List<String> importedPackages = new ArrayList<>();
+    /** The imported commands. */
+    private List<String> importedCommands = new ArrayList<>();
+    /** The imported objects. */
+    private List<Object> importedObjects = new ArrayList<>();
+    /** The imported static. */
+    private List<Class<?>> importedStatic = new ArrayList<>();
+    /** The name source listeners. */
+    private List<NameSource.Listener> nameSourceListeners = new ArrayList<>();
+    /** The package name. */
+    private String packageName;
+    /** The class manager. */
+    private transient BshClassManager classManager;
+    /** The this reference. */
+    // See notes in getThis()
+    private This thisReference;
+    /** Name resolver objects. */
+    private Map<String, Name> names = new HashMap<>();
+    /** The node associated with the creation of this namespace. This is used
+     * support getInvocationLine() and getInvocationText(). */
     Node callerInfoNode;
-    /**
-     * Note that the namespace is a method body namespace. This is used for
-     * printing stack traces in exceptions.
-     */
+    /** Note that the namespace is a method body namespace. This is used for
+     * printing stack traces in exceptions. */
     boolean isMethod;
-    /**
-     * Note that the namespace is a class body or class instance namespace.
+    /** Note that the namespace is a class body or class instance namespace.
      * This is used for controlling static/object import precedence, etc. Note:
      * We can move this class related behavior out to a subclass of NameSpace,
-     * but we'll start here.
-     */
+     * but we'll start here. */
     boolean isClass;
     boolean isInterface;
     boolean isEnum;
-    /**
-     * The class static.
-     */
+    /** The class static. */
     Class<?> classStatic;
-    /**
-     * The class instance.
-     */
+    /** The class instance. */
     Object classInstance;
-    /**
-     * The name of this namespace. If the namespace is a method body namespace
-     * then this is the name of the method. If it's a class or class instance
-     * then it's the name of the class.
-     */
-    private String nsName;
-    /**
-     * The parent.
-     */
-    private NameSpace parent;
-    /**
-     * The variables.
-     */
-    private Map<String, Variable> variables = new ConcurrentHashMap<>();
-    /**
-     * The methods.
-     */
-    private Map<String, List<BshMethod>> methods = new ConcurrentHashMap<>();
-    /**
-     * The imported packages.
-     */
-    private List<String> importedPackages = new CopyOnWriteArrayList<>();
-    /**
-     * The imported commands.
-     */
-    private List<String> importedCommands = new CopyOnWriteArrayList<>();
-    /**
-     * The imported objects.
-     */
-    private List<Object> importedObjects = new CopyOnWriteArrayList<>();
-    /**
-     * The imported static.
-     */
-    private List<Class<?>> importedStatic = new CopyOnWriteArrayList<>();
-    /**
-     * The name source listeners.
-     */
-    private List<NameSource.Listener> nameSourceListeners = new CopyOnWriteArrayList<>();
-    /**
-     * The package name.
-     */
-    private String packageName;
-    /**
-     * The class manager.
-     */
-    private transient BshClassManager classManager;
-    /**
-     * The this reference.
-     */
-    // See notes in getThis()
-    private This thisReference;
-    /**
-     * Name resolver objects.
-     */
-    private Map<String, Name> names = new ConcurrentHashMap<>();
-    /**
-     * Local class cache for classes resolved through this namespace using
+    /** Local class cache for classes resolved through this namespace using
      * getClass() (taking into account imports). Only unqualified class names
      * are cached here (those which might be imported). Qualified names are
-     * always absolute and are cached by BshClassManager.
-     */
-    private transient Map<String, Class<?>> classCache = new ConcurrentHashMap<>();
+     * always absolute and are cached by BshClassManager. */
+    private transient Map<String, Class<?>> classCache = new HashMap<>();
 
-    /**
-     * Instantiates a new name space.
-     *
+    /** Sets the class static.
+     * @param clas the new class static */
+    void setClassStatic(final Class<?> clas) {
+        this.classStatic = clas;
+        this.importStatic(clas);
+    }
+
+    /** Sets the class instance.
+     * @param instance the new class instance */
+    void setClassInstance(final Object instance) {
+        this.classInstance = instance;
+        this.importObject(instance);
+    }
+
+    /** Gets the class instance.
+     * @return the class instance
+     * @throws UtilEvalError the util eval error */
+    Object getClassInstance() throws UtilEvalError {
+        if (this.classInstance != null)
+            return this.classInstance;
+        if (this.classStatic != null)
+            throw new UtilEvalError(
+                "Can't refer to class instance from static context.");
+        else
+            throw new InterpreterError(
+                "Can't resolve class instance 'this' in: " + this);
+    }
+    // End instance data
+
+    // Begin constructors
+    /** Instantiates a new name space.
      * @param parent the parent
-     * @param name   the name
+     * @param name the name
      * @parent the parent namespace of this namespace. Child namespaces inherit
-     * all variables and methods of their parent and can (of course)
-     * override / shadow them.
-     */
+     *         all variables and methods of their parent and can (of course)
+     *         override / shadow them. */
     public NameSpace(final NameSpace parent, final String name) {
         // Note: in this case parent must have a class manager.
         this(parent, null, name);
     }
 
-    /**
-     * Instantiates a new name space for name.
-     *
-     * @param name the name
-     */
+    /** Instantiates a new name space for name.
+     * @param name the name */
     public NameSpace(final String name) {
         this(null, null, name);
     }
 
-    /**
-     * Instantiates a new name space for name with class manager.
-     *
-     * @param name         the name
-     * @param classManager the class manager
-     */
+    /** Instantiates a new name space for name with class manager.
+     * @param name the name
+     * @param classManager the class manager */
     public NameSpace(final String name, final BshClassManager classManager) {
         this(null, classManager, name);
     }
-    // End instance data
 
-    // Begin constructors
-
-    /**
-     * Instantiates a new name space.
-     *
-     * @param parent       the parent
+    /** Instantiates a new name space.
+     * @param parent the parent
      * @param classManager the class manager
-     * @param name         the name
-     */
+     * @param name the name */
     public NameSpace(final NameSpace parent, final BshClassManager classManager,
-                     final String name) {
+            final String name) {
         // We might want to do this here rather than explicitly in Interpreter
         // for global (see also prune())
         // if (classManager == null && (parent == null))
@@ -222,83 +185,31 @@ public class NameSpace
         this.getClassManager().addListener(this);
     }
 
-    /**
-     * This is a helper method for working inside of bsh scripts and commands.
-     * In that context it is impossible to see a ClassIdentifier object for what
-     * it is. Attempting to access a method on a ClassIdentifier will look like
-     * a static method invocation. This method is in NameSpace for convenience
-     * (you don't have to import bsh.ClassIdentifier to use it);
-     *
-     * @param ci the ci
-     * @return the class
-     */
-    public static Class<?> identifierToClass(final ClassIdentifier ci) {
-        return ci.getTargetClass();
-    }
-
-    /**
-     * Sets the class static.
-     *
-     * @param clas the new class static
-     */
-    void setClassStatic(final Class<?> clas) {
-        this.classStatic = clas;
-        this.importStatic(clas);
-    }
-
-    /**
-     * Gets the class instance.
-     *
-     * @return the class instance
-     * @throws UtilEvalError the util eval error
-     */
-    Object getClassInstance() throws UtilEvalError {
-        if (this.classInstance != null)
-            return this.classInstance;
-        if (this.classStatic != null)
-            throw new UtilEvalError(
-                    "Can't refer to class instance from static context.");
-        else
-            throw new InterpreterError(
-                    "Can't resolve class instance 'this' in: " + this);
-    }
-
-    /**
-     * Sets the class instance.
-     *
-     * @param instance the new class instance
-     */
-    void setClassInstance(final Object instance) {
-        this.classInstance = instance;
-        this.importObject(instance);
-    }
-
-    /**
-     * The name of this namespace. If the namespace is a method body namespace
-     * then this is the name of the method. If it's a class or class instance
-     * then it's the name of the class.
-     *
-     * @return the name
-     */
-    public String getName() {
-        return this.nsName;
-    }
-
-    /**
-     * Sets the name.
-     *
-     * @param name the new name
-     */
+    /** Sets the name.
+     * @param name the new name */
     // End constructors
     public void setName(final String name) {
         this.nsName = name;
     }
 
-    /**
-     * Gets the node.
-     *
-     * @return the node
-     */
+    /** The name of this namespace. If the namespace is a method body namespace
+     * then this is the name of the method. If it's a class or class instance
+     * then it's the name of the class.
+     * @return the name */
+    public String getName() {
+        return this.nsName;
+    }
+
+    /** Set the node associated with the creation of this namespace. This is
+     * used in debugging and to support the getInvocationLine() and
+     * getInvocationText() methods.
+     * @param node the new node */
+    void setNode(final Node node) {
+        this.callerInfoNode = node;
+    }
+
+    /** Gets the node.
+     * @return the node */
     Node getNode() {
         if (this.callerInfoNode != null)
             return this.callerInfoNode;
@@ -308,71 +219,53 @@ public class NameSpace
             return null;
     }
 
-    /**
-     * Set the node associated with the creation of this namespace. This is
-     * used in debugging and to support the getInvocationLine() and
-     * getInvocationText() methods.
-     *
-     * @param node the new node
-     */
-    void setNode(final Node node) {
-        this.callerInfoNode = node;
-    }
-
-    /**
-     * Resolve name to an object through this namespace.
-     *
-     * @param name        the name
+    /** Resolve name to an object through this namespace.
+     * @param name the name
      * @param interpreter the interpreter
      * @return the object
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     public Object get(final String name, final Interpreter interpreter)
             throws UtilEvalError {
         final CallStack callstack = new CallStack(this);
         return this.getNameResolver(name).toObject(callstack, interpreter);
     }
 
-    /**
-     * Set the variable through this namespace.
+    /** Set the variable through this namespace.
      * <p>
      * Note: this method is primarily intended for use internally. If you use
      * this method outside of the bsh package and wish to set variables with
      * primitive values you will have to wrap them using bsh.Primitive.
      * </p>
-     *
-     * @param name       the name
-     * @param value      the value
+     * @param name the name
+     * @param value the value
      * @param strictJava specifies whether strict java rules are applied.
      * @throws UtilEvalError the util eval error
      * @see bsh.Primitive
-     * <p>
-     * Setting a new variable (which didn't exist before) or removing a
-     * variable causes a namespace change. </p>
-     */
+     *      <p>
+     *      Setting a new variable (which didn't exist before) or removing a
+     *      variable causes a namespace change. </p>*/
     public void setVariable(final String name, final Object value,
-                            final boolean strictJava) throws UtilEvalError {
+            final boolean strictJava) throws UtilEvalError {
         this.setVariable(name, value, strictJava, true);
     }
 
-    /**
-     * Set a variable explicitly in the local scope.
-     *
-     * @param name       the name
-     * @param value      the value
+    public void setVariable(final String name, final Object value)
+            throws UtilEvalError {
+        this.setVariable(name, value, false);
+    }
+
+    /** Set a variable explicitly in the local scope.
+     * @param name the name
+     * @param value the value
      * @param strictJava the strict java
      * @return the variable
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     public Variable setLocalVariable(final String name, final Object value,
-                                     final boolean strictJava) throws UtilEvalError {
+            final boolean strictJava) throws UtilEvalError {
         return this.setVariable(name, value, strictJava, false/* recurse */);
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Set the value of a the variable 'name' through this namespace. The
+    /** Set the value of a the variable 'name' through this namespace. The
      * variable may be an existing or non-existing variable. It may live in this
      * namespace or in a parent namespace if recurse is true.
      * <p>
@@ -380,21 +273,19 @@ public class NameSpace
      * this method outside of the bsh package and wish to set variables with
      * primitive values you will have to wrap them using bsh.Primitive.
      * </p>
-     *
-     * @param name       the name
-     * @param value      the value
+     * @param name the name
+     * @param value the value
      * @param strictJava specifies whether strict java rules are applied.
-     * @param recurse    determines whether we will search for the variable in our
-     *                   parent's scope before assigning locally.
+     * @param recurse determines whether we will search for the variable in our
+     *        parent's scope before assigning locally.
      * @return the variable
      * @throws UtilEvalError the util eval error
      * @see bsh.Primitive
-     * <p>
-     * Setting a new variable (which didn't exist before) or removing a
-     * variable causes a namespace change. </p>
-     */
+     *      <p>
+     *      Setting a new variable (which didn't exist before) or removing a
+     *      variable causes a namespace change. </p>*/
     Variable setVariable(final String name, Object value,
-                         final boolean strictJava, final boolean recurse)
+            final boolean strictJava, final boolean recurse)
             throws UtilEvalError {
         // primitives should have been wrapped
         if (value == null)
@@ -402,8 +293,8 @@ public class NameSpace
         // Locate the variable definition if it exists.
         final Variable existing = this.getVariableImpl(name, recurse);
         // Found an existing variable here (or above if recurse allowed)
-        if (existing != null) {
-            existing.setValue(value, Variable.ASSIGNMENT);
+        if ( existing != null ) {
+            existing.setValue( value, Variable.ASSIGNMENT );
             return existing;
         } else {
             // No previous variable definition found here (or above if recurse)
@@ -423,6 +314,7 @@ public class NameSpace
         }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
     /**
      * <p>
      * Sets a variable or property. See "setVariable" for rules regarding
@@ -434,19 +326,16 @@ public class NameSpace
      * property exists and is writable we set it. Finally, if neither the
      * variable or the property exist, we create a new variable.
      * </p>
-     *
-     * @param name       the name
-     * @param value      the value
+     * @param name the name
+     * @param value the value
      * @param strictJava specifies whether strict java rules are applied.
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     public void setVariableOrProperty(final String name, final Object value,
-                                      final boolean strictJava) throws UtilEvalError {
+            final boolean strictJava) throws UtilEvalError {
         this.setVariableOrProperty(name, value, strictJava, true);
     }
 
-    /**
-     * Set a variable or property explicitly in the local scope.
+    /** Set a variable or property explicitly in the local scope.
      * <p>
      * Sets a variable or property. See "setLocalVariable" for rules regarding
      * scoping.
@@ -457,19 +346,16 @@ public class NameSpace
      * property exists and is writable we set it. Finally, if neither the
      * variable or the property exist, we create a new variable.
      * </p>
-     *
-     * @param name       the name
-     * @param value      the value
+     * @param name the name
+     * @param value the value
      * @param strictJava the strict java
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     void setLocalVariableOrProperty(final String name, final Object value,
-                                    final boolean strictJava) throws UtilEvalError {
+            final boolean strictJava) throws UtilEvalError {
         this.setVariableOrProperty(name, value, strictJava, false/* recurse */);
     }
 
-    /**
-     * Set the value of a the variable or property 'name' through this
+    /** Set the value of a the variable or property 'name' through this
      * namespace.
      * <p>
      * Sets a variable or property. See "setVariableOrProperty" for rules
@@ -481,16 +367,14 @@ public class NameSpace
      * property exists and is writable we set it. Finally, if neither the
      * variable or the property exist, we create a new variable.
      * </p>
-     *
-     * @param name       the name
-     * @param value      the value
+     * @param name the name
+     * @param value the value
      * @param strictJava specifies whether strict java rules are applied.
-     * @param recurse    determines whether we will search for the variable in our
-     *                   parent's scope before assigning locally.
-     * @throws UtilEvalError the util eval error
-     */
+     * @param recurse determines whether we will search for the variable in our
+     *        parent's scope before assigning locally.
+     * @throws UtilEvalError the util eval error */
     void setVariableOrProperty(final String name, final Object value,
-                               final boolean strictJava, final boolean recurse)
+            final boolean strictJava, final boolean recurse)
             throws UtilEvalError {
         // primitives should have been wrapped
         if (value == null)
@@ -513,7 +397,7 @@ public class NameSpace
                                 + name);
             final boolean setProp = this.attemptSetPropertyValue(name, value,
                     null != thisReference ? thisReference.declaringInterpreter
-                            : null);
+                    : null);
             if (setProp)
                 return;
             // If recurse, set global untyped var, else set it here.
@@ -526,136 +410,101 @@ public class NameSpace
         }
     }
 
-    /**
-     * Creates the variable.
-     *
-     * @param name  the name
+    /** Creates the variable.
+     * @param name the name
      * @param value the value
-     * @param mods  the mods
+     * @param mods the mods
      * @return the variable
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Variable createVariable(final String name, final Object value,
-                                      final Modifiers mods) throws UtilEvalError {
+            final Modifiers mods) throws UtilEvalError {
         return this.createVariable(name, null/* type */, value, mods);
     }
 
-    /**
-     * Creates the variable.
-     *
-     * @param name  the name
-     * @param type  the type
+    /** Creates the variable.
+     * @param name the name
+     * @param type the type
      * @param value the value
-     * @param mods  the mods
+     * @param mods the mods
      * @return the variable
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Variable createVariable(final String name, final Class<?> type,
-                                      final Object value, final Modifiers mods) throws UtilEvalError {
+            final Object value, final Modifiers mods) throws UtilEvalError {
         return new Variable(name, type, value, mods);
     }
 
-    /**
-     * Creates the variable.
-     *
+    /** Creates the variable.
      * @param name the name
      * @param type the type
-     * @param lhs  the lhs
+     * @param lhs the lhs
      * @return the variable
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Variable createVariable(final String name, final Class<?> type,
-                                      final LHS lhs) throws UtilEvalError {
+            final LHS lhs) throws UtilEvalError {
         return new Variable(name, type, lhs);
     }
 
-    /**
-     * Remove the variable from the namespace.
-     *
-     * @param name the name
-     */
+    /** Remove the variable from the namespace.
+     * @param name the name */
     public void unsetVariable(final String name) {
         this.variables.remove(name);
         this.nameSpaceChanged();
     }
 
     /**
-     * Get the names of variables defined in this namespace.
-     * (This does not show variables in parent namespaces).
-     */
-    public String[] getVariableNames() {
+        Get the names of variables defined in this namespace.
+        (This does not show variables in parent namespaces).
+    */
+    public String [] getVariableNames() {
         return this.variables.keySet().stream().toArray(String[]::new);
     }
 
     /**
-     * Get the variables defined in this namespace.
-     * (This does not show variables in parent namespaces).
-     */
-    public Variable[] getVariables() {
+        Get the variables defined in this namespace.
+        (This does not show variables in parent namespaces).
+    */
+    public Variable [] getVariables() {
         return this.variables.values().stream().toArray(Variable[]::new);
     }
 
     /**
-     * Get the names of methods declared in this namespace.
-     * (This does not include methods in parent namespaces).
-     */
-    public String[] getMethodNames() {
+        Get the names of methods declared in this namespace.
+        (This does not include methods in parent namespaces).
+    */
+    public String [] getMethodNames()
+    {
         return this.methods.keySet().stream().toArray(String[]::new);
     }
 
-    /**
-     * Get the methods defined in this namespace. (This does not show methods
+    /** Get the methods defined in this namespace. (This does not show methods
      * in parent namespaces). Note: This will probably be renamed
      * getDeclaredMethods()
-     *
-     * @return the methods
-     */
+     * @return the methods */
     public BshMethod[] getMethods() {
         return this.methods.values().stream()
                 .flatMap(v -> v.stream()).toArray(BshMethod[]::new);
     }
 
-    /**
-     * Get the parent namespace. Note: this isn't quite the same as getSuper().
+    /** Get the parent namespace. Note: this isn't quite the same as getSuper().
      * getSuper() returns 'this' if we are at the root namespace.
-     *
-     * @return the parent
-     */
+     * @return the parent */
     public NameSpace getParent() {
         return this.parent;
     }
 
-    /**
-     * Sets the parent.
-     *
-     * @param parent the new parent
-     */
-    public void setParent(final NameSpace parent) {
-        this.parent = parent;
-        // If we are disconnected from root we need to handle the def imports
-        if (parent == null)
-            this.loadDefaultImports();
-    }
-
-    /**
-     * Check if this namespace is a child of the given namespace.
-     *
+    /** Check if this namespace is a child of the given namespace.
      * @param parent the possible parent
-     * @return true if this is child of parent
-     */
+     * @return true if this is child of parent */
     public boolean isChildOf(NameSpace parent) {
         return null != this.getParent() && (
                 this.getParent().equals(parent)
-                        || this.getParent().isChildOf(parent));
+             || this.getParent().isChildOf(parent));
     }
 
-    /**
-     * Get the parent namespace' This reference or this namespace' This
+    /** Get the parent namespace' This reference or this namespace' This
      * reference if we are the top.
-     *
      * @param declaringInterpreter the declaring interpreter
-     * @return the super
-     */
+     * @return the super */
     public This getSuper(final Interpreter declaringInterpreter) {
         if (isClass && null != classStatic) { // get class super instance This
             Class<?> zuper = classStatic.getSuperclass();
@@ -670,14 +519,11 @@ public class NameSpace
         return this.getThis(declaringInterpreter);
     }
 
-    /**
-     * Get the top level namespace or this namespace if we are the top. Note:
+    /** Get the top level namespace or this namespace if we are the top. Note:
      * this method should probably return type bsh.This to be consistent with
      * getThis();
-     *
      * @param declaringInterpreter the declaring interpreter
-     * @return the global
-     */
+     * @return the global */
     public This getGlobal(final Interpreter declaringInterpreter) {
         if (this.parent != null)
             return this.parent.getGlobal(declaringInterpreter);
@@ -685,8 +531,7 @@ public class NameSpace
             return this.getThis(declaringInterpreter);
     }
 
-    /**
-     * A This object is a thin layer over a namespace, comprising a bsh object
+    /** A This object is a thin layer over a namespace, comprising a bsh object
      * context. It handles things like the interface types the bsh object
      * supports and aspects of method invocation on it.
      * <p>
@@ -694,35 +539,30 @@ public class NameSpace
      * generated proxies. The scripted object "remembers" who created it for
      * things like printing messages and other per-interpreter phenomenon when
      * called externally from Java.
-     *
      * @param declaringInterpreter the declaring interpreter
      * @return the this Note: we need a singleton here so that things like 'this
-     * == this' work (and probably a good idea for speed). Caching a
-     * single instance here seems technically incorrect, considering the
-     * declaringInterpreter could be different under some circumstances.
-     * (Case: a child interpreter running a source() / eval() command).
-     * However the effect is just that the main interpreter that
-     * executes your script should be the one involved in call-backs
-     * from Java. I do not know if there are corner cases where a child
-     * interpreter would be the first to use a This reference in a
-     * namespace or if that would even cause any problems if it did...
-     * We could do some experiments to find out... and if necessary we
-     * could cache on a per interpreter basis if we had weak
-     * references... We might also look at skipping over child
-     * interpreters and going to the parent for the declaring
-     * interpreter, so we'd be sure to get the top interpreter.
-     */
+     *         == this' work (and probably a good idea for speed). Caching a
+     *         single instance here seems technically incorrect, considering the
+     *         declaringInterpreter could be different under some circumstances.
+     *         (Case: a child interpreter running a source() / eval() command).
+     *         However the effect is just that the main interpreter that
+     *         executes your script should be the one involved in call-backs
+     *         from Java. I do not know if there are corner cases where a child
+     *         interpreter would be the first to use a This reference in a
+     *         namespace or if that would even cause any problems if it did...
+     *         We could do some experiments to find out... and if necessary we
+     *         could cache on a per interpreter basis if we had weak
+     *         references... We might also look at skipping over child
+     *         interpreters and going to the parent for the declaring
+     *         interpreter, so we'd be sure to get the top interpreter. */
     public This getThis(final Interpreter declaringInterpreter) {
         if (this.thisReference == null)
             this.thisReference = This.getThis(this, declaringInterpreter);
         return this.thisReference;
     }
 
-    /**
-     * Gets the class manager.
-     *
-     * @return the class manager
-     */
+    /** Gets the class manager.
+     * @return the class manager */
     public BshClassManager getClassManager() {
         if (this.classManager != null)
             return this.classManager;
@@ -734,21 +574,25 @@ public class NameSpace
         return this.classManager;
     }
 
-    /**
-     * Sets the class manager.
-     *
-     * @param classManager the new class manager
-     */
+    /** Sets the class manager.
+     * @param classManager the new class manager */
     void setClassManager(final BshClassManager classManager) {
         this.classManager = classManager;
     }
 
-    /**
-     * Used for serialization.
-     */
+    /** Used for serialization. */
     public void prune() {
         this.getClassManager();
         this.setParent(null);
+    }
+
+    /** Sets the parent.
+     * @param parent the new parent */
+    public void setParent(final NameSpace parent) {
+        this.parent = parent;
+        // If we are disconnected from root we need to handle the def imports
+        if (parent == null)
+            this.loadDefaultImports();
     }
 
     /**
@@ -759,51 +603,43 @@ public class NameSpace
      * <p>
      * We first search for a variable name, and then a property.
      * </p>
-     *
-     * @param name   the name
+     * @param name the name
      * @param interp the interp
      * @return The variable or property value or Primitive.VOID if neither is
-     * defined.
-     * @throws UtilEvalError the util eval error
-     */
+     *         defined.
+     * @throws UtilEvalError the util eval error */
     public Object getVariableOrProperty(final String name,
-                                        final Interpreter interp) throws UtilEvalError {
+            final Interpreter interp) throws UtilEvalError {
         final Object val = this.getVariable(name, true);
         return val == Primitive.VOID
                 ? this.getPropertyValue(name, interp)
                 : val;
     }
 
-    /**
-     * Get the specified variable in this namespace or a parent namespace.
+    /** Get the specified variable in this namespace or a parent namespace.
      * <p>
      * Note: this method is primarily intended for use internally. If you use
      * this method outside of the bsh package you will have to use
      * Primitive.unwrap() to get primitive values.
-     *
      * @param name the name
      * @return The variable value or Primitive.VOID if it is not defined.
      * @throws UtilEvalError the util eval error
-     * @see Primitive#unwrap(Object)
-     */
+     * @see Primitive#unwrap(Object) */
     public Object getVariable(final String name) throws UtilEvalError {
         return this.getVariable(name, true);
     }
 
-    /**
-     * Get the specified variable in this namespace.
-     *
-     * @param name    the name
+    /** Get the specified variable in this namespace.
+     * @param name the name
      * @param recurse If recurse is true then we recursively search through
-     *                parent namespaces for the variable.
-     *                <p>
-     *                Note: this method is primarily intended for use internally. If you
-     *                use this method outside of the bsh package you will have to use
-     *                Primitive.unwrap() to get primitive values.
+     *        parent namespaces for the variable.
+     *        <p>
+     *        Note: this method is primarily intended for use internally. If you
+     *        use this method outside of the bsh package you will have to use
+     *        Primitive.unwrap() to get primitive values.
      * @return The variable value or Primitive.VOID if it is not defined.
      * @throws UtilEvalError the util eval error
-     * @see Primitive#unwrap(Object)
-     */
+     * @see Primitive#unwrap(Object) */
     public Object getVariable(final String name, final boolean recurse)
             throws UtilEvalError {
         final Variable var = this.getVariableImpl(name, recurse);
@@ -811,17 +647,14 @@ public class NameSpace
         return this.unwrapVariable(var);
     }
 
-    /**
-     * Locate a variable and return the Variable object with optional recursion
+    /** Locate a variable and return the Variable object with optional recursion
      * through parent name spaces.
      * <p/>
      * If this namespace is static, return only static variables.
-     *
-     * @param name    the name
+     * @param name the name
      * @param recurse the recurse
      * @return the Variable value or null if it is not defined
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Variable getVariableImpl(final String name, final boolean recurse)
             throws UtilEvalError {
         Variable var = null;
@@ -839,46 +672,39 @@ public class NameSpace
         if (!this.variables.containsKey(var.getName()))
             this.variables.put(var.getName(), var);
     }
-
     /*
         Get variables declared in this namespace.
     */
-    public Variable[] getDeclaredVariables() {
+    public Variable [] getDeclaredVariables()
+    {
         return this.variables.values().stream().toArray(Variable[]::new);
     }
 
-    /**
-     * Unwrap a variable to its value.
-     *
+    /** Unwrap a variable to its value.
      * @param var the var
      * @return return the variable value. A null var is mapped to Primitive.VOID
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Object unwrapVariable(final Variable var) throws UtilEvalError {
         return var == null ? Primitive.VOID : var.getValue();
     }
 
-    /**
-     * Sets the typed variable.
-     *
-     * @param name    the name
-     * @param type    the type
-     * @param value   the value
+    /** Sets the typed variable.
+     * @param name the name
+     * @param type the type
+     * @param value the value
      * @param isFinal the is final
      * @throws UtilEvalError the util eval error
-     * @deprecated See #setTypedVariable(String, Class, Object, Modifiers)
-     */
+     * @deprecated See #setTypedVariable(String, Class, Object, Modifiers) */
     @Deprecated
     public void setTypedVariable(final String name, final Class<?> type,
-                                 final Object value, final boolean isFinal) throws UtilEvalError {
+            final Object value, final boolean isFinal) throws UtilEvalError {
         final Modifiers modifiers = new Modifiers(Modifiers.FIELD);
         if (isFinal)
             modifiers.addModifier("final");
         this.setTypedVariable(name, type, value, modifiers);
     }
 
-    /**
-     * Declare a variable in the local scope and set its initial value. Value
+    /** Declare a variable in the local scope and set its initial value. Value
      * may be null to indicate that we would like the default value for the
      * variable type. (e.g. 0 for integer types, null for object types). An
      * existing typed variable may only be set to the same type. If an untyped
@@ -889,16 +715,14 @@ public class NameSpace
      * Note: this method is primarily intended for use internally. If you use
      * this method outside of the bsh package and wish to set variables with
      * primitive values you will have to wrap them using bsh.Primitive.
-     *
-     * @param name      the name
-     * @param type      the type
-     * @param value     If value is null, you'll get the default value for the type
+     * @param name the name
+     * @param type the type
+     * @param value If value is null, you'll get the default value for the type
      * @param modifiers may be null
      * @throws UtilEvalError the util eval error
-     * @see bsh.Primitive
-     */
+     * @see bsh.Primitive */
     public void setTypedVariable(final String name, final Class<?> type,
-                                 final Object value, final Modifiers modifiers)
+            final Object value, final Modifiers modifiers)
             throws UtilEvalError {
         // Setting a typed variable is always a local operation.
         final Variable existing = this.getVariableImpl(name,
@@ -926,20 +750,17 @@ public class NameSpace
                 this.createVariable(name, type, value, modifiers));
     }
 
-    /**
-     * Dissallow static vars outside of a class.
-     *
-     * @param name   is here just to allow the error message to use it protected
-     *               void checkVariableModifiers(String name, Modifiers modifiers)
-     *               throws UtilEvalError { if (modifiers!=null &&
-     *               modifiers.hasModifier("static")) throw new UtilEvalError("Can't
-     *               declare static variable outside of class: "+name); }
+    /** Dissallow static vars outside of a class.
+     * @param name is here just to allow the error message to use it protected
+     *        void checkVariableModifiers(String name, Modifiers modifiers)
+     *        throws UtilEvalError { if (modifiers!=null &&
+     *        modifiers.hasModifier("static")) throw new UtilEvalError("Can't
+     *        declare static variable outside of class: "+name); }
      * @param method the method
      * @throws UtilEvalError the util eval error Note: this is primarily for
-     *                       internal use.
+     *         internal use.
      * @see Interpreter#source(String)
-     * @see Interpreter#eval(String)
-     */
+     * @see Interpreter#eval(String) */
     public void setMethod(BshMethod method) {
         String name = method.getName();
         if (!this.methods.containsKey(name))
@@ -948,86 +769,127 @@ public class NameSpace
         this.methods.get(name).add(0, method);
     }
 
-    /**
-     * Gets the method.
-     *
+    /** Gets the method.
      * @param name the name
-     * @param sig  the sig
+     * @param sig the sig
      * @return the method
      * @throws UtilEvalError the util eval error
      * @see #getMethod(String, Class [], boolean)
-     * @see #getMethod(String, Class [])
-     */
+     * @see #getMethod(String, Class []) */
     public BshMethod getMethod(final String name, final Class<?>[] sig)
             throws UtilEvalError {
         return this.getMethod(name, sig, false/* declaredOnly */);
     }
 
-    /**
-     * Get the bsh method matching the specified signature declared in this
+    /** Get the bsh method matching the specified signature declared in this
      * name space or a parent.
      * <p>
      * Note: this method is primarily intended for use internally. If you use
      * this method outside of the bsh package you will have to be familiar with
      * BeanShell's use of the Primitive wrapper class.
-     *
-     * @param name         the name
-     * @param sig          the sig
+     * @param name the name
+     * @param sig the sig
      * @param declaredOnly if true then only methods declared directly in this
-     *                     namespace will be found and no inherited or imported methods will
-     *                     be visible.
+     *        namespace will be found and no inherited or imported methods will
+     *        be visible.
      * @return the BshMethod or null if not found
      * @throws UtilEvalError the util eval error
-     * @see bsh.Primitive
-     */
+     * @see bsh.Primitive */
     public BshMethod getMethod(final String name, final Class<?>[] sig,
-                               final boolean declaredOnly) throws UtilEvalError {
+            final boolean declaredOnly) throws UtilEvalError {
+        return this.getMethod(name, sig, declaredOnly, false/* includeExtensions */);
+    }
+
+    public BshMethod getMethod(final String name, final Class<?>[] sig,
+            final boolean declaredOnly, final boolean includeExtensions)
+            throws UtilEvalError {
         BshMethod method = null;
-        Interpreter.debug("Get method: ", name, " ", this);
+        Interpreter.debug("Get method: ", name, " ", this );
         // Change import precedence if we are a class body/instance
         // Get import first. Enum blocks may override class methods.
         if (this.isClass && !this.isEnum && !declaredOnly)
             method = this.getImportedMethod(name, sig);
         if (method == null && this.methods.containsKey(name))
-            method = Reflect.findMostSpecificBshMethod(sig, methods.get(name));
+            method = this.selectMethod(sig, methods.get(name), includeExtensions);
         if (method == null && !this.isClass && !declaredOnly)
             method = this.getImportedMethod(name, sig);
         // try parent
         if (method == null && !declaredOnly && this.parent != null)
-            return this.parent.getMethod(name, sig);
+            return this.parent.getMethod(name, sig, false, includeExtensions);
         return method;
     }
 
-    /**
-     * Import a class name. Subsequent imports override earlier ones
-     *
+    private BshMethod selectMethod(final Class<?>[] sig,
+            final List<BshMethod> methods, final boolean includeExtensions) {
+        final List<BshMethod> candidates;
+        if (includeExtensions) {
+            candidates = methods;
+        } else {
+            candidates = new ArrayList<>(methods.size());
+            for (final BshMethod method : methods)
+                if (!method.isExtension)
+                    candidates.add(method);
+        }
+        return candidates.isEmpty() ? null : Reflect.findMostSpecificBshMethod(sig, candidates);
+    }
+
+    /** Get the extension method matching the specified receiver type and
+     * signature declared in this name space or a parent.
+     * @param receiverType the receiver type
      * @param name the name
-     */
+     * @param sig the sig
+     * @return the BshMethod or null if not found */
+    public BshMethod getExtensionMethod(final Class<?> receiverType,
+            final String name, final Class<?>[] sig) {
+        final List<BshMethod> matches = new ArrayList<>();
+
+        for (NameSpace ns = this; ns != null; ns = ns.getParent()) {
+            collectExtensionMatches(ns.methods.get(name), receiverType, matches);
+            for (Object obj : ns.importedObjects) {
+                if (obj == null) continue;
+                for (Class<?> c = obj.getClass(); c != null && Reflect.isGeneratedClass(c); c = c.getSuperclass()) {
+                    This ths = Reflect.getClassInstanceThis(obj, c.getSimpleName());
+                    if (ths == null) continue;
+                    collectExtensionMatches(ths.getNameSpace().methods.get(name), receiverType, matches);
+                }
+            }
+        }
+
+        if (matches.isEmpty())
+            return null;
+        return Reflect.findMostSpecificExtensionMethod(receiverType, sig, matches);
+    }
+
+    private void collectExtensionMatches(final List<BshMethod> methods,
+            final Class<?> receiverType, final List<BshMethod> matches) {
+        if (methods == null) return;
+        for (BshMethod method : methods)
+            if (method.isExtension && method.receiverType != null
+                && Types.isJavaBoxTypesAssignable(method.receiverType, receiverType))
+                matches.add(method);
+    }
+
+    /** Import a class name. Subsequent imports override earlier ones
+     * @param name the name */
     public void importClass(final String name) {
         this.importedClasses.put(Name.suffix(name, 1), name);
         this.nameSpaceChanged();
     }
 
-    /**
-     * subsequent imports override earlier ones.
-     *
-     * @param name the name
-     */
+    /** subsequent imports override earlier ones.
+     * @param name the name */
     public void importPackage(final String name) {
         this.importedPackages.remove(name);
         this.importedPackages.add(0, name);
         this.nameSpaceChanged();
     }
 
-    /**
-     * Import scripted or compiled BeanShell commands in the following package
+    /** Import scripted or compiled BeanShell commands in the following package
      * in the classpath. You may use either "/" path or "." package notation.
      * e.g. importCommands("/bsh/commands") or importCommands("bsh.commands")
      * are equivalent. If a relative path style specifier is used then it is
      * made into an absolute path by prepending "/".
-     *
-     * @param name the name
-     */
+     * @param name the name */
     public void importCommands(String name) {
         // dots to slashes
         name = name.replace('.', '/');
@@ -1042,8 +904,7 @@ public class NameSpace
         this.nameSpaceChanged();
     }
 
-    /**
-     * A command is a scripted method or compiled command class implementing a
+    /** A command is a scripted method or compiled command class implementing a
      * specified method signature. Commands are loaded from the classpath and
      * may be imported using the importCommands() method.
      * <p/>
@@ -1059,16 +920,14 @@ public class NameSpace
      * located in another package it will not currently be found. This could be
      * fixed.
      * <p/>
-     *
-     * @param name        is the name of the desired command method
-     * @param argTypes    is the signature of the desired command method.
+     * @param name is the name of the desired command method
+     * @param argTypes is the signature of the desired command method.
      * @param interpreter the interpreter
      * @return a BshMethod, Class, or null if no such command is found.
      * @throws UtilEvalError if loadScriptedCommand throws UtilEvalError i.e. on
-     *                       errors loading a script that was found
-     */
+     *         errors loading a script that was found */
     public Object getCommand(final String name, final Class<?>[] argTypes,
-                             final Interpreter interpreter) throws UtilEvalError {
+            final Interpreter interpreter) throws UtilEvalError {
         Interpreter.debug("Get command: ", name);
         final BshClassManager bcm = interpreter.getClassManager();
         // loop backwards for precedence
@@ -1082,7 +941,7 @@ public class NameSpace
             URL url = bcm.getResource(scriptPath);
             if (null != url) try {
                 return this.loadScriptedCommand((InputStream) url.getContent(),
-                        name, argTypes, scriptPath, interpreter);
+                    name, argTypes, scriptPath, interpreter);
             } catch (IOException e) { /* ignore */ }
             // Chop leading "/" and change "/" to "."
             String className;
@@ -1102,20 +961,17 @@ public class NameSpace
             return null;
     }
 
-    /**
-     * Gets the imported method.
-     *
+    /** Gets the imported method.
      * @param name the name
-     * @param sig  the sig
+     * @param sig the sig
      * @return the imported method
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected BshMethod getImportedMethod(final String name, final Class<?>[] sig)
             throws UtilEvalError {
         // Try object imports
         for (final Object object : this.importedObjects) {
             final Invocable method = Reflect.resolveJavaMethod(
-                    object.getClass(), name, sig, false/* onlyStatic */);
+                   object.getClass(), name, sig, false/* onlyStatic */);
             if (method != null)
                 return new BshMethod(method, object);
         }
@@ -1129,13 +985,10 @@ public class NameSpace
         return null;
     }
 
-    /**
-     * Gets the imported var.
-     *
+    /** Gets the imported var.
      * @param name the name
      * @return the imported var
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     protected Variable getImportedVar(final String name) throws UtilEvalError {
         Variable var = null;
         // Try object imports
@@ -1172,24 +1025,21 @@ public class NameSpace
         return null;
     }
 
-    /**
-     * Load a command script from the input stream and find the BshMethod in
+    /** Load a command script from the input stream and find the BshMethod in
      * the target namespace.
-     *
-     * @param in           the in
-     * @param name         the name
-     * @param argTypes     the arg types
+     * @param in the in
+     * @param name the name
+     * @param argTypes the arg types
      * @param resourcePath the resource path
-     * @param interpreter  the interpreter
+     * @param interpreter the interpreter
      * @return the bsh method
      * @throws UtilEvalError on error in parsing the script or if the the method
-     *                       is not found after parsing the script. If we want to support
-     *                       multiple commands in the command path we need to change this to
-     *                       not throw the exception.
-     */
+     *         is not found after parsing the script. If we want to support
+     *         multiple commands in the command path we need to change this to
+     *         not throw the exception. */
     private BshMethod loadScriptedCommand(final InputStream in,
-                                          final String name, final Class<?>[] argTypes,
-                                          final String resourcePath, final Interpreter interpreter)
+            final String name, final Class<?>[] argTypes,
+            final String resourcePath, final Interpreter interpreter)
             throws UtilEvalError {
         try (FileReader reader = new FileReader(in)) {
             interpreter.eval(reader, this, resourcePath);
@@ -1208,38 +1058,33 @@ public class NameSpace
         return meth;
     }
 
-    /**
-     * Helper that caches class.
-     *
+    /** Helper that caches class.
      * @param name the name
-     * @param c    the c
-     */
+     * @param c the c */
     void cacheClass(final String name, final Class<?> c) {
         this.classCache.put(name, c);
     }
 
-    /**
-     * Load a class through this namespace taking into account imports. The
+    /** Load a class through this namespace taking into account imports. The
      * class search will proceed through the parent namespaces if necessary.
-     *
      * @param name the name
      * @return null if not found.
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     public Class<?> getClass(final String name) throws UtilEvalError {
         final Class<?> c = this.getClassImpl(name);
         if (c != null)
             return c;
         if (this.parent != null)
             return this.parent.getClass(name);
-        final Class<?> clz = BshLoaderManager.getClass(name);
+
+        final Class<?> clz = classManager.loaderManager.getLoaderClass(name);
         if (clz != null)
             return clz;
+
         return null;
     }
 
-    /**
-     * Implementation of getClass() Load a class through this namespace taking
+    /** Implementation of getClass() Load a class through this namespace taking
      * into account imports.
      * <p>
      * Check the cache first. If an unqualified name look for imported class or
@@ -1249,11 +1094,9 @@ public class NameSpace
      * Qualified names are cached by the BshClassManager. Unqualified absolute
      * class names (e.g. unpackaged Foo) are cached too so that we don't go
      * searching through the imports for them each time.
-     *
      * @param name the name
      * @return null if not found.
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     private Class<?> getClassImpl(final String name) throws UtilEvalError {
         Class<?> c = null;
         // Check the cache
@@ -1281,15 +1124,12 @@ public class NameSpace
         return null;
     }
 
-    /**
-     * Try to make the name into an imported class. This method takes into
+    /** Try to make the name into an imported class. This method takes into
      * account only imports (class or package) found directly in this NameSpace
      * (no parent chain).
-     *
      * @param name the name
      * @return the imported class impl
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     private Class<?> getImportedClassImpl(final String name) throws UtilEvalError {
         // Try explicitly imported class, e.g. import foo.Bar;
         String fullname = this.importedClasses.get(name);
@@ -1300,7 +1140,7 @@ public class NameSpace
             // Try to make the full imported name
             Class<?> clas = this.classForName(fullname);
 
-            if (clas != null)
+            if ( clas != null )
                 return clas;
 
             // Handle imported inner class case
@@ -1312,7 +1152,7 @@ public class NameSpace
                     clas = this.getNameResolver(fullname).toClass();
                 } catch (final ClassNotFoundException e) { /* not a class */ }
             Interpreter.debug(
-                    "imported unpackaged name not found:", fullname);
+                        "imported unpackaged name not found:", fullname);
             // If found cache the full name in the BshClassManager
             if (clas != null) {
                 // (should we cache info in not a class case too?)
@@ -1325,8 +1165,7 @@ public class NameSpace
         }
         /* Try imported packages, e.g. "import foo.bar.*;" in reverse order of
          * import... (give later imports precedence...) */
-        for (int i = this.importedPackages.size() - 1; i >= 0; i--) {
-            String s = this.importedPackages.get(i);
+        for (final String s: this.importedPackages) {
             final Class<?> c = this.classForName(s + "." + name);
             if (c != null)
                 return c;
@@ -1344,47 +1183,35 @@ public class NameSpace
         return null;
     }
 
-    /**
-     * Class<?> for name.
-     *
+    /** Class<?> for name.
      * @param name the name
-     * @return the class
-     */
+     * @return the class */
     private Class<?> classForName(final String name) {
         return this.getClassManager().classForName(name);
     }
 
-    /**
-     * Implements NameSource.
-     *
+    /** Implements NameSource.
      * @return all variable and method names in this and all parent
-     * namespaces
-     */
+     *         namespaces */
     public String[] getAllNames() {
         final List<String> vec = new ArrayList<String>();
         this.getAllNamesAux(vec);
         return vec.toArray(new String[vec.size()]);
     }
 
-    /**
-     * Helper for implementing NameSource.
-     *
-     * @param vec the vec
-     */
+    /** Helper for implementing NameSource.
+     * @param vec the vec */
     protected void getAllNamesAux(final List<String> vec) {
         vec.addAll(this.variables.keySet());
-        if (methods != null)
+        if ( methods != null )
             vec.addAll(this.methods.keySet());
         if (this.parent != null)
             this.parent.getAllNamesAux(vec);
     }
 
-    /**
-     * Implements NameSource Add a listener who is notified upon changes to
+    /** Implements NameSource Add a listener who is notified upon changes to
      * names in this space.
-     *
-     * @param listener the listener
-     */
+     * @param listener the listener */
     public void addNameSourceListener(final NameSource.Listener listener) {
         this.nameSourceListeners.add(listener);
     }
@@ -1397,27 +1224,24 @@ public class NameSpace
      * They are done in the context of the ClassManager
      * rather than the NameSpace and thus their effects
      * may persist after the NameSpace is released.
-     * <p>
+     *
      * It seems irregular that named imports are 'local' to the
      * namespace but super imports are 'global' to the class manager
      * but I suppose for performance reasons it is a good idea
      * to scan the super class path only once and store the results.
-     *
      * @throws UtilEvalError the util eval error
      */
     public void doSuperImport() throws UtilEvalError {
         this.getClassManager().doSuperImport();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "NameSpace: "
                 + (this.nsName == null
-                ? super.toString()
-                : this.nsName + " (" + super.toString() + ")")
+                    ? super.toString()
+                    : this.nsName + " (" + super.toString() + ")")
                 + (this.isClass ? " (class) " : "")
                 + (this.isInterface ? " (interface) " : "")
                 + (this.isEnum ? " (enum) " : "")
@@ -1426,202 +1250,175 @@ public class NameSpace
                 + (this.classInstance != null ? " (class instance) " : "");
     }
 
-    /**
-     * Write object.
-     *
+    /** Write object.
      * @param s the s
      * @throws IOException Signals that an I/O exception has occurred. For
-     *                     serialization. Don't serialize non-serializable objects.
-     */
+     *         serialization. Don't serialize non-serializable objects. */
     private synchronized void writeObject(final ObjectOutputStream s)
             throws IOException {
         // clear name resolvers... don't know if this is necessary.
         this.names.clear();
         s.defaultWriteObject();
     }
-
-    /**
-     * Re-initialize transient members.
-     *
+    /** Re-initialize transient members.
      * @param in the serializer
-     * @throws IOException            mandatory throwing exception
-     * @throws ClassNotFoundException mandatory throwing exception
-     */
+     * @throws IOException mandatory throwing exception
+     * @throws ClassNotFoundException mandatory throwing exception */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
         this.classCache = new HashMap<>();
     }
-
-    /**
-     * Invoke a method in this namespace with the specified args and
+    /** Invoke a method in this namespace with the specified args and
      * interpreter reference. No caller information or call stack is required.
      * The method will appear as if called externally from Java.
      * <p>
-     *
-     * @param methodName  the method name
-     * @param args        the args
+     * @param methodName the method name
+     * @param args the args
      * @param interpreter the interpreter
      * @return the object
      * @throws EvalError the eval error
      * @see bsh.This.invokeMethod(String methodName, Object [] args,
-     * Interpreter interpreter, CallStack callstack, Node callerInfo,
-     * boolean)
-     */
+     *      Interpreter interpreter, CallStack callstack, Node callerInfo,
+     *      boolean) */
     public Object invokeMethod(final String methodName, final Object[] args,
-                               final Interpreter interpreter) throws EvalError {
+            final Interpreter interpreter) throws EvalError {
         return this.invokeMethod(methodName, args, interpreter, null, null);
     }
 
-    /**
-     * This method simply delegates to This.invokeMethod();.
+    /** This method simply delegates to This.invokeMethod();.
      * <p>
-     *
-     * @param methodName  the method name
-     * @param args        the args
+     * @param methodName the method name
+     * @param args the args
      * @param interpreter the interpreter
-     * @param callstack   the callstack
-     * @param callerInfo  the caller info
+     * @param callstack the callstack
+     * @param callerInfo the caller info
      * @return the object
      * @throws EvalError the eval error
      * @see bsh.This.invokeMethod(String methodName, Object [] args,
-     * Interpreter interpreter, CallStack callstack, Node
-     * callerInfo)
-     */
+     *      Interpreter interpreter, CallStack callstack, Node
+     *      callerInfo) */
     public Object invokeMethod(final String methodName, final Object[] args,
-                               final Interpreter interpreter, final CallStack callstack,
-                               final Node callerInfo) throws EvalError {
+            final Interpreter interpreter, final CallStack callstack,
+            final Node callerInfo) throws EvalError {
         return this.getThis(interpreter).invokeMethod(methodName, args,
                 interpreter, callstack, callerInfo, false/* declaredOnly */);
     }
 
-    /**
-     * Invoke an imported command scoped by namespace hierarchy.
+
+    /** Invoke an imported command scoped by namespace hierarchy.
      * When no commands were found attempt to invoke the default invoke
      * method if it is present in the namespace.
-     *
      * @param commandName the command name
-     * @param args        the args
+     * @param args the args
      * @param interpreter the interpreter
-     * @param callstack   the callstack
-     * @param callerInfo  the caller info
+     * @param callstack the callstack
+     * @param callerInfo the caller info
      * @return the method return data object
-     * @throws EvalError the eval error
-     */
+     * @throws EvalError the eval error */
     protected Object invokeCommand(final String commandName, final Object[] args,
-                                   final Interpreter interpreter, final CallStack callstack,
-                                   final Node callerInfo) throws EvalError {
+            final Interpreter interpreter, final CallStack callstack,
+            final Node callerInfo) throws EvalError {
         return invokeCommand(commandName, args, interpreter, callstack, callerInfo, false);
     }
 
-    /**
-     * Invoke an imported command scoped by namespace hierarchy.
+    /** Invoke an imported command scoped by namespace hierarchy.
      * Unless ignore invoke is true, when no commands were found attempt to
      * invoke the default invoke method if it is present in the namespace.
-     *
-     * @param commandName  the command name
-     * @param args         the args
-     * @param interpreter  the interpreter
-     * @param callstack    the callstack
-     * @param callerInfo   the caller info
+     * @param commandName the command name
+     * @param args the args
+     * @param interpreter the interpreter
+     * @param callstack the callstack
+     * @param callerInfo the caller info
      * @param ignoreInvoke do not call default invoke if no commands found
      * @return the method return data object
-     * @throws EvalError the eval error
-     */
+     * @throws EvalError the eval error */
     protected Object invokeCommand(final String commandName, final Object[] args,
-                                   final Interpreter interpreter, final CallStack callstack,
-                                   final Node callerInfo, final boolean ignoreInvoke) throws EvalError {
-        Class<?>[] argTypes = Types.getTypes(args);
+            final Interpreter interpreter, final CallStack callstack,
+            final Node callerInfo, final boolean ignoreInvoke) throws EvalError {
+        Class<?>[] argTypes = Types.getTypes( args );
         Object commandObject;
         try {
             commandObject = getCommand(
-                    commandName, argTypes, interpreter);
-        } catch (UtilEvalError e) {
+                commandName, argTypes, interpreter );
+        } catch ( UtilEvalError e ) {
             throw e.toEvalError("Error loading command: ",
-                    callerInfo, callstack);
+                callerInfo, callstack );
         }
 
         // should try to print usage here if nothing found
-        if (null == commandObject) {
-            if (!ignoreInvoke) {
+        if ( null == commandObject )
+        {
+            if ( !ignoreInvoke ) {
                 // Look for a default invoke() handler method in the namespace
                 boolean[] outHasMethod = new boolean[1];
                 Object result = invokeDefaultInvokeMethod(commandName, args, interpreter,
                         callstack, callerInfo, outHasMethod);
-                if (outHasMethod[0])
+                if ( outHasMethod[0] )
                     return result;
             }
-            throw new EvalException("Command not found: " +
-                    StringUtil.methodString(commandName, argTypes),
-                    callerInfo, callstack);
+            throw new EvalException( "Command not found: " +
+                StringUtil.methodString( commandName, argTypes ),
+                callerInfo, callstack );
         }
 
-        if (commandObject instanceof BshMethod)
-            return ((BshMethod) commandObject).invoke(
-                    args, interpreter, callstack, callerInfo);
+        if ( commandObject instanceof BshMethod )
+            return ((BshMethod)commandObject).invoke(
+                args, interpreter, callstack, callerInfo );
 
         try {
             return Reflect.invokeCompiledCommand(
-                    ((Class<?>) commandObject), args, interpreter, callstack, callerInfo);
-        } catch (UtilEvalError e) {
+                ((Class<?>)commandObject), args, interpreter, callstack, callerInfo );
+        } catch ( UtilEvalError e ) {
             throw e.toEvalError("Error invoking compiled command: ",
-                    callerInfo, callstack);
+                    callerInfo, callstack );
         }
     }
 
-    /**
-     * Invoke the default invoke method if found in the namespace,
+    /** Invoke the default invoke method if found in the namespace,
      * Updates the outHasMethod array index 0 by reference, if false then method was
      * not found and the return result is meaningless.
-     *
-     * @param commandName  the command name
-     * @param args         the args
-     * @param interpreter  the interpreter
-     * @param callstack    the callstack
-     * @param callerInfo   the caller info
+     * @param commandName the command name
+     * @param args the args
+     * @param interpreter the interpreter
+     * @param callstack the callstack
+     * @param callerInfo the caller info
      * @param outHasMethod update array by reference if method found
      * @return the method return data object
-     * @throws EvalError the eval error
-     */
+     * @throws EvalError the eval error */
     @SuppressWarnings("LogicalAssignment")
     protected Object invokeDefaultInvokeMethod(final String commandName, final Object[] args,
-                                               final Interpreter interpreter, final CallStack callstack, final Node callerInfo,
-                                               final boolean[] outHasMethod) throws EvalError {
+            final Interpreter interpreter, final CallStack callstack, final Node callerInfo,
+            final boolean[] outHasMethod) throws EvalError {
 
         BshMethod invokeMethod = null;
         try {
             invokeMethod = getMethod(
-                    "invoke", new Class[]{null, null});
-        } catch (UtilEvalError e) {
+                "invoke", new Class [] { null, null } );
+        } catch ( UtilEvalError e ) {
             throw e.toEvalError(
-                    "Local method invocation", callerInfo, callstack);
+                "Local method invocation", callerInfo, callstack );
         }
 
-        if (outHasMethod[0] = (invokeMethod != null))
+        if ( outHasMethod[0] = ( invokeMethod != null ))
             return invokeMethod.invoke(
-                    new Object[]{commandName, args},
-                    interpreter, callstack, callerInfo);
+                new Object [] { commandName, args },
+                interpreter, callstack, callerInfo );
 
         return null;
     }
-
-    /**
-     * Clear all cached classes and names.
-     */
+    /** Clear all cached classes and names. */
     public void classLoaderChanged() {
         this.nameSpaceChanged();
     }
 
-    /**
-     * Clear all cached classes and names.
-     */
+    /** Clear all cached classes and names. */
     public void nameSpaceChanged() {
         this.classCache.clear();
         this.names.clear();
     }
 
-    /**
-     * Import standard packages. Currently:
+    /** Import standard packages. Currently:
      *
      * <pre>
      * importClass("bsh.EvalError");
@@ -1644,24 +1441,26 @@ public class NameSpace
         /** Note: the resolver looks through these in reverse order, per
          * precedence rules... so for max efficiency put the most common ones
          * later. */
-        this.importClass("bsh.EvalError");
-        this.importClass("bsh.Interpreter");
-        this.importClass("bsh.Capabilities");
-        this.importPackage("java.net");
-        this.importClass("java.util.Map.Entry");
-        this.importPackage("java.util.function");
+        this.importPackage("org.json");
+        this.importPackage("android.widget");
+        this.importPackage("android.view");
+        this.importPackage("android.text");
+        this.importPackage("android.os");
+        this.importPackage("android.graphics");
+        this.importPackage("android.content");
+        this.importPackage("android.app");
         this.importPackage("java.util.stream");
         this.importPackage("java.util.regex");
+        this.importPackage("java.util.function");
         this.importPackage("java.util");
+        this.importPackage("java.net");
+        this.importPackage("java.math");
         this.importPackage("java.io");
         this.importPackage("java.lang");
-        this.importClass("bsh.FileReader");
-        this.importPackage("java.math");
         this.importCommands("/bsh/commands");
     }
 
-    /**
-     * This is the factory for Name objects which resolve names within this
+    /** This is the factory for Name objects which resolve names within this
      * namespace (e.g. toObject(), toClass(), toLHS()).
      * <p>
      * This was intended to support name resolver caching, allowing Name objects
@@ -1676,21 +1475,16 @@ public class NameSpace
      * <p>
      * This method was public for a time, which was a mistake. Use get()
      * instead.
-     *
      * @param ambigname the ambigname
-     * @return the name resolver
-     */
+     * @return the name resolver */
     Name getNameResolver(final String ambigname) {
         if (!this.names.containsKey(ambigname))
             this.names.put(ambigname, new Name(this, ambigname));
         return this.names.get(ambigname);
     }
 
-    /**
-     * Gets the invocation line.
-     *
-     * @return the invocation line
-     */
+    /** Gets the invocation line.
+     * @return the invocation line */
     public int getInvocationLine() {
         final Node node = this.getNode();
         if (node != null)
@@ -1699,11 +1493,8 @@ public class NameSpace
             return -1;
     }
 
-    /**
-     * Gets the invocation text.
-     *
-     * @return the invocation text
-     */
+    /** Gets the invocation text.
+     * @return the invocation text */
     public String getInvocationText() {
         final Node node = this.getNode();
         if (node != null)
@@ -1712,12 +1503,20 @@ public class NameSpace
             return "<invoked from Java code>";
     }
 
-    /**
-     * Clear all variables, methods, and imports from this namespace. If this
+    /** This is a helper method for working inside of bsh scripts and commands.
+     * In that context it is impossible to see a ClassIdentifier object for what
+     * it is. Attempting to access a method on a ClassIdentifier will look like
+     * a static method invocation. This method is in NameSpace for convenience
+     * (you don't have to import bsh.ClassIdentifier to use it);
+     * @param ci the ci
+     * @return the class */
+    public static Class<?> identifierToClass(final ClassIdentifier ci) {
+        return ci.getTargetClass();
+    }
+
+    /** Clear all variables, methods, and imports from this namespace. If this
      * namespace is the root, it will be reset to the default imports.
-     *
-     * @see #loadDefaultImports()
-     */
+     * @see #loadDefaultImports() */
     public void clear() {
         this.variables.clear();
         this.methods.clear();
@@ -1731,38 +1530,36 @@ public class NameSpace
         this.names.clear();
     }
 
-    /**
-     * Import a compiled Java object's methods and variables into this
+    /** Import a compiled Java object's methods and variables into this
      * namespace. When no scripted method / command or variable is found locally
      * in this namespace method / fields of the object will be checked. Objects
      * are checked in the order of import with later imports taking precedence.
      * <p/>
-     *
      * @param obj the obj Note: this impor pattern is becoming common... could
-     *            factor it out into an importedObject List<String> class.
-     */
+     *        factor it out into an importedObject List<String> class. */
     public void importObject(final Object obj) {
         this.importedObjects.remove(obj);
         this.importedObjects.add(0, obj);
         this.nameSpaceChanged();
     }
 
-    /**
-     * Import static.
-     *
-     * @param clas the clas
-     */
+    /** Import static.
+     * @param clas the clas */
     public void importStatic(final Class<?> clas) {
         this.importedStatic.remove(clas);
         this.importedStatic.add(0, clas);
         this.nameSpaceChanged();
     }
 
-    /**
-     * Gets the package.
-     *
-     * @return the package
-     */
+    /** Set the package name for classes defined in this namespace. Subsequent
+     * sets override the package.
+     * @param packageName the new package */
+    void setPackage(final String packageName) {
+        this.packageName = packageName;
+    }
+
+    /** Gets the package.
+     * @return the package */
     String getPackage() {
         if (this.packageName != null)
             return this.packageName;
@@ -1771,36 +1568,23 @@ public class NameSpace
         return null;
     }
 
-    /**
-     * Set the package name for classes defined in this namespace. Subsequent
-     * sets override the package.
-     *
-     * @param packageName the new package
-     */
-    void setPackage(final String packageName) {
-        this.packageName = packageName;
-    }
-
-    /**
-     * If a writable property exists for the given name, set it and return
+    /** If a writable property exists for the given name, set it and return
      * true, otherwise do nothing and return false.
-     *
      * @param propName the prop name
-     * @param value    the value
-     * @param interp   the interp
+     * @param value the value
+     * @param interp the interp
      * @return true, if successful
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     boolean attemptSetPropertyValue(final String propName, final Object value,
-                                    final Interpreter interp) throws UtilEvalError {
+            final Interpreter interp) throws UtilEvalError {
         final String accessorName = Reflect.accessorName(Reflect.SET_PREFIX, propName);
         Object val = Primitive.unwrap(value);
-        final Class<?>[] classArray = new Class<?>[]{
+        final Class<?>[] classArray = new Class<?>[] {
                 val == null ? null : val.getClass()};
         final BshMethod m = this.getMethod(accessorName, classArray);
         if (m != null)
             try {
-                this.invokeMethod(accessorName, new Object[]{value}, interp);
+                this.invokeMethod(accessorName, new Object[] {value}, interp);
                 // m.invoke(new Object[] {value}, interp);
                 return true;
             } catch (final EvalError ee) {
@@ -1811,15 +1595,12 @@ public class NameSpace
         return false;
     }
 
-    /**
-     * Get a property from a scripted object or Primitive.VOID if no such
+    /** Get a property from a scripted object or Primitive.VOID if no such
      * property exists.
-     *
      * @param propName the prop name
-     * @param interp   the interp
+     * @param interp the interp
      * @return the property value
-     * @throws UtilEvalError the util eval error
-     */
+     * @throws UtilEvalError the util eval error */
     Object getPropertyValue(final String propName, final Interpreter interp)
             throws UtilEvalError {
         String accessorName = Reflect.accessorName(Reflect.GET_PREFIX, propName);
@@ -1859,11 +1640,11 @@ public class NameSpace
     }
 
 
-    private <K, V> Map<K, V> clone(final Map<K, V> map) {
+    private <K,V> Map<K,V> clone(final Map<K,V> map) {
         if (map == null) {
             return null;
         }
-        return new HashMap<K, V>(map);
+        return new HashMap<K,V>(map);
     }
 
 
@@ -1874,9 +1655,7 @@ public class NameSpace
         return new ArrayList<T>(list);
     }
 
-    /**
-     * Returns a new {@link NameSpace} to be used by lambda expressions; an {@link NameSpace} where all inherited variables are final, as they're in standard Java
-     */
+    /** Returns a new {@link NameSpace} to be used by lambda expressions; an {@link NameSpace} where all inherited variables are final, as they're in standard Java */
     protected NameSpace toLambdaNameSpace() {
         NameSpace lambdaNS = this.copy();
         Stack<NameSpace> parents = new Stack<>();
@@ -1887,7 +1666,12 @@ public class NameSpace
             lambdaNS.variables.putAll(parent.variables);
         }
 
-        lambdaNS.variables.replaceAll((k, v) -> v.clone());
+        // Change all variables to be final
+        lambdaNS.variables.replaceAll((k, v) -> {
+            Variable clone = v.clone();
+            clone.modifiers.addModifier("final");
+            return clone;
+        });
         return lambdaNS;
     }
 

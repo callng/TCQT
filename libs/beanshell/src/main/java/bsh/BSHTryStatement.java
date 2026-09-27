@@ -31,17 +31,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-class BSHTryStatement extends SimpleNode {
+class BSHTryStatement extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     final int blockId;
     BSHTryWithResources tryWithResources = null;
 
-    BSHTryStatement(int id) {
+    BSHTryStatement(int id)
+    {
         super(id);
         blockId = BlockNameSpace.blockCount.incrementAndGet();
     }
 
-    public Object eval(CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+    public Object eval( CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         int i = 0;
 
         if (jjtGetChild(i) instanceof BSHTryWithResources) {
@@ -56,15 +61,16 @@ class BSHTryStatement extends SimpleNode {
 
         int nchild = jjtGetNumChildren();
         Node node = null;
-        while (i < nchild && (node = jjtGetChild(i++)) instanceof BSHMultiCatch) {
+        while( i < nchild && (node = jjtGetChild(i++)) instanceof BSHMultiCatch )
+        {
             catchParams.add((BSHMultiCatch) node);
             catchBlocks.add((BSHBlock) jjtGetChild(i++));
             node = null;
         }
         // finally block
         BSHBlock finallyBlock = null;
-        if (node != null)
-            finallyBlock = (BSHBlock) node;
+        if(node != null)
+            finallyBlock = (BSHBlock)node;
 
         Throwable thrown = null;
         Object ret = null;
@@ -84,31 +90,33 @@ class BSHTryStatement extends SimpleNode {
             Interpreter.debug("Evaluate try block");
             try {
                 ret = tryBlock.eval(callstack, interpreter);
-            } catch (OutOfMemoryError ome) {
+            } catch ( OutOfMemoryError ome ) {
                 throw new TargetError(ome.toString(), ome, tryBlock, callstack, false);
             }
-        } catch (TargetError e) {
+        }
+        catch( TargetError e ) {
             Interpreter.debug("TargetError from try block: ", e);
             thrown = e.getTarget();
             // clean up call stack grown due to exception interruption
-            while (callstack.depth() > callstackDepth)
+            while ( callstack.depth() > callstackDepth )
                 callstack.pop();
-        } catch (EvalException e) {
+        }
+        catch( EvalException e ) {
             Interpreter.debug("EvalException from try block: ", e);
             thrown = e;
             // clean up call stack grown due to exception interruption
-            while (callstack.depth() > callstackDepth)
+            while ( callstack.depth() > callstackDepth )
                 callstack.pop();
         } finally {
             // unwrap the target error
-            while (null != thrown && thrown.getCause() instanceof TargetError)
+            while ( null != thrown && thrown.getCause() instanceof TargetError )
                 thrown = ((TargetError) thrown.getCause()).getTarget();
 
             // try block finished auto close try-with-resources
             if (null != this.tryWithResources) {
                 Interpreter.debug("Try with resources: autoClose");
                 List<Throwable> tlist = this.tryWithResources.autoClose();
-                for (Throwable t : tlist) // Java 9/10 treats this differently from 8
+                for (Throwable t: tlist) // Java 9/10 treats this differently from 8
                     if (null != thrown && thrown != t)
                         thrown.addSuppressed(t);
             }
@@ -117,33 +125,35 @@ class BSHTryStatement extends SimpleNode {
 
         // If we have an exception, find a catch
         try {
-            if (thrown != null) {
+            if (thrown != null)
+            {
                 Interpreter.debug("Try catch thrown: ", thrown);
                 Class<?> thrownType = thrown.getClass();
                 int n = catchParams.size();
-                for (i = 0; i < n; i++) {
+                for(i=0; i<n; i++)
+                {
                     // Get catch block
                     BSHMultiCatch mc = catchParams.get(i);
                     Modifiers modifiers = new Modifiers(Modifiers.PARAMETER);
                     if (mc.isFinal())
                         modifiers.addModifier("final");
 
-                    mc.eval(callstack, interpreter);
+                    mc.eval( callstack, interpreter );
 
-                    if (mc.isUntyped() && interpreter.getStrictJava())
+                    if ( mc.isUntyped() && interpreter.getStrictJava() )
                         throw new EvalException(
-                                "(Strict Java) Untyped catch block", this, callstack);
+                            "(Strict Java) Untyped catch block", this, callstack );
 
                     // If the param is typed check assignability
                     Class<?> mcType = null;
-                    if (!mc.isUntyped()) {
+                    if ( !mc.isUntyped() ) {
                         boolean found = false;
-                        for (Class<?> cType : mc.getTypes())
-                            if (true == (found = Types.isBshAssignable(cType, thrownType))) {
+                        for ( Class<?> cType: mc.getTypes() )
+                            if ( true == ( found = Types.isBshAssignable(cType, thrownType) ) ) {
                                 mcType = cType;
                                 break;
                             }
-                        if (!found)
+                        if ( !found )
                             continue;
                     }
                     // Found match, execute catch block
@@ -157,25 +167,25 @@ class BSHTryStatement extends SimpleNode {
                     BlockNameSpace cbNameSpace = new BlockNameSpace(callstack.top(), blockId);
 
                     try {
-                        if (mcType == BSHMultiCatch.UNTYPED)
+                        if ( mcType == BSHMultiCatch.UNTYPED )
                             // set an untyped variable directly in the block
-                            cbNameSpace.setBlockVariable(mc.name, thrown);
+                            cbNameSpace.setBlockVariable( mc.name, thrown );
                         else
                             // set a typed variable (directly in the block)
                             cbNameSpace.setTypedVariable(
-                                    mc.name, mcType, thrown, modifiers);
-                    } catch (UtilEvalError e) {
+                                mc.name, mcType, thrown, modifiers);
+                    } catch ( UtilEvalError e ) {
                         throw new InterpreterError(
-                                "Unable to set var in catch block namespace.");
+                            "Unable to set var in catch block namespace." );
                     }
 
                     // put cbNameSpace on the top of the stack
-                    callstack.swap(cbNameSpace);
+                    callstack.swap( cbNameSpace );
                     try {
-                        ret = cb.eval(callstack, interpreter, true);
+                        ret = cb.eval( callstack, interpreter, true );
                     } finally {
                         // put it back
-                        callstack.swap(enclosingNameSpace);
+                        callstack.swap( enclosingNameSpace );
                     }
 
                     thrown = null;  // handled exception
@@ -184,14 +194,14 @@ class BSHTryStatement extends SimpleNode {
             }
         } finally {
             // evaluate finally block
-            if (finallyBlock != null) {
+            if( finallyBlock != null ) {
                 Object result = finallyBlock.eval(callstack, interpreter);
-                if (result instanceof ReturnControl)
+                if( result instanceof ReturnControl )
                     return result;
             }
         }
         // exception fell through, throw it upward...
-        if (null != thrown)
+        if( null != thrown )
             throw new TargetError(thrown, this, callstack);
 
         // no exception return

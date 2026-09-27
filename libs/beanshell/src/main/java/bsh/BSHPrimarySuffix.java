@@ -29,48 +29,26 @@ import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map.Entry;
 
-class BSHPrimarySuffix extends SimpleNode {
+class BSHPrimarySuffix extends SimpleNode
+{
+    private static final long serialVersionUID = 1L;
+
     public static final int
-            CLASS = 6,
-            INDEX = 1,
-            NAME = 2,
-            PROPERTY = 3,
-            NEW = 4,
-            METHODREF = 5;
+        CLASS = 6,
+        INDEX = 1,
+        NAME = 2,
+        PROPERTY = 3,
+        NEW = 4,
+        METHODREF = 5;
 
     public int operation;
+    Object index;
     public String field;
     public boolean slice = false, step = false,
-            hasLeftIndex = false, hasRightIndex = false,
-            safeNavigate = false;
-    Object index;
+        hasLeftIndex = false, hasRightIndex = false,
+        safeNavigate = false;
 
-    BSHPrimarySuffix(int id) {
-        super(id);
-    }
-
-    /**
-     *
-     */
-    static int getIndexAux(Object obj, int idx, CallStack callstack,
-                           Interpreter interpreter, Node callerInfo)
-            throws EvalError {
-        int index;
-        try {
-            Object indexVal = callerInfo.jjtGetChild(idx).eval(
-                    callstack, interpreter);
-            if (!(indexVal instanceof Primitive))
-                indexVal = Types.castObject(
-                        indexVal, Integer.TYPE, Types.ASSIGNMENT);
-            index = (int) Primitive.castWrapper(Integer.TYPE, indexVal);
-        } catch (Exception e) {
-            Interpreter.debug("doIndex: " + e);
-            throw new EvalError(
-                    "Array index does not evaluate to an integer.",
-                    callerInfo, callstack, e);
-        }
-        return index;
-    }
+    BSHPrimarySuffix(int id) { super(id); }
 
     /*
         Perform a suffix operation on the given object and return the
@@ -86,21 +64,22 @@ class BSHPrimarySuffix extends SimpleNode {
         <p>
     */
     public Object doSuffix(
-            Object obj, boolean toLHS,
-            CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        Object obj, boolean toLHS,
+        CallStack callstack, Interpreter interpreter)
+        throws EvalError
+    {
         // Handle ".class" suffix operation
         // Prefix must be a BSHType
-        if (operation == CLASS)
-            if (obj instanceof BSHType) {
-                if (toLHS)
+        if ( operation == CLASS )
+            if ( obj instanceof BSHType ) {
+                if ( toLHS )
                     throw new EvalException("Can't assign .class",
-                            this, callstack);
-                return ((BSHType) obj).getType(callstack, interpreter);
+                        this, callstack );
+                return ((BSHType)obj).getType( callstack, interpreter );
             } else
                 throw new EvalException(
-                        "Attempt to use .class suffix on non class.",
-                        this, callstack);
+                    "Attempt to use .class suffix on non class.",
+                    this, callstack );
 
         /*
             Evaluate our prefix if it needs evaluating first.
@@ -114,39 +93,44 @@ class BSHPrimarySuffix extends SimpleNode {
             that we can't just eval() - we need to direct the evaluation to
             the context sensitive type of result; namely object, class, etc.
         */
-        if (obj instanceof Node)
-            if (obj instanceof BSHAmbiguousName)
-                obj = ((BSHAmbiguousName) obj).toObject(callstack, interpreter);
+        if ( obj instanceof Node )
+            if ( obj instanceof BSHAmbiguousName )
+                obj = ((BSHAmbiguousName)obj).toObject(callstack, interpreter);
             else
-                obj = ((Node) obj).eval(callstack, interpreter);
-        else if (obj instanceof LHS) try {
-            obj = ((LHS) obj).getValue();
-        } catch (UtilEvalError e) {
-            throw e.toEvalError(this, callstack);
-        }
+                obj = ((Node)obj).eval(callstack, interpreter);
+        else
+            if ( obj instanceof LHS ) try {
+                obj = ((LHS)obj).getValue();
+            } catch ( UtilEvalError e ) {
+                throw e.toEvalError( this, callstack );
+            }
 
-        try {
-            switch (operation) {
+        try
+        {
+            switch(operation)
+            {
                 case INDEX:
-                    return doIndex(obj, toLHS, callstack, interpreter);
+                    return doIndex( obj, toLHS, callstack, interpreter );
 
                 case NAME:
-                    return doName(obj, toLHS, callstack, interpreter);
+                    return doName( obj, toLHS, callstack, interpreter );
 
                 case PROPERTY:
-                    return doProperty(toLHS, obj, callstack, interpreter);
+                    return doProperty( toLHS, obj, callstack, interpreter );
 
                 case NEW:
                     return doNewInner(obj, toLHS, callstack, interpreter);
 
                 case METHODREF:
-                    return doMethodRef(obj, interpreter.getClassManager());
+                    return doMethodRef ( obj );
 
                 default:
-                    throw new InterpreterError("Unknown suffix type");
+                    throw new InterpreterError( "Unknown suffix type" );
             }
-        } catch (ReflectError e) {
-            throw new EvalError("reflection error: " + e, this, callstack, e);
+        }
+        catch(ReflectError e)
+        {
+            throw new EvalError("reflection error: " + e, this, callstack, e );
         }
     }
 
@@ -154,7 +138,7 @@ class BSHPrimarySuffix extends SimpleNode {
         Instance.new InnerClass() implementation
     */
     private Object doNewInner(Object obj, boolean toLHS,
-                              CallStack callstack, Interpreter interpreter) throws EvalError {
+            CallStack callstack, Interpreter interpreter) throws EvalError {
         BSHAllocationExpression alloc = (BSHAllocationExpression) jjtGetChild(0);
         if (Reflect.isGeneratedClass(obj.getClass())) {
             callstack.pop();
@@ -170,8 +154,8 @@ class BSHPrimarySuffix extends SimpleNode {
         Must handle toLHS case for each.
     */
     private Object doName(
-            Object obj, boolean toLHS,
-            CallStack callstack, Interpreter interpreter)
+        Object obj, boolean toLHS,
+        CallStack callstack, Interpreter interpreter)
             throws EvalError, ReflectError {
         try {
             // Safe Navigate operator ?. abort on null
@@ -179,32 +163,32 @@ class BSHPrimarySuffix extends SimpleNode {
                 throw SafeNavigate.doAbort();
 
             // .length on array
-            if (field.equals("length") && obj.getClass().isArray()) {
+            if ( field.equals("length") && obj.getClass().isArray() ) {
                 // Validate if can get this field
                 Interpreter.mainSecurityGuard.canGetField(obj, field);
 
-                if (toLHS)
+                if ( toLHS )
                     throw new EvalError(
-                            "Can't assign array length", this, callstack);
+                        "Can't assign array length", this, callstack );
                 else
                     return new Primitive(Array.getLength(obj));
             }
 
             // field access
-            if (jjtGetNumChildren() == 0) {
+            if ( jjtGetNumChildren() == 0 ) {
                 // Validate if can get this field
                 Interpreter.mainSecurityGuard.canGetField(obj, field);
 
-                if (toLHS) try {
+                if ( toLHS ) try {
                     return Reflect.getLHSObjectField(obj, field);
                 } catch (Throwable t) {
                     return new LHS(obj, field);
                 }
                 else try {
-                    return Reflect.getObjectFieldValue(obj, field);
+                    return Reflect.getObjectFieldValue( obj, field );
                 } catch (Throwable t) {
                     try {
-                        return Reflect.getObjectProperty(obj, field);
+                        return Reflect.getObjectProperty( obj, field );
                     } catch (Throwable tt) {
                         return Primitive.VOID;
                     }
@@ -213,47 +197,66 @@ class BSHPrimarySuffix extends SimpleNode {
 
             // Method invocation
             // (LHS or non LHS evaluation can both encounter method calls)
-            Object[] oa = ((BSHArguments) jjtGetChild(0)).getArguments(
-                    callstack, interpreter);
+            Object[] oa = ((BSHArguments)jjtGetChild(0)).getArguments(
+                callstack, interpreter);
 
             // Validate if can invoke this method
             Interpreter.mainSecurityGuard.canInvokeMethod(obj, field, oa);
 
             return Reflect.invokeObjectMethod(
-                    obj, field, oa, interpreter, callstack, this);
+                obj, field, oa, interpreter, callstack, this );
         } catch (UtilEvalError e1) {
             throw e1.toEvalError(this, callstack);
         }
     }
 
     /**
-     * Array index or bracket expression implementation.
-     *
-     * @param obj         array or list instance
-     * @param toLHS       whether to return an LHS instance
-     * @param callstack   the evaluation call stack
+    */
+    static int getIndexAux(Object obj, int idx, CallStack callstack,
+        Interpreter interpreter, Node callerInfo )
+                throws EvalError {
+        int index;
+        try {
+            Object indexVal = callerInfo.jjtGetChild(idx).eval(
+                    callstack, interpreter );
+            if ( !(indexVal instanceof Primitive) )
+                indexVal = Types.castObject(
+                    indexVal, Integer.TYPE, Types.ASSIGNMENT );
+            index = (int) Primitive.castWrapper(Integer.TYPE, indexVal);
+        } catch( Exception e ) {
+            Interpreter.debug("doIndex: "+e);
+            throw new EvalError(
+                "Array index does not evaluate to an integer.",
+                callerInfo, callstack, e);
+        }
+        return index;
+    }
+
+    /** Array index or bracket expression implementation.
+     * @param obj array or list instance
+     * @param toLHS whether to return an LHS instance
+     * @param callstack the evaluation call stack
      * @param interpreter the evaluation interpreter
      * @return data as per index expression or LHS for assignment
-     * @throws EvalError with evaluation exceptions
-     */
+     * @throws EvalError with evaluation exceptions */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object doIndex(
-            Object obj, boolean toLHS,
-            CallStack callstack, Interpreter interpreter)
-            throws EvalError {
+        Object obj, boolean toLHS,
+        CallStack callstack, Interpreter interpreter )
+                throws EvalError {
         // Map or Entry index access not applicable to strict java
-        if (!interpreter.getStrictJava()) {
+        if ( !interpreter.getStrictJava() ) {
             // allow index access for maps
-            if (Types.isPropertyTypeMap(obj)) {
+            if ( Types.isPropertyTypeMap(obj) ) {
                 Object key = jjtGetChild(0).eval(callstack, interpreter);
                 return toLHS ? new LHS(obj, key)
-                        : Reflect.getObjectProperty(obj, key);
+                      : Reflect.getObjectProperty(obj, key);
             }
             // allow index access for map entries
-            if (Types.isPropertyTypeEntry(obj)) {
+            if ( Types.isPropertyTypeEntry(obj) ) {
                 Object key = jjtGetChild(0).eval(callstack, interpreter);
-                if (toLHS) {
-                    if (key.equals(((Entry) obj).getKey()))
+                if ( toLHS ) {
+                    if ( key.equals(((Entry) obj).getKey()) )
                         return new LHS(obj);
                     throw new EvalError("No such property: " + key, this, callstack);
                 }
@@ -262,21 +265,21 @@ class BSHPrimarySuffix extends SimpleNode {
         }
 
         Class<?> cls = obj.getClass();
-        if ((interpreter.getStrictJava() || !(obj instanceof List))
-                && !cls.isArray())
-            throw new EvalError("Not an array or List type", this, callstack);
+        if ( ( interpreter.getStrictJava() || !(obj instanceof List) )
+                && !cls.isArray() )
+            throw new EvalError("Not an array or List type", this, callstack );
 
         int length = obj instanceof List
                 ? ((List) obj).size() : Array.getLength(obj);
 
         int index = length + 1;
         // allow index access for a Map.Entry array.
-        if (!interpreter.getStrictJava()
-                && Types.isPropertyTypeEntryList(cls)) {
+        if ( !interpreter.getStrictJava()
+                && Types.isPropertyTypeEntryList(cls) ) {
             Object key = jjtGetChild(0).eval(callstack, interpreter);
             int idx = 0;
-            if (((key instanceof Primitive && ((Primitive) key).isNumber())
-                    || Primitive.isWrapperType(key.getClass()))
+            if ( ((key instanceof Primitive && ((Primitive) key).isNumber())
+                        || Primitive.isWrapperType(key.getClass()))
                     && length > (idx = (int) Primitive.castWrapper(Integer.TYPE, key))
                     && -length < idx)
                 index = idx;
@@ -284,100 +287,103 @@ class BSHPrimarySuffix extends SimpleNode {
                 return new LHS(Reflect.getEntryForKey(key, (Entry[]) obj));
             else
                 return Reflect.getObjectProperty(obj, key);
-        } else if (index > length)
-            index = getIndexAux(obj, 0, callstack, interpreter, this);
+        } else if ( index > length )
+            index = getIndexAux( obj, 0, callstack, interpreter, this );
 
         // Negative index or slice expressions not applicable to strict java
-        if (!interpreter.getStrictJava()) {
-            if (0 > index)
+        if ( !interpreter.getStrictJava() ) {
+            if ( 0 > index )
                 index = length + index;
-            if (this.slice) {
-                if (toLHS)
+            if ( this.slice ) {
+                if ( toLHS )
                     throw new EvalError("cannot assign to array slice",
                             this, callstack);
                 int rindex = 0, stepby = 0;
-                if (this.step) {
+                if ( this.step ) {
                     Integer step = null;
-                    if (hasLeftIndex && hasRightIndex
-                            && jjtGetNumChildren() == 3)
+                    if ( hasLeftIndex && hasRightIndex
+                            && jjtGetNumChildren() == 3 )
                         step = getIndexAux(obj, 2, callstack, interpreter, this);
-                    else if ((!hasLeftIndex || !hasRightIndex)
-                            && jjtGetNumChildren() == 2)
+                    else if ( (!hasLeftIndex || !hasRightIndex)
+                            && jjtGetNumChildren() == 2 )
                         step = getIndexAux(obj, 1, callstack, interpreter, this);
-                    else if (!hasLeftIndex && !hasRightIndex) {
+                    else if ( !hasLeftIndex && !hasRightIndex ) {
                         step = getIndexAux(obj, 0, callstack, interpreter, this);
                         index = 0;
                     }
-                    if (null != step) {
-                        if (step == 0)
+                    if ( null != step ) {
+                        if ( step == 0 )
                             throw new EvalError("array slice step cannot be zero",
                                     this, callstack);
                         stepby = step;
                     }
                 }
-                if (hasLeftIndex && hasRightIndex)
+                if ( hasLeftIndex && hasRightIndex )
                     rindex = getIndexAux(obj, 1, callstack, interpreter, this);
-                else if (!hasRightIndex)
+                else if ( !hasRightIndex )
                     rindex = length;
                 else {
                     rindex = index;
                     index = 0;
                 }
-                if (0 > rindex)
+                if ( 0 > rindex )
                     rindex = length + rindex;
-                if (obj.getClass().isArray())
+                if ( obj.getClass().isArray() )
                     return BshArray.slice(obj, index, rindex, stepby);
                 return BshArray.slice((List<Object>) obj, index, rindex, stepby);
             }
-        } else if (this.slice)
+        } else if ( this.slice )
             throw new EvalError("expected ']' but found ':'", this, callstack);
 
 
-        if (toLHS)
+        if ( toLHS )
             return new LHS(obj, index);
         else try {
             return BshArray.getIndex(obj, index);
-        } catch (UtilEvalError e) {
+        } catch ( UtilEvalError e ) {
             throw e.toEvalError("Error array get index", this, callstack);
         }
     }
 
     /**
-     * Property access.
-     * Must handle toLHS case.
-     */
-    private Object doProperty(boolean toLHS,
-                              Object obj, CallStack callstack, Interpreter interpreter)
-            throws EvalError {
-        if (obj == Primitive.VOID)
+        Property access.
+        Must handle toLHS case.
+    */
+    private Object doProperty( boolean toLHS,
+        Object obj, CallStack callstack, Interpreter interpreter )
+        throws EvalError
+    {
+        if(obj == Primitive.VOID)
             throw new EvalError(
-                    "Attempt to access property on undefined variable or class name",
-                    this, callstack);
+            "Attempt to access property on undefined variable or class name",
+                this, callstack );
 
-        if (obj instanceof Primitive)
+        if ( obj instanceof Primitive )
             throw new EvalError("Attempt to access property on a primitive",
-                    this, callstack);
+                this, callstack );
 
         Object value = jjtGetChild(0).eval(callstack, interpreter);
 
-        if (!(value instanceof String))
+        if ( !( value instanceof String ) )
             throw new EvalError(
-                    "Property expression must be a String or identifier.",
-                    this, callstack);
+                "Property expression must be a String or identifier.",
+                this, callstack );
 
-        if (toLHS)
-            return new LHS(obj, (String) value);
+        if ( toLHS )
+            return new LHS(obj, (String)value);
 
         try {
-            Object val = Reflect.getObjectProperty(obj, (String) value);
-            return null == val ? Primitive.NULL : Primitive.unwrap(val);
-        } catch (ReflectError e) {
+            Object val = Reflect.getObjectProperty( obj, (String)value );
+            return null == val ?  Primitive.NULL : Primitive.unwrap(val);
+        }
+        catch (ReflectError e)
+        {
             throw new EvalError("No such property: " + value, this, callstack, e);
         }
     }
 
-    private BshLambda doMethodRef(Object obj, BshClassManager classManager) {
-        return BshLambda.fromMethodReference(this, obj, field, classManager);
+    private BshLambda doMethodRef(Object obj) {
+        return BshLambda.fromMethodReference(this, obj, field);
     }
 
     @Override

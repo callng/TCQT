@@ -1,6 +1,7 @@
 package bsh;
 
 class BSHLambdaExpression extends SimpleNode {
+    private static final long serialVersionUID = 1L;
 
     String singleParamName;
 
@@ -23,9 +24,9 @@ class BSHLambdaExpression extends SimpleNode {
             this.paramsNames = parameters.getParamNames();
             this.body = this.jjtGetChild(1);
         } else {
-            this.paramsTypes = new Class[]{null};
-            this.paramsModifiers = new Modifiers[]{null};
-            this.paramsNames = new String[]{this.singleParamName};
+            this.paramsTypes = new Class[] { null };
+            this.paramsModifiers = new Modifiers[] { null };
+            this.paramsNames = new String[] { this.singleParamName };
             this.body = this.jjtGetChild(0);
         }
         this.initializedValues = true;
@@ -34,7 +35,7 @@ class BSHLambdaExpression extends SimpleNode {
     @Override
     public Object eval(CallStack callstack, Interpreter interpreter) throws EvalError {
         this.initValues(callstack, interpreter);
-        return BshLambda.fromLambdaExpression(this, callstack.top(), this.paramsModifiers, this.paramsTypes, this.paramsNames, this.body, interpreter.getClassManager());
+        return BshLambda.fromLambdaExpression(this, callstack.top(), this.paramsModifiers, this.paramsTypes, this.paramsNames, this.body);
     }
 
 }

@@ -25,6 +25,7 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
 import java.io.ObjectStreamException;
@@ -48,11 +49,40 @@ public final class Primitive implements Serializable {
     Note: this class is final because we may test == Primitive.class in places.
     If we need to change that search for those tests.
     */
+    /** default serial version id */
+    private static final long serialVersionUID = 1L;
+
+    static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
+    static {
+        wrapperMap.put( Void.TYPE, Void.class );
+        wrapperMap.put( Boolean.TYPE, Boolean.class );
+        wrapperMap.put( Byte.TYPE, Byte.class );
+        wrapperMap.put( Short.TYPE, Short.class );
+        wrapperMap.put( Character.TYPE, Character.class );
+        wrapperMap.put( Integer.TYPE, Integer.class );
+        wrapperMap.put( Long.TYPE, Long.class );
+        wrapperMap.put( Float.TYPE, Float.class );
+        wrapperMap.put( Double.TYPE, Double.class );
+        wrapperMap.put( Void.class, Void.TYPE );
+        wrapperMap.put( Boolean.class, Boolean.TYPE );
+        wrapperMap.put( Byte.class, Byte.TYPE );
+        wrapperMap.put( Short.class, Short.TYPE );
+        wrapperMap.put( Character.class, Character.TYPE );
+        wrapperMap.put( Integer.class, Integer.TYPE );
+        wrapperMap.put( Long.class, Long.TYPE );
+        wrapperMap.put( Float.class, Float.TYPE );
+        wrapperMap.put( Double.class, Double.TYPE );
+        wrapperMap.put( BigInteger.class, BigInteger.class );
+        wrapperMap.put( BigDecimal.class, BigDecimal.class );
+    }
+
+    /** The primitive value stored in its java.lang wrapper class */
+    private Object value;
+
     public static final Primitive TRUE = new Primitive(true);
     public static final Primitive FALSE = new Primitive(false);
-    /**
-     * Default zero value constants
-     */
+
+    /** Default zero value constants */
     public static final Primitive ZERO_CHAR = new Primitive('\000');
     public static final Primitive ZERO_BYTE = new Primitive((byte) 0);
     public static final Primitive ZERO_SHORT = new Primitive((short) 0);
@@ -62,138 +92,195 @@ public final class Primitive implements Serializable {
     public static final Primitive ZERO_DOUBLE = new Primitive(0d);
     public static final Primitive ZERO_BIG_INTEGER = new Primitive(BigInteger.ZERO);
     public static final Primitive ZERO_BIG_DECIMAL = new Primitive(BigDecimal.ZERO);
+
+    private enum Special { NULL_VALUE, VOID_TYPE }
+
     /*
         NULL means "no value".
         This ia a placeholder for primitive null value.
     */
     public static final Primitive NULL = new Primitive(Special.NULL_VALUE);
-    /**
-     * VOID means "no type".
-     * Strictly speaking, this makes no sense here.  But for practical
-     * reasons we'll consider the lack of a type to be a special value.
-     */
-    public static final Primitive VOID = new Primitive(Special.VOID_TYPE);
-    static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
-    static final BigInteger LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
-    static final BigInteger LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
-    /**
-     * default serial version id
-     */
-    private static final long serialVersionUID = 1L;
-    private static final BigInteger INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
-    private static final BigInteger INTEGER_MIN = BigInteger.valueOf(Integer.MIN_VALUE);
 
-    static {
-        wrapperMap.put(Boolean.TYPE, Boolean.class);
-        wrapperMap.put(Byte.TYPE, Byte.class);
-        wrapperMap.put(Short.TYPE, Short.class);
-        wrapperMap.put(Character.TYPE, Character.class);
-        wrapperMap.put(Integer.TYPE, Integer.class);
-        wrapperMap.put(Long.TYPE, Long.class);
-        wrapperMap.put(Float.TYPE, Float.class);
-        wrapperMap.put(Double.TYPE, Double.class);
-        wrapperMap.put(Boolean.class, Boolean.TYPE);
-        wrapperMap.put(Byte.class, Byte.TYPE);
-        wrapperMap.put(Short.class, Short.TYPE);
-        wrapperMap.put(Character.class, Character.TYPE);
-        wrapperMap.put(Integer.class, Integer.TYPE);
-        wrapperMap.put(Long.class, Long.TYPE);
-        wrapperMap.put(Float.class, Float.TYPE);
-        wrapperMap.put(Double.class, Double.TYPE);
-        wrapperMap.put(BigInteger.class, BigInteger.class);
-        wrapperMap.put(BigDecimal.class, BigDecimal.class);
+    /**
+        VOID means "no type".
+        Strictly speaking, this makes no sense here.  But for practical
+        reasons we'll consider the lack of a type to be a special value.
+    */
+    public static final Primitive VOID = new Primitive(Special.VOID_TYPE);
+
+    private Object readResolve() throws ObjectStreamException
+    {
+        if (value == Special.NULL_VALUE)
+            return Primitive.NULL;
+        return this;
     }
 
-    /**
-     * The primitive value stored in its java.lang wrapper class
-     */
-    private Object value;
-
     // private to prevent invocation with param that isn't a primitive-wrapper
-    private Primitive(Object value) {
-        if (value == null)
+    private Primitive( Object value )
+    {
+        if ( value == null )
             throw new InterpreterError(
-                    "Use Primitve.NULL instead of Primitive(null)");
+                "Use Primitve.NULL instead of Primitive(null)");
 
         this.value = value;
     }
 
-    public Primitive(boolean value) {
-        this(value ? Boolean.TRUE : Boolean.FALSE);
-    }
-
-    public Primitive(byte value) {
-        this(Byte.valueOf(value));
-    }
-
-    public Primitive(short value) {
-        this(Short.valueOf(value));
-    }
-
-    public Primitive(char value) {
-        this(Character.valueOf(value));
-    }
-
-    public Primitive(int value) {
-        this(Integer.valueOf(value));
-    }
-
-    public Primitive(long value) {
-        this(Long.valueOf(value));
-    }
-
-    public Primitive(float value) {
-        this(Float.valueOf(value));
-    }
-
-    public Primitive(double value) {
-        this(Double.valueOf(value));
-    }
-
-    public Primitive(BigInteger value) {
-        this((Object) value);
-    }
-
+    public Primitive(boolean value) { this(value ? Boolean.TRUE : Boolean.FALSE); }
+    public Primitive(byte value) { this(Byte.valueOf(value)); }
+    public Primitive(short value) { this(Short.valueOf(value)); }
+    public Primitive(char value) { this(Character.valueOf(value)); }
+    public Primitive(int value) { this(Integer.valueOf(value)); }
+    public Primitive(long value) { this(Long.valueOf(value)); }
+    public Primitive(float value) { this(Float.valueOf(value)); }
+    public Primitive(double value) { this(Double.valueOf(value)); }
+    public Primitive(BigInteger value) { this((Object) value); }
     public Primitive(BigDecimal value) {
         this((Object) (null != value && value.scale() == 0 ? value.setScale(1) : value));
     }
 
+    /**
+        Return the primitive value stored in its java.lang wrapper class
+    */
+    public Object getValue()
+    {
+        if ( value == Special.NULL_VALUE )
+            return null;
+        if ( value == Special.VOID_TYPE )
+                throw new InterpreterError("attempt to unwrap void type");
+        return value;
+    }
+
+    public String toString()
+    {
+        if(value == Special.NULL_VALUE)
+            return "null";
+        if(value == Special.VOID_TYPE)
+            return "void";
+        return value.toString();
+    }
+
+    /**
+        Get the corresponding Java primitive TYPE class for this Primitive.
+        @return the primitive TYPE class type of the value or Void.TYPE for
+        Primitive.VOID or null value for type of Primitive.NULL
+    */
+    public Class<?> getType()
+    {
+        if ( this == Primitive.VOID )
+            return Void.TYPE;
+
+        // NULL return null as type... we currently use null type to indicate
+        // loose typing throughout bsh.
+        if ( this == Primitive.NULL )
+            return null;
+
+        return unboxType( value.getClass() );
+    }
+
+    private static final BigInteger INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
+    private static final BigInteger INTEGER_MIN = BigInteger.valueOf(Integer.MIN_VALUE);
+    static final BigInteger LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
+    static final BigInteger LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
     public static Primitive shrinkWrap(Object number) {
         if (!(number instanceof Number))
             throw new InterpreterError("Can only shrink wrap Number types");
         Number value = (Number) number;
-        if (Types.isFloatingpoint(number)) {
+        if ( Types.isFloatingpoint(number) ) {
             if (number instanceof Float)
                 return new Primitive(value.floatValue());
-            if (!Double.isInfinite(value.doubleValue()))
+            if ( !Double.isInfinite(value.doubleValue()) )
                 return new Primitive(value.doubleValue());
             return new Primitive((BigDecimal) number);
         }
         BigInteger bi = number instanceof BigInteger
                 ? (BigInteger) number : BigInteger.valueOf(value.longValue());
-        if (bi.compareTo(INTEGER_MIN) >= 0 && bi.compareTo(INTEGER_MAX) <= 0)
+        if ( bi.compareTo(INTEGER_MIN) >= 0 && bi.compareTo(INTEGER_MAX) <= 0 )
             return new Primitive(bi.intValue());
-        if (bi.compareTo(LONG_MIN) >= 0 && bi.compareTo(LONG_MAX) <= 0)
+        if ( bi.compareTo(LONG_MIN) >= 0 && bi.compareTo(LONG_MAX) <= 0 )
             return new Primitive(bi.longValue());
         return new Primitive(bi);
     }
 
     /**
-     * Unwrap primitive values and map voids to nulls.
-     * Non Primitive types remain unchanged.
-     *
-     * @param obj object type which may be bsh.Primitive
-     * @return corresponding "normal" Java type, "unwrapping"
-     * any bsh.Primitive types to their wrapper types.
-     */
-    public static Object unwrap(Object obj) {
+        Determine if this primitive is a numeric type.
+        i.e. not boolean, null, or void (but including char)
+    */
+    public boolean isNumber() {
+        return !(value instanceof Boolean)
+            && this != NULL && this != VOID
+            && Types.isNumeric(value);
+    }
+
+    public Number numberValue() {
+        Object value = this.value;
+
+        // Promote character to Number type for these purposes
+        if (value instanceof Character)
+            value = Integer.valueOf(((Character)value).charValue());
+
+        if (value instanceof Number)
+            return (Number) value;
+
+        if (value instanceof Boolean)
+            return (Boolean) value ? 1 : 0;
+
+        throw new InterpreterError("Primitive not a number");
+    }
+
+    /**
+        Primitives compare equal with other Primitives containing an equal
+        wrapped value.
+    */
+    public boolean equals( Object obj )
+    {
+        if ( !( obj instanceof Primitive ) )
+            if ( wrapperMap.containsKey(obj.getClass()) )
+                obj = new Primitive(obj);
+            else
+                return false;
+        Primitive pobj = (Primitive) obj;
+        if ( pobj.isNumber() && this.isNumber() ) {
+            if ( this.getType() == BigDecimal.class )
+                return this.value.equals(castNumber(BigDecimal.class, pobj.numberValue()));
+            if ( pobj.getType() == BigDecimal.class )
+                return pobj.value.equals(castNumber(BigDecimal.class, this.numberValue()));
+            if ( Types.isFloatingpoint(this.value) || Types.isFloatingpoint(pobj.value) )
+                return this.numberValue().doubleValue() == pobj.numberValue().doubleValue();
+            if ( this.getType() == BigInteger.class )
+                return this.value.equals(castNumber(BigInteger.class, pobj.numberValue()));
+            if ( pobj.getType() == BigInteger.class )
+                return pobj.value.equals(castNumber(BigInteger.class, this.numberValue()));
+            return this.numberValue().longValue() == pobj.numberValue().longValue();
+        }
+        return this.value.equals( pobj.value );
+    }
+
+    /**
+        The hash of the Primitive is tied to the hash of the wrapped value but
+        shifted so that they are not the same.
+    */
+    public int hashCode()
+    {
+        return this.value.hashCode() * 21; // arbitrary
+    }
+
+    /**
+        Unwrap primitive values and map voids to nulls.
+        Non Primitive types remain unchanged.
+
+        @param obj object type which may be bsh.Primitive
+        @return corresponding "normal" Java type, "unwrapping"
+            any bsh.Primitive types to their wrapper types.
+    */
+    public static Object unwrap( Object obj )
+    {
         // map voids to nulls for the outside world
         if (obj == Primitive.VOID)
             return null;
 
         // unwrap primitives
         if (obj instanceof Primitive)
-            return ((Primitive) obj).getValue();
+            return((Primitive)obj).getValue();
 
         return obj;
     }
@@ -203,106 +290,129 @@ public final class Primitive implements Serializable {
         e.g. Primitive(42) becomes Integer(42)
         @see #unwrap( Object )
     */
-    public static Object[] unwrap(Object[] args) {
-        if (args == null)
+    public static Object [] unwrap( Object[] args )
+    {
+        if ( args == null )
             return null;
-        Object[] oa = new Object[args.length];
-        for (int i = 0; i < args.length; i++)
-            oa[i] = unwrap(args[i]);
+        Object [] oa = new Object[ args.length ];
+        for(int i=0; i<args.length; i++)
+            oa[i] = unwrap( args[i] );
         return oa;
     }
 
     /*
-     */
-    public static Object[] wrap(Object[] args, Class<?>[] paramTypes) {
-        if (args == null)
+    */
+    public static Object [] wrap( Object[] args, Class<?> [] paramTypes )
+    {
+        if ( args == null )
             return null;
-        Object[] oa = new Object[args.length];
-        for (int i = 0; i < args.length; i++)
-            oa[i] = wrap(args[i], paramTypes[i]);
+        Object [] oa = new Object[ args.length ];
+        for(int i=0; i<args.length; i++)
+            oa[i] = wrap( args[i], paramTypes[i] );
         return oa;
     }
 
     /**
-     * Wrap primitive values (as indicated by type param) and nulls in the
-     * Primitive class.  Values not primitive or null are left unchanged.
-     * Primitive values are represented by their wrapped values in param value.
-     * <p/>
-     * The value null is mapped to Primitive.NULL.
-     * Any value specified with type Void.TYPE is mapped to Primitive.VOID.
-     */
+        Wrap primitive values (as indicated by type param) and nulls in the
+        Primitive class.  Values not primitive or null are left unchanged.
+        Primitive values are represented by their wrapped values in param value.
+        <p/>
+        The value null is mapped to Primitive.NULL.
+        Any value specified with type Void.TYPE is mapped to Primitive.VOID.
+    */
     public static Object wrap(
-            Object value, Class<?> type) {
-        if (type == Void.TYPE)
+        Object value, Class<?> type )
+    {
+        if ( type == Void.TYPE )
             return Primitive.VOID;
 
-        if (value == null)
+        if ( value == null )
             return Primitive.NULL;
 
         if (Types.isPrimitive(type))
-            if (value instanceof Boolean)
+            if ( value instanceof Boolean )
                 return ((Boolean) value).booleanValue()
-                        ? Primitive.TRUE : Primitive.FALSE;
+                    ? Primitive.TRUE : Primitive.FALSE;
 
-            else if (isWrapperType(value.getClass()))
-                return new Primitive(value);
+            else if ( isWrapperType( value.getClass() ) )
+                return new Primitive( value );
 
         return value;
     }
 
+
     /**
-     * Get the appropriate default value per JLS 4.5.4
-     */
-    public static Primitive getDefaultValue(Class<?> type) {
-        if (type == null)
+        Get the appropriate default value per JLS 4.5.4
+    */
+    public static Primitive getDefaultValue( Class<?> type )
+    {
+        if ( type == null )
             return Primitive.NULL;
-        if (Boolean.TYPE == type || Boolean.class == type)
+        if ( Boolean.TYPE == type || Boolean.class == type )
             return Primitive.FALSE;
-        if (Character.TYPE == type || Character.class == type)
+        if ( Character.TYPE == type || Character.class == type )
             return Primitive.ZERO_CHAR;
-        if (Byte.TYPE == type || Byte.class == type)
+        if ( Byte.TYPE == type || Byte.class == type )
             return Primitive.ZERO_BYTE;
-        if (Short.TYPE == type || Short.class == type)
+        if ( Short.TYPE == type || Short.class == type )
             return Primitive.ZERO_SHORT;
-        if (Integer.TYPE == type || Integer.class == type)
+        if ( Integer.TYPE == type || Integer.class == type )
             return Primitive.ZERO_INT;
-        if (Long.TYPE == type || Long.class == type)
+        if ( Long.TYPE == type || Long.class == type )
             return Primitive.ZERO_LONG;
-        if (Float.TYPE == type || Float.class == type)
+        if ( Float.TYPE == type || Float.class == type )
             return Primitive.ZERO_FLOAT;
-        if (Double.TYPE == type || Double.class == type)
+        if ( Double.TYPE == type || Double.class == type )
             return Primitive.ZERO_DOUBLE;
-        if (BigInteger.class == type)
+        if ( BigInteger.class == type )
             return Primitive.ZERO_BIG_INTEGER;
-        if (BigDecimal.class == type)
+        if ( BigDecimal.class == type )
             return Primitive.ZERO_BIG_DECIMAL;
         return Primitive.NULL;
     }
 
     /**
-     * Get the corresponding java.lang wrapper class for the primitive TYPE
-     * class.
-     * e.g.  Integer.TYPE -> Integer.class
-     */
-    public static Class<?> boxType(Class<?> primitiveType) {
-        Class<?> c = wrapperMap.get(primitiveType);
-        if (c != null && !c.isPrimitive())
+        Get the corresponding java.lang wrapper class for the primitive TYPE
+        class.
+        e.g.  Integer.TYPE -> Integer.class
+    */
+    public static Class<?> boxType( Class<?> primitiveType )
+    {
+        Class<?> c = wrapperMap.get( primitiveType );
+        if ( c != null && !c.isPrimitive() )
             return c;
         throw new InterpreterError(
-                "Not a primitive type: " + primitiveType);
+            "Not a primitive type: "+ primitiveType );
     }
 
     /**
-     * Get the corresponding primitive TYPE class for the java.lang wrapper
-     * class type.
-     * e.g.  Integer.class -> Integer.TYPE
-     */
-    public static Class<?> unboxType(Class<?> wrapperType) {
-        Class<?> c = wrapperMap.get(wrapperType);
-        if (c != null && (c.isPrimitive() || c == wrapperType))
+        Get the corresponding primitive TYPE class for the java.lang wrapper
+        class type.
+        e.g.  Integer.class -> Integer.TYPE
+    */
+    public static Class<?> unboxType( Class<?> wrapperType )
+    {
+        Class<?> c = wrapperMap.get( wrapperType );
+        if ( c != null && (c.isPrimitive() || c == wrapperType) )
             return c;
         throw new InterpreterError(
-                "Not a primitive wrapper type: " + wrapperType);
+            "Not a primitive wrapper type: "+wrapperType );
+    }
+
+    /**
+        Cast this bsh.Primitive value to a new bsh.Primitive value
+        This is usually a numeric type cast.  Other cases include:
+            A boolean can be cast to boolen
+            null can be cast to any object type and remains null
+            Attempting to cast a void causes an exception
+        @param toType is the java object or primitive TYPE class
+    */
+    public Primitive castToType( Class<?> toType, int operation )
+        throws UtilEvalError
+    {
+        return castPrimitive(
+            toType, getType()/*fromType*/, this/*fromValue*/,
+            false/*checkOnly*/, operation );
     }
 
     /*
@@ -322,35 +432,35 @@ public final class Primitive implements Serializable {
         checkOnly is true fromValue must be null.  If checkOnly is false,
         fromValue must be non-null (Primitive.NULL is of course valid).
     */
-    static Primitive castPrimitive(Class<?> toType, Class<?> fromType,
-                                   Primitive fromValue, boolean checkOnly, int operation)
+    static Primitive castPrimitive( Class<?> toType, Class<?> fromType,
+            Primitive fromValue, boolean checkOnly, int operation )
             throws UtilEvalError {
         // can't cast void to anything
-        if (fromType == Void.TYPE)
-            if (checkOnly)
+        if ( fromType == Void.TYPE )
+            if ( checkOnly )
                 return Types.INVALID_CAST;
             else
-                throw Types.castError(StringUtil.typeString(toType),
-                        "void value", operation);
+                throw Types.castError( StringUtil.typeString(toType),
+                    "void value", operation );
 
         // Do numeric cast
-        if (!checkOnly && fromValue.isNumber() && Types.isNumeric(toType))
-            return new Primitive(castNumber(toType, fromValue.numberValue()));
+        if ( !checkOnly && fromValue.isNumber() && Types.isNumeric(toType) )
+            return new Primitive( castNumber(toType, fromValue.numberValue()) );
 
-        if (toType.isPrimitive()) {
+        if ( toType.isPrimitive() ) {
             // Cast null value to primitive default value
-            if (fromType == null && !Primitive.VOID.equals(fromValue))
+            if ( fromType == null && !Primitive.VOID.equals(fromValue) )
                 return checkOnly ? Types.VALID_CAST : getDefaultValue(toType);
             if (toType == Boolean.TYPE)
-                return checkOnly ? Types.VALID_CAST : new Primitive(castWrapper(toType, fromValue));
+                return checkOnly ? Types.VALID_CAST : new Primitive( castWrapper(toType, fromValue) );
         } else {
             // Trying to cast primitive to an object type
             // Primitive.NULL can be cast to any object type
-            if (fromType == null)
+            if ( fromType == null )
                 return checkOnly ? Types.VALID_CAST :
-                        Primitive.NULL;
+                    Primitive.NULL;
 
-            if (checkOnly)
+            if ( checkOnly )
                 return Types.INVALID_CAST;
 
             throw Types.castError(
@@ -358,75 +468,75 @@ public final class Primitive implements Serializable {
         }
 
         // can only cast boolean to boolean
-        if (checkOnly && fromType == Boolean.TYPE) {
-            if (toType != Boolean.TYPE)
+        if ( checkOnly && fromType == Boolean.TYPE ) {
+            if ( toType != Boolean.TYPE )
                 return Types.INVALID_CAST;
 
             return Types.VALID_CAST;
         }
 
         // Only allow legal Java assignment unless we're a CAST operation
-        if (operation == Types.ASSIGNMENT
-                && !Types.isJavaAssignable(toType, fromType)) {
-            if (checkOnly)
+        if ( operation == Types.ASSIGNMENT
+            && !Types.isJavaAssignable( toType, fromType ) ) {
+            if ( checkOnly )
                 return Types.INVALID_CAST;
         }
 
         return checkOnly ? Types.VALID_CAST :
-                new Primitive(castWrapper(toType, fromValue));
+            new Primitive( castWrapper(toType, fromValue) );
     }
 
-    public static boolean isWrapperType(Class<?> type) {
-        return null != type && wrapperMap.containsKey(type) && !type.isPrimitive();
+    public static boolean isWrapperType( Class<?> type )
+    {
+        return null != type && wrapperMap.containsKey( type ) && !type.isPrimitive();
     }
 
     /**
-     * Cast a primitive value represented by its java.lang wrapper type to the
-     * specified java.lang wrapper type.  e.g.  Byte(5) to Integer(5) or
-     * Integer(5) to Byte(5)
-     *
-     * @param toType is the java TYPE type
-     * @param value  is the value in java.lang wrapper.
-     *               value may not be null.
-     */
-    static Object castWrapper(Class<?> toType, Object value) {
-        if (Primitive.VOID.equals(value))
+        Cast a primitive value represented by its java.lang wrapper type to the
+        specified java.lang wrapper type.  e.g.  Byte(5) to Integer(5) or
+        Integer(5) to Byte(5)
+        @param toType is the java TYPE type
+        @param value is the value in java.lang wrapper.
+        value may not be null.
+    */
+    static Object castWrapper( Class<?> toType, Object value ) {
+        if ( Primitive.VOID.equals(value) )
             return value;
 
         value = Primitive.unwrap(value);
 
-        if (!(Primitive.isWrapperType(toType) || toType.isPrimitive()))
-            throw new InterpreterError("invalid type in castWrapper: " + toType);
+        if ( !(Primitive.isWrapperType(toType) || toType.isPrimitive()) )
+            throw new InterpreterError("invalid type in castWrapper: "+toType);
 
         // first promote char to Number type to avoid duplicating code
-        if (value instanceof Character)
-            value = Integer.valueOf(((Character) value).charValue());
+        if ( value instanceof Character )
+            value = Integer.valueOf(((Character)value).charValue());
 
-        if (toType == Boolean.TYPE) {
-            if (value instanceof Boolean)
+        if ( toType == Boolean.TYPE ) {
+            if ( value instanceof Boolean )
                 return value;
-            else if (value instanceof String)
+            else if ( value instanceof String )
                 return !"".equals(String.valueOf(value));
-            else if (value instanceof Number)
+            else if ( value instanceof Number )
                 return ((Number) value).intValue() != 0;
             else
                 return value != null;
         }
 
-        if (value == null && toType.isPrimitive())
+        if ( value == null && toType.isPrimitive() )
             value = Primitive.unwrap(getDefaultValue(toType));
 
-        if (value instanceof String) try {
+        if ( value instanceof String ) try {
             value = Double.parseDouble(String.valueOf(value));
         } catch (NumberFormatException nfe) {
-            throw new InterpreterError("cannot cast string \"" + value + "\" to number", nfe);
+            throw new InterpreterError("cannot cast string \""+value+"\" to number", nfe);
         }
 
-        if (value instanceof Boolean)
+        if ( value instanceof Boolean )
             value = (Boolean) value ? 1 : 0;
 
-        if (!(value instanceof Number))
-            throw new InterpreterError("bad type in cast " + StringUtil.typeValueString(value));
+        if ( !(value instanceof Number) )
+            throw new InterpreterError("bad type in cast "+StringUtil.typeValueString(value));
 
         return castNumber(toType, (Number) value);
     }
@@ -456,14 +566,14 @@ public final class Primitive implements Serializable {
                 && !Double.isInfinite(number.doubleValue()))
             return number.doubleValue();
 
-        if (number.doubleValue() == 0) {
+        if ( number.doubleValue() == 0 ) {
             if (toType == Long.class || toType == Long.TYPE)
                 return 0L;
             if (toType == BigInteger.class)
                 return BigInteger.ZERO;
             if (toType == BigDecimal.class)
                 return BigDecimal.ZERO.setScale(1);
-        } else if (number.doubleValue() == 1) {
+        } else if ( number.doubleValue() == 1 ) {
             if (toType == Long.class || toType == Long.TYPE)
                 return 1L;
             if (toType == BigInteger.class)
@@ -471,14 +581,14 @@ public final class Primitive implements Serializable {
             if (toType == BigDecimal.class)
                 return BigDecimal.ONE.setScale(1);
         } else if (toType == BigDecimal.class) {
-            if (number instanceof BigInteger)
+            if ( number instanceof BigInteger )
                 return new BigDecimal((BigInteger) number).setScale(1);
-            if (Types.isFloatingpoint(number))
+            if ( Types.isFloatingpoint(number) )
                 return BigDecimal.valueOf(number.doubleValue());
             return new BigDecimal(number.longValue()).setScale(1);
         } else {
             BigInteger bi = null;
-            if (number instanceof BigInteger)
+            if ( number instanceof BigInteger )
                 bi = (BigInteger) number;
             else if (number instanceof BigDecimal)
                 bi = ((BigDecimal) number).toBigInteger();
@@ -489,10 +599,10 @@ public final class Primitive implements Serializable {
             if ((toType == Long.class || toType == Long.TYPE)
                     && bi.compareTo(LONG_MIN) >= 0 && bi.compareTo(LONG_MAX) <= 0)
                 return number.longValue();
-            if (toType == BigInteger.class)
+            if ( toType == BigInteger.class )
                 return bi;
         }
-        throw new InterpreterError("cannot assign number " + number + " to type " + toType.getSimpleName());
+        throw new InterpreterError("cannot assign number "+number+" to type "+toType.getSimpleName());
     }
 
     static Object castNumberStrictJava(Class<?> toType, Number number) {
@@ -512,127 +622,5 @@ public final class Primitive implements Serializable {
             return number.doubleValue();
         return castNumber(toType, number);
     }
-
-    private Object readResolve() throws ObjectStreamException {
-        if (value == Special.NULL_VALUE)
-            return Primitive.NULL;
-        return this;
-    }
-
-    /**
-     * Return the primitive value stored in its java.lang wrapper class
-     */
-    public Object getValue() {
-        if (value == Special.NULL_VALUE)
-            return null;
-        if (value == Special.VOID_TYPE)
-            throw new InterpreterError("attempt to unwrap void type");
-        return value;
-    }
-
-    public String toString() {
-        if (value == Special.NULL_VALUE)
-            return "null";
-        if (value == Special.VOID_TYPE)
-            return "void";
-        return value.toString();
-    }
-
-    /**
-     * Get the corresponding Java primitive TYPE class for this Primitive.
-     *
-     * @return the primitive TYPE class type of the value or Void.TYPE for
-     * Primitive.VOID or null value for type of Primitive.NULL
-     */
-    public Class<?> getType() {
-        if (this == Primitive.VOID)
-            return Void.TYPE;
-
-        // NULL return null as type... we currently use null type to indicate
-        // loose typing throughout bsh.
-        if (this == Primitive.NULL)
-            return null;
-
-        return unboxType(value.getClass());
-    }
-
-    /**
-     * Determine if this primitive is a numeric type.
-     * i.e. not boolean, null, or void (but including char)
-     */
-    public boolean isNumber() {
-        return !(value instanceof Boolean)
-                && this != NULL && this != VOID
-                && Types.isNumeric(value);
-    }
-
-    public Number numberValue() {
-        Object value = this.value;
-
-        // Promote character to Number type for these purposes
-        if (value instanceof Character)
-            value = Integer.valueOf(((Character) value).charValue());
-
-        if (value instanceof Number)
-            return (Number) value;
-
-        if (value instanceof Boolean)
-            return (Boolean) value ? 1 : 0;
-
-        throw new InterpreterError("Primitive not a number");
-    }
-
-    /**
-     * Primitives compare equal with other Primitives containing an equal
-     * wrapped value.
-     */
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Primitive))
-            if (wrapperMap.containsKey(obj.getClass()))
-                obj = new Primitive(obj);
-            else
-                return false;
-        Primitive pobj = (Primitive) obj;
-        if (pobj.isNumber() && this.isNumber()) {
-            if (this.getType() == BigDecimal.class)
-                return this.value.equals(castNumber(BigDecimal.class, pobj.numberValue()));
-            if (pobj.getType() == BigDecimal.class)
-                return pobj.value.equals(castNumber(BigDecimal.class, this.numberValue()));
-            if (Types.isFloatingpoint(this.value) || Types.isFloatingpoint(pobj.value))
-                return this.numberValue().doubleValue() == pobj.numberValue().doubleValue();
-            if (this.getType() == BigInteger.class)
-                return this.value.equals(castNumber(BigInteger.class, pobj.numberValue()));
-            if (pobj.getType() == BigInteger.class)
-                return pobj.value.equals(castNumber(BigInteger.class, this.numberValue()));
-            return this.numberValue().longValue() == pobj.numberValue().longValue();
-        }
-        return this.value.equals(pobj.value);
-    }
-
-    /**
-     * The hash of the Primitive is tied to the hash of the wrapped value but
-     * shifted so that they are not the same.
-     */
-    public int hashCode() {
-        return this.value.hashCode() * 21; // arbitrary
-    }
-
-    /**
-     * Cast this bsh.Primitive value to a new bsh.Primitive value
-     * This is usually a numeric type cast.  Other cases include:
-     * A boolean can be cast to boolen
-     * null can be cast to any object type and remains null
-     * Attempting to cast a void causes an exception
-     *
-     * @param toType is the java object or primitive TYPE class
-     */
-    public Primitive castToType(Class<?> toType, int operation)
-            throws UtilEvalError {
-        return castPrimitive(
-                toType, getType()/*fromType*/, this/*fromValue*/,
-                false/*checkOnly*/, operation);
-    }
-
-    private enum Special {NULL_VALUE, VOID_TYPE}
 
 }

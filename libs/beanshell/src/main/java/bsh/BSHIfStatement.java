@@ -25,26 +25,15 @@
  *****************************************************************************/
 
 
+
 package bsh;
 
 class BSHIfStatement extends SimpleNode {
+    private static final long serialVersionUID = 1L;
+
     boolean isClosed;
 
-    BSHIfStatement(int id) {
-        super(id);
-    }
-
-    public static boolean evaluateCondition(Node condExp, CallStack callstack,
-                                            Interpreter interpreter) throws EvalError {
-        Object obj = condExp.eval(callstack, interpreter);
-
-        if (obj == Primitive.VOID)
-            throw new EvalException("Condition evaluates to void type",
-                    condExp, callstack);
-
-        obj = Primitive.castWrapper(Boolean.TYPE, obj);
-        return ((Boolean) obj).booleanValue();
-    }
+    BSHIfStatement(int id) { super(id); }
 
     public Object eval(CallStack callstack, Interpreter interpreter)
             throws EvalError {
@@ -62,5 +51,17 @@ class BSHIfStatement extends SimpleNode {
             return ret;
         else
             return Primitive.VOID;
+    }
+
+    public static boolean evaluateCondition( Node condExp, CallStack callstack,
+            Interpreter interpreter) throws EvalError {
+        Object obj = condExp.eval(callstack, interpreter);
+
+        if ( obj == Primitive.VOID )
+            throw new EvalException("Condition evaluates to void type",
+                condExp, callstack );
+
+        obj = Primitive.castWrapper(Boolean.TYPE, obj);
+        return ((Boolean) obj).booleanValue();
     }
 }

@@ -31,24 +31,24 @@ import java.util.stream.Stream;
 
 
 /**
- * A namespace which maintains an external map of values held in variables in
- * its scope.  This mechanism provides a standard collections based interface
- * to the namespace as well as a convenient way to export and view values of
- * the namespace without the ordinary BeanShell wrappers.
- * </p>
- * <p>
- * Variables are maintained internally in the normal fashion to support
- * meta-information (such as variable type and visibility modifiers), but
- * exported and imported in a synchronized way.  Variables are exported each
- * time they are written by BeanShell.  Imported variables from the map appear
- * in the BeanShell namespace as untyped variables with no modifiers and
- * shadow any previously defined variables in the scope.
- * <p/>
- * <p>
- * Note: this class is inherentely dependent on Java 1.2 (for Map), however
- * it is not used directly by the core as other than type NameSpace, so no
- * dependency is introduced.
- */
+    A namespace which maintains an external map of values held in variables in
+    its scope.  This mechanism provides a standard collections based interface
+    to the namespace as well as a convenient way to export and view values of
+    the namespace without the ordinary BeanShell wrappers.
+    </p>
+
+    Variables are maintained internally in the normal fashion to support
+    meta-information (such as variable type and visibility modifiers), but
+    exported and imported in a synchronized way.  Variables are exported each
+    time they are written by BeanShell.  Imported variables from the map appear
+    in the BeanShell namespace as untyped variables with no modifiers and
+    shadow any previously defined variables in the scope.
+    <p/>
+
+    Note: this class is inherentely dependent on Java 1.2 (for Map), however
+    it is not used directly by the core as other than type NameSpace, so no
+    dependency is introduced.
+*/
 /*
     Implementation notes:
 
@@ -70,67 +70,67 @@ import java.util.stream.Stream;
     overloaded forms (perhaps a map by method SignatureKey).
 
 */
-public class ExternalNameSpace extends NameSpace {
-    private Map<String, Object> externalMap;
+public class ExternalNameSpace extends NameSpace
+{
+    private Map<String,Object> externalMap;
 
-    public ExternalNameSpace() {
-        this(null, "External Map Namespace", null);
+    public ExternalNameSpace()
+    {
+        this( null, "External Map Namespace", null );
     }
 
     /**
-     *
-     */
-    public ExternalNameSpace(NameSpace parent, String name, Map<String, Object> externalMap) {
-        super(parent, name);
+    */
+    public ExternalNameSpace( NameSpace parent, String name, Map<String,Object> externalMap )
+    {
+        super( parent, name );
 
-        if (externalMap == null)
-            externalMap = new HashMap<String, Object>();
+        if ( externalMap == null )
+            externalMap = new HashMap<String,Object>();
 
         this.externalMap = externalMap;
 
     }
 
     /**
-     * Get the map view of this namespace.
-     */
-    public Map<String, Object> getMap() {
-        return externalMap;
-    }
+        Get the map view of this namespace.
+    */
+    public Map<String,Object> getMap() { return externalMap; }
 
     /**
-     * Set the external Map which to which this namespace synchronizes.
-     * The previous external map is detached from this namespace.  Previous
-     * map values are retained in the external map, but are removed from the
-     * BeanShell namespace.
-     */
-    public void setMap(Map<String, Object> map) {
+        Set the external Map which to which this namespace synchronizes.
+        The previous external map is detached from this namespace.  Previous
+        map values are retained in the external map, but are removed from the
+        BeanShell namespace.
+    */
+    public void setMap( Map<String,Object> map )
+    {
         // Detach any existing namespace to preserve it, then clear this
         // namespace and set the new one
         clear();
-        this.externalMap = map;
+        this.externalMap = map ;
     }
 
     /**
-     *
-     */
-    public void unsetVariable(String name) {
-        super.unsetVariable(name);
-        externalMap.remove(name);
+    */
+    public void unsetVariable( String name )
+    {
+        super.unsetVariable( name );
+        externalMap.remove( name );
     }
 
     /**
-     *
-     */
-    public String[] getVariableNames() {
+    */
+    public String [] getVariableNames()
+    {
         return Stream.concat(
                 Stream.of(super.getVariableNames()),
                 this.externalMap.keySet().stream()
-        ).toArray(String[]::new);
+            ).toArray(String[]::new);
     }
 
     /**
-     *
-     */
+    */
     /*
         Notes: This implementation of getVariableImpl handles the following
         cases:
@@ -144,33 +144,36 @@ public class ExternalNameSpace extends NameSpace {
         more control here to change the import precedence and remove variables
         if they are removed via the extenal map.
     */
-    protected Variable getVariableImpl(String name, boolean recurse)
-            throws UtilEvalError {
+        protected Variable getVariableImpl( String name, boolean recurse )
+        throws UtilEvalError
+    {
         // check the external map for the variable name
-        Object value = externalMap.get(name);
+        Object value = externalMap.get( name );
 
-        if (value == null && externalMap.containsKey(name))
+        if ( value == null && externalMap.containsKey( name ) )
             value = Primitive.NULL;
 
         Variable var;
-        if (value == null) {
+        if ( value == null )
+        {
             // The var is not in external map and it should therefore not be
             // found in local scope (it may have been removed via the map).
             // Clear it prophalactically.
-            super.unsetVariable(name);
+            super.unsetVariable( name );
 
             // Search parent for var if applicable.
-            var = super.getVariableImpl(name, recurse);
-        } else {
+            var = super.getVariableImpl( name, recurse );
+        } else
+        {
             // Var in external map may be found in local scope with type and
             // modifier info.
-            Variable localVar = super.getVariableImpl(name, false);
+            Variable localVar = super.getVariableImpl( name, false );
 
             // If not in local scope then it was added via the external map,
             // we'll wrap it and pass it along.  Else we'll use the one we
             // found.
-            if (localVar == null)
-                var = createVariable(name, null/*type*/, value, null/*mods*/);
+            if ( localVar == null )
+                var = createVariable( name, null/*type*/, value, null/*mods*/ );
             else
                 var = localVar;
         }
@@ -179,23 +182,25 @@ public class ExternalNameSpace extends NameSpace {
     }
 
     public Variable createVariable(
-            String name, Class type, Object value, Modifiers mods) {
-        LHS lhs = new LHS(externalMap, name);
+        String name, Class type, Object value, Modifiers mods )
+    {
+        LHS lhs = new LHS( externalMap, name );
         // Is this race condition worth worrying about?
         // value will appear in map before it's really in the interpreter
         try {
-            lhs.assign(value, false/*strict*/);
-        } catch (UtilEvalError e) {
-            throw new InterpreterError(e.toString());
+            lhs.assign( value, false/*strict*/ );
+        } catch ( UtilEvalError e) {
+            throw new InterpreterError( e.toString() );
         }
-        return new Variable(name, type, lhs);
+        return new Variable( name, type, lhs );
     }
 
     /**
-     * Clear all variables, methods, and imports from this namespace and clear
-     * all values from the external map (via Map clear()).
-     */
-    public void clear() {
+        Clear all variables, methods, and imports from this namespace and clear
+        all values from the external map (via Map clear()).
+    */
+    public void clear()
+    {
         super.clear();
         externalMap.clear();
     }

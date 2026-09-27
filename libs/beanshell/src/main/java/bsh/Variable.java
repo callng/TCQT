@@ -27,11 +27,10 @@ package bsh;
 
 import java.io.Serializable;
 
-public class Variable implements Serializable, BshClassManager.Listener, Cloneable {
-    public static final int DECLARATION = 0, ASSIGNMENT = 1;
-    /**
-     * A null type means an untyped variable
-     */
+public class Variable implements Serializable, BshClassManager.Listener, Cloneable
+{
+    public static final int DECLARATION=0, ASSIGNMENT=1;
+    /** A null type means an untyped variable */
     String name;
     Class<?> type = null;
     String typeDescriptor;
@@ -39,73 +38,77 @@ public class Variable implements Serializable, BshClassManager.Listener, Cloneab
     Modifiers modifiers;
     LHS lhs;
 
-    Variable(String name, Class<?> type, LHS lhs) {
+    Variable( String name, Class<?> type, LHS lhs )
+    {
         this.name = name;
         this.lhs = lhs;
         this.type = type;
     }
 
-    Variable(String name, Object value, Modifiers modifiers)
-            throws UtilEvalError {
-        this(name, (Class<?>) null/*type*/, value, modifiers);
+    Variable( String name, Object value, Modifiers modifiers )
+        throws UtilEvalError
+    {
+        this( name, (Class<?>) null/*type*/, value, modifiers );
     }
 
     /**
-     * This constructor is used in class generation.
-     */
+        This constructor is used in class generation.
+    */
     Variable(
-            String name, String typeDescriptor, Object value, Modifiers modifiers
+        String name, String typeDescriptor, Object value, Modifiers modifiers
     )
-            throws UtilEvalError {
-        this(name, (Class<?>) null/*type*/, value, modifiers);
+        throws UtilEvalError
+    {
+        this( name, (Class<?>) null/*type*/, value, modifiers );
         this.typeDescriptor = typeDescriptor;
     }
 
     /**
-     * @param value may be null if this
-     */
-    Variable(String name, Class<?> type, Object value, Modifiers modifiers)
-            throws UtilEvalError {
-        this.name = name;
+        @param value may be null if this
+    */
+    Variable( String name, Class<?> type, Object value, Modifiers modifiers )
+        throws UtilEvalError
+    {
+        this.name=name;
         this.type = type;
-        this.setModifiers(modifiers);
-        this.setValue(value, DECLARATION);
+        this.setModifiers( modifiers );
+        this.setValue( value, DECLARATION );
     }
 
     /**
-     * Set the value of the typed variable.
-     *
-     * @param value should be an object or wrapped bsh Primitive type.
-     *              if value is null the appropriate default value will be set for the
-     *              type: e.g. false for boolean, zero for integer types.
-     */
-    public void setValue(Object value, int context)
-            throws UtilEvalError {
+        Set the value of the typed variable.
+        @param value should be an object or wrapped bsh Primitive type.
+        if value is null the appropriate default value will be set for the
+        type: e.g. false for boolean, zero for integer types.
+    */
+    public void setValue( Object value, int context )
+        throws UtilEvalError
+    {
 
         // prevent final variable re-assign
         if (hasModifier("final")) {
             if (this.value != null)
-                throw new UtilEvalError("Cannot re-assign final variable " + name + ".");
+                throw new UtilEvalError("Cannot re-assign final variable "+name+".");
             if (value == null)
                 return;
         }
 
         // TODO: should add isJavaCastable() test for strictJava
         // (as opposed to isJavaAssignable())
-        if (type != null && type != Object.class && value != null) {
-            this.value = Types.castObject(value, type,
-                    context == DECLARATION ? Types.CAST : Types.ASSIGNMENT
+        if ( type != null && type != Object.class && value != null ) {
+            this.value = Types.castObject( value, type,
+                context == DECLARATION ? Types.CAST : Types.ASSIGNMENT
             );
             value = this.value;
         }
 
         this.value = value;
 
-        if (this.value == null && context != DECLARATION)
-            this.value = Primitive.getDefaultValue(type);
+        if ( this.value == null && context != DECLARATION )
+            this.value = Primitive.getDefaultValue( type );
 
-        if (lhs != null)
-            this.value = lhs.assign(this.value, false/*strictjava*/);
+        if ( lhs != null )
+            this.value = lhs.assign( this.value, false/*strictjava*/ );
 
     }
 
@@ -114,7 +117,7 @@ public class Variable implements Serializable, BshClassManager.Listener, Cloneab
             return;
         if (isStatic == hasModifier("static"))
             throw new RuntimeException((isStatic ? "Static f" : "F")
-                    + "inal variable " + name + " is not initialized.");
+                    +"inal variable "+name+" is not initialized.");
     }
 
     /*
@@ -123,25 +126,20 @@ public class Variable implements Serializable, BshClassManager.Listener, Cloneab
         object field.
     */
     Object getValue() throws UtilEvalError {
-        if (lhs != null)
+        if ( lhs != null )
             return type == null ?
-                    lhs.getValue() : Primitive.wrap(lhs.getValue(), type);
+                lhs.getValue() : Primitive.wrap( lhs.getValue(), type );
 
         return value;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Class<?> getType() {
-        return type;
-    }
+    public String getName() { return name; }
+    public Class<?> getType() { return type;   }
 
     public String getTypeDescriptor() {
         if (null == typeDescriptor)
             typeDescriptor = BSHType.getTypeDescriptor(
-                    type == null ? Object.class : type);
+                type == null ? Object.class : type);
         return typeDescriptor;
     }
 
@@ -156,7 +154,7 @@ public class Variable implements Serializable, BshClassManager.Listener, Cloneab
     }
 
 
-    public boolean hasModifier(String name) {
+    public boolean hasModifier( String name ) {
         return getModifiers().hasModifier(name);
     }
 
@@ -172,14 +170,12 @@ public class Variable implements Serializable, BshClassManager.Listener, Cloneab
                 + ", value:" + value + ", lhs = " + lhs;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void classLoaderChanged() {
         if (Reflect.isGeneratedClass(type)) try {
             type = Reflect.getThisNS(type).getClass(type.getName());
-        } catch (UtilEvalError e) { /** should not happen on reload */}
+        } catch (UtilEvalError e) { /** should not happen on reload */ }
     }
 
     @Override

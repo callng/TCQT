@@ -31,64 +31,65 @@ import bsh.BshClassManager;
 import bsh.classpath.BshClassPath.ClassSource;
 
 /**
- * A classloader which can load one or more classes from specified sources.
- * Because the classes are loaded via a single classloader they change as a
- * group and any versioning cross dependencies can be managed.
- */
-public class DiscreteFilesClassLoader extends BshClassLoader {
-    private static DiscreteFilesClassLoader instance;
+    A classloader which can load one or more classes from specified sources.
+    Because the classes are loaded via a single classloader they change as a
+    group and any versioning cross dependencies can be managed.
+*/
+public class DiscreteFilesClassLoader extends BshClassLoader
+{
     /**
-     * Map of class sources which also implies our coverage space.
-     */
+        Map of class sources which also implies our coverage space.
+    */
     ClassSourceMap map;
 
-    public DiscreteFilesClassLoader(
-            BshClassManager classManager, ClassSourceMap map) {
-        super(classManager);
-        this.map = map;
+    public static class ClassSourceMap extends HashMap<String, ClassSource>
+    {
+        private static final long serialVersionUID = 1L;
+        @Override
+        public ClassSource put( String name, ClassSource source ) {
+            return super.put( name, source );
+        }
+        @Override
+        public ClassSource get( Object name ) {
+            return super.get( name );
+        }
     }
 
+    private static DiscreteFilesClassLoader instance;
     public static DiscreteFilesClassLoader instance() {
         return instance;
     }
-
     public static void newInstance(
-            BshClassManager classManager, ClassSourceMap map) {
+            BshClassManager classManager, ClassSourceMap map ) {
         instance = new DiscreteFilesClassLoader(classManager, map);
     }
 
-    /**
-     *
-     */
-    public Class findClass(String name) throws ClassNotFoundException {
-        // Load it if it's one of our classes
-        ClassSource source = map.get(name);
+    public DiscreteFilesClassLoader(
+        BshClassManager classManager, ClassSourceMap map )
+    {
+        super( classManager );
+        this.map = map;
+    }
 
-        if (source != null) {
-            byte[] code = source.getCode(name);
-            return getClassManager().defineClass(name, code);
+    /**
+    */
+    public Class findClass( String name ) throws ClassNotFoundException
+    {
+        // Load it if it's one of our classes
+        ClassSource source = map.get( name );
+
+        if ( source != null )
+        {
+            byte [] code = source.getCode( name );
+            return getClassManager().loadGeneratedClass(name, code);
         } else
             // Let superclass BshClassLoader (URLClassLoader) findClass try
             // to find the class...
-            return super.findClass(name);
+            return super.findClass( name );
     }
 
     public String toString() {
-        return super.toString() + "for files: " + map;
-    }
-
-    public static class ClassSourceMap extends HashMap<String, ClassSource> {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public ClassSource put(String name, ClassSource source) {
-            return super.put(name, source);
-        }
-
-        @Override
-        public ClassSource get(Object name) {
-            return super.get(name);
-        }
+        return super.toString() + "for files: "+map;
     }
 
 }

@@ -17,3 +17,8 @@ extensions.configure<LibraryExtension> {
         targetCompatibility = JavaVersion.VERSION_21
     }
 }
+
+dependencies {
+    // BeanShell 的 Lambda / 脚本内定义类要用运行期 dex 转换器
+    implementation(libs.dalvik.dx)
+}
