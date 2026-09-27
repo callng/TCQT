@@ -100,25 +100,27 @@ class LegacyGateKeySnapshotTest {
 
     /**
      * 隐藏基础设施的数量是**架构不变量**（3 个 `internal/` InfraTask +
-     * 3 个 `internal/pipeline/` 管线 + 脚本引擎内核 + 内核消息桥），
+     * 3 个 `internal/pipeline/` 管线 + 脚本引擎内核 + 内核消息桥 + 脚本 AIO 入口），
      * 不是"功能计数" —— 有意保留为需要显式确认的门槛：增减它意味着架构变了。
      *
-     * 两个新增项都是**必须常驻**的：
+     * 三个脚本相关项都是**必须常驻**的：
      * - `ScriptCore`：`ActionUiType.ENTRY` 会让 `ActionSpec.canRun()` 恒为 false、
      *   `install()` 永不执行，所以引擎内核只能是始终运行的 `InfraTask`；
      * - `KernelMessageBridge`：消息入口（`onRecvMsg`）与消息源必须全进程常驻，
-     *   不能挂在任何带开关的功能上。
+     *   不能挂在任何带开关的功能上；
+     * - `ScriptAioEntry`：悬浮菜单要随会话出现/消失，不能受某个开关控制；
+     * - `GroupEventBridge`：群事件是能力，同样不该挂在开关后面。
      *
      * 原先这里还断言了"注册项总数为 89"，那条会随任何一个新功能失效，
      * 已删除（总数不是不变量）。
      */
     @Test
-    fun `隐藏基础设施为 8 个`() {
+    fun `隐藏基础设施为 10 个`() {
         val hidden = RegisteredAction.load().filter { it.hidden }
         assertEquals(
-            8,
+            10,
             hidden.size,
-            "隐藏基础设施数量变了（3 InfraTask + 3 管线 + 脚本引擎内核 + 内核消息桥）—— 若这是设计变更请同步本断言",
+            "隐藏基础设施数量变了（3 InfraTask + 3 管线 + 引擎内核 + 内核消息桥 + 脚本 AIO 入口 + 群事件桥）—— 若这是设计变更请同步本断言",
         )
     }
 

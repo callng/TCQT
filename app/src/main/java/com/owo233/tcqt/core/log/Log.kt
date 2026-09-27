@@ -23,9 +23,25 @@ interface Logger {
     fun e(message: String, throwable: Throwable? = null) = log(LogLevel.ERROR, message, throwable)
 }
 
+/**
+ * Android 日志输出。
+ *
+ * 单元测试跑在 JVM 上，`android.util.Log` 是抛 `RuntimeException("not mocked")` 的空壳。
+ * 日志失败**绝不能**把业务逻辑带崩（解析失败路径上打一行诊断就炸过一次），因此这里
+ * 先探测一次可用性，不可用就整体跳过；探测结果缓存，正常设备上无额外开销。
+ */
 class AndroidLogger(private val tag: String) : Logger {
 
+    private val available: Boolean by lazy {
+        runCatching {
+            Log.i(tag, "logger-probe")
+            true
+        }.getOrDefault(false)
+    }
+
     override fun log(level: LogLevel, message: String, throwable: Throwable?) {
+        if (!available) return
+
         when (level) {
             LogLevel.VERBOSE -> Log.v(tag, message, throwable)
             LogLevel.DEBUG -> Log.d(tag, message, throwable)

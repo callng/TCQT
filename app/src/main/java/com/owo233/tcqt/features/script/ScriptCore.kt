@@ -6,6 +6,8 @@ import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.InfraTask
 import com.owo233.tcqt.api.Requires
 import com.owo233.tcqt.core.action.ActionPriority
+import com.owo233.tcqt.core.group.GroupEventDispatcher
+import com.owo233.tcqt.core.group.GroupEventListener
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.Log
@@ -64,10 +66,17 @@ object ScriptCore : InfraTask(
 
     override fun install() {
         ScriptGateway.instance = this
-        ScriptAtUinConverter.converter = { uid -> GroupService.getUinFromUid(uid) }
+
+        // UID → UIN 的转换在「消息里艾特」与「当前会话」两处都要用，注入同一个实现。
+        val uinFromUid: (String) -> String = { uid -> GroupService.getUinFromUid(uid) }
+        ScriptAtUinConverter.converter = uinFromUid
+        ScriptContactResolver.converter = uinFromUid
 
         // 消息源是内核推送入口；MessageCore 由 KernelServiceReady 装好，这里只订阅。
         MessageDispatcher.register(this)
+
+        // 群事件（入群 / 退群 / 禁言）与消息是两条独立事件流，各自订阅。
+        GroupEventDispatcher.register(groupEventListener)
 
         ScriptRegistry.clear()
         synchronized(installed) { installed.clear() }
@@ -79,6 +88,11 @@ object ScriptCore : InfraTask(
     override fun onMessage(event: MessageEvent) {
         if (!ScriptRegistry.hasRunning) return
         ScriptEvents.onReceiveMessage(event)
+    }
+
+    /** 群事件监听器：与 [onMessage] 同构，保持引用以便注销。 */
+    private val groupEventListener = GroupEventListener { event ->
+        if (ScriptRegistry.hasRunning) ScriptEvents.onGroupEvent(event)
     }
 
     // ── 目录装载 ─────────────────────────────────────────────────────────

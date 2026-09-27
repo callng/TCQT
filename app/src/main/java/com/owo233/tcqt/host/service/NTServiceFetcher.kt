@@ -3,9 +3,8 @@ package com.owo233.tcqt.host.service
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.runOnce
 import com.owo233.tcqt.core.hook.MethodHookParam
-import com.owo233.tcqt.core.hook.hookMethodBefore
+import com.owo233.tcqt.core.message.MsfPushRouter
 import com.tencent.qqnt.kernel.api.IKernelService
-import com.tencent.qqnt.kernel.nativeinterface.PushExtraInfo
 import mqq.app.MobileQQ
 import top.artmoe.inao.item.NewPreventRetractingMessageCore
 import java.util.concurrent.atomic.AtomicBoolean
@@ -19,21 +18,9 @@ object NTServiceFetcher {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
         isMsgHookInitialized.runOnce {
-            msgPushHook()
-        }
-    }
-
-    private fun msgPushHook() {
-        kernelService.wrapperSession.javaClass.hookMethodBefore(
-            "onMsfPush",
-            String::class.java,
-            ByteArray::class.java,
-            PushExtraInfo::class.java
-        ) {
-            val cmd = it.args[0] as String
-            val buffer = it.args[1] as ByteArray
-
-            action(cmd, buffer, it)
+            // 推送通道由 MsfPushRouter 集中持有，这里只订阅自己关心的 cmd，
+            // 不再独占 hook `onMsfPush`（群事件也要用同一条通道）。
+            MsfPushRouter.subscribe { cmd, buffer, param -> action(cmd, buffer, param) }
         }
     }
 

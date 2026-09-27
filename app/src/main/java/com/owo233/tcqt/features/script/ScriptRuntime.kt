@@ -5,6 +5,7 @@ import bsh.BshMethod
 import bsh.Interpreter
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.script.DynamicActivityPort
 import com.owo233.tcqt.features.script.bean.ScriptInfo
 import com.owo233.tcqt.host.QQInterfaces
 import java.io.File
@@ -79,6 +80,7 @@ internal class ScriptRuntime(val info: ScriptInfo) {
         }
 
         runCatching {
+            unregisterActivities()
             interpreter.nameSpace.clear()
             menuItems.clear()
             msgMenuItems.clear()
@@ -105,6 +107,54 @@ internal class ScriptRuntime(val info: ScriptInfo) {
         started && runCatching {
             interpreter.nameSpace?.methodNames?.contains(methodName) == true
         }.getOrDefault(false)
+
+    /**
+     * 按「候选参数个数」调用脚本方法：命中第一个存在的重载就调用。
+     *
+     * 用于文档里允许多种签名的回调（如 `chatInterface` 的 3 参 / 4 参版本），
+     * 避免写死一种签名导致另一种写法的脚本收不到事件。
+     */
+    fun invokeByNameSize(
+        name: String,
+        sizes: IntArray,
+        buildArgs: (Int) -> Array<Any?>,
+    ): Boolean {
+        if (!started) return false
+
+        val space = interpreter.nameSpace ?: return false
+        val methods = space.methods ?: return false
+
+        sizes.forEach { size ->
+            val target = methods.firstOrNull { it.name == name && it.parameterTypes.size == size }
+                ?: return@forEach
+
+            return runCatching {
+                target.invoke(buildArgs(size), interpreter)
+                true
+            }.onFailure {
+                Log.e("脚本方法调用失败 [${info.id}] $name/$size", it)
+            }.getOrDefault(false)
+        }
+        return false
+    }
+
+    /**
+     * 悬浮菜单点击：调用脚本里注册的回调。
+     *
+     * 与文档一致，回调可写 3 参（聊天类型 / PeerUin / 昵称）或 4 参（多一个 Contact）。
+     */
+    fun invokeMenuItem(callback: String, contact: ScriptChatContext) {
+        invokeByNameSize(
+            name = callback,
+            sizes = intArrayOf(3, 4),
+        ) { size ->
+            if (size == 4) {
+                arrayOf(contact.chatType, contact.peerUin, contact.peerName, contact.toKernelContact())
+            } else {
+                arrayOf(contact.chatType, contact.peerUin, contact.peerName)
+            }
+        }
+    }
 
     /** 调用返回字符串的脚本方法；方法不存在或返回非字符串时返回 null。 */
     fun invokeForString(methodName: String, arg: String): String? {
@@ -137,6 +187,31 @@ internal class ScriptRuntime(val info: ScriptInfo) {
     }
 
     fun currentActivity(): Activity? = runCatching { QQInterfaces.topActivity }.getOrNull()
+
+    /** 脚本注册过、需要在停止时注销的 Activity 类名。 */
+    private val registeredActivities = linkedSetOf<String>()
+
+    /**
+     * 注册脚本自己的 Activity，停止脚本时自动注销。
+     *
+     * 只做注册：实际启动仍由宿主的 Activity 代理流程完成。
+     */
+    fun registerActivity(activityClass: Class<*>) {
+        require(Activity::class.java.isAssignableFrom(activityClass)) {
+            "registerActivity 只接受 Activity 子类：${activityClass.name}"
+        }
+        check(DynamicActivityPort.register(activityClass)) {
+            "动态 Activity 端口未就绪（loader 尚未注入实现）"
+        }
+        synchronized(registeredActivities) { registeredActivities += activityClass.name }
+    }
+
+    private fun unregisterActivities() {
+        synchronized(registeredActivities) {
+            registeredActivities.forEach(DynamicActivityPort::unregister)
+            registeredActivities.clear()
+        }
+    }
 
     /** 宿主 Application Context；就绪前退回应用对象，仍取不到则返回 null（脚本侧判空）。 */
     private fun hostContext(): android.content.Context? =

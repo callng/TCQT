@@ -1,5 +1,6 @@
 package com.owo233.tcqt.features.script
 
+import com.owo233.tcqt.core.group.GroupEvent
 import com.owo233.tcqt.core.message.MessageEvent
 import com.owo233.tcqt.core.message.MessageKind
 import com.owo233.tcqt.features.script.bean.MsgData
@@ -30,6 +31,68 @@ internal object ScriptEvents {
         when (event.kind) {
             MessageKind.RECEIVE -> dispatchToScripts(runtimes, ON_MSG, event.record)
             MessageKind.SEND -> dispatchToScripts(runtimes, ON_SEND_MSG, event.record)
+        }
+    }
+
+    /**
+     * 进入聊天界面：分发 `chatInterface`。
+     *
+     * 文档约定回调有两种签名（3 参 / 4 参含 Contact），因此按方法的参数个数匹配，
+     * 而不是猜一个固定签名。
+     */
+    fun onChatInterface(contact: ScriptChatContext) {
+        if (!contact.isValid) return
+
+        val runtimes = ScriptRegistry.runtimes()
+        if (runtimes.isEmpty()) return
+
+        runtimes.forEach { runtime ->
+            runtime.invokeByNameSize(
+                name = CHAT_INTERFACE,
+                sizes = intArrayOf(3, 4),
+                buildArgs = { size ->
+                    if (size == 4) {
+                        arrayOf(contact.chatType, contact.peerUin, contact.peerName, contact.toKernelContact())
+                    } else {
+                        arrayOf(contact.chatType, contact.peerUin, contact.peerName)
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * 群事件：入群 / 退群 / 禁言。
+     *
+     * 文档约定回调为 `(String 群号, String 成员QQ号[, 附加参数...])`，这里统一按
+     * 参数个数匹配，兼容脚本少写末尾参数的情况。
+     */
+    fun onGroupEvent(event: GroupEvent) {
+        val runtimes = ScriptRegistry.runtimes()
+        if (runtimes.isEmpty()) return
+
+        val (name, args) = when (event) {
+            is GroupEvent.MemberJoin -> JOIN_GROUP to arrayOf<Any?>(event.groupUin, event.memberUin)
+            is GroupEvent.MemberQuit -> QUIT_GROUP to arrayOf<Any?>(event.groupUin, event.memberUin)
+            is GroupEvent.ShutUp -> SHUT_UP_GROUP to arrayOf<Any?>(
+                event.groupUin,
+                event.memberUin,
+                event.durationSeconds,
+                event.operatorUin,
+            )
+
+            // 拍一拍也发生在私聊，因此回调带上 chatType
+            is GroupEvent.PaiYiPai -> PAI_YI_PAI to arrayOf<Any?>(
+                event.groupUin,
+                event.chatType,
+                event.fromUin,
+            )
+        }
+
+        runtimes.forEach { runtime ->
+            runtime.invokeByNameSize(name, intArrayOf(args.size, args.size - 1)) { size ->
+                args.copyOf(size)
+            }
         }
     }
 
@@ -88,4 +151,9 @@ internal object ScriptEvents {
     const val ON_SEND_MSG = "onSendMsg"
     const val GET_MSG = "getMsg"
     const val UNLOAD = "unLoadPlugin"
+    const val CHAT_INTERFACE = "chatInterface"
+    const val JOIN_GROUP = "joinGroup"
+    const val QUIT_GROUP = "quitGroup"
+    const val SHUT_UP_GROUP = "shutUpGroup"
+    const val PAI_YI_PAI = "onPaiYiPai"
 }

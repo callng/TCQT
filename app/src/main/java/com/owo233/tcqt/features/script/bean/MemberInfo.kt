@@ -13,5 +13,7 @@ data class MemberInfo(
     @JvmField val joinGroupTime: Long,
     @JvmField val lastActiveTime: Long,
     @JvmField val role: String,
+    /** 禁言结束时间戳（秒）；0 或已过去表示未禁言。 */
+    @JvmField val shutUpEndTime: Long,
     @JvmField val memberInfo: Any?,
 )
