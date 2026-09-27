@@ -28,6 +28,7 @@ object FeatureCategories {
         "notification" to "通知",
         "misc" to "杂项",
         "debug" to "调试",
+        "script" to "脚本",
     )
 
     /** 设置界面根列表的展示顺序（= [LABELS] 的声明顺序）。 */

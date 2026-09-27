@@ -33,6 +33,7 @@ import com.owo233.tcqt.core.reflect.getFields
 import com.owo233.tcqt.core.reflect.invoke
 import com.owo233.tcqt.core.reflect.new
 import com.owo233.tcqt.core.sync.ModuleScope
+import com.owo233.tcqt.features.script.ScriptLauncher
 import com.owo233.tcqt.features.advanced.AddModuleEntrance.hookSettingEntries
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.host.service.EasyLoginException
@@ -75,6 +76,17 @@ object AddModuleEntrance : Feature(
                     groupTag = "TCQT_OtherSettingEntry",
                     groupTitle = "TCQT工具",
                     onClick = ::showInfoCardDialog
+                )
+            )
+            add(
+                SettingEntryConfig(
+                    id = R.id.setting2Activity_settingEntryItem,
+                    title = "脚本引擎",
+                    iconName = "qui_tuning",
+                    extraEntry = true,
+                    groupTag = "TCQT_OtherSettingEntry",
+                    groupTitle = "TCQT工具",
+                    onClick = ::openScriptManager
                 )
             )
             if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_70)) {
@@ -339,6 +351,13 @@ object AddModuleEntrance : Feature(
             putExtra("public_fragment_class", fragmentClass.name)
             if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         })
+    }
+
+    // ── 脚本引擎入口 ───────────────────────────────────────────────────
+
+    /** 打开脚本管理页；与模块设置页入口共用同一处启动逻辑。 */
+    private fun openScriptManager(ctx: Context) {
+        ScriptLauncher.open(ctx)
     }
 
     private fun openTCQTSettings(ctx: Context? = null) {

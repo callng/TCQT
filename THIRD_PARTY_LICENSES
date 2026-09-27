@@ -26,3 +26,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## BeanShell（含内置 ASM）
+
+Source: https://github.com/beanshell/beanshell （内置 ASM: https://asm.ow2.io/）
+License: Apache License 2.0（`libs/beanshell` 为源码内联，未修改许可证头）
+
+位置：`libs/beanshell/src/main/java/bsh/`
+用途：脚本引擎的解释器本体（`bsh.*`），ASM 用于脚本内 Lambda / 方法引用的字节码生成。
+

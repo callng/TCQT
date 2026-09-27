@@ -100,19 +100,23 @@ class LegacyGateKeySnapshotTest {
 
     /**
      * 隐藏基础设施的数量是**架构不变量**（3 个 `internal/` InfraTask +
-     * 3 个 `internal/pipeline/` 管线），不是"功能计数" ——
-     * 有意保留为需要显式确认的门槛：增减它意味着架构变了。
+     * 3 个 `internal/pipeline/` 管线 + 1 个 `features/script/` 脚本引擎内核），
+     * 不是"功能计数" —— 有意保留为需要显式确认的门槛：增减它意味着架构变了。
+     *
+     * `ScriptCore` 计入隐藏项是**必须的**：`ActionUiType.ENTRY` 会让
+     * `ActionSpec.canRun()` 恒为 false、`install()` 永不执行，所以引擎内核只能
+     * 是始终运行的 `InfraTask`；用户可见的入口是同一分类下的 `ScriptEngine`（ENTRY）。
      *
      * 原先这里还断言了"注册项总数为 89"，那条会随任何一个新功能失效，
      * 已删除（总数不是不变量）。
      */
     @Test
-    fun `隐藏基础设施为 6 个`() {
+    fun `隐藏基础设施为 7 个`() {
         val hidden = RegisteredAction.load().filter { it.hidden }
         assertEquals(
-            6,
+            7,
             hidden.size,
-            "隐藏基础设施数量变了（3 InfraTask + 3 管线）—— 若这是设计变更请同步本断言",
+            "隐藏基础设施数量变了（3 InfraTask + 3 管线 + 脚本引擎内核）—— 若这是设计变更请同步本断言",
         )
     }
 

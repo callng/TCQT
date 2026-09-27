@@ -43,7 +43,11 @@ class DerivedKeyCompatibilityTest {
             "fake_pic_size.custom_width",
             "fake_pic_size.type",
         )),
-        "ForcedABTest.kt" to ("forced_to_ab" to listOf("forced_to_ab.mode")),
+        // forced_config_ids 是后来新增的配置项，不存在历史 key 需要兼容（新增项的派生 key 一律放行）
+        "ForcedABTest.kt" to ("forced_to_ab" to listOf(
+            "forced_to_ab.forced_config_ids",
+            "forced_to_ab.mode",
+        )),
         "SwitchLoginMode.kt" to ("switch_login_mode" to listOf("switch_login_mode.type")),
         "DefaultVASAttributes.kt" to ("default_vas_attrs" to listOf("default_vas_attrs.type")),
         "DisableDialog.kt" to ("disable_dialog" to listOf("disable_dialog.type")),
