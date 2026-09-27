@@ -1,33 +1,35 @@
 package com.owo233.tcqt.features.script
 
+import com.owo233.tcqt.core.message.MessageEvent
+import com.owo233.tcqt.core.message.MessageKind
 import com.owo233.tcqt.features.script.bean.MsgData
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 
 /**
- * 脚本事件的分发入口：由 [ScriptCore] 挂到宿主管线上。
+ * 脚本事件的分发入口。
  *
- * 宿主事件不保证线程、也可能重复触发（如列表重绘），因此：
- * 每个脚本独立兜底，单个脚本报错不影响其它脚本；收到消息按 `msgId` 去重。
+ * 消息类事件由 [com.owo233.tcqt.core.message.MessageCore] 从**服务端推送入口**
+ * （`msgService.onRecvMsg` / `onAddSendMsg`）广播过来，而不是视图管线 ——
+ * 视图只在用户真的看到消息时更新，拿它当消息源会漏掉后台消息。
+ *
+ * 每个脚本独立兜底，单个脚本报错不影响其它脚本。
  */
 internal object ScriptEvents {
 
-    /** `onMsg` 去重窗口，避免列表重绘重复触发。 */
-    private const val DEDUP_LIMIT = 512
-
-    private val dispatched = LinkedHashSet<Long>()
-
-    /** 收到的消息：去重后分发给所有运行中脚本的 `onMsg`。 */
-    fun onReceiveMessage(record: MsgRecord) {
+    /**
+     * 服务端推送的消息：分发给所有运行中脚本的 `onMsg`。
+     *
+     * 「本机发送」走 [onSentMessage]，不混进 `onMsg`：否则脚本回复消息会再次触发
+     * `onMsg`，形成自回环。
+     */
+    fun onReceiveMessage(event: MessageEvent) {
         val runtimes = ScriptRegistry.runtimes()
         if (runtimes.isEmpty()) return
 
-        if (record.msgId != 0L && !markDispatched(record.msgId)) return
-
-        runtimes.forEach { runtime ->
-            // 每个脚本拿到各自的 MsgData：脚本可以改写 msg 而不影响其它脚本
-            val data = runCatching { MsgData(record) }.getOrNull() ?: return
-            runtime.invoke(ON_MSG, arrayOf(Any::class.java), arrayOf(data))
+        when (event.kind) {
+            MessageKind.RECEIVE -> dispatchToScripts(runtimes, ON_MSG, event.record)
+            MessageKind.SEND -> dispatchToScripts(runtimes, ON_SEND_MSG, event.record)
         }
     }
 
@@ -67,21 +69,23 @@ internal object ScriptEvents {
         return result
     }
 
-    private fun markDispatched(msgId: Long): Boolean = synchronized(dispatched) {
-        if (!dispatched.add(msgId)) return false
-        if (dispatched.size > DEDUP_LIMIT) {
-            val iterator = dispatched.iterator()
-            repeat(dispatched.size - DEDUP_LIMIT) {
-                if (iterator.hasNext()) {
-                    iterator.next()
-                    iterator.remove()
-                }
-            }
+    /**
+     * 每个脚本拿到**各自**的 `MsgData`：脚本可以改写 `msg` 而不影响其它脚本。
+     * 回调方法不存在时 [ScriptRuntime.invoke] 静默返回 false。
+     */
+    private fun dispatchToScripts(
+        runtimes: List<ScriptRuntime>,
+        callback: String,
+        record: MsgRecord,
+    ) {
+        runtimes.forEach { runtime ->
+            val data = runCatching { MsgData(record) }.getOrNull() ?: return@forEach
+            runtime.invoke(callback, arrayOf(Any::class.java), arrayOf(data))
         }
-        true
     }
 
     const val ON_MSG = "onMsg"
+    const val ON_SEND_MSG = "onSendMsg"
     const val GET_MSG = "getMsg"
     const val UNLOAD = "unLoadPlugin"
 }

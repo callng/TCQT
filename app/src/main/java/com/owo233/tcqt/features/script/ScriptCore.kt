@@ -9,6 +9,9 @@ import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.message.MessageDispatcher
+import com.owo233.tcqt.core.message.MessageEvent
+import com.owo233.tcqt.core.message.MessageListener
 import com.owo233.tcqt.core.proto.GlobalJson
 import com.owo233.tcqt.core.script.ScriptGateway
 import com.owo233.tcqt.core.script.ScriptMeta
@@ -42,13 +45,17 @@ import java.util.zip.ZipInputStream
 object ScriptCore : InfraTask(
     key = "script_core",
     priority = ActionPriority.DEFERRED,
-    processes = setOf(ActionProcess.MAIN),
+    // MSF：内核在这里接收服务端推送，onMsg 只有在这里才能实时拿到消息。
+    // MAIN：UI 相关管线（getMsg 改写、长按菜单）与脚本管理界面在这里。
+    // 两边都常驻，回调按能力分工，同一条消息不会重复派发。
+    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
     requires = Requires(ntOnly = true),
 ),
     ScriptGateway,
     OnAIOSendMsgBefore,
     OnAIOViewUpdate,
-    OnMenuBuilder {
+    OnMenuBuilder,
+    MessageListener {
 
     /** 脚本菜单装配顺序：排在模块内置菜单项之后。 */
     override val decoratorOrder: Int = 500
@@ -57,11 +64,19 @@ object ScriptCore : InfraTask(
         ScriptGateway.instance = this
         ScriptAtUinConverter.converter = { uid -> GroupService.getUinFromUid(uid) }
 
+        // 消息源是内核推送入口；MessageCore 由 KernelServiceReady 装好，这里只订阅。
+        MessageDispatcher.register(this)
+
         ScriptRegistry.clear()
         synchronized(installed) { installed.clear() }
         loadAutoLoadIds()
         refresh()
         startAutoLoad()
+    }
+
+    override fun onMessage(event: MessageEvent) {
+        if (!ScriptRegistry.hasRunning) return
+        ScriptEvents.onReceiveMessage(event)
     }
 
     // ── 目录装载 ─────────────────────────────────────────────────────────
@@ -304,14 +319,18 @@ object ScriptCore : InfraTask(
         }
     }
 
-    // ── 管线：收到的消息 -> onMsg ────────────────────────────────────────
+    // ── 消息源：服务端推送（不是视图管线） ───────────────────────────────
 
+    /**
+     * 视图更新只用来兜底：正常路径是 [MessageCore] 从内核推送入口广播过来的
+     * `onMsg`。视图重复渲染不会重复触发（[MessageCore] 按 msgId 去重）。
+     */
     override fun onGetViewNt(
         view: android.view.ViewGroup,
         msgRecord: MsgRecord,
         param: com.owo233.tcqt.core.hook.MethodHookParam,
     ) {
-        ScriptEvents.onReceiveMessage(msgRecord)
+        // 视图管线不再是消息源，这里刻意留空：避免"看到什么才触发什么"的旧行为。
     }
 
     // ── 管线：长按菜单 ───────────────────────────────────────────────────

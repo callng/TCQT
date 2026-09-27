@@ -204,10 +204,13 @@ internal class ScriptNamespace(private val runtime: ScriptRuntime) {
         return emptyList()
     }
 
-    /** 宿主未暴露全员禁言状态，恒返回 false。 */
-    fun isShutUp(groupUin: String): Boolean {
-        unsupported("isShutUp(group=$groupUin)")
-        return false
+    /**
+     * 群是否处于全员禁言。
+     * （`dwGagTimeStamp` 为全员禁言，`dwGagTimeStamp_me` 为只禁我）。
+     */
+    fun isShutUp(groupUin: String): Boolean = guard("isShutUp", false) {
+        val info = GroupService.getGroupInfo(groupUin)
+        !(info.dwGagTimeStamp == 0L && info.dwGagTimeStamp_me == 0L)
     }
 
     fun shutUp(groupUin: String, uin: String, seconds: Long) =

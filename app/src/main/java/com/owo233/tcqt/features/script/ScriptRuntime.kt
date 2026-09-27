@@ -50,8 +50,10 @@ internal class ScriptRuntime(val info: ScriptInfo) {
 
         try {
             interpreter = Interpreter().apply {
-                set("context", QQInterfaces.context.applicationContext)
-                set("myUin", QQInterfaces.currentUin)
+                set("context", hostContext())
+                // 自动装载可能早于 runtime 就绪（内核进程尤其明显）：全局变量取不到就降级，
+                // 绝不能让整个 start() 抛异常 —— 那会让脚本彻底起不来、onMsg 也收不到。
+                set("myUin", currentUinOrEmpty())
                 set("classLoader", HookEnv.hostClassLoader)
                 set("pluginId", info.id)
                 set("pluginPath", info.dirPath)
@@ -91,7 +93,7 @@ internal class ScriptRuntime(val info: ScriptInfo) {
         if (!started) return false
         return runCatching {
             val space = interpreter.nameSpace ?: return false
-            if (!space.getMethodNames().contains(methodName)) return false
+            if (!space.methodNames.contains(methodName)) return false
             space.getMethod(methodName, paramTypes).invoke(args, interpreter)
             true
         }.onFailure {
@@ -101,7 +103,7 @@ internal class ScriptRuntime(val info: ScriptInfo) {
 
     fun hasMethod(methodName: String): Boolean =
         started && runCatching {
-            interpreter.nameSpace?.getMethodNames()?.contains(methodName) == true
+            interpreter.nameSpace?.methodNames?.contains(methodName) == true
         }.getOrDefault(false)
 
     /** 调用返回字符串的脚本方法；方法不存在或返回非字符串时返回 null。 */
@@ -135,4 +137,13 @@ internal class ScriptRuntime(val info: ScriptInfo) {
     }
 
     fun currentActivity(): Activity? = runCatching { QQInterfaces.topActivity }.getOrNull()
+
+    /** 宿主 Application Context；就绪前退回应用对象，仍取不到则返回 null（脚本侧判空）。 */
+    private fun hostContext(): android.content.Context? =
+        runCatching { QQInterfaces.context.applicationContext }
+            .getOrElse { runCatching { HookEnv.application }.getOrNull() }
+
+    /** 当前登录 QQ 号；未登录 / runtime 未就绪时为空串。 */
+    private fun currentUinOrEmpty(): String =
+        runCatching { QQInterfaces.currentUin }.getOrDefault("")
 }

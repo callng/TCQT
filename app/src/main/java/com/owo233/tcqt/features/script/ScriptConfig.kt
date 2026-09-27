@@ -12,8 +12,6 @@ import java.io.File
 
 /**
  * 脚本数据存储：每个脚本在 `config/<配置名>.json` 里保存一个扁平的键值对象。
- *
- * 与 QFun 的脚本目录约定保持一致，脚本迁移过来时配置可以直接复用。
  */
 internal object ScriptConfig {
 

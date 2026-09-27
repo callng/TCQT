@@ -18,10 +18,6 @@ object NTServiceFetcher {
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
-        if (!TCQTSetting.getBoolean("msg_anti_recall") ||
-            !AntiRecallConfig.hasEnabledReminder()
-        ) return
-
         isMsgHookInitialized.runOnce {
             msgPushHook()
         }
