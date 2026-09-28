@@ -33,7 +33,7 @@ libxposed = "102.0.0"
 xposed = "82"
 
 # dexkit
-dexkit = "2.2.0"
+dexkit = "2.3.0"
 
 # DexMaker
 dexmaker = "2.28.6"
