@@ -1,5 +1,6 @@
 package com.owo233.tcqt.features.chat
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -28,6 +29,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import java.lang.ref.WeakReference
+import androidx.core.view.isVisible
 
 /**
  * 编辑重发。
@@ -206,6 +208,7 @@ object EditAndResend : Feature(
      * 需要兜底的原因：`InputRootInit` 只在输入框初始化时被调用一次，
      * 如果模块安装晚于这个时机，hook 之后就永远不会再触发。
      */
+    @SuppressLint("DiscouragedApi")
     private fun findInputEditText(): EditText? {
         // ① 优先用 hook 缓存的引用
         editTextRef?.get()?.let { cached ->
@@ -250,7 +253,7 @@ object EditAndResend : Feature(
     private fun findEditTextIn(view: View?): EditText? {
         if (view == null) return null
         if (view is EditText) {
-            return view.takeIf { it.visibility == View.VISIBLE && it.isEnabled }
+            return view.takeIf { it.isVisible && it.isEnabled }
         }
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {

@@ -3,9 +3,7 @@ package com.owo233.tcqt.features.menu
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.hook.MethodHookParam
-import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.features.internal.pipeline.OnMenuBuilder
-import java.lang.reflect.Method
 
 /**
  * 长按菜单按钮净化。
@@ -14,7 +12,7 @@ import java.lang.reflect.Method
  * 长按消息菜单里匹配到的按钮就会被隐藏。
  *
  * 注意：**不会隐藏本模块自己添加的功能**（编辑重发 / 复读 +1 / 语音转发等），
- * 这些项的类是 [CustomMenu] 用 DexMaker 现场生成的，类名统一以
+ * 这些项的类是 [com.owo233.tcqt.host.service.CustomMenu] 用 DexMaker 现场生成的，类名统一以
  * `com.owo233.tcqt.gen.MenuItem` 开头，靠这个前缀识别。
  */
 @RegisterAction
@@ -64,7 +62,6 @@ object PurifyMenuButton : Feature(
         }
 
         if (filtered.size != menu.size) {
-            Log.i("purify_menu_button: 隐藏了 ${menu.size - filtered.size} 个菜单按钮")
             param.result = filtered
         }
     }
@@ -72,7 +69,7 @@ object PurifyMenuButton : Feature(
     /**
      * 是不是本模块添加的菜单项。
      *
-     * [CustomMenu] 用 DexMaker 生成菜单项类，类名形如
+     * [com.owo233.tcqt.host.service.CustomMenu] 用 DexMaker 生成菜单项类，类名形如
      * `com.owo233.tcqt.gen.MenuItem<hex>`，直接认这个前缀。
      */
     private fun isFromModule(item: Any): Boolean =
@@ -117,6 +114,6 @@ object PurifyMenuButton : Feature(
         return result.toList()
     }
 
-    /** [CustomMenu] 生成的菜单项类名前缀。 */
+    /** [com.owo233.tcqt.host.service.CustomMenu] 生成的菜单项类名前缀。 */
     private const val MODULE_MENU_ITEM_PREFIX = "com.owo233.tcqt.gen.MenuItem"
 }
