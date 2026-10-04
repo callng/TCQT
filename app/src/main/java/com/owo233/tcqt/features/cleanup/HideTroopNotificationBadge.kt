@@ -2,10 +2,10 @@ package com.owo233.tcqt.features.cleanup
 
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
-import com.owo233.tcqt.core.env.load
+import com.owo233.tcqt.api.Requires
+import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.hookAfter
-import com.owo233.tcqt.core.log.Log
-import com.owo233.tcqt.core.reflect.findMethodOrNull
+import com.owo233.tcqt.core.reflect.findMethod
 
 /**
  * 群通知红点隐藏。
@@ -29,6 +29,7 @@ object HideTroopNotificationBadge : Feature(
     key = "hide_troop_notification_badge",
     name = "群通知红点隐藏",
     desc = "隐藏联系人页面的群通知红点，移动滑块以修改阈值。",
+    requires = Requires(host = Requires.Host.QQOnly, ntOnly = true)
 ) {
 
     /** 群通知数量超过该值才隐藏；默认 0，即只要有一条群通知就隐藏。 */
@@ -43,34 +44,15 @@ object HideTroopNotificationBadge : Feature(
     )
 
     override fun install() {
-        val clz = load(CLASS_TROOP_NOTIFICATION_REPO_IMPL)
-        if (clz == null) {
-            Log.e("群通知红点隐藏：未找到 $CLASS_TROOP_NOTIFICATION_REPO_IMPL，功能未生效")
-            return
-        }
-
-        val method = clz.findMethodOrNull {
-            name = METHOD_UNREAD_COUNT
-            paramCount = 0
-        }
-        if (method == null) {
-            Log.e("群通知红点隐藏：未找到 $METHOD_UNREAD_COUNT，功能未生效")
-            return
-        }
-
-        method.hookAfter { param ->
+        "com.tencent.qqnt.troop.impl.TroopNotificationRepoApiImpl".toClass.findMethod {
+            name = "getNotificationUnreadCount"
+            returnType = int
+        }.hookAfter { param ->
             val real = param.result as? Int ?: return@hookAfter
             // 每次读取配置，界面上调整滑块后无需重启即可生效
             if (real > threshold) {
                 param.result = 0
             }
         }
-        Log.i("群通知红点隐藏：已挂钩 $CLASS_TROOP_NOTIFICATION_REPO_IMPL#$METHOD_UNREAD_COUNT")
     }
-
-    /** QQ NT 架构的群通知仓库实现；接口 `ITroopNotificationRepoApi` 无法直接挂钩。 */
-    private const val CLASS_TROOP_NOTIFICATION_REPO_IMPL =
-        "com.tencent.qqnt.troop.impl.TroopNotificationRepoApiImpl"
-
-    private const val METHOD_UNREAD_COUNT = "getNotificationUnreadCount"
 }
