@@ -20,6 +20,7 @@ import com.owo233.tcqt.core.hook.MethodHookParam
 import com.owo233.tcqt.core.hook.Unhook
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookBefore
+import com.owo233.tcqt.core.log.CrashCatcher
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.allConstructors
 import com.owo233.tcqt.core.sync.ModuleScope
@@ -55,6 +56,12 @@ internal object ModuleLoader {
         processName: String
     ): Boolean {
         if (sLoaded.get()) return true
+
+        // 安装崩溃捕获 + 面包屑：语音面板转码有任何异常时便于定位
+        runCatching {
+            CrashCatcher.install()
+            CrashCatcher.scheduleArchivePending()
+        }
 
         if (!isHostClassLoaderReady(hostClassLoader)) {
             Log.e("host class not found!!!")
