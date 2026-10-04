@@ -1,17 +1,17 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
 agp = "9.4.1"
-androidx-annotation = "1.10.0"
+androidx-annotation = "1.11.0"
 androidx-documentfile = "1.1.0"
-androidx-fragment = "1.9.0"
-androidx-core = "1.19.0"
+androidx-fragment = "1.9.1"
+androidx-core = "1.19.1"
 androidx-browser = "1.10.0"
 androidx-appcompat = "1.8.0"
 androidx-constraintlayout = "2.2.2"
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
 lifecycle = "2.11.0"
-miuix = "0.9.3"
+miuix = "0.9.4"
 kyant0-backdrop = "2.0.1"
 kyant0-shapes = "1.2.1"
 
@@ -33,7 +33,7 @@ libxposed = "102.0.0"
 xposed = "82"
 
 # dexkit
-dexkit = "2.2.0"
+dexkit = "2.3.0"
 
 # DexMaker
 dexmaker = "2.28.6"
