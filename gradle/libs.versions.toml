@@ -41,6 +41,9 @@ dexmaker = "2.28.6"
 # FastKV
 fastkv = "3.0.1"
 
+# BeanShell 运行期把生成的类转成 dex（Lambda / 脚本内定义类要用）
+dalvik-dx = "16.0.1"
+
 # Testing
 junit = "4.13.2"
 
@@ -95,6 +98,10 @@ dexmaker = { group = "com.linkedin.dexmaker", name = "dexmaker", version.ref = "
 
 # FastKV
 fastkv = { group = "io.github.billywei01", name = "fastkv", version.ref = "fastkv"}
+
+# BeanShell 的 dex 转换器（com.android.dx 的 Android 重打包版）；
+# Lambda 与脚本内定义类需要在运行期把生成的字节码转成 dex。
+dalvik-dx = { group = "com.jakewharton.android.repackaged", name = "dalvik-dx", version.ref = "dalvik-dx" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

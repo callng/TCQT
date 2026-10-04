@@ -87,6 +87,17 @@ tasks.configureEach {
     }
 }
 
+// 单元测试跑在 JDK 上，而 BeanShell 会对 java.lang.* 做字段/方法可达性探测。
+// JDK 9+ 的模块系统默认不允许这种深反射（Android 没有 JPMS，因此真机不受影响），
+// 不 opens 的话解析含字符串拼接的脚本会抛 InaccessibleObjectException。
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+    )
+}
+
 extensions.configure<ApplicationExtension> {
     namespace = "com.owo233.tcqt"
     ndkVersion = androidNdkVersion
@@ -264,6 +275,7 @@ dependencies {
     ksp(projects.libs.processor)
 
     implementation(projects.libs.annotations)
+    implementation(projects.libs.beanshell)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)

@@ -48,6 +48,16 @@ public interface IKernelMsgService {
         }
 
         @Override
+        public void onAddSendMsg(MsgRecord msgRecord) {
+
+        }
+
+        @Override
+        public void onRecvMsg(ArrayList<MsgRecord> msgRecords) {
+
+        }
+
+        @Override
         public void forwardMsg(ArrayList<Long> msgIds, Contact contact, ArrayList<Contact> arrayList2, HashMap<Integer, MsgAttributeInfo> hashMap, IForwardOperateCallback iForwardOperateCallback) {
 
         }
@@ -123,4 +133,17 @@ public interface IKernelMsgService {
     void getSingleMsg(Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
 
     void getSingleMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
+
+    /**
+     * 本机消息入库回调（内核 → 上层）。
+     * 桩里刻意只声明签名：真实实现类被混淆，模块用 DexKit 按名字与参数类型定位，
+     * 见 {@code com.owo233.tcqt.core.message.DexKitMessageService}。
+     */
+    void onAddSendMsg(MsgRecord msgRecord);
+
+    /**
+     * 收到服务端推送消息的回调（内核 → 上层）。核心里承载它的实现类被混淆，
+     * 但方法名与参数类型稳定，因此可以作为消息入口。
+     */
+    void onRecvMsg(ArrayList<MsgRecord> msgRecords);
 }

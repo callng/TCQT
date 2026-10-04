@@ -4,6 +4,14 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole;
 import java.util.ArrayList;
 
 public interface IKernelGroupService {
+    /**
+     * 取群成员列表。
+     *
+     * @param groupId        群号
+     * @param forceFromServer 是否强制从服务端拉取
+     */
+    void getAllMemberList(long groupId, boolean forceFromServer, IGroupMemberListCallback callback);
+
     void setGroupShutUp(long groupId, boolean isShutUp, IOperateCallback iOperateCallback);
     void setMemberShutUp(long groupId, ArrayList<GroupMemberShutUpInfo> info, IOperateCallback iOperateCallback);
     void modifyMemberRole(long groupId, String uid, MemberRole memberRole, IOperateCallback iOperateCallback);

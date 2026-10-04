@@ -51,5 +51,6 @@ rootProject.name = "TCQT"
 
 include(":app")
 include(":libs:annotations")
+include(":libs:beanshell")
 include(":libs:qqinterface")
 include(":libs:processor")

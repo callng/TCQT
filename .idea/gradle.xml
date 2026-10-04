@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/libs" />
             <option value="$PROJECT_DIR$/libs/annotations" />
+            <option value="$PROJECT_DIR$/libs/beanshell" />
             <option value="$PROJECT_DIR$/libs/processor" />
             <option value="$PROJECT_DIR$/libs/qqinterface" />
           </set>

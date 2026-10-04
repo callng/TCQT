@@ -12,4 +12,8 @@ object ModuleComponents {
     /** 通知渠道管理页（`ui/settings/NotificationChannelManagerActivity.kt`）。 */
     const val NOTIFICATION_CHANNEL_ACTIVITY: String =
         "com.owo233.tcqt.ui.settings.NotificationChannelManagerActivity"
+
+    /** 脚本管理页（`ui/settings/ScriptManagerActivity.kt`）。 */
+    const val SCRIPT_MANAGER_ACTIVITY: String =
+        "com.owo233.tcqt.ui.settings.ScriptManagerActivity"
 }
