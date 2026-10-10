@@ -407,19 +407,18 @@ object GetSign : Feature(
 
     @SuppressLint("DiscouragedApi")
     private fun getAIOEditText(): EditText? {
+        val activity = QQInterfaces.topActivity ?: return null
         return runCatching {
-            QQInterfaces.topActivity.let { activity ->
-                val resId = activity.resources.getIdentifier(
-                    "input",
-                    "id",
-                    activity.packageName,
-                )
+            val resId = activity.resources.getIdentifier(
+                "input",
+                "id",
+                activity.packageName,
+            )
 
-                if (resId != 0) {
-                    activity.findViewById<EditText>(resId)
-                } else {
-                    null
-                }
+            if (resId != 0) {
+                activity.findViewById<EditText>(resId)
+            } else {
+                null
             }
         }.getOrNull()
     }

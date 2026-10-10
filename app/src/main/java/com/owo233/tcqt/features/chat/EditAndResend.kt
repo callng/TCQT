@@ -227,7 +227,7 @@ object EditAndResend : Feature(
         // ② 精确找聊天输入框：它一定和「发送按钮」在同一个输入栏容器里。
         //    只按 is Shown 之类找的话，第一个命中往往是搜索框 QuickPinyinEditText。
         val res = root.resources
-        val pkg = runCatching { QQInterfaces.topActivity.packageName }.getOrNull() ?: "com.tencent.mobileqq"
+        val pkg = activity?.packageName ?: return null
         val sendBtnId = runCatching { res.getIdentifier("send_btn", "id", pkg) }.getOrDefault(0)
         if (sendBtnId == 0) return null
 

@@ -43,9 +43,11 @@ open class QQInterfaces {
 
         val guid: String get() = GuidReader.getGuid()
 
-        val topActivity: Activity
-            get() = QBaseActivity.sTopActivity
-                ?: Foreground.getTopActivity()
+        /** May be null while QQ is running in background. */
+        val topActivity: Activity?
+            get() = runCatching { QBaseActivity.sTopActivity }
+                .getOrNull()
+                ?: runCatching { Foreground.getTopActivity() }.getOrNull()
                 ?: ContextUtils.getCurrentActivity()
 
         val maple by lazy {

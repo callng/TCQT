@@ -191,7 +191,7 @@ internal object ThemeEngine {
 
                 FileUtil.forceDelete(tmp)
 
-                QQInterfaces.topActivity.runOnUiThread {
+                QQInterfaces.topActivity?.runOnUiThread {
                     runCatching {
                         val p = "${pathRoot}${THEME_SLOT}/theme.${THEME_SLOT}/${session.md5}/"
                         ThemeSwitcher::class.java.findMethod {

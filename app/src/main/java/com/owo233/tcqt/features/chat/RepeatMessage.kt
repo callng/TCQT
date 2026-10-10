@@ -230,7 +230,7 @@ object RepeatMessage : Feature(
 
     private fun isInMultiForwardActivity(): Boolean {
         return runCatching {
-            QQInterfaces.topActivity.javaClass.name.contains("MultiForwardActivity")
+            QQInterfaces.topActivity?.javaClass?.name?.contains("MultiForwardActivity") == true
         }.getOrDefault(false)
     }
 

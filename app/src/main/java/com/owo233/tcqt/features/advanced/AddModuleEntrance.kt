@@ -342,7 +342,7 @@ object AddModuleEntrance : Feature(
     }
 
     private fun openTCQTSettings(ctx: Context? = null) {
-        val activity = ctx ?: QQInterfaces.topActivity
+        val activity = ctx ?: QQInterfaces.topActivity ?: return
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             runCatching {
                 val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader

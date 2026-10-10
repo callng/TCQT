@@ -8,8 +8,15 @@ import com.owo233.tcqt.core.log.Log
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
 internal object ContextUtils {
 
-    @Throws(Exception::class)
-    fun getCurrentActivity(): Activity {
+    /**
+     * Returns the current non-paused Activity when one is available.
+     *
+     * During process start and while the host is in the background there may
+     * be no resumed Activity. Reflection can also fail when Android changes
+     * the private ActivityThread fields, so callers must treat a null result
+     * as a normal transient state.
+     */
+    fun getCurrentActivity(): Activity? = runCatching {
         val activityThread = Class.forName(
             "android.app.ActivityThread",
             false,
@@ -21,20 +28,18 @@ internal object ContextUtils {
             .apply { isAccessible = true }
             .get(activityThread) as Map<*, *>
 
-        val record = activities.values
-            .firstOrNull { record ->
-                record!!::class.java
-                    .getDeclaredField("paused")
-                    .apply { isAccessible = true }
-                    .getBoolean(record).not()
-            }
-            ?: throw IllegalStateException("No non-paused activity found")
+        val record = activities.values.firstOrNull { record ->
+            record != null && record::class.java
+                .getDeclaredField("paused")
+                .apply { isAccessible = true }
+                .getBoolean(record).not()
+        } ?: return@runCatching null
 
-        return record::class.java
+        record::class.java
             .getDeclaredField("activity")
             .apply { isAccessible = true }
-            .get(record) as Activity
-    }
+            .get(record) as? Activity
+    }.getOrNull()
 
     fun getCurApplication(): Application {
         return tryGetApplication("android.app.ActivityThread", "currentApplication")

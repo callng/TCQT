@@ -46,7 +46,7 @@ object WebJsBridge : InfraTask(
     private fun handleSettingPageRedirect(param: MethodHookParam) {
         param.result = Unit
 
-        val context = QQInterfaces.topActivity
+        val context = QQInterfaces.topActivity ?: return
         runCatching {
             ModuleScope.launchMain {
                 val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader

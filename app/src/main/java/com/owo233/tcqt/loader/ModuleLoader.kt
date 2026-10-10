@@ -274,7 +274,7 @@ internal object ModuleLoader {
 
         if (HookEngineManager.engine is ModernHookEngine && ProcUtil.isMain) {
             SyncUtils.runOnUiThread {
-                val topActivity = QQInterfaces.topActivity
+                val topActivity = QQInterfaces.topActivity ?: return@runOnUiThread
                 val activityName = topActivity.javaClass.name
                 if (activityName.contains("SettingActivity")) {
                     topActivity.recreate()
