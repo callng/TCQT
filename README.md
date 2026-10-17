@@ -46,6 +46,23 @@
    存储在宿主 QQ/TIM 的数据目录中）。
 4. 完全结束后台 QQ / TIM 进程并重新启动，功能即生效。
 
+### 更新与热安装
+
+在支持 [Hot install](https://kernelsu.org/guide/module.html#hot-install) 的
+KernelSU 中（安装器通过 `KSU_HAS_HOT_INSTALL=true` 声明支持，不能仅凭版本号判断），
+若已启用的 TCQT 模块与新包的 Zygisk 注入库一致，安装脚本会请求
+热安装：模块目录、版本信息和 WebUI 立即更新；完全结束 QQ / TIM 的所有后台
+进程后重新打开，即可加载新版载荷，无需重启设备。安装不会自动关闭 QQ / TIM。
+
+首次安装、注入库变化、模块已停用或待卸载时，仍需重启设备。
+KernelSU 也可能因安全模式或模块目录替换失败等原因回退为重启安装，
+以安装器最终输出和管理器提示为准；旧版 KernelSU、Magisk 和 APatch
+不通过此接口热替换模块目录。注入库不变时载荷仍可在重启 QQ / TIM 后加载，
+模块目录和 WebUI 的更新则按管理器提示重启设备后生效。
+若脚本提示安装器不支持，应更新 KernelSU 管理器及其配套的 `ksud`；仅导出
+`MODULE_HOT_INSTALL_REQUEST=true` 无法让旧安装器支持热安装，也不应手动删除
+`update` 标记或移动 `modules_update` 来伪装安装成功。
+
 ### 卸载
 
 在 Magisk / KernelSU / APatch 中直接卸载 `TCQT (Zygisk)` 模块并重启即可；

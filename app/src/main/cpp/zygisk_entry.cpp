@@ -109,19 +109,13 @@ public:
             return;
         }
 
-        int dir_fd = api->getModuleDir();
-        bool disabled = false;
-        if (dir_fd >= 0) {
-            disabled = faccessat(dir_fd, "disable", F_OK, 0) == 0 ||
-                       faccessat(dir_fd, "remove", F_OK, 0) == 0;
-            close(dir_fd);
-        } else {
-            LOGW("preAppSpecialize: getModuleDir failed, fallback to path check");
-            constexpr const char *MODULE_DIR = "/data/adb/modules/zygisk_tcqt";
-            disabled =
-                    access((std::string(MODULE_DIR) + "/disable").c_str(), F_OK) == 0 ||
-                    access((std::string(MODULE_DIR) + "/remove").c_str(), F_OK) == 0;
-        }
+        // KernelSU hot install moves the old directory aside. getModuleDir()
+        // may still refer to that old inode, so always check the live path while
+        // preAppSpecialize still has root access.
+        constexpr const char *MODULE_DIR = "/data/adb/modules/zygisk_tcqt";
+        bool disabled =
+                access((std::string(MODULE_DIR) + "/disable").c_str(), F_OK) == 0 ||
+                access((std::string(MODULE_DIR) + "/remove").c_str(), F_OK) == 0;
 
         // 主动禁用模块时 disable 文件 → 本次跳过注入
         // 卸载标记为 remove → 本次跳过注入

@@ -161,10 +161,6 @@ object ZygiskEntry {
         entry: ZipEntry,
         outFile: File
     ) {
-        if (outFile.isFile && outFile.length() == entry.size) {
-            return
-        }
-
         val tmpFile = File(
             outFile.parentFile,
             "${outFile.name}.${Process.myPid()}.tmp"
