@@ -1,5 +1,6 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import android.os.Build
 import android.os.SystemClock
 import android.view.Choreographer
 import android.view.MotionEvent
@@ -317,9 +318,11 @@ internal class DropletGestureDriver(
 
         // 透镜、表面着色与内阴影全部随按压进度淡入。
         val p = press.value
-        (droplet as? GlassDropletView)?.let { panel ->
-            panel.setProgress(p)
-            panel.refresh()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            (droplet as? GlassDropletView)?.let { panel ->
+                panel.setProgress(p)
+                panel.refresh()
+            }
         }
 
         // 整栏轻量放大，药丸同时承载跟随液滴的交互辉光。
@@ -334,7 +337,7 @@ internal class DropletGestureDriver(
                 pill.scaleX = 1f
                 pill.scaleY = 1f
             }
-            if (pill is GlassPillView) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && pill is GlassPillView) {
                 // 液滴中心在药丸自身坐标系中的位置：两侧都需要计入宿主内边距。
                 val centre = droplet.left + droplet.translationX + dropletWidth * 0.5f - pill.left
                 pill.setInteraction(p, centre)

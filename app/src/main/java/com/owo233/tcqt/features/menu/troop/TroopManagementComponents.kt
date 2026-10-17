@@ -14,12 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -39,22 +37,23 @@ import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.copyToClipboard
-import com.owo233.tcqt.ui.component.MaterialTheme
-import com.owo233.tcqt.ui.component.OutlinedButton
-import com.owo233.tcqt.ui.component.TextButton
+import com.owo233.tcqt.ui.component.ActionButton
+import com.owo233.tcqt.ui.component.SecondaryButton
+import com.owo233.tcqt.ui.component.TCQTPanel
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.NumberPicker
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
+import top.yukonga.miuix.kmp.squircle.squircleClip
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private data class ManagementButtonData(
     val text: String,
     val color: Color,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
 )
 
 @Composable
@@ -75,27 +74,23 @@ internal fun MainMenuView(
     onKick: () -> Unit,
     onKickBlock: () -> Unit,
     onMuteAll: () -> Unit,
-    onUnmuteAll: () -> Unit
+    onUnmuteAll: () -> Unit,
 ) {
     val context = LocalContext.current
-    val isDark = HookEnv.isNightMode()
 
-    val customPrimary = MaterialTheme.colorScheme.primary
-    val customError = MaterialTheme.colorScheme.error
-    val customGreen = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
+    val customPrimary = MiuixTheme.colorScheme.primary
+    val customError = MiuixTheme.colorScheme.error
+    val customGreen = MiuixTheme.colorScheme.primary
     val permissions = roles?.permissions(HookEnv.isQQ())
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .navigationBarsPadding()
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)
     ) {
         Text(
             text = "群管菜单",
-            style = MaterialTheme.typography.titleLarge,
+            style = MiuixTheme.textStyles.title3,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MiuixTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -120,18 +115,16 @@ internal fun MainMenuView(
             transitionSpec = {
                 fadeIn(tween(200)) togetherWith fadeOut(tween(200))
             },
-            label = "buttons_loading_transition"
+            label = "buttons_loading_transition",
         ) { loading ->
             if (loading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         CircularProgressIndicator(
                             strokeWidth = 3.dp,
@@ -140,74 +133,74 @@ internal fun MainMenuView(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "正在获取群管列表...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
                         )
                     }
                 }
             } else if (permissions != null) {
-                val perms = permissions
-                val managementButtons = remember(
-                    perms,
-                    customPrimary,
-                    customError,
-                    customGreen
-                ) {
-                    buildList {
-                        add(ManagementButtonData("打开资料页", customPrimary, onEnterProfile))
+                val managementButtons =
+                    remember(
+                        permissions,
+                        customPrimary,
+                        customError,
+                        customGreen,
+                    ) {
+                        buildList {
+                            add(ManagementButtonData("打开资料页", customPrimary, onEnterProfile))
 
-                        if (perms.canRecall) {
-                            add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
-                        }
+                            if (permissions.canRecall) {
+                                add(ManagementButtonData("撤回群消息", customPrimary, onRecall))
+                            }
 
-                        if (perms.canSetAdmin) {
-                            add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
-                        }
-                        if (perms.canCancelAdmin) {
-                            add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
-                        }
+                            if (permissions.canSetAdmin) {
+                                add(ManagementButtonData("设置管理员", customGreen, onSetAdmin))
+                            }
+                            if (permissions.canCancelAdmin) {
+                                add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
+                            }
 
-                        if (perms.canMute) {
-                            add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
-                            add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
-                        }
+                            if (permissions.canMute) {
+                                add(ManagementButtonData("设置禁言", customPrimary, onSetMute))
+                                add(ManagementButtonData("解除禁言", customPrimary, onCancelMute))
+                            }
 
-                        if (perms.canSetTitle) {
-                            add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
-                        }
+                            if (permissions.canSetTitle) {
+                                add(ManagementButtonData("设置头衔", customPrimary, onSetTitle))
+                            }
 
-                        if (perms.canEditCard) {
-                            add(ManagementButtonData("修改名片", customPrimary, onSetCard))
-                        }
+                            if (permissions.canEditCard) {
+                                add(ManagementButtonData("修改名片", customPrimary, onSetCard))
+                            }
 
-                        if (perms.canKick) {
-                            add(ManagementButtonData("踢出本群", customError, onKick))
-                            add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
-                        }
+                            if (permissions.canKick) {
+                                add(ManagementButtonData("踢出本群", customError, onKick))
+                                add(ManagementButtonData("踢出并拉黑", customError, onKickBlock))
+                            }
 
-                        if (perms.canMuteAll) {
-                            add(ManagementButtonData("全员禁言", customError, onMuteAll))
-                            add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
+                            if (permissions.canMuteAll) {
+                                add(ManagementButtonData("全员禁言", customError, onMuteAll))
+                                add(ManagementButtonData("全员解禁", customGreen, onUnmuteAll))
+                            }
                         }
                     }
-                }
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     val chunks = managementButtons.chunked(2)
                     chunks.forEach { rowItems ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             rowItems.forEach { button ->
                                 ManagementButton(
                                     text = button.text,
                                     color = button.color,
                                     onClick = button.onClick,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
                                 )
                             }
                             if (rowItems.size == 1) {
@@ -220,22 +213,20 @@ internal fun MainMenuView(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 ) {
                     ManagementButton(
                         text = "打开资料页",
                         color = customPrimary,
                         onClick = onEnterProfile,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "获取群管列表失败~",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
                 }
             }
@@ -243,18 +234,22 @@ internal fun MainMenuView(
     }
 }
 
-private enum class MuteInputMode { Wheels, Seconds }
+private enum class MuteInputMode {
+    Wheels,
+    Seconds,
+}
 
 @Composable
 internal fun MuteDurationMenuView(
     initialValue: Int,
     onBack: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int) -> Unit,
 ) {
     var mode by remember { mutableStateOf(MuteInputMode.Wheels) }
-    val initialParts = remember(initialValue) {
-        initialValue.coerceIn(MUTE_MIN_SECONDS, MUTE_MAX_SECONDS).toMuteDurationParts()
-    }
+    val initialParts =
+        remember(initialValue) {
+            initialValue.coerceIn(MUTE_MIN_SECONDS, MUTE_MAX_SECONDS).toMuteDurationParts()
+        }
     var days by remember { mutableIntStateOf(initialParts.days) }
     var hours by remember { mutableIntStateOf(initialParts.hours) }
     var minutes by remember { mutableIntStateOf(initialParts.minutes) }
@@ -264,19 +259,21 @@ internal fun MuteDurationMenuView(
     }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val wheelSeconds = if (days == 30) {
-        MUTE_MAX_SECONDS
-    } else {
-        MuteDurationParts(days, hours, minutes, seconds).totalSeconds
-    }
+    val wheelSeconds =
+        if (days == 30) {
+            MUTE_MAX_SECONDS
+        } else {
+            MuteDurationParts(days, hours, minutes, seconds).totalSeconds
+        }
     val parsedSeconds = secondsText.toIntOrNull()
     val secondsValid = parsedSeconds != null && parsedSeconds in MUTE_MIN_SECONDS..MUTE_MAX_SECONDS
-    val secondsError = when {
-        secondsText.isBlank() -> "请输入禁言秒数"
-        parsedSeconds == null -> "请输入有效的整数秒"
-        !secondsValid -> "禁言时长需在 $MUTE_MIN_SECONDS ~ $MUTE_MAX_SECONDS 秒之间"
-        else -> null
-    }
+    val secondsError =
+        when {
+            secondsText.isBlank() -> "请输入禁言秒数"
+            parsedSeconds == null -> "请输入有效的整数秒"
+            !secondsValid -> "禁言时长需在 $MUTE_MIN_SECONDS ~ $MUTE_MAX_SECONDS 秒之间"
+            else -> null
+        }
 
     LaunchedEffect(mode) {
         if (mode == MuteInputMode.Seconds) {
@@ -299,32 +296,32 @@ internal fun MuteDurationMenuView(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(24.dp)
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
+            ActionButton(
                 onClick = {
                     keyboardController?.hide()
                     onBack()
                 },
-                contentPadding = PaddingValues(horizontal = 8.dp)
+                contentPadding = PaddingValues(horizontal = 8.dp),
             ) {
-                Text("返回", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "返回",
+                    style = MiuixTheme.textStyles.title4,
+                    color = MiuixTheme.colorScheme.primary,
+                )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "设置禁言时长",
-                style = MaterialTheme.typography.titleLarge,
+                style = MiuixTheme.textStyles.title3,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                color = MiuixTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -336,7 +333,7 @@ internal fun MuteDurationMenuView(
                 keyboardController?.hide()
                 mode = if (it == 0) MuteInputMode.Wheels else MuteInputMode.Seconds
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -345,7 +342,7 @@ internal fun MuteDurationMenuView(
                 val dayLocked = days == 30
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     DurationWheelColumn(
                         label = "天",
@@ -355,7 +352,7 @@ internal fun MuteDurationMenuView(
                         onValueChange = { newDays ->
                             days = newDays
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     DurationWheelColumn(
                         label = "时",
@@ -363,7 +360,7 @@ internal fun MuteDurationMenuView(
                         range = 0..23,
                         enabled = !dayLocked,
                         onValueChange = { hours = it },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     DurationWheelColumn(
                         label = "分",
@@ -371,7 +368,7 @@ internal fun MuteDurationMenuView(
                         range = 0..59,
                         enabled = !dayLocked,
                         onValueChange = { minutes = it },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     DurationWheelColumn(
                         label = "秒",
@@ -379,26 +376,27 @@ internal fun MuteDurationMenuView(
                         range = 1..59,
                         enabled = !dayLocked,
                         onValueChange = { seconds = it },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = if (dayLocked) {
-                        "将被禁言：30天（共 $MUTE_MAX_SECONDS 秒）"
-                    } else {
-                        "将被禁言：${MuteDurationParts(days, hours, minutes, seconds).toDisplayString()}（共 $wheelSeconds 秒）"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    text =
+                        if (dayLocked) {
+                            "将被禁言：30天（共 $MUTE_MAX_SECONDS 秒）"
+                        } else {
+                            "将被禁言：${MuteDurationParts(days, hours, minutes, seconds).toDisplayString()}（共 $wheelSeconds 秒）"
+                        },
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "禁言规则：最低 $MUTE_MIN_SECONDS 秒，最高 30 天（$MUTE_MAX_SECONDS 秒）",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             MuteInputMode.Seconds -> {
@@ -412,15 +410,15 @@ internal fun MuteDurationMenuView(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     cornerRadius = 12.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (secondsError != null) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = secondsError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.fillMaxWidth()
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -445,14 +443,15 @@ internal fun MuteDurationMenuView(
                     }
                 }
             },
-            enabled = when (mode) {
-                MuteInputMode.Wheels -> wheelSeconds in MUTE_MIN_SECONDS..MUTE_MAX_SECONDS
-                MuteInputMode.Seconds -> secondsValid
-            },
+            enabled =
+                when (mode) {
+                    MuteInputMode.Wheels -> wheelSeconds in MUTE_MIN_SECONDS..MUTE_MAX_SECONDS
+                    MuteInputMode.Seconds -> secondsValid
+                },
             cornerRadius = 14.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("确定", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text("确定", style = MiuixTheme.textStyles.button, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -464,21 +463,21 @@ private fun DurationWheelColumn(
     range: IntRange,
     enabled: Boolean,
     onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(horizontal = 6.dp)
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                modifier =
+                    Modifier.align(Alignment.Center)
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp)
+                        .height(36.dp)
+                        .squircleClip(10.dp)
+                        .background(MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             )
             NumberPicker(
                 value = value,
@@ -488,19 +487,20 @@ private fun DurationWheelColumn(
                 visibleItemCount = 5,
                 wrapAround = true,
                 itemHeight = 40.dp,
-                textStyle = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.fillMaxWidth()
+                textStyle = MiuixTheme.textStyles.title4,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            }
+            style = MiuixTheme.textStyles.footnote1,
+            color =
+                if (enabled) {
+                    MiuixTheme.colorScheme.onSurfaceSecondary
+                } else {
+                    MiuixTheme.colorScheme.dividerLine
+                },
         )
     }
 }
@@ -513,38 +513,38 @@ internal fun InputMenuView(
     initialValue: String,
     keyboardType: KeyboardType,
     onBack: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String) -> Unit,
 ) {
     var text by remember { mutableStateOf(initialValue) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(24.dp)
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
+            ActionButton(
                 onClick = {
                     keyboardController?.hide()
                     onBack()
                 },
-                contentPadding = PaddingValues(horizontal = 8.dp)
+                contentPadding = PaddingValues(horizontal = 8.dp),
             ) {
-                Text("返回", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "返回",
+                    style = MiuixTheme.textStyles.title4,
+                    color = MiuixTheme.colorScheme.primary,
+                )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MiuixTheme.textStyles.title3,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                color = MiuixTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
         }
         Spacer(modifier = Modifier.height(20.dp))
@@ -552,18 +552,19 @@ internal fun InputMenuView(
         OutlinedTextField(
             value = text,
             onValueChange = {
-                text = if (keyboardType == KeyboardType.Number) {
-                    it.filter { c -> c.isDigit() }
-                } else {
-                    it
-                }
+                text =
+                    if (keyboardType == KeyboardType.Number) {
+                        it.filter { c -> c.isDigit() }
+                    } else {
+                        it
+                    }
             },
             label = hint.ifBlank { label },
             useLabelAsPlaceholder = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             singleLine = true,
             cornerRadius = 12.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -573,9 +574,9 @@ internal fun InputMenuView(
                 onConfirm(text)
             },
             cornerRadius = 14.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("确定", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text("确定", style = MiuixTheme.textStyles.button, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -585,46 +586,48 @@ internal fun ConfirmMenuView(
     title: String,
     message: String,
     onBack: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MiuixTheme.textStyles.title3,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MiuixTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedButton(
+            SecondaryButton(
                 onClick = onBack,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
-                Text("取消", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Text("取消", style = MiuixTheme.textStyles.button, fontWeight = FontWeight.Bold)
             }
             Button(
                 onClick = onConfirm,
                 cornerRadius = 14.dp,
-                colors = ButtonDefaults.buttonColors(color = MaterialTheme.colorScheme.error),
-                modifier = Modifier.weight(1f)
+                colors = ButtonDefaults.buttonColors(color = MiuixTheme.colorScheme.error),
+                modifier = Modifier.weight(1f),
             ) {
-                Text("确定", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    "确定",
+                    style = MiuixTheme.textStyles.button,
+                    fontWeight = FontWeight.Bold,
+                    color = MiuixTheme.colorScheme.onPrimary,
+                )
             }
         }
     }
@@ -632,34 +635,32 @@ internal fun ConfirmMenuView(
 
 @Composable
 private fun InfoRow(label: String, value: String, onClick: () -> Unit) {
-    Surface(
+    TCQTPanel(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.fillMaxWidth()
+        cornerRadius = 10.dp,
+        color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "$label: ",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body2,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                color = MiuixTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
             Text(
                 text = "📋",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
             )
         }
     }
@@ -670,25 +671,23 @@ private fun ManagementButton(
     text: String,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
+    TCQTPanel(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier
+        cornerRadius = 14.dp,
+        color = MiuixTheme.colorScheme.surfaceVariant,
+        modifier = modifier,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 8.dp),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge,
+                style = MiuixTheme.textStyles.button,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
             )
         }
     }

@@ -1,6 +1,5 @@
 package com.owo233.tcqt.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,15 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.owo233.tcqt.ui.component.MaterialTheme
+import com.owo233.tcqt.ui.component.TCQTPanel
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Surface
@@ -26,6 +23,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Clear
 import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 internal fun SearchPromptCard() {
@@ -41,17 +39,15 @@ internal fun SearchPromptCard() {
 internal fun SearchHistoryLayout(
     history: List<String>,
     onTagClick: (String) -> Unit,
-    onClearClick: () -> Unit
+    onClearClick: () -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface,
+    TCQTPanel(
+        cornerRadius = 16.dp,
+        color = MiuixTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
@@ -60,16 +56,16 @@ internal fun SearchHistoryLayout(
             ) {
                 Text(
                     text = "最近搜索",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.headline2,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MiuixTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onClearClick) {
                     Icon(
                         imageVector = MiuixIcons.Clear,
                         contentDescription = "清除搜索记录",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                     )
                 }
             }
@@ -80,18 +76,16 @@ internal fun SearchHistoryLayout(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 history.forEach { tag ->
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onTagClick(tag) },
+                    TCQTPanel(
+                        cornerRadius = 12.dp,
+                        color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                        onClick = { onTagClick(tag) },
                     ) {
                         Text(
                             text = tag,
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurface,
                         )
                     }
                 }
@@ -107,24 +101,20 @@ internal fun EmptyStateCard(
     title: String,
     summary: String? = null,
 ) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 36.dp),
+    TCQTPanel(
+        cornerRadius = 16.dp,
+        color = MiuixTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().padding(top = 36.dp),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
-                contentColor = MaterialTheme.colorScheme.primary,
+                color = MiuixTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                contentColor = MiuixTheme.colorScheme.primary,
                 modifier = Modifier.size(58.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -137,15 +127,15 @@ internal fun EmptyStateCard(
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MiuixTheme.textStyles.title4,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MiuixTheme.colorScheme.onSurface,
             )
             summary?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
                 )
             }
         }

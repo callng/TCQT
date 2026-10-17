@@ -188,7 +188,7 @@ Do NOT enable the TCQT module in LSPosed and Zygisk mode simultaneously
 
 - `libs:qqinterface` is `compileOnly` - QQ's actual classes used at runtime
 - Xposed API (`de.robv.android.xposed:api`) and libxposed API are `compileOnly`
-- Settings UI uses Jetpack Compose with Material3
+- Module UI uses Jetpack Compose with Miuix 0.9.4. Read [docs/ui-guidelines.md](docs/ui-guidelines.md) before changing settings pages, dialogs, or the Zygisk WebUI; reuse `UiLayout.kt` and `UiDialog.kt`.
 - DexKit used for runtime method finding in QQ's dex files
 - Configuration cache enabled (`org.gradle.configuration-cache=true`)
 - Kotlin code style: `official`

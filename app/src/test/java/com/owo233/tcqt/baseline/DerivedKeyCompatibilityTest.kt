@@ -149,7 +149,8 @@ class DerivedKeyCompatibilityTest {
                 .sorted()
                 .toList()
 
-            if (derived != expectedKeys.sorted()) {
+            // Freeze historical keys without rejecting newly added settings.
+            if (!derived.containsAll(expectedKeys)) {
                 problems += "$fileName: 派生 key 与历史不一致\n        实际=$derived\n        期望=${expectedKeys.sorted()}"
             }
         }

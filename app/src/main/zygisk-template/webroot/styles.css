@@ -2,14 +2,14 @@
     color-scheme: light dark;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
     font-synthesis: none;
-    --background: #f6f7f9;
+    --background: #f7f7f7;
     --surface: #ffffff;
     --surface-pressed: #f0f2f5;
     --text-primary: #17191c;
     --text-secondary: #6d737c;
     --border: #e2e5e9;
-    --accent: #16794b;
-    --accent-soft: #dff3e8;
+    --accent: #3482ff;
+    --accent-soft: #e9f1ff;
     --danger: #ba1a1a;
     --danger-soft: #ffdad6;
     --danger-border: #e5aaa5;
@@ -38,9 +38,9 @@ input {
 }
 
 .page {
-    width: min(100%, 680px);
+    width: min(100%, 824px);
     margin: 0 auto;
-    padding: max(24px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    padding: max(24px, env(safe-area-inset-top)) 12px max(28px, env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -57,7 +57,7 @@ input {
     height: 44px;
     flex: 0 0 44px;
     place-items: center;
-    border-radius: 8px;
+    border-radius: 16px;
     background: #20252b;
     color: #ffffff;
     font-size: 20px;
@@ -89,7 +89,7 @@ p {
     padding: 4px;
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     background: var(--surface);
     scrollbar-width: none;
 }
@@ -158,7 +158,7 @@ p {
 .scope-list {
     overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     background: var(--surface);
 }
 
@@ -220,7 +220,7 @@ p {
     height: 44px;
     place-items: center;
     overflow: hidden;
-    border-radius: 8px;
+    border-radius: 16px;
     color: #ffffff;
     font-size: 13px;
     font-weight: 700;
@@ -359,7 +359,7 @@ p {
 
 .hook-card {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     background: var(--surface);
     padding: 14px 16px;
 }
@@ -419,7 +419,7 @@ p {
 /* 日志导出卡片 */
 .log-card {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     background: var(--surface);
     padding: 14px 16px;
 }
@@ -471,7 +471,7 @@ p {
     margin-top: 14px;
     padding: 14px;
     border: 1px solid var(--danger-border);
-    border-radius: 8px;
+    border-radius: 16px;
     background: var(--danger-soft);
     color: var(--danger);
 }
@@ -520,8 +520,8 @@ p {
         --text-primary: #f0f1f2;
         --text-secondary: #a9afb7;
         --border: #34383d;
-        --accent: #57c78b;
-        --accent-soft: #234c36;
+        --accent: #78a9ff;
+        --accent-soft: #243655;
         --danger: #ffb4ab;
         --danger-soft: #4f1718;
         --danger-border: #8c4d49;
@@ -563,5 +563,15 @@ p {
     *::after {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* Match the Android settings hierarchy without embedding a Compose runtime in WebUI. */
+.scope-list, .hook-card { border: 0; }
+.user-tab, .btn-action, .error-panel button { min-height: 48px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@supports (corner-shape: squircle) {
+    .scope-list, .hook-card, .user-tabs, .brand-mark, .app-icon, .error-panel {
+        corner-shape: squircle;
     }
 }

@@ -133,7 +133,7 @@ object LiquidGlassTabBar : Feature(
                 val index = param.args.getOrNull(0) as? Int ?: return@hookAfter
                 if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
                     NewViewBarInstaller.onTabChanged(view, index)
-                } else {
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     GlassBarInstaller.onTabChanged(view, index)
                 }
             }
@@ -156,7 +156,7 @@ object LiquidGlassTabBar : Feature(
                 if (activity.javaClass.name == QQTabLocator.LAUNCHER_ACTIVITY) {
                     if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
                         NewViewBarInstaller.scheduleInstall(activity)
-                    } else {
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         GlassBarInstaller.scheduleInstall(activity)
                     }
                 }

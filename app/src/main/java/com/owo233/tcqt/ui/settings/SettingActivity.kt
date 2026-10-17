@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalFoundationApi::class)
-
 package com.owo233.tcqt.ui.settings
 
 import android.content.ActivityNotFoundException
@@ -9,16 +7,11 @@ import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -43,16 +36,14 @@ import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.copyToClipboard
 import com.owo233.tcqt.core.log.BugReportExporter
 import com.owo233.tcqt.core.log.Log
-import com.owo233.tcqt.ui.component.AlertDialog
-import com.owo233.tcqt.ui.component.MaterialTheme
-import com.owo233.tcqt.ui.component.TextButton
+import com.owo233.tcqt.ui.component.ActionButton
+import com.owo233.tcqt.ui.component.TCQTAlertDialog
 import com.owo233.tcqt.ui.settings.model.RestartPrompt
 import com.owo233.tcqt.ui.theme.SettingTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
 import top.yukonga.miuix.kmp.basic.Surface
@@ -60,40 +51,44 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Backup
 import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 
 class SettingActivity : BaseComposeActivity() {
 
     private var onRestoreSuccessCallback: (() -> Unit)? = null
 
-    private val backupDirectoryPicker = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+    private val backupDirectoryPicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
 
-        val data = result.data ?: return@registerForActivityResult
-        val uri = data.data ?: return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val uri = data.data ?: return@registerForActivityResult
 
-        val takeFlags = data.flags and
-                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val takeFlags =
+                data.flags and
+                    (Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
 
-        runCatching {
-            contentResolver.takePersistableUriPermission(uri, takeFlags)
-        }.onFailure { e ->
-            Log.w("Failed to persist tree uri permission: $uri, flags=$takeFlags", e)
+            runCatching {
+                contentResolver.takePersistableUriPermission(uri, takeFlags)
+            }
+                .onFailure { e ->
+                    Log.w("Failed to persist tree uri permission: $uri, flags=$takeFlags", e)
+                }
+
+            if (!ConfigBackupManager.isBackupDirectoryUriValid(this, uri)) {
+                Toasts.error("目录无效或无写入权限，请重新选择")
+                return@registerForActivityResult
+            }
+
+            ConfigBackupManager.saveBackupDirectoryUri(uri)
+            performBackupToDirectory(uri)
         }
-
-        if (!ConfigBackupManager.isBackupDirectoryUriValid(this, uri)) {
-            Toasts.error("目录无效或无写入权限，请重新选择")
-            return@registerForActivityResult
-        }
-
-        ConfigBackupManager.saveBackupDirectoryUri(uri)
-        performBackupToDirectory(uri)
-    }
 
     private val restoreFilePicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -101,8 +96,7 @@ class SettingActivity : BaseComposeActivity() {
                 val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 try {
                     contentResolver.takePersistableUriPermission(uri, takeFlags)
-                } catch (_: Exception) {
-                }
+                } catch (_: Exception) {}
                 performRestore(uri) {
                     onRestoreSuccessCallback?.invoke()
                 }
@@ -126,14 +120,15 @@ class SettingActivity : BaseComposeActivity() {
     }
 
     private fun launchBackupDirectoryPicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+        val intent =
+            Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
-            )
-        }
+                )
+            }
         backupDirectoryPicker.launch(intent)
     }
 
@@ -177,24 +172,27 @@ class SettingActivity : BaseComposeActivity() {
                     return
                 }
                 val uri = url.toUri()
-                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                    addCategory(Intent.CATEGORY_BROWSABLE)
-                }
+                val intent =
+                    Intent(Intent.ACTION_VIEW, uri).apply {
+                        addCategory(Intent.CATEGORY_BROWSABLE)
+                    }
                 startActivity(intent)
-            }.onFailure {
-                Toasts.error("Failed to open url: $url")
-                copyToClipboard(url, false)
-                Toasts.info("Url地址已复制到剪贴板,请手动访问.")
             }
+                .onFailure {
+                    Toasts.error("Failed to open url: $url")
+                    copyToClipboard(url, false)
+                    Toasts.info("Url地址已复制到剪贴板,请手动访问.")
+                }
         }
     }
 
     private fun openTelegramChannel(isSkip: Boolean): Boolean {
         if (isSkip) return false
 
-        val tgIntent = Intent(Intent.ACTION_VIEW).apply {
-            data = "tg://resolve?domain=${TCQTBuild.TG_GROUP}".toUri()
-        }
+        val tgIntent =
+            Intent(Intent.ACTION_VIEW).apply {
+                data = "tg://resolve?domain=${TCQTBuild.TG_GROUP}".toUri()
+            }
 
         return try {
             startActivity(tgIntent)
@@ -258,15 +256,15 @@ class SettingActivity : BaseComposeActivity() {
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MiuixTheme.colorScheme.surface,
                 ) {
                     if (showClearDialog) {
-                        AlertDialog(
+                        TCQTAlertDialog(
                             onDismissRequest = { showClearDialog = false },
-                            title = { Text("清空配置") },
+                            title = "清空配置",
                             text = { Text("是否清空所有模块配置？该操作不可逆，清空后将恢复为默认值。") },
                             confirmButton = {
-                                TextButton(
+                                ActionButton(
                                     onClick = {
                                         showClearDialog = false
                                         viewModel.clearAllSettings()
@@ -279,10 +277,10 @@ class SettingActivity : BaseComposeActivity() {
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showClearDialog = false }) {
+                                ActionButton(onClick = { showClearDialog = false }) {
                                     Text("取消")
                                 }
-                            }
+                            },
                         )
                     }
 
@@ -313,18 +311,18 @@ class SettingActivity : BaseComposeActivity() {
                     }
 
                     if (showDexKitClearDialog) {
-                        AlertDialog(
+                        TCQTAlertDialog(
                             onDismissRequest = { showDexKitClearDialog = false },
-                            title = { Text("清空 DexKit 缓存") },
+                            title = "清空 DexKit 缓存",
                             text = { Text("将删除 debug/release 的普通、热更新及旧版 DexKit 缓存，并重启宿主重新查找。") },
                             confirmButton = {
-                                TextButton(
+                                ActionButton(
                                     onClick = {
                                         showDexKitClearDialog = false
                                         if (DexKitCache.clearCache()) {
                                             ModuleCommandBus.sendCommand(
                                                 this@SettingActivity,
-                                                ModuleCommandBus.CMD_RESTART
+                                                ModuleCommandBus.CMD_RESTART,
                                             )
                                         } else {
                                             Toasts.error("清空 DexKit 缓存失败，请查看日志")
@@ -335,17 +333,17 @@ class SettingActivity : BaseComposeActivity() {
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showDexKitClearDialog = false }) {
+                                ActionButton(onClick = { showDexKitClearDialog = false }) {
                                     Text("取消")
                                 }
-                            }
+                            },
                         )
                     }
 
                     if (showBugReportDialog) {
-                        AlertDialog(
+                        TCQTAlertDialog(
                             onDismissRequest = { showBugReportDialog = false },
-                            title = { Text("导出异常报告") },
+                            title = "导出异常报告",
                             text = {
                                 Text(
                                     "将打包当前 ${viewModel.errorCount} 个异常功能的全部进程日志，" +
@@ -354,7 +352,7 @@ class SettingActivity : BaseComposeActivity() {
                                 )
                             },
                             confirmButton = {
-                                TextButton(
+                                ActionButton(
                                     onClick = {
                                         showBugReportDialog = false
                                         isExportingBugReport = true
@@ -368,12 +366,13 @@ class SettingActivity : BaseComposeActivity() {
 
                                             val report = result.getOrNull()
                                             if (report == null) {
-                                                val message = result.exceptionOrNull()
-                                                    ?.message
-                                                    ?.lineSequence()
-                                                    ?.firstOrNull()
-                                                    ?.takeIf(String::isNotBlank)
-                                                    ?: "未知错误"
+                                                val message =
+                                                    result
+                                                        .exceptionOrNull()
+                                                        ?.message
+                                                        ?.lineSequence()
+                                                        ?.firstOrNull()
+                                                        ?.takeIf(String::isNotBlank) ?: "未知错误"
                                                 snackbarHostState.showSnackbar("异常报告打包失败：$message")
                                                 return@launch
                                             }
@@ -390,20 +389,22 @@ class SettingActivity : BaseComposeActivity() {
                                                     Intent.createChooser(
                                                         shareIntent,
                                                         "分享异常报告",
-                                                    ),
-                                                )
-                                            }.onFailure { throwable ->
-                                                val message = throwable.message
-                                                    ?.lineSequence()
-                                                    ?.firstOrNull()
-                                                    ?.takeIf(String::isNotBlank)
-                                                    ?: "没有可用的分享应用"
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar(
-                                                        "报告已生成，但无法打开分享：$message"
                                                     )
-                                                }
+                                                )
                                             }
+                                                .onFailure { throwable ->
+                                                    val message =
+                                                        throwable.message
+                                                            ?.lineSequence()
+                                                            ?.firstOrNull()
+                                                            ?.takeIf(String::isNotBlank)
+                                                            ?: "没有可用的分享应用"
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar(
+                                                            "报告已生成，但无法打开分享：$message"
+                                                        )
+                                                    }
+                                                }
                                         }
                                     }
                                 ) {
@@ -411,31 +412,31 @@ class SettingActivity : BaseComposeActivity() {
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showBugReportDialog = false }) {
+                                ActionButton(onClick = { showBugReportDialog = false }) {
                                     Text("取消")
                                 }
-                            }
+                            },
                         )
                     }
 
                     if (restartPrompt != null) {
                         val prompt = restartPrompt!!
-                        AlertDialog(
+                        TCQTAlertDialog(
                             onDismissRequest = {
                                 restartPrompt = null
                                 scope.launch {
                                     snackbarHostState.showSnackbar(prompt.dismissMessage)
                                 }
                             },
-                            title = { Text(prompt.title) },
+                            title = prompt.title,
                             text = { Text(prompt.message) },
                             confirmButton = {
-                                TextButton(
+                                ActionButton(
                                     onClick = {
                                         restartPrompt = null
                                         ModuleCommandBus.sendCommand(
                                             this@SettingActivity,
-                                            ModuleCommandBus.CMD_RESTART
+                                            ModuleCommandBus.CMD_RESTART,
                                         )
                                     }
                                 ) {
@@ -443,7 +444,7 @@ class SettingActivity : BaseComposeActivity() {
                                 }
                             },
                             dismissButton = {
-                                TextButton(
+                                ActionButton(
                                     onClick = {
                                         restartPrompt = null
                                         scope.launch {
@@ -453,7 +454,7 @@ class SettingActivity : BaseComposeActivity() {
                                 ) {
                                     Text("稍后")
                                 }
-                            }
+                            },
                         )
                     }
 
@@ -495,14 +496,15 @@ class SettingActivity : BaseComposeActivity() {
                             }
                         },
                         onFeatureClick = { key ->
-                            val handled = ActionRegistry.getActionByKey(key)
-                                ?.onUiClick(this@SettingActivity) == true
+                            val handled =
+                                ActionRegistry.getActionByKey(key)
+                                    ?.onUiClick(this@SettingActivity) == true
                             if (!handled) {
                                 scope.launch {
                                     snackbarHostState.showSnackbar("该功能没有可打开的页面")
                                 }
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -520,64 +522,23 @@ private fun BackupRestoreDialog(
     onClearSettings: () -> Unit,
 ) {
     WindowDialog(
+        title = "备份与还原",
         show = true,
         onDismissRequest = onDismissRequest,
+        insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 24.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = "备份与还原",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "配置管理",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    BackupActionRow(
-                        icon = MiuixIcons.Backup,
-                        title = "备份模块设置",
-                        summary = "导出当前配置；长按可重选目录",
-                        onClick = onBackup,
-                        onLongClick = onBackupWithNewDirectory,
-                    )
-                    BackupActionDivider()
-                    BackupActionRow(
-                        icon = MiuixIcons.Reset,
-                        title = "还原模块设置",
-                        summary = "从备份文件覆盖当前配置",
-                        onClick = onRestore,
-                    )
-                    BackupActionDivider()
-                    BackupActionRow(
-                        icon = MiuixIcons.Refresh,
-                        title = "清空 DexKit 缓存",
-                        summary = "Hook 失效时重新识别宿主方法",
-                        onClick = onClearDexKit,
-                    )
-                    BackupActionDivider()
-                    BackupActionRow(
-                        icon = MiuixIcons.Delete,
-                        title = "清空模块设置",
-                        summary = "删除全部配置并恢复默认行为",
-                        onClick = onClearSettings,
-                        destructive = true,
-                    )
-                }
-            }
+        Column(Modifier.heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
+            BackupActionRow(MiuixIcons.Backup, "备份模块设置", "导出当前配置", onBackup)
+            BackupActionRow(MiuixIcons.Folder, "选择备份目录", "更换目录并备份当前配置", onBackupWithNewDirectory)
+            BackupActionRow(MiuixIcons.Reset, "还原模块设置", "从备份文件覆盖当前配置", onRestore)
+            BackupActionRow(MiuixIcons.Refresh, "清空 DexKit 缓存", "Hook 失效时重新识别宿主方法", onClearDexKit)
+            BackupActionRow(
+                MiuixIcons.Delete,
+                "清空模块设置",
+                "删除全部配置并恢复默认行为",
+                onClearSettings,
+                destructive = true,
+            )
         }
     }
 }
@@ -588,50 +549,14 @@ private fun BackupActionRow(
     title: String,
     summary: String,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
     destructive: Boolean = false,
 ) {
-    val accent = if (destructive) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
-
+    val accent = if (destructive) MiuixTheme.colorScheme.error else MiuixTheme.colorScheme.onSurface
     ArrowPreference(
         title = title,
         summary = summary,
-        titleColor = BasicComponentDefaults.titleColor(
-            color = if (destructive) accent else MaterialTheme.colorScheme.onSurface,
-        ),
-        startAction = {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = accent.copy(alpha = 0.12f),
-                contentColor = accent,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
-    )
-}
-
-@Composable
-private fun BackupActionDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 70.dp, end = 16.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
+        titleColor = BasicComponentDefaults.titleColor(color = accent),
+        startAction = { Icon(imageVector = icon, contentDescription = null, tint = accent) },
+        onClick = onClick,
     )
 }

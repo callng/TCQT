@@ -6,6 +6,7 @@
 .DS_Store
 captures/
 .externalNativeBuild/
+.cache/
 .cxx/
 .reasonix/
 .codebuddy/
@@ -17,7 +18,8 @@ build/
 bin/
 gen/
 out/
-docs/
+docs/*
+!docs/ui-guidelines.md
 
 # --- Android / App Specific ---
 app/build/

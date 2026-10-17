@@ -24,6 +24,7 @@ import com.owo233.tcqt.ui.settings.model.FeatureSliderField
 import com.owo233.tcqt.ui.settings.model.FeatureSliderUiState
 import com.owo233.tcqt.ui.settings.model.SettingFeature
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
+import com.owo233.tcqt.ui.settings.model.normalizeSliderValue
 import kotlinx.serialization.json.Json
 
 class SettingViewModel : ViewModel() {
@@ -49,19 +50,18 @@ class SettingViewModel : ViewModel() {
 
     // ───── All features (flat) ─────
 
-    private val allFeatures: List<SettingFeature> = FeatureCatalog.getAllFeatures()
-        .sortedBy { it.order }
-        .mapIndexed { index, feature -> feature.copy(order = index) }
+    private val allFeatures: List<SettingFeature> =
+        FeatureCatalog.getAllFeatures()
+            .sortedBy { it.order }
+            .mapIndexed { index, feature -> feature.copy(order = index) }
 
     private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
-    private val optionGroupByKey: Map<String, FeatureOptionGroup> = allFeatures
-        .flatMap { it.optionGroups }
-        .associateBy { it.key }
+    private val optionGroupByKey: Map<String, FeatureOptionGroup> =
+        allFeatures.flatMap { it.optionGroups }.associateBy { it.key }
 
-    private val sliderByKey: Map<String, FeatureSliderField> = allFeatures
-        .flatMap { it.sliders }
-        .associateBy { it.key }
+    private val sliderByKey: Map<String, FeatureSliderField> =
+        allFeatures.flatMap { it.sliders }.associateBy { it.key }
 
     // ───── Category tree ─────
 
@@ -111,7 +111,8 @@ class SettingViewModel : ViewModel() {
     // ───── Pending ─────
 
     val hasPendingChanges: Boolean
-        get() = pendingBooleans.isNotEmpty() || pendingInts.isNotEmpty() || pendingStrings.isNotEmpty()
+        get() =
+            pendingBooleans.isNotEmpty() || pendingInts.isNotEmpty() || pendingStrings.isNotEmpty()
 
     val pendingChangeCount: Int
         get() = pendingBooleans.size + pendingInts.size + pendingStrings.size
@@ -275,7 +276,7 @@ class SettingViewModel : ViewModel() {
                     processName = record.processName,
                     stage = record.stage,
                     summary = record.summary,
-                    details = record.details
+                    details = record.details,
                 )
             }
         )
@@ -327,7 +328,7 @@ class SettingViewModel : ViewModel() {
     /** Slider 值按自身 min/max 收敛后进入待保存状态。 */
     fun setSliderValue(key: String, value: Int) {
         val slider = sliderByKey[key]
-        val clamped = slider?.let { value.coerceIn(it.min, it.max) } ?: value
+        val clamped = slider?.let { normalizeSliderValue(value, it.min, it.max, it.step) } ?: value
         val persisted = persistedInts[key] ?: 0
         if (clamped == persisted) pendingInts.remove(key) else pendingInts[key] = clamped
 
@@ -419,12 +420,13 @@ class SettingViewModel : ViewModel() {
     // ───── Internal: category building ─────
 
     private fun buildCurrentCategories(): List<CategoryUiState> {
-        val nodes = if (isAtRoot) {
-            rootNodes
-        } else {
-            val node = resolveNode(currentPath) ?: return emptyList()
-            node.children
-        }
+        val nodes =
+            if (isAtRoot) {
+                rootNodes
+            } else {
+                val node = resolveNode(currentPath) ?: return emptyList()
+                node.children
+            }
 
         return nodes
             .filter { it.featureKeys.isNotEmpty() || it.children.isNotEmpty() }
@@ -434,9 +436,9 @@ class SettingViewModel : ViewModel() {
     }
 
     /**
-     * A leaf node with exactly one feature carrying the node's own label is redundant:
-     * its category page would show a single feature named like the category, so the
-     * feature is hoisted to the parent level instead.
+     * A leaf node with exactly one feature carrying the node's own label is redundant: its category
+     * page would show a single feature named like the category, so the feature is hoisted to the
+     * parent level instead.
      */
     private fun isCollapsibleNode(node: CategoryNode): Boolean {
         if (node.children.isNotEmpty()) return false
@@ -447,12 +449,13 @@ class SettingViewModel : ViewModel() {
     }
 
     private fun getCollapsedFeatureKeys(): List<String> {
-        val nodes = if (isAtRoot) {
-            rootNodes
-        } else {
-            val node = resolveNode(currentPath) ?: return emptyList()
-            node.children
-        }
+        val nodes =
+            if (isAtRoot) {
+                rootNodes
+            } else {
+                val node = resolveNode(currentPath) ?: return emptyList()
+                node.children
+            }
         return nodes.filter { isCollapsibleNode(it) }.flatMap { it.featureKeys }
     }
 
@@ -468,16 +471,18 @@ class SettingViewModel : ViewModel() {
             label = node.label.ifBlank { node.name },
             uiOrder = node.uiOrder,
             featureKeys = node.featureKeys,
-            children = node.children.sortedWith(categoryNodeComparator).map { toCategoryUiState(it) },
+            children =
+                node.children.sortedWith(categoryNodeComparator).map { toCategoryUiState(it) },
             isLeaf = isLeaf,
             enabledCount = enabledInSubtree,
-            totalFeatureCount = allKeysInSubtree.size
+            totalFeatureCount = allKeysInSubtree.size,
         )
     }
 
-    private val categoryNodeComparator = compareByDescending<CategoryNode> { collectFeatureKeys(it).size }
-        .thenBy { it.uiOrder }
-        .thenBy { node -> node.label.ifBlank { node.name } }
+    private val categoryNodeComparator =
+        compareByDescending<CategoryNode> { collectFeatureKeys(it).size }
+            .thenBy { it.uiOrder }
+            .thenBy { node -> node.label.ifBlank { node.name } }
 
     private fun collectFeatureKeys(node: CategoryNode): List<String> {
         val result = mutableListOf<String>()
@@ -514,25 +519,29 @@ class SettingViewModel : ViewModel() {
     // ───── Internal: feature computation ─────
 
     private fun computeVisibleFeatureUiStates(): List<FeatureItemUiState> {
-        val keyword = searchQuery.trim().lowercase()
+        val keyword = searchQuery.trim()
+        if (isSearchActive && keyword.isBlank()) return emptyList()
 
         if (keyword.isNotBlank()) {
             // Search mode: flat across all features
-            val ranked = allFeatures
-                .mapNotNull { feature ->
-                    val priority = when {
-                        feature.labelLower == keyword || feature.descLower == keyword -> 3
-                        feature.labelLower.contains(keyword) -> 2
-                        feature.descLower.contains(keyword) -> 1
-                        else -> 0
+            val ranked =
+                allFeatures
+                    .mapNotNull { feature ->
+                        val priority =
+                            when {
+                                feature.label.equals(keyword, ignoreCase = true) ||
+                                    feature.desc.equals(keyword, ignoreCase = true) -> 3
+                                feature.label.contains(keyword, ignoreCase = true) -> 2
+                                feature.desc.contains(keyword, ignoreCase = true) -> 1
+                                else -> 0
+                            }
+                        if (priority == 0) null else priority to feature
                     }
-                    if (priority == 0) null else priority to feature
-                }
-                .sortedWith(
-                    compareByDescending<Pair<Int, SettingFeature>> { it.first }
-                        .thenBy { it.second.order }
-                )
-                .map { it.second }
+                    .sortedWith(
+                        compareByDescending<Pair<Int, SettingFeature>> { it.first }
+                            .thenBy { it.second.order }
+                    )
+                    .map { it.second }
 
             return ranked.map { feature -> toFeatureItemUiState(feature) }
         }
@@ -541,18 +550,18 @@ class SettingViewModel : ViewModel() {
         // plus features collapsed in from redundant child nodes.
         val collapsedKeys = getCollapsedFeatureKeys()
         val matchPath = currentPath
-        val explicitFeatures = if (matchPath.isEmpty()) {
-            emptyList()
-        } else {
-            allFeatures.filter { feature ->
-                feature.categoryPath.joinToString("/") == matchPath
+        val explicitFeatures =
+            if (matchPath.isEmpty()) {
+                emptyList()
+            } else {
+                allFeatures.filter { feature ->
+                    feature.categoryPath.joinToString("/") == matchPath
+                }
             }
-        }
 
         val collapsedFeatures = collapsedKeys.mapNotNull { key -> featureByKey[key] }
-        val allVisibleFeatures = (explicitFeatures + collapsedFeatures)
-            .distinctBy { it.key }
-            .sortedBy { it.order }
+        val allVisibleFeatures =
+            (explicitFeatures + collapsedFeatures).distinctBy { it.key }.sortedBy { it.order }
 
         return allVisibleFeatures.map { feature -> toFeatureItemUiState(feature) }
     }
@@ -567,28 +576,32 @@ class SettingViewModel : ViewModel() {
             hasPending = hasPendingFor(feature),
             optionGroups = feature.optionGroups,
             optionValues = feature.optionGroups.associate { it.key to currentOptionValue(it) },
-            sliders = feature.sliders.map { field ->
-                FeatureSliderUiState(
-                    key = field.key,
-                    label = field.label,
-                    min = field.min,
-                    max = field.max,
-                    step = field.step,
-                    suffix = field.suffix,
-                    value = effectiveInt(field.key, field.defaultValue).coerceIn(field.min, field.max)
-                )
-            },
-            textAreas = feature.textAreas.map { area ->
-                TextAreaUiState(
-                    key = area.key,
-                    label = area.label,
-                    placeholder = area.placeholder,
-                    value = effectiveString(area.key)
-                )
-            },
+            sliders =
+                feature.sliders.map { field ->
+                    FeatureSliderUiState(
+                        key = field.key,
+                        label = field.label,
+                        min = field.min,
+                        max = field.max,
+                        step = field.step,
+                        suffix = field.suffix,
+                        value =
+                            effectiveInt(field.key, field.defaultValue)
+                                .coerceIn(field.min, field.max),
+                    )
+                },
+            textAreas =
+                feature.textAreas.map { area ->
+                    TextAreaUiState(
+                        key = area.key,
+                        label = area.label,
+                        placeholder = area.placeholder,
+                        value = effectiveString(area.key),
+                    )
+                },
             uiType = feature.uiType,
             error = actionErrors[feature.key],
-            initReady = initReady
+            initReady = initReady,
         )
     }
 
@@ -626,7 +639,6 @@ class SettingViewModel : ViewModel() {
             group.options.firstOrNull { it.value == baseValue }?.value ?: group.fallbackValue
         }
     }
-
 }
 
 private object CategoryTreeBuilder {
@@ -651,13 +663,17 @@ private object CategoryTreeBuilder {
                 val segment = feat.categoryPath[i]
                 val isLast = i == feat.categoryPath.lastIndex
                 val existing = current.children.find { it.pathSegment == segment }
-                val node = existing
-                    ?: TreeNode().apply {
-                        pathSegment = segment
-                        fullPath = if (current == root) segment else "${current.fullPath}/$segment"
-                        depth = i
-                        label = segment
-                    }.also { current.children.add(it) }
+                val node =
+                    existing
+                        ?: TreeNode()
+                            .apply {
+                                pathSegment = segment
+                                fullPath =
+                                    if (current == root) segment else "${current.fullPath}/$segment"
+                                depth = i
+                                label = segment
+                            }
+                            .also { current.children.add(it) }
                 if (isLast) {
                     node.featureKeys.add(feat.key)
                     node.uiOrder = feat.order
@@ -680,7 +696,7 @@ private object CategoryTreeBuilder {
                 label = node.label,
                 uiOrder = node.uiOrder,
                 featureKeys = node.featureKeys,
-                children = node.children.map { toCategoryNode(it) }
+                children = node.children.map { toCategoryNode(it) },
             )
         }
 

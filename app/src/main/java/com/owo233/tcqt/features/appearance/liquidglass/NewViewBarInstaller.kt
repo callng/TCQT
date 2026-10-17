@@ -270,7 +270,9 @@ internal object NewViewBarInstaller {
             setTabRow(row)
             animateToIndex(initial, true)
         }.also { host.setDragHandler(it) }
-        (indicator as? GlassDropletView)?.setPill(surface)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            (indicator as? GlassDropletView)?.setPill(surface)
+        }
 
         refreshListener?.let { runCatching { host.viewTreeObserver.removeOnPreDrawListener(it) } }
         val listener = ViewTreeObserver.OnPreDrawListener {
@@ -300,12 +302,16 @@ internal object NewViewBarInstaller {
                         appliedDark = dark
                         host.setDarkTheme(dark)
                         (surfaceRef.get() as? FloatingBarSurfaceView)?.update(current.mode, dark)
-                        (surfaceRef.get() as? GlassPillView)?.setTheme(dark)
-                        (indicatorRef.get() as? GlassDropletView)?.setTheme(dark)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            (surfaceRef.get() as? GlassPillView)?.setTheme(dark)
+                            (indicatorRef.get() as? GlassDropletView)?.setTheme(dark)
+                        }
                         (indicatorRef.get() as? FloatingBarIndicatorView)?.setTheme(dark)
                     }
-                    (surfaceRef.get() as? GlassPillView)?.setBlurPercent(current.blurPercent)
-                    (indicatorRef.get() as? GlassDropletView)?.setBlurPercent(current.blurPercent)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        (surfaceRef.get() as? GlassPillView)?.setBlurPercent(current.blurPercent)
+                        (indicatorRef.get() as? GlassDropletView)?.setBlurPercent(current.blurPercent)
+                    }
                     if (indicator.visibility != View.VISIBLE) indicator.visibility = View.VISIBLE
                     val selected = QQTabLocator.selectedIndex(row).takeIf { it >= 0 }
                         ?: QQTabLocator.currentIndex(tabView)
@@ -707,7 +713,8 @@ internal object NewViewBarInstaller {
     }
 
     private fun currentNavigationInset(anchor: View): Int = runCatching {
-        anchor.rootWindowInsets?.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.navigationBars())?.bottom ?: 0
+        androidx.core.view.ViewCompat.getRootWindowInsets(anchor)
+            ?.getInsetsIgnoringVisibility(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
     }.getOrDefault(0)
 
     private fun effectiveNavigationInset(anchor: View): Int {

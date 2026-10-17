@@ -1,5 +1,6 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
@@ -391,8 +392,10 @@ internal object QQTabLocator {
     private fun activePager(): ViewGroup? {
         return if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
             NewViewBarInstaller.currentPager()
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             GlassBarInstaller.currentPager()
+        } else {
+            null
         }
     }
 

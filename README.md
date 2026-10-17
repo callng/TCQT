@@ -163,6 +163,8 @@ app/build/outputs/apk/release/  # 发布版本（TCQT-<版本>-release.apk，双
 
 ### 清理构建
 
+设置页、宿主弹窗和 WebUI 的开发约定见 [界面设计规范](docs/ui-guidelines.md)。
+
 ```bash
 ./gradlew clean :app:assembleDebug
 ```

@@ -348,6 +348,7 @@ internal class FloatingBarHostLayout(
 }
 
 /** Preview that exercises the same surface and liquid-glass renderers as NewView. */
+@Suppress("NewApi")
 internal class FloatingBottomBarPreviewView(context: Context) : FrameLayout(context) {
     private val density = resources.displayMetrics.density
     private val baseBarHeight = (64f * density).roundToInt()

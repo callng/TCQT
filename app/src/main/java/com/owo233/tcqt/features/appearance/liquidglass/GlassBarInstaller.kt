@@ -1,5 +1,7 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import androidx.annotation.RequiresApi
+import android.os.Build
 import android.app.Activity
 import android.os.SystemClock
 import android.view.View
@@ -31,6 +33,7 @@ import androidx.core.view.isVisible
  * 安装触发有两条通路：底栏切换方法的一次调用（首次选中初始 Tab 时底栏必然已存在），
  * 以及主界面恢复后的限时轮询兜底（冷启动时底栏可能数秒后才出现）。
  */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal object GlassBarInstaller {
 
     /** 主界面构建为异步过程，轮询兜底的次数与间隔（共约 10 秒）。 */

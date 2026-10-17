@@ -1,5 +1,7 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import androidx.annotation.RequiresApi
+import android.os.Build
 import android.content.Context
 import android.graphics.BlendMode
 import android.graphics.Canvas
@@ -31,6 +33,7 @@ import kotlin.math.roundToInt
  * 透镜采样范围超出自身边界，捕获区域需向四周各外扩一个折射量；绘制时再平移回来，
  * 使折射带内的采样坐标始终落在有效内容上。
  */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class GlassPillView(
     context: Context,
     backdrop: ViewGroup,

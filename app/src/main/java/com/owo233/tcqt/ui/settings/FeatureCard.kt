@@ -1,7 +1,6 @@
 package com.owo233.tcqt.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,31 +23,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.core.action.ActionUiType
-import com.owo233.tcqt.ui.component.MaterialTheme
-import com.owo233.tcqt.ui.component.TextButton
+import com.owo233.tcqt.ui.component.ActionButton
+import com.owo233.tcqt.ui.component.TCQTPanel
+import com.owo233.tcqt.ui.component.textMatchRanges
 import com.owo233.tcqt.ui.settings.model.FeatureErrorUiState
 import com.owo233.tcqt.ui.settings.model.FeatureItemUiState
 import com.owo233.tcqt.ui.settings.model.FeatureOptionGroup
 import com.owo233.tcqt.ui.settings.model.FeatureSliderUiState
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Slider
-import top.yukonga.miuix.kmp.basic.SliderDefaults
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.ChevronForward
 import top.yukonga.miuix.kmp.icon.extended.Report
@@ -58,12 +58,6 @@ import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.RadioButtonPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.math.roundToInt
-import kotlin.time.Duration.Companion.milliseconds
-import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 
 @Composable
 internal fun FeatureCard(
@@ -78,9 +72,10 @@ internal fun FeatureCard(
     onFeatureClick: () -> Unit,
     forceExpanded: Boolean = false,
 ) {
-    var searchExpanded by remember(item.key, searchQuery, forceExpanded) {
-        mutableStateOf(forceExpanded)
-    }
+    var searchExpanded by
+        remember(item.key, searchQuery, forceExpanded) {
+            mutableStateOf(forceExpanded)
+        }
     val initReady = item.initReady
     val effectivelyExpanded =
         initReady && ((if (forceExpanded) searchExpanded else item.expanded) || item.error != null)
@@ -93,15 +88,22 @@ internal fun FeatureCard(
     }
     val feature = item.feature
     val hasDetails =
-        initReady && (item.error != null || item.optionGroups.isNotEmpty() || item.sliders.isNotEmpty() || item.textAreas.isNotEmpty())
+        initReady &&
+            (item.error != null ||
+                item.optionGroups.isNotEmpty() ||
+                item.sliders.isNotEmpty() ||
+                item.textAreas.isNotEmpty())
     val query = searchQuery.trim()
     val featureTitleColor =
-        if (item.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-    val titleColor = BasicComponentDefaults.titleColor(
-        color = featureTitleColor,
-    )
+        if (item.error != null) MiuixTheme.colorScheme.error else MiuixTheme.colorScheme.onSurface
+    val titleColor = BasicComponentDefaults.titleColor(color = featureTitleColor)
     val bottomAction: (@Composable () -> Unit)? =
-        if (!initReady || item.hasPending || item.error != null || (effectivelyExpanded && hasDetails)) {
+        if (
+            !initReady ||
+                item.hasPending ||
+                item.error != null ||
+                (effectivelyExpanded && hasDetails)
+        ) {
             {
                 if (!initReady) {
                     ForcedDisabledHint()
@@ -121,15 +123,7 @@ internal fun FeatureCard(
             null
         }
 
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = if (item.error != null) {
-            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.18f)
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         if (query.isNotBlank()) {
             BasicComponent(
                 enabled = initReady,
@@ -139,7 +133,7 @@ internal fun FeatureCard(
                             Icon(
                                 imageVector = MiuixIcons.ChevronForward,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -148,12 +142,11 @@ internal fun FeatureCard(
                             if (initReady && hasDetails && item.error == null) {
                                 Icon(
                                     imageVector = MiuixIcons.ChevronForward,
-                                    contentDescription = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .padding(end = 12.dp)
-                                        .size(20.dp)
-                                        .graphicsLayer {
+                                    contentDescription =
+                                        if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
+                                    tint = MiuixTheme.colorScheme.primary,
+                                    modifier =
+                                        Modifier.padding(end = 12.dp).size(20.dp).graphicsLayer {
                                             rotationZ = if (effectivelyExpanded) -90f else 90f
                                         },
                                 )
@@ -167,16 +160,17 @@ internal fun FeatureCard(
                     }
                 },
                 bottomAction = bottomAction,
-                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-                onClick = when {
-                    !initReady -> null
-                    item.uiType == ActionUiType.ENTRY -> onFeatureClick
-                    hasDetails && item.error == null -> toggleDetails
-                    hasDetails -> null
-                    else -> {
-                        { onFeatureEnabledChange(!item.enabled) }
-                    }
-                },
+                insideMargin = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                onClick =
+                    when {
+                        !initReady -> null
+                        item.uiType == ActionUiType.ENTRY -> onFeatureClick
+                        hasDetails && item.error == null -> toggleDetails
+                        hasDetails -> null
+                        else -> {
+                            { onFeatureEnabledChange(!item.enabled) }
+                        }
+                    },
             ) {
                 Text(
                     text = rememberHighlightedText(feature.label, query),
@@ -188,7 +182,7 @@ internal fun FeatureCard(
                     Text(
                         text = rememberHighlightedText(feature.desc, query),
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
                     )
                 }
             }
@@ -198,7 +192,7 @@ internal fun FeatureCard(
                 summary = feature.desc.takeIf(String::isNotBlank),
                 titleColor = titleColor,
                 bottomAction = bottomAction,
-                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                insideMargin = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
                 onClick = if (initReady) onFeatureClick else null,
                 enabled = initReady,
             )
@@ -212,11 +206,9 @@ internal fun FeatureCard(
                         Icon(
                             imageVector = MiuixIcons.ChevronForward,
                             contentDescription = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .size(20.dp)
-                                .graphicsLayer {
+                            tint = MiuixTheme.colorScheme.primary,
+                            modifier =
+                                Modifier.padding(end = 12.dp).size(20.dp).graphicsLayer {
                                     rotationZ = if (effectivelyExpanded) -90f else 90f
                                 },
                         )
@@ -227,7 +219,7 @@ internal fun FeatureCard(
                     )
                 },
                 bottomAction = bottomAction,
-                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                insideMargin = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
                 onClick = if (item.error == null) toggleDetails else null,
                 onClickLabel = if (effectivelyExpanded) "收起详细设置" else "展开详细设置",
             )
@@ -239,7 +231,7 @@ internal fun FeatureCard(
                 summary = feature.desc.takeIf(String::isNotBlank),
                 titleColor = titleColor,
                 bottomAction = bottomAction,
-                insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                insideMargin = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
                 enabled = initReady,
             )
         }
@@ -249,10 +241,10 @@ internal fun FeatureCard(
 @Composable
 internal fun ForcedDisabledHint() {
     Text(
-        text = "当前运行环境不满足执行条件，此功能已被强制禁用。",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.padding(top = 2.dp)
+        text = "当前宿主环境不满足运行条件，此功能已被强制禁用。",
+        style = MiuixTheme.textStyles.footnote2,
+        color = MiuixTheme.colorScheme.error,
+        modifier = Modifier.padding(top = 2.dp),
     )
 }
 
@@ -276,30 +268,31 @@ internal fun FeaturePreferenceDetails(
             ) {
                 StatusPill(
                     text = "运行异常",
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    containerColor = MiuixTheme.colorScheme.errorContainer,
+                    contentColor = MiuixTheme.colorScheme.onErrorContainer,
                 )
             }
         }
 
         AnimatedVisibility(
-            visible = expanded && (
-                    item.error != null ||
-                            item.optionGroups.isNotEmpty() ||
-                            item.sliders.isNotEmpty() ||
-                            item.textAreas.isNotEmpty()
-                    ),
+            visible =
+                expanded &&
+                    (item.error != null ||
+                        item.optionGroups.isNotEmpty() ||
+                        item.sliders.isNotEmpty() ||
+                        item.textAreas.isNotEmpty())
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 HorizontalDivider(
-                    color = if (item.error != null) {
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.24f)
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                    },
+                    color =
+                        if (item.error != null) {
+                            MiuixTheme.colorScheme.error.copy(alpha = 0.24f)
+                        } else {
+                            MiuixTheme.colorScheme.dividerLine.copy(alpha = 0.45f)
+                        }
                 )
                 item.error?.let { error ->
                     FeatureErrorPanel(error = error, onClear = onClearError)
@@ -334,8 +327,8 @@ internal fun FeaturePreferenceDetails(
             ) {
                 StatusPill(
                     text = "未保存",
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    containerColor = MiuixTheme.colorScheme.secondaryContainer,
+                    contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
                 )
             }
         }
@@ -363,10 +356,9 @@ internal fun FeatureTextArea(
     OutlinedTextField(
         value = area.value,
         onValueChange = onValueChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .onFocusChanged { focusState ->
+        modifier =
+            Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoViewRequester).onFocusChanged {
+                focusState ->
                 isFocused = focusState.isFocused
             },
         label = area.label,
@@ -378,65 +370,66 @@ internal fun FeatureTextArea(
 
 @Composable
 internal fun FeatureErrorPanel(error: FeatureErrorUiState, onClear: () -> Unit) {
-    val occurredAt = remember(error.occurredAt) {
-        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(error.occurredAt))
-    }
+    val occurredAt =
+        remember(error.occurredAt) {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                .format(Date(error.occurredAt))
+        }
 
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.58f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.24f)),
-        modifier = Modifier.fillMaxWidth()
+    TCQTPanel(
+        cornerRadius = 16.dp,
+        color = MiuixTheme.colorScheme.errorContainer.copy(alpha = 0.58f),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(
                     imageVector = MiuixIcons.Report,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    tint = MiuixTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp),
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "异常日志",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MiuixTheme.textStyles.headline2,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
+                        color = MiuixTheme.colorScheme.error,
                     )
                     Text(
                         text = "$occurredAt · ${error.processName} · ${error.stage}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.72f)
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = MiuixTheme.colorScheme.onErrorContainer.copy(alpha = 0.72f),
                     )
                 }
-                TextButton(onClick = onClear) {
+                ActionButton(onClick = onClear) {
                     Text("清除")
                 }
             }
             Text(
                 text = error.summary,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body2,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MiuixTheme.colorScheme.onErrorContainer,
             )
             SelectionContainer {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                    modifier = Modifier.fillMaxWidth()
+                TCQTPanel(
+                    cornerRadius = 10.dp,
+                    color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = error.details,
                         modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -446,48 +439,35 @@ internal fun FeatureErrorPanel(error: FeatureErrorUiState, onClear: () -> Unit) 
 
 @Composable
 internal fun rememberHighlightedText(text: String, keyword: String): AnnotatedString {
-    val colorScheme = MaterialTheme.colorScheme
+    val colorScheme = MiuixTheme.colorScheme
     return remember(text, keyword, colorScheme) {
         if (keyword.isBlank() || text.isBlank()) return@remember AnnotatedString(text)
-        val lowerText = text.lowercase()
-        val lowerKeyword = keyword.lowercase()
-        val highlightColor = colorScheme.primary
-
         buildAnnotatedString {
             var cursor = 0
-            while (cursor < text.length) {
-                val index = lowerText.indexOf(lowerKeyword, startIndex = cursor)
-                if (index < 0) {
-                    append(text.substring(cursor))
-                    break
-                }
-                if (index > cursor) append(text.substring(cursor, index))
-                pushStyle(
-                    SpanStyle(
-                        color = highlightColor,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
-                append(text.substring(index, index + keyword.length))
+            textMatchRanges(text, keyword).forEach { range ->
+                append(text.substring(cursor, range.first))
+                pushStyle(SpanStyle(color = colorScheme.primary, fontWeight = FontWeight.Bold))
+                append(text.substring(range.first, range.last + 1))
                 pop()
-                cursor = index + keyword.length
+                cursor = range.last + 1
             }
+            append(text.substring(cursor))
         }
     }
 }
 
 @Composable
 internal fun StatusPill(text: String, containerColor: Color, contentColor: Color) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
+    TCQTPanel(
+        cornerRadius = 6.dp,
         color = containerColor,
-        contentColor = contentColor
+        contentColor = contentColor,
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold
+            style = MiuixTheme.textStyles.footnote2,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -496,53 +476,39 @@ internal fun StatusPill(text: String, containerColor: Color, contentColor: Color
 internal fun OptionGroup(
     group: FeatureOptionGroup,
     currentValue: Int,
-    onValueChange: (Int) -> Unit
+    onValueChange: (Int) -> Unit,
 ) {
-    val hapticFeedback = LocalHapticFeedback.current
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column {
-            if (group.title.isNotBlank()) {
-                Text(
-                    text = group.title,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+    Column(Modifier.fillMaxWidth()) {
+        if (group.title.isNotBlank()) {
+            Text(
+                group.title,
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+        }
+        group.options.forEachIndexed { index, option ->
+            val mask = group.resolveMask(option, index)
+            val selected =
+                if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
+            if (group.isMulti) {
+                CheckboxPreference(
+                    title = option.label,
+                    checked = selected,
+                    onCheckedChange = { checked ->
+                        onValueChange(
+                            if (checked) currentValue or mask else currentValue and mask.inv()
+                        )
+                    },
+                    insideMargin = PaddingValues(vertical = 12.dp),
                 )
-            }
-            group.options.forEachIndexed { index, option ->
-                val mask = group.resolveMask(option, index)
-                val selected =
-                    if (group.isMulti) (currentValue and mask) != 0 else currentValue == option.value
-                val changeSelection = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onValueChange(if (group.isMulti) currentValue xor mask else option.value)
-                }
-
-                if (group.isMulti) {
-                    CheckboxPreference(
-                        title = option.label,
-                        checked = selected,
-                        onCheckedChange = { changeSelection() },
-                        insideMargin = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    )
-                } else {
-                    RadioButtonPreference(
-                        title = option.label,
-                        selected = selected,
-                        onClick = changeSelection,
-                        insideMargin = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    )
-                }
-
-                if (index < group.options.lastIndex) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 48.dp, end = 14.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
-                    )
-                }
+            } else {
+                RadioButtonPreference(
+                    title = option.label,
+                    selected = selected,
+                    onClick = { onValueChange(option.value) },
+                    insideMargin = PaddingValues(vertical = 12.dp),
+                )
             }
         }
     }
@@ -550,34 +516,22 @@ internal fun OptionGroup(
 
 @Composable
 internal fun FeatureSlider(slider: FeatureSliderUiState, onValueChange: (Int) -> Unit) {
-    val points = if (slider.step > 1) {
-        (slider.min..slider.max step slider.step).toList()
-    } else {
-        listOf(slider.min, slider.max)
-    }
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(slider.label, color = MaterialTheme.colorScheme.onSurface)
-                Text("${slider.value}${slider.suffix}", color = MaterialTheme.colorScheme.primary)
-            }
-            Slider(
-                value = slider.value.toFloat().coerceIn(slider.min.toFloat(), slider.max.toFloat()),
-                onValueChange = { onValueChange(it.roundToInt()) },
-                valueRange = slider.min.toFloat()..slider.max.toFloat(),
-                showKeyPoints = slider.step > 1,
-                keyPoints = points.map { it.toFloat() },
-                magnetThreshold = if (slider.step > 1) 1f else 0f,
-                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
-            )
+    val points =
+        remember(slider.min, slider.max, slider.step) {
+            if (slider.step > 1)
+                ((slider.min..slider.max step slider.step).toList() + slider.max)
+                    .distinct()
+                    .map(Int::toFloat)
+            else null
         }
-    }
+    top.yukonga.miuix.kmp.preference.SliderPreference(
+        title = slider.label,
+        valueText = "${slider.value}${slider.suffix}",
+        value = slider.value.toFloat().coerceIn(slider.min.toFloat(), slider.max.toFloat()),
+        onValueChange = { onValueChange(it.roundToInt()) },
+        valueRange = slider.min.toFloat()..slider.max.toFloat(),
+        showKeyPoints = slider.step > 1,
+        keyPoints = points,
+        insideMargin = PaddingValues(vertical = 8.dp),
+    )
 }

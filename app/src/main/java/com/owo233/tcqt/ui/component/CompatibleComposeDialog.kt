@@ -1,6 +1,7 @@
 package com.owo233.tcqt.ui.component
 
 import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -12,7 +13,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
@@ -26,7 +29,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.owo233.tcqt.core.env.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.ui.theme.SettingTheme
-import android.graphics.Color as AndroidColor
+import top.yukonga.miuix.kmp.basic.Scaffold
 
 class TCQTDialogLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
 
@@ -52,9 +55,11 @@ class TCQTDialogLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
 }
 
 @Suppress("DEPRECATION")
-abstract class CompatibleComposeDialog(
-    context: Context
-) : ComponentDialog(context.toCompatibleContext(), android.R.style.Theme_Material_Light_NoActionBar) {
+abstract class CompatibleComposeDialog(context: Context) :
+    ComponentDialog(
+        context.toCompatibleContext(),
+        android.R.style.Theme_Material_Light_NoActionBar,
+    ) {
 
     private val dialogLifecycleOwner = TCQTDialogLifecycleOwner()
     protected var isVisible by mutableStateOf(false)
@@ -70,8 +75,11 @@ abstract class CompatibleComposeDialog(
     protected open fun configureWindow() {
         window?.apply {
             addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
-            
+            clearFlags(
+                WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION
+            )
+
             statusBarColor = AndroidColor.TRANSPARENT
             navigationBarColor = AndroidColor.TRANSPARENT
 
@@ -85,13 +93,13 @@ abstract class CompatibleComposeDialog(
             setBackgroundDrawable(AndroidColor.TRANSPARENT.toDrawable())
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setGravity(Gravity.CENTER)
-            
+
             // Compose draws and fades the dim background itself
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            
+
             // 0 = no window animation, would fight the Compose transitions
             setWindowAnimations(0)
-            
+
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
     }
@@ -100,10 +108,14 @@ abstract class CompatibleComposeDialog(
         super.onCreate(savedInstanceState)
         dialogLifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
-        composeView = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(dialogLifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(dialogLifecycleOwner)
-        }
+        composeView =
+            ComposeView(context).apply {
+                setViewCompositionStrategy(
+                    ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+                )
+                setViewTreeLifecycleOwner(dialogLifecycleOwner)
+                setViewTreeSavedStateRegistryOwner(dialogLifecycleOwner)
+            }
 
         setContentView(composeView!!)
 
@@ -116,16 +128,15 @@ abstract class CompatibleComposeDialog(
             CompositionLocalProvider(LocalLifecycleOwner provides dialogLifecycleOwner) {
                 SettingTheme {
                     androidx.compose.runtime.LaunchedEffect(Unit) {
-                        isVisible = true
+                        if (!isDismissing) isVisible = true
                     }
-                    DialogContent()
+                    Scaffold(containerColor = Color.Transparent) { DialogContent() }
                 }
             }
         }
     }
 
-    @Composable
-    protected abstract fun DialogContent()
+    @Composable protected abstract fun DialogContent()
 
     protected fun dismissWithAnimation() {
         dismiss()
@@ -154,15 +165,11 @@ abstract class CompatibleComposeDialog(
     }
 
     override fun dismiss() {
-        if (!isDismissing) {
+        if (!isVisible) {
+            dismissImmediately()
+        } else if (!isDismissing) {
             isDismissing = true
             isVisible = false
-            window?.decorView?.postDelayed({
-                super.dismiss()
-            }, 300)
-        } else {
-            composeView = null
-            super.dismiss()
         }
     }
 }

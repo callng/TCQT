@@ -55,9 +55,9 @@ class PipelineDecoratorDiscoveryTest {
     }
 
     @Test
-    fun `加号菜单装饰器按 PttForward 再 RepeatMessage 装配`() {
+    fun `菜单净化先执行，PttForward 与 RepeatMessage 保持顺序，编辑重发最后装配`() {
         assertEquals(
-            listOf("PttForward", "RepeatMessage"),
+            listOf("PurifyMenuButton", "PttForward", "RepeatMessage", "EditAndResend"),
             names(OnMenuBuilder::class.java),
             "加号菜单项的先后变了",
         )

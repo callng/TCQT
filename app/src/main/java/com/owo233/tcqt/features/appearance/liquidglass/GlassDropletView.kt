@@ -1,5 +1,7 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import androidx.annotation.RequiresApi
+import android.os.Build
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.ColorMatrix
@@ -41,6 +43,7 @@ import kotlin.math.roundToInt
  * 未选中 Tab 的副本先整体绘制、再以 SRC_ATOP 覆盖选中色，随后把自带颜色的子视图
  * （未读角标、红点）按其自身边界重绘一遍以恢复本色。
  */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class GlassDropletView(
     context: Context,
     backdrop: ViewGroup,
