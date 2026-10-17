@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.os.Process
+import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.action.HookSteps
 import com.owo233.tcqt.core.action.StartupScheduler
 import com.owo233.tcqt.core.dexkit.DexKitCache
@@ -125,9 +126,8 @@ internal object ModuleLoader {
                         if ((loaderStr.contains("com.tencent.") ||
                                     loaderStr.contains("TinkerClassLoader") ||
                                     loaderStr.contains("DelegateLastClassLoader"))
-                            && !hasCapturedTinker.get()
+                            && hasCapturedTinker.compareAndSet(false, true)
                         ) {
-                            hasCapturedTinker.set(true)
                             Log.d("捕获到热更新 ClassLoader： $loader")
                             doRealStartup(loader)
                         }
@@ -209,20 +209,30 @@ internal object ModuleLoader {
                 if (isInit.compareAndSet(false, true)) {
                     installMainDispatcher()
                     val app = param.thisObject as Application
+                    // 补丁加载尝试可能失败并回退。以 Application 实际采用的 loader 为准。
+                    val activeClassLoader = app.classLoader
+                    HookEnv.setHostClassLoader(activeClassLoader)
+                    HookSteps.injectClassLoader(activeClassLoader)
                     installHostBridge()
                     HookSteps.initContext(app)
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
-                    val cacheValid = DexKitCache.initCache()
+                    val cacheValid = DexKitCache.initCache(HostCodeMode.isHotPatched(activeClassLoader))
                     val missingKeys = DexKitFinder.getMissingKeys()
-                    val needDexKitFind = !cacheValid || missingKeys.isNotEmpty()
+                    val proc = HookSteps.resolveActionProcess()
+                    // 热补丁可能改变混淆符号而不改变宿主版本，主进程必须用补丁 loader 全量重查。
+                    val forceFullDexKitFind = proc == ActionProcess.MAIN && DexKitCache.isHotPatched
+                    val needDexKitFind = forceFullDexKitFind || !cacheValid || missingKeys.isNotEmpty()
 
                     installPipelineDecorators()
 
                     // 只同步安装 CRITICAL，其余由 StartupScheduler 在 onCreate 返回后分批后台安装
-                    val proc = HookSteps.resolveActionProcess()
                     val plan = HookSteps.initStartup(app, proc, missingKeys)
-                    StartupScheduler.schedule(app, proc, plan, needDexKitFind)
+                    StartupScheduler.schedule(
+                        app, proc, plan, needDexKitFind,
+                        dexKitClassLoader = activeClassLoader,
+                        forceFullDexKitFind = forceFullDexKitFind,
+                    )
                 }
             }
         } catch (th: Throwable) {
@@ -282,15 +292,22 @@ internal object ModuleLoader {
             }
         }
 
-        val cacheValid = DexKitCache.initCache()
+        // Modern 热重载恢复原进程的运行状态；Zygisk 兼容入口没有保存状态，检查实际 loader。
+        val hostHotPatched = state["hostHotPatched"] as? Boolean
+            ?: HostCodeMode.isHotPatched(HookEnv.hostClassLoader)
+        val cacheValid = DexKitCache.initCache(hostHotPatched)
         val missingKeys = DexKitFinder.getMissingKeys()
-        val needDexKitFind = !cacheValid || missingKeys.isNotEmpty()
+        val proc = HookSteps.resolveActionProcess()
+        val forceFullDexKitFind = proc == ActionProcess.MAIN && hostHotPatched
+        val needDexKitFind = forceFullDexKitFind || !cacheValid || missingKeys.isNotEmpty()
 
         val app = state["hostApplication"] as Application
         installPipelineDecorators()
-        val proc = HookSteps.resolveActionProcess()
         val plan = HookSteps.initStartup(app, proc, missingKeys)
-        StartupScheduler.schedule(app, proc, plan, needDexKitFind)
+        StartupScheduler.schedule(
+            app, proc, plan, needDexKitFind,
+            forceFullDexKitFind = forceFullDexKitFind,
+        )
     }
 
     /**

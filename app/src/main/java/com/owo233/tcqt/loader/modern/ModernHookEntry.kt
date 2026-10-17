@@ -1,6 +1,7 @@
 package com.owo233.tcqt.loader.modern
 
 import android.content.pm.ApplicationInfo
+import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostTypeEnum
 import com.owo233.tcqt.core.env.ProcUtil
@@ -125,6 +126,7 @@ class ModernHookEntry : XposedModule {
         val state = HashMap<String, Any>().apply {
             this["hostApplication"] = HookEnv.application
             this["hostClassLoader"] = HookEnv.hostClassLoader
+            this["hostHotPatched"] = DexKitCache.isHotPatched
             this["hostProcessName"] = HookEnv.processName
             this["hostAppPackageName"] = HookEnv.hostAppPackageName
         }

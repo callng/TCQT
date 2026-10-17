@@ -3,6 +3,7 @@ package com.owo233.tcqt.core.action
 import android.app.Application
 import android.view.Choreographer
 import com.owo233.tcqt.core.dexkit.DexKitFinder
+import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.sync.ModuleScope
@@ -20,7 +21,7 @@ import com.owo233.tcqt.core.sync.SyncUtils
  *        ├─ EARLY      onCreate 返回后立刻，后台线程
  *        ├─ DEFERRED   MAIN 等首帧后 / 后台进程立刻，后台分批
  *        ├─ BACKGROUND 最后一批，后台分批
- *        └─ DexKit     缓存缺失时触发查找
+ *        └─ DexKit     缓存缺失或主进程热更新时触发查找
  * ```
  */
 internal object StartupScheduler {
@@ -30,6 +31,8 @@ internal object StartupScheduler {
         proc: ActionProcess,
         plan: ActionPlan,
         needDexKitFind: Boolean,
+        dexKitClassLoader: ClassLoader = HookEnv.hostClassLoader,
+        forceFullDexKitFind: Boolean = false,
     ) {
         if (plan.isEmpty && !needDexKitFind) return
 
@@ -66,10 +69,12 @@ internal object StartupScheduler {
             }
         }
 
-        // DexKit 缓存缺失：触发后台查找，不阻塞 onCreate。
+        // DexKit 缓存缺失或主进程检测到热补丁：触发后台查找，不阻塞 onCreate。
         if (needDexKitFind) {
-            ModuleScope.launchIO("TCQT-DexKit") {
-                DexKitFinder.doFind()
+            SyncUtils.post {
+                ModuleScope.launchIO("TCQT-DexKit") {
+                    DexKitFinder.doFind(dexKitClassLoader, forceFullDexKitFind)
+                }
             }
         }
     }

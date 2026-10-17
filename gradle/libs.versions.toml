@@ -16,7 +16,7 @@ kyant0-backdrop = "2.0.1"
 kyant0-shapes = "1.2.1"
 
 # Kotlin
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 ksp = "2.3.12"
 
 # KotlinX

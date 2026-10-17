@@ -2,7 +2,6 @@ package com.owo233.tcqt.core.dexkit
 
 import com.owo233.tcqt.core.command.ModuleCommandBus
 import com.owo233.tcqt.core.env.HookEnv
-import com.owo233.tcqt.core.env.HookEnv.toHostClass
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.env.Toasts
@@ -19,6 +18,7 @@ import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 
 class DexKitLookupTracker {
@@ -39,6 +39,7 @@ class DexKitLookupTracker {
 internal object DexKitFinder {
 
     private var unhook: Unhook? = null
+    private val findStarted = AtomicBoolean(false)
 
     private val allTasks: List<DexKitTask> by lazy {
         GeneratedActionList.ACTIONS
@@ -48,9 +49,20 @@ internal object DexKitFinder {
             }
     }
 
-    fun doFind() {
+    fun doFind(
+        classLoader: ClassLoader = HookEnv.hostClassLoader,
+        forceFullFind: Boolean = false,
+    ) {
         if (ProcUtil.isMain && initDexKit()) {
-            showFindToast()
+            if (forceFullFind) {
+                // 热更新重查不依赖首页 onResume，避免回调已经发生或首页类变化时漏查。
+                if (!findStarted.compareAndSet(false, true)) return
+                Log.i("检测到热更新，使用当前 ClassLoader 全量查找混淆类和方法")
+                Toasts.info("热更新后重新查找混淆方法")
+                startFind(classLoader, forceFullFind = true)
+            } else {
+                showFindToast(classLoader)
+            }
         }
     }
 
@@ -79,20 +91,21 @@ internal object DexKitFinder {
         }
     }
 
-    private fun showFindToast() {
-        "com.tencent.mobileqq.activity.home.MainFragment".toHostClass()
+    private fun showFindToast(classLoader: ClassLoader) {
+        classLoader.loadClass("com.tencent.mobileqq.activity.home.MainFragment")
             .getDeclaredMethod("onResume")
             .hookAfter {
+                if (!findStarted.compareAndSet(false, true)) return@hookAfter
                 Toasts.info("开始查找混淆方法")
-                startFind()
+                startFind(classLoader, forceFullFind = false)
             }.also { unhook = it }
     }
 
-    private fun startFind() {
+    private fun startFind(classLoader: ClassLoader, forceFullFind: Boolean) {
         unhook?.unhook().also { unhook = null }
 
         ModuleScope.launchIO(TAG) {
-            val partialFind = DexKitCache.isVersionMatched
+            val partialFind = !forceFullFind && DexKitCache.isVersionMatched
 
             val tasks = if (partialFind) {
                 getTasks(getMissingKeys())
@@ -101,7 +114,12 @@ internal object DexKitFinder {
             }
 
             val oldCache = DexKitCache.cacheMap.toMap()
-            val newCache = DexKitCache.cacheMap.toMutableMap()
+            // 全量重查不能复用旧描述符或把旧 key 标记为已成功，否则会跳过热补丁中的变化。
+            val newCache = if (partialFind) {
+                oldCache.toMutableMap()
+            } else {
+                getAllTaskKeys().associateWith { "" }.toMutableMap()
+            }
 
             val tracker = DexKitLookupTracker()
             if (partialFind) {
@@ -109,7 +127,7 @@ internal object DexKitFinder {
             }
 
             runCatching {
-                DexKitBridge.create(HookEnv.hostClassLoader, true).use { bridge ->
+                DexKitBridge.create(classLoader, true).use { bridge ->
                     tasks.forEach { task ->
                         runCatching { task.execute(bridge, newCache, tracker) }
                             .onFailure { Log.e("", it) }
@@ -117,6 +135,10 @@ internal object DexKitFinder {
                 }
             }.onFailure {
                 Log.e("create DexKitBridge failed", it)
+            }.getOrElse {
+                Toasts.error("查找失败，保留原缓存")
+                findStarted.set(false)
+                return@launchIO
             }
 
             val isIdentical = oldCache.isNotEmpty() && oldCache == newCache

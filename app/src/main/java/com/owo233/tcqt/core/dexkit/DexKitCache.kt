@@ -1,7 +1,9 @@
 package com.owo233.tcqt.core.dexkit
 
 import com.owo233.tcqt.core.env.HookEnv
+import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.env.TCQTBuild
+import com.owo233.tcqt.core.log.Log
 import io.fastkv.FastKV
 import org.luckypray.dexkit.wrap.DexClass
 import org.luckypray.dexkit.wrap.DexMethod
@@ -10,6 +12,9 @@ import java.lang.reflect.Method
 internal object DexKitCache {
 
     var cacheMap = mutableMapOf<String, String>()
+
+    var isHotPatched = false
+        private set
 
     var isVersionMatched = false
         private set
@@ -23,14 +28,34 @@ internal object DexKitCache {
     private const val KEY_HOST_VER = "__host_ver"
     private const val KEY_MODULE_VER = "__module_ver"
 
-    private val kv: FastKV by lazy {
+    // 分离两种代码来源；旧的单份缓存可能已被补丁覆盖，不能迁移为普通缓存。
+    private val normalKv: FastKV by lazy { buildKv("normal") }
+    private val hotPatchKv: FastKV by lazy { buildKv("hot_patch") }
+
+    private val kv: FastKV
+        get() = if (isHotPatched) hotPatchKv else normalKv
+
+    private fun buildKv(mode: String): FastKV {
+        return FastKV.Builder(
+            "${HookEnv.moduleDataPath}/global/dexkit",
+            "DexKitCache_${getModuleBuildType()}_$mode"
+        ).build()
+    }
+
+    private val legacyKv: FastKV by lazy {
         FastKV.Builder(
             "${HookEnv.moduleDataPath}/global/dexkit",
             "DexKitCache_${getModuleBuildType()}"
         ).build()
     }
 
-    fun initCache(): Boolean {
+    fun initCache(isHotPatched: Boolean): Boolean {
+        this.isHotPatched = isHotPatched
+        if (ProcUtil.isMain) {
+            Log.i("DexKit 使用${if (isHotPatched) "热更新" else "普通"}缓存")
+        }
+        // 切换到空的缓存分区时也必须清空内存，不能残留另一种代码来源的描述符。
+        cacheMap = mutableMapOf()
         val all = kv.all
         if (all.isEmpty()) {
             isVersionMatched = false
@@ -83,7 +108,9 @@ internal object DexKitCache {
 
     fun clearCache(): Boolean {
         return runCatching {
-            kv.clear()
+            normalKv.clear()
+            hotPatchKv.clear()
+            legacyKv.clear()
             cacheMap.clear()
             isHostVersionMatched = false
             isModuleVersionMatched = false
