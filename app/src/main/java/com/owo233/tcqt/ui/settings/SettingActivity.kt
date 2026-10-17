@@ -316,16 +316,19 @@ class SettingActivity : BaseComposeActivity() {
                         AlertDialog(
                             onDismissRequest = { showDexKitClearDialog = false },
                             title = { Text("清空 DexKit 缓存") },
-                            text = { Text("是否清空 DexKit 缓存并重新查找？") },
+                            text = { Text("将删除 debug/release 的普通、热更新及旧版 DexKit 缓存，并重启宿主重新查找。") },
                             confirmButton = {
                                 TextButton(
                                     onClick = {
                                         showDexKitClearDialog = false
-                                        DexKitCache.clearCache()
-                                        ModuleCommandBus.sendCommand(
-                                            this@SettingActivity,
-                                            ModuleCommandBus.CMD_RESTART
-                                        )
+                                        if (DexKitCache.clearCache()) {
+                                            ModuleCommandBus.sendCommand(
+                                                this@SettingActivity,
+                                                ModuleCommandBus.CMD_RESTART
+                                            )
+                                        } else {
+                                            Toasts.error("清空 DexKit 缓存失败，请查看日志")
+                                        }
                                     }
                                 ) {
                                     Text("清空")

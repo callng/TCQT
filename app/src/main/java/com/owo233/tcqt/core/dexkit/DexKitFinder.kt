@@ -1,44 +1,29 @@
 package com.owo233.tcqt.core.dexkit
 
-import com.owo233.tcqt.core.command.ModuleCommandBus
+import android.app.Activity
+import android.app.Application
+import android.os.Bundle
 import com.owo233.tcqt.core.env.HookEnv
+import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.ProcUtil
-import com.owo233.tcqt.core.env.Toasts
-import com.owo233.tcqt.core.hook.Unhook
-import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.TAG
 import com.owo233.tcqt.core.reflect.new
 import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.generated.GeneratedActionList
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.ensureActive
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.time.Duration.Companion.seconds
-
-class DexKitLookupTracker {
-
-    private val succeeded = mutableSetOf<String>()
-
-    fun isSucceeded(name: String): Boolean = name in succeeded
-
-    fun markSucceeded(name: String) {
-        succeeded += name
-    }
-
-    fun markAllSucceeded(names: Collection<String>) {
-        succeeded += names
-    }
-}
 
 internal object DexKitFinder {
 
-    private var unhook: Unhook? = null
+    private var resumeCallback: Application.ActivityLifecycleCallbacks? = null
     private val findStarted = AtomicBoolean(false)
 
     private val allTasks: List<DexKitTask> by lazy {
@@ -54,20 +39,21 @@ internal object DexKitFinder {
         forceFullFind: Boolean = false,
     ) {
         if (ProcUtil.isMain && initDexKit()) {
-            if (forceFullFind) {
-                // 热更新重查不依赖首页 onResume，避免回调已经发生或首页类变化时漏查。
-                if (!findStarted.compareAndSet(false, true)) return
-                Log.i("检测到热更新，使用当前 ClassLoader 全量查找混淆类和方法")
-                Toasts.info("热更新后重新查找混淆方法")
-                startFind(classLoader, forceFullFind = true)
-            } else {
-                showFindToast(classLoader)
+            ModuleScope.launchMain {
+                if (forceFullFind) {
+                    // 补丁可在宿主版本号不变时替换，因此仍保守地每次全量重查。
+                    Log.i("检测到热更新，使用当前 ClassLoader 全量查找混淆类和方法")
+                    startOnce(classLoader, forceFullFind = true)
+                } else {
+                    waitForHostResume(classLoader)
+                }
             }
         }
     }
 
     fun needsFind(): Boolean {
-        return getMissingKeys().isNotEmpty()
+        val keys = getAllTaskKeys()
+        return getMissingKeys().isNotEmpty() || DexKitCache.cacheMap.keys.any { it !in keys }
     }
 
     fun getMissingKeys(): Set<String> {
@@ -85,27 +71,43 @@ internal object DexKitFinder {
     }
 
     private fun getTasks(missingKeys: Set<String>? = null): List<DexKitTask> {
-        return allTasks.let { allTasks ->
-            if (missingKeys.isNullOrEmpty()) allTasks
-            else allTasks.filter { task -> task.getCacheKeys().any { it in missingKeys } }
+        return allTasks.filter { task ->
+            val keys = task.getCacheKeys()
+            keys.isNotEmpty() && (missingKeys == null || keys.any { it in missingKeys })
         }
     }
 
-    private fun showFindToast(classLoader: ClassLoader) {
-        classLoader.loadClass("com.tencent.mobileqq.activity.home.MainFragment")
-            .getDeclaredMethod("onResume")
-            .hookAfter {
-                if (!findStarted.compareAndSet(false, true)) return@hookAfter
-                Toasts.info("开始查找混淆方法")
-                startFind(classLoader, forceFullFind = false)
-            }.also { unhook = it }
+    private fun waitForHostResume(classLoader: ClassLoader) {
+        if (findStarted.get() || resumeCallback != null) return
+        val app = HookEnv.application
+        resumeCallback = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(activity: Activity) {
+                startOnce(classLoader, forceFullFind = false)
+            }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        }.also(app::registerActivityLifecycleCallbacks)
+        // Modern 模块热重载时宿主可能已经在前台，不再等一次已经发生的首页 onResume。
+        HostBridge.topActivity()?.takeIf {
+            !it.isFinishing && !it.isDestroyed && it.window.decorView.isAttachedToWindow
+        }?.let { startOnce(classLoader, forceFullFind = false) }
+    }
+
+    private fun startOnce(classLoader: ClassLoader, forceFullFind: Boolean) {
+        if (!findStarted.compareAndSet(false, true)) return
+        resumeCallback?.let(HookEnv.application::unregisterActivityLifecycleCallbacks)
+        resumeCallback = null
+        startFind(classLoader, forceFullFind)
     }
 
     private fun startFind(classLoader: ClassLoader, forceFullFind: Boolean) {
-        unhook?.unhook().also { unhook = null }
-
         ModuleScope.launchIO(TAG) {
-            val partialFind = !forceFullFind && DexKitCache.isVersionMatched
+            val snapshot = DexKitCache.snapshotForScan()
+            val partialFind = !forceFullFind && snapshot.versionMatched
 
             val tasks = if (partialFind) {
                 getTasks(getMissingKeys())
@@ -113,45 +115,66 @@ internal object DexKitFinder {
                 getTasks(null)
             }
 
-            val oldCache = DexKitCache.cacheMap.toMap()
+            val oldCache = snapshot.values
+            val allKeys = getAllTaskKeys()
             // 全量重查不能复用旧描述符或把旧 key 标记为已成功，否则会跳过热补丁中的变化。
             val newCache = if (partialFind) {
-                oldCache.toMutableMap()
+                oldCache.filterKeys { it in allKeys }.toMutableMap()
             } else {
-                getAllTaskKeys().associateWith { "" }.toMutableMap()
+                allKeys.associateWith { "" }.toMutableMap()
             }
 
-            val tracker = DexKitLookupTracker()
+            val scanKeys = tasks.flatMap { it.getCacheKeys() }.toSet().filterTo(mutableSetOf()) {
+                !partialFind || newCache[it].isNullOrEmpty()
+            }
+            Log.i("DexKit 开始${if (partialFind) "增量" else "全量"}扫描: ${snapshot.name}, ${scanKeys.size} 项")
+            val state = MutableStateFlow(DexKitScanState(total = scanKeys.size))
+            val progress = DexKitScanProgress(scanKeys) { state.value = it }
+            ModuleScope.onMain {
+                HostBridge.showDexKitScan?.invoke(state) {
+                    findStarted.set(false)
+                }
+            }
+
+            val tracker = DexKitLookupTracker(progress::record)
             if (partialFind) {
                 tracker.markAllSucceeded(newCache.filterValues { it.isNotEmpty() }.keys)
             }
 
             runCatching {
-                DexKitBridge.create(classLoader, true).use { bridge ->
-                    tasks.forEach { task ->
-                        runCatching { task.execute(bridge, newCache, tracker) }
-                            .onFailure { Log.e("", it) }
+                if (tasks.isNotEmpty()) {
+                    DexKitBridge.create(classLoader, true).use { bridge ->
+                        tasks.forEach { task ->
+                            coroutineContext.ensureActive()
+                            runCatching { task.execute(bridge, newCache, tracker) }
+                                .onFailure { Log.e("", it) }
+                            // Include keys skipped by an early return or a task-level exception.
+                            task.getCacheKeys().forEach(tracker::markCompleted)
+                        }
                     }
                 }
             }.onFailure {
                 Log.e("create DexKitBridge failed", it)
             }.getOrElse {
-                Toasts.error("查找失败，保留原缓存")
-                findStarted.set(false)
+                progress.finish(restartRequired = false, errorMessage = "扫描失败，已保留原缓存。请查看日志后重试。")
                 return@launchIO
             }
 
-            val isIdentical = oldCache.isNotEmpty() && oldCache == newCache
-
-            DexKitCache.cacheMap = newCache
-            DexKitCache.saveCache()
-
-            if (isIdentical) {
-                Toasts.success("查找完成，缓存匹配，无需重启")
-            } else {
-                Toasts.success("查找完成，准备重启${HookEnv.appName}")
-                delay(2.5.seconds)
-                ModuleCommandBus.sendCommand(HookEnv.application, ModuleCommandBus.CMD_RESTART)
+            // Modern 热重载会取消旧模块的作用域；旧扫描不能在取消后覆盖新模块缓存。
+            coroutineContext.ensureActive()
+            // 自定义任务同样不能把本宿主未声明的 key 写进最终缓存。
+            newCache.keys.retainAll(allKeys)
+            runCatching {
+                DexKitCache.saveCache(snapshot, newCache)
+            }.onFailure {
+                Log.e("save DexKit cache failed", it)
+                progress.finish(restartRequired = false, errorMessage = "缓存保存失败，请查看日志后重试。")
+            }.onSuccess { saved ->
+                if (saved) {
+                    progress.finish(previousCache = oldCache, savedCache = newCache)
+                } else {
+                    progress.finish(restartRequired = false, errorMessage = "扫描期间缓存已被清空或切换，本次结果已丢弃，请重启宿主后重新扫描。")
+                }
             }
         }
     }
@@ -183,7 +206,9 @@ interface DexKitTask {
     ) {
         if (tracker.isSucceeded(name)) return
 
-        val descriptor = bridge.query()
+        val descriptor = runCatching { bridge.query() }
+            .onFailure { Log.e("$name: query failed", it) }
+            .getOrNull()
         if (descriptor.isNullOrEmpty()) {
             Log.e("$name: No result found matching query")
             cache[name] = ""
@@ -191,6 +216,7 @@ interface DexKitTask {
             cache[name] = descriptor
             tracker.markSucceeded(name)
         }
+        tracker.markCompleted(name)
     }
 
     /** 重写 execute 时必须同时重写 getCacheKeys。 */
@@ -199,7 +225,7 @@ interface DexKitTask {
         cache: MutableMap<String, String>,
         tracker: DexKitLookupTracker
     ) {
-        getQueryMap().forEach { (name, matcher) ->
+        activeQueries().forEach { (name, matcher) ->
             lookup(name, bridge, cache, tracker) {
                 when (matcher) {
                     is FindClass -> findClass(matcher).singleOrNull()?.descriptor
@@ -211,6 +237,13 @@ interface DexKitTask {
                 }
             }
         }
+    }
+
+    /** getCacheKeys is the host-specific contract, not the unfiltered catalogue of queries. */
+    fun activeQueries(): Map<String, BaseMatcher> {
+        val keys = getCacheKeys()
+        if (keys.isEmpty()) return emptyMap()
+        return getQueryMap().filterKeys { it in keys }
     }
 
     fun requireClass(key: String): Class<*> {

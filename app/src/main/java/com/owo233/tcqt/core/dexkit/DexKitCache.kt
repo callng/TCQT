@@ -7,11 +7,23 @@ import com.owo233.tcqt.core.log.Log
 import io.fastkv.FastKV
 import org.luckypray.dexkit.wrap.DexClass
 import org.luckypray.dexkit.wrap.DexMethod
+import java.io.File
 import java.lang.reflect.Method
 
 internal object DexKitCache {
 
-    var cacheMap = mutableMapOf<String, String>()
+    @Volatile
+    var cacheMap: Map<String, String> = emptyMap()
+        private set
+
+    internal data class ScanSnapshot(
+        val name: String,
+        val generation: Long,
+        val values: Map<String, String>,
+        val versionMatched: Boolean,
+    )
+
+    private var generation = 0L
 
     var isHotPatched = false
         private set
@@ -28,35 +40,37 @@ internal object DexKitCache {
     private const val KEY_HOST_VER = "__host_ver"
     private const val KEY_MODULE_VER = "__module_ver"
 
-    // 分离两种代码来源；旧的单份缓存可能已被补丁覆盖，不能迁移为普通缓存。
-    private val normalKv: FastKV by lazy { buildKv("normal") }
-    private val hotPatchKv: FastKV by lazy { buildKv("hot_patch") }
+    private val cacheName: String
+        get() = "DexKitCache_${getModuleBuildType()}_${if (isHotPatched) "hot_patch" else "normal"}"
 
-    private val kv: FastKV
-        get() = if (isHotPatched) hotPatchKv else normalKv
-
-    private fun buildKv(mode: String): FastKV {
-        return FastKV.Builder(
-            "${HookEnv.moduleDataPath}/global/dexkit",
-            "DexKitCache_${getModuleBuildType()}_$mode"
-        ).build()
+    private val storage by lazy {
+        val directory = File(HookEnv.moduleDataPath, "global/dexkit")
+        DexKitCacheStorage(directory) { name ->
+            val kv = FastKV.Builder(directory.absolutePath, name).build()
+            object : DexKitCacheBackend {
+                override fun read() = kv.all.mapValues { it.value.toString() }
+                override fun replace(values: Map<String, String>) {
+                    kv.clear()
+                    kv.putAll(values)
+                    kv.force()
+                    check(read() == values) { "DexKit cache write verification failed" }
+                }
+                override fun close() = kv.close()
+            }
+        }
     }
 
-    private val legacyKv: FastKV by lazy {
-        FastKV.Builder(
-            "${HookEnv.moduleDataPath}/global/dexkit",
-            "DexKitCache_${getModuleBuildType()}"
-        ).build()
-    }
-
+    @Synchronized
     fun initCache(isHotPatched: Boolean): Boolean {
         this.isHotPatched = isHotPatched
         if (ProcUtil.isMain) {
-            Log.i("DexKit 使用${if (isHotPatched) "热更新" else "普通"}缓存")
+            Log.i("DexKit 使用${if (isHotPatched) "热更新" else "普通"}缓存: $cacheName")
         }
         // 切换到空的缓存分区时也必须清空内存，不能残留另一种代码来源的描述符。
-        cacheMap = mutableMapOf()
-        val all = kv.all
+        cacheMap = emptyMap()
+        val stored = storage.read(cacheName)
+        generation = stored.generation
+        val all = stored.values
         if (all.isEmpty()) {
             isVersionMatched = false
             isHostVersionMatched = false
@@ -64,13 +78,12 @@ internal object DexKitCache {
             return false
         }
 
-        val cachedHostVer = all[KEY_HOST_VER]?.toString()?.toLongOrNull()
-        val cachedModuleVer = all[KEY_MODULE_VER]?.toString()?.toLongOrNull()
+        val cachedHostVer = all[KEY_HOST_VER]?.toLongOrNull()
+        val cachedModuleVer = all[KEY_MODULE_VER]?.toLongOrNull()
 
         cacheMap = all
             .filterKeys { it != KEY_HOST_VER && it != KEY_MODULE_VER }
-            .mapValues { it.value.toString() }
-            .toMutableMap()
+            .toMap()
 
         val hostMatched = cachedHostVer == HookEnv.versionCode
         val moduleMatched = cachedModuleVer == TCQTBuild.VER_CODE.toLong()
@@ -80,16 +93,24 @@ internal object DexKitCache {
         return isVersionMatched
     }
 
-    fun saveCache() {
-        kv.clear()
-        kv.putString(KEY_HOST_VER, HookEnv.versionCode.toString())
-        kv.putString(KEY_MODULE_VER, TCQTBuild.VER_CODE.toString())
-        cacheMap.forEach { (key, value) ->
-            kv.putString(key, value)
-        }
+    @Synchronized
+    fun snapshotForScan() = ScanSnapshot(cacheName, generation, cacheMap.toMap(), isVersionMatched)
+
+    @Synchronized
+    fun saveCache(snapshot: ScanSnapshot, values: Map<String, String>): Boolean {
+        check(ProcUtil.isMain) { "Only the main process may write DexKit scan results" }
+        if (snapshot.name != cacheName || snapshot.generation != generation) return false
+        val persisted = values + mapOf(
+            KEY_HOST_VER to HookEnv.versionCode.toString(),
+            KEY_MODULE_VER to TCQTBuild.VER_CODE.toString(),
+        )
+        if (!storage.write(cacheName, snapshot.generation, persisted)) return false
+        cacheMap = values.toMap()
         isHostVersionMatched = true
         isModuleVersionMatched = true
         isVersionMatched = true
+        Log.i("DexKit 已保存 $cacheName: 成功 ${values.count { it.value.isNotEmpty() }} / ${values.size}")
+        return true
     }
 
     fun getClass(key: String): Class<*> =
@@ -106,16 +127,19 @@ internal object DexKitCache {
         return if (TCQTBuild.DEBUG) "debug" else "release"
     }
 
+    @Synchronized
     fun clearCache(): Boolean {
         return runCatching {
-            normalKv.clear()
-            hotPatchKv.clear()
-            legacyKv.clear()
-            cacheMap.clear()
+            generation = storage.clear()
+            cacheMap = emptyMap()
             isHostVersionMatched = false
             isModuleVersionMatched = false
             isVersionMatched = false
+            Log.i("DexKit 已清空 debug/release 的普通、热更新和旧版缓存")
             true
-        }.getOrElse { false }
+        }.getOrElse {
+            Log.e("清空 DexKit 缓存失败", it)
+            false
+        }
     }
 }

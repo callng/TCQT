@@ -28,6 +28,7 @@ import com.owo233.tcqt.core.sync.SyncUtils
 import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
 import com.owo233.tcqt.host.QQInterfaces
+import com.owo233.tcqt.ui.component.DexKitScanDialogHost
 import com.owo233.tcqt.loader.modern.ModernHookEngine
 import com.owo233.tcqt.ui.parasitic.ParasiticActivity
 import com.tencent.common.app.BaseApplicationImpl
@@ -222,7 +223,7 @@ internal object ModuleLoader {
                     val proc = HookSteps.resolveActionProcess()
                     // 热补丁可能改变混淆符号而不改变宿主版本，主进程必须用补丁 loader 全量重查。
                     val forceFullDexKitFind = proc == ActionProcess.MAIN && DexKitCache.isHotPatched
-                    val needDexKitFind = forceFullDexKitFind || !cacheValid || missingKeys.isNotEmpty()
+                    val needDexKitFind = forceFullDexKitFind || !cacheValid || DexKitFinder.needsFind()
 
                     installPipelineDecorators()
 
@@ -263,6 +264,11 @@ internal object ModuleLoader {
      */
     private fun installHostBridge() {
         HostBridge.topActivityProvider = { QQInterfaces.topActivity }
+        HostBridge.showDexKitScan = { state, onClosed ->
+            DexKitScanDialogHost(
+                HookEnv.application, state, onClosed,
+            ).attach()
+        }
         HostBridge.onHostApplicationReady { app ->
             ParasiticActivity.initForStubActivity(app)
         }
@@ -292,14 +298,13 @@ internal object ModuleLoader {
             }
         }
 
-        // Modern 热重载恢复原进程的运行状态；Zygisk 兼容入口没有保存状态，检查实际 loader。
-        val hostHotPatched = state["hostHotPatched"] as? Boolean
-            ?: HostCodeMode.isHotPatched(HookEnv.hostClassLoader)
+        // 始终根据正在运行的 loader 判断，不让旧模块保存的布尔值覆盖真实代码来源。
+        val hostHotPatched = HostCodeMode.isHotPatched(HookEnv.hostClassLoader)
         val cacheValid = DexKitCache.initCache(hostHotPatched)
         val missingKeys = DexKitFinder.getMissingKeys()
         val proc = HookSteps.resolveActionProcess()
         val forceFullDexKitFind = proc == ActionProcess.MAIN && hostHotPatched
-        val needDexKitFind = forceFullDexKitFind || !cacheValid || missingKeys.isNotEmpty()
+        val needDexKitFind = forceFullDexKitFind || !cacheValid || DexKitFinder.needsFind()
 
         val app = state["hostApplication"] as Application
         installPipelineDecorators()

@@ -1,12 +1,12 @@
 package com.owo233.tcqt.ui.component
 
-import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import androidx.activity.ComponentDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -30,31 +30,31 @@ import android.graphics.Color as AndroidColor
 
 class TCQTDialogLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
 
-    private val lifecycleRegistry = LifecycleRegistry(this)
+    // performRestore() reads owner.lifecycle immediately; initialize it before restoring state.
+    override val lifecycle: Lifecycle
+        field = LifecycleRegistry(this)
+
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
 
     init {
         savedStateRegistryController.performRestore(null)
     }
 
-    override val lifecycle: Lifecycle
-        get() = lifecycleRegistry
-
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
     fun handleLifecycleEvent(event: Lifecycle.Event) {
-        if (lifecycleRegistry.currentState == Lifecycle.State.DESTROYED) {
+        if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
             return
         }
-        lifecycleRegistry.handleLifecycleEvent(event)
+        lifecycle.handleLifecycleEvent(event)
     }
 }
 
 @Suppress("DEPRECATION")
 abstract class CompatibleComposeDialog(
     context: Context
-) : Dialog(context.toCompatibleContext(), android.R.style.Theme_Material_Light_NoActionBar) {
+) : ComponentDialog(context.toCompatibleContext(), android.R.style.Theme_Material_Light_NoActionBar) {
 
     private val dialogLifecycleOwner = TCQTDialogLifecycleOwner()
     protected var isVisible by mutableStateOf(false)
@@ -129,6 +129,15 @@ abstract class CompatibleComposeDialog(
 
     protected fun dismissWithAnimation() {
         dismiss()
+    }
+
+    /** Release the window before its host Activity stops or is destroyed. */
+    internal fun dismissImmediately() {
+        isDismissing = true
+        isVisible = false
+        composeView?.disposeComposition()
+        composeView = null
+        super.dismiss()
     }
 
     override fun onStart() {

@@ -2,7 +2,9 @@ package com.owo233.tcqt.core.env
 
 import android.app.Activity
 import android.app.Application
+import com.owo233.tcqt.core.dexkit.DexKitScanState
 import com.owo233.tcqt.core.log.Log
+import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -23,6 +25,10 @@ object HostBridge {
      */
     @Volatile
     var topActivityProvider: (() -> Activity?)? = null
+
+    /** Main-thread scan UI factory, supplied by the loader without a core -> UI dependency. */
+    @Volatile
+    internal var showDexKitScan: ((StateFlow<DexKitScanState>, () -> Unit) -> Unit)? = null
 
     fun topActivity(): Activity? =
         runCatching { topActivityProvider?.invoke() }.getOrNull()
