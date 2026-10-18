@@ -3,6 +3,8 @@ package com.owo233.tcqt.host.service
 import com.google.protobuf.CodedOutputStream
 import com.google.protobuf.UnknownFieldSet
 import org.junit.Assume.assumeTrue
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -14,7 +16,18 @@ import kotlin.test.assertTrue
 import top.artmoe.inao.entries.InfoSyncPushOuterClass
 import top.artmoe.inao.entries.QQMessageOuterClass
 
-class RecallPacketParserTest {
+@RunWith(Parameterized::class)
+class RecallPacketParserTest(private val useKotlinx: Boolean) {
+    companion object {
+        @JvmStatic
+        @Parameterized.Parameters(name = "kotlinx={0}")
+        fun backends(): List<Array<Boolean>> = listOf(arrayOf(false), arrayOf(true))
+    }
+
+    private val decoder = if (useKotlinx) KotlinxRecallMetadataDecoder else GoogleRecallMetadataDecoder
+    private fun msgPush(bytes: ByteArray, uid: String) = RecallPacketParser.msgPush(bytes, uid, decoder)
+    private fun infoSyncPush(bytes: ByteArray, uid: String) = RecallPacketParser.infoSyncPush(bytes, uid, decoder)
+
     private val self = "u_self"
     private val actor = "u_actor"
 
@@ -49,7 +62,7 @@ class RecallPacketParserTest {
     @Test
     fun c2cRestoresField20AndRetainsSenderSequenceAndMessageIdForLookup() {
         val packet = bytes(1, message(528, 138, c2c()))
-        val result = RecallPacketParser.msgPush(packet, self)
+        val result = msgPush(packet, self)
         assertTrue(result.blockPush)
         assertEquals(3904L, result.recalls.single().msgSeq)
         assertEquals(35541L, result.recalls.single().senderMsgSeq)
@@ -62,7 +75,7 @@ class RecallPacketParserTest {
 
     @Test
     fun groupUsesTargetSequenceAndIncludesEveryBatchTarget() {
-        val result = RecallPacketParser.msgPush(bytes(1, message(732, 17, group(410, 411))), self)
+        val result = msgPush(bytes(1, message(732, 17, group(410, 411))), self)
         assertTrue(result.blockPush)
         assertEquals(listOf(410L, 411L), result.recalls.map { it.msgSeq })
         assertEquals(listOf("123456", "123456"), result.recalls.map { it.peerId })
@@ -76,7 +89,7 @@ class RecallPacketParserTest {
             bytes(1, message(528, 277, c2c())),
             bytes(1, message(732, 20, group(410))),
         ).forEach { original ->
-            val result = RecallPacketParser.msgPush(original, self)
+            val result = msgPush(original, self)
             assertContentEquals(original, result.bytes)
             assertTrue(result.recalls.isEmpty())
             assertFalse(result.blockPush)
@@ -89,7 +102,7 @@ class RecallPacketParserTest {
         val own = message(732, 17, group(410, uid = self))
         val foreign = message(732, 17, group(411))
         val unknown = num(99, -1L) + bytes(100, byteArrayOf(-1, -2, -3))
-        val result = RecallPacketParser.infoSyncPush(sync(ordinary, foreign, own) + unknown, self)
+        val result = infoSyncPush(sync(ordinary, foreign, own) + unknown, self)
         assertContentEquals(sync(ordinary, own) + unknown, result.bytes)
         assertEquals(411L, result.recalls.single().msgSeq)
     }
@@ -103,17 +116,17 @@ class RecallPacketParserTest {
         kotlin.test.assertFailsWith<com.google.protobuf.InvalidProtocolBufferException> {
             InfoSyncPushOuterClass.InfoSyncPush.parseFrom(original)
         }
-        val result = RecallPacketParser.infoSyncPush(original, self)
+        val result = infoSyncPush(original, self)
         assertContentEquals(sync(ordinary), result.bytes)
         assertEquals(410L, result.recalls.single().msgSeq)
     }
 
     @Test
     fun syncInspectsContentWithoutAssumingPushFlagOrSubSeq() {
-        val result = RecallPacketParser.infoSyncPush(sync(message(732, 17, group(410), 999), flag = 7), self)
+        val result = infoSyncPush(sync(message(732, 17, group(410), 999), flag = 7), self)
         assertEquals(410L, result.recalls.single().msgSeq)
         assertContentEquals(sync(flag = 7), result.bytes)
-        val fallback = RecallPacketParser.msgPush(bytes(1, message(732, 0, group(410), 17)), self)
+        val fallback = msgPush(bytes(1, message(732, 0, group(410), 17)), self)
         assertTrue(fallback.blockPush)
     }
 
@@ -121,7 +134,7 @@ class RecallPacketParserTest {
     fun realtimeThenRepeatedSyncStillBlocksRecallButCreatesOnlyOneNotice() {
         val message = message(528, 138, c2c())
         val history = RecallEventHistory<RecallManager.MessageKey>(2048)
-        val live = RecallPacketParser.msgPush(bytes(1, message), self)
+        val live = msgPush(bytes(1, message), self)
         var notices = 0
         fun notify(recalls: List<RecallPacketParser.Recall>) {
             recalls.forEach {
@@ -131,7 +144,7 @@ class RecallPacketParserTest {
         assertTrue(live.blockPush)
         notify(live.recalls)
         repeat(3) {
-            val replay = RecallPacketParser.infoSyncPush(sync(message), self)
+            val replay = infoSyncPush(sync(message), self)
             assertContentEquals(sync(), replay.bytes) // Filtering must still run on every refresh.
             assertEquals(live.recalls, replay.recalls)
             notify(replay.recalls)
@@ -142,11 +155,11 @@ class RecallPacketParserTest {
     @Test
     fun malformedOperationDoesNotPreventOtherSyncRecalls() {
         val malformed = message(732, 17, byteArrayOf(1, 2))
-        val result = RecallPacketParser.infoSyncPush(sync(malformed, message(732, 17, group(410))), self)
+        val result = infoSyncPush(sync(malformed, message(732, 17, group(410))), self)
         assertContentEquals(sync(malformed), result.bytes)
         assertEquals(410L, result.recalls.single().msgSeq)
         val truncated = byteArrayOf(66, 127, 1)
-        assertContentEquals(truncated, RecallPacketParser.infoSyncPush(truncated, self).bytes)
+        assertContentEquals(truncated, infoSyncPush(truncated, self).bytes)
     }
 
     @Test
@@ -154,7 +167,7 @@ class RecallPacketParserTest {
         val own = bytes(1, c2cInfo(35542, self))
         val unknown = num(99, -1)
         val op = c2c() + own + unknown
-        val result = RecallPacketParser.msgPush(bytes(1, message(528, 138, op)), self)
+        val result = msgPush(bytes(1, message(528, 138, op)), self)
         assertFalse(result.blockPush)
         assertEquals(3904L, result.recalls.single().msgSeq)
         assertContentEquals(bytes(1, message(528, 138, own + unknown)), result.bytes)
@@ -162,9 +175,64 @@ class RecallPacketParserTest {
 
     @Test
     fun unsignedSequenceIsNotSignExtendedAndMissingSequenceIsNotInvented() {
-        val result = RecallPacketParser.msgPush(bytes(1, message(528, 138, c2c(0xffffffffL))), self)
+        val result = msgPush(bytes(1, message(528, 138, c2c(0xffffffffL))), self)
         assertEquals(0xffffffffL, result.recalls.single().msgSeq)
-        assertTrue(RecallPacketParser.msgPush(bytes(1, message(528, 138, c2c(0))), self).recalls.isEmpty())
+        assertTrue(msgPush(bytes(1, message(528, 138, c2c(0))), self).recalls.isEmpty())
+    }
+
+    @Test
+    fun invalidUtf8InRecallProfileAndRichTextIsSkippedByMinimalProjection() {
+        val invalidText = bytes(1, byteArrayOf(-1, -2))
+        val packet = bytes(1,
+            bytes(1, text(2, actor) + text(6, self) + bytes(8, invalidText)) +
+                bytes(2, num(1, 528) + num(2, 138)) +
+                bytes(3, bytes(1, invalidText) + bytes(2, c2c())),
+        )
+        val result = msgPush(packet, self)
+        assertTrue(result.blockPush)
+        assertEquals(3904L, result.recalls.single().msgSeq)
+    }
+
+    @Test
+    fun c2cBatchPreserves64BitMetadataAndAllUnknownEnvelopeFields() {
+        val extra = num(99, -1L) + bytes(100, byteArrayOf(-1, -2))
+        val op = c2c() + bytes(1, c2cInfo(3905) + num(5, 1792329356) + num(6, 0xffffffffL)) +
+            bytes(1, c2cInfo(3906, self)) + extra
+        val head = bytes(1, text(2, actor) + text(6, self) + extra)
+        val content = bytes(2, num(1, 528) + num(2, 138) + extra)
+        val packet = bytes(1, head + content + bytes(3, bytes(2, op) + extra) + extra) + extra
+        val result = msgPush(packet, self)
+        assertFalse(result.blockPush)
+        assertEquals(listOf(3904L, 3905L), result.recalls.map { it.msgSeq })
+        assertEquals(1792329356L, result.recalls.last().msgTime)
+        assertEquals(0xffffffffL, result.recalls.last().msgRandom)
+        val remaining = bytes(1, c2cInfo(3906, self)) + extra
+        assertContentEquals(
+            bytes(1, head + content + bytes(3, bytes(2, remaining) + extra) + extra) + extra,
+            result.bytes,
+        )
+    }
+
+    @Test
+    fun invalidUidOrTruncatedWireCannotCreateFalseRecallOrAbortOtherMessages() {
+        val invalidUid = bytes(1, bytes(1, byteArrayOf(-1)) + num(20, 3904))
+        val invalid = message(528, 138, invalidUid)
+        val own = message(528, 138, c2c(uid = self))
+        val valid = message(528, 138, c2c())
+        val result = infoSyncPush(sync(invalid, own, valid), self)
+        assertEquals(3904L, result.recalls.single().msgSeq)
+        assertContentEquals(sync(invalid, own), result.bytes)
+        listOf(
+            byteArrayOf(10, -1, -1, -1, -1, 15), // Length overflow.
+            byteArrayOf(10, 2, 8), // Truncated length-delimited field.
+            byteArrayOf(8, -128, -128, -128, -128, -128, -128, -128, -128, -128, -128),
+            bytes(1, message(732, 17, ByteArray(7))),
+        ).forEach { malformed ->
+            val parsed = msgPush(malformed, self)
+            assertTrue(parsed.recalls.isEmpty())
+            assertFalse(parsed.blockPush)
+            assertContentEquals(malformed, parsed.bytes)
+        }
     }
 
     @Test
@@ -176,14 +244,21 @@ class RecallPacketParserTest {
         manifest.forEach { row ->
             val (file, uid, expected) = row.split('\t')
             val original = Files.readAllBytes(root.resolve(file))
-            val result = if (file.contains("InfoSyncPush")) RecallPacketParser.infoSyncPush(original, uid)
-                else RecallPacketParser.msgPush(original, uid)
+            val result = if (file.contains("InfoSyncPush")) infoSyncPush(original, uid)
+                else msgPush(original, uid)
+            if (useKotlinx) {
+                val google = if (file.contains("InfoSyncPush")) RecallPacketParser.infoSyncPush(original, uid)
+                    else RecallPacketParser.msgPush(original, uid)
+                assertEquals(google.recalls, result.recalls, file)
+                assertEquals(google.blockPush, result.blockPush, file)
+                assertContentEquals(google.bytes, result.bytes, file)
+            }
             assertEquals(expected, result.recalls.joinToString(",") { "${it.group}:${it.peerId}:${it.msgSeq}" }, file)
             if (result.recalls.isEmpty()) assertContentEquals(original, result.bytes, file)
             else if (file.contains("MsgPush")) assertTrue(result.blockPush, file)
             else {
                 assertFalse(result.blockPush, file)
-                assertTrue(RecallPacketParser.infoSyncPush(result.bytes, uid).recalls.isEmpty(), file)
+                assertTrue(infoSyncPush(result.bytes, uid).recalls.isEmpty(), file)
                 // Output is still a valid protobuf envelope.
                 UnknownFieldSet.parseFrom(result.bytes)
             }
