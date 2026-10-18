@@ -115,13 +115,13 @@ object NewPreventRetractingMessageCore : MessageHandler {
             )
         )
         param.args[1] = ProtoBuf.encodeToByteArray(newInfoSyncPush)
-        friendList.forEach { recall ->
+        val newFriendRecalls = friendList.filter { recall ->
             RecallManager.markC2C(recall.peerUid, recall.msgSeq.toLong())
         }
         troopList.forEach { recall ->
             RecallManager.markGroup(recall.groupUin, recall.msgSeq.toLong())
         }
-        showInterceptedC2CTips(friendList)
+        showInterceptedC2CTips(newFriendRecalls)
         // showInterceptedGroupRecalls(troopList)
     }
 
@@ -178,8 +178,9 @@ object NewPreventRetractingMessageCore : MessageHandler {
         )
 
         param.args[1] = ProtoBuf.encodeToByteArray(newMsgPush)
-        RecallManager.markC2C(operatorUid, recallMsgSeq.toLong())
-        showC2CRecallTip(operatorUid, recallMsgSeq)
+        if (RecallManager.markC2C(operatorUid, recallMsgSeq.toLong())) {
+            showC2CRecallTip(operatorUid, recallMsgSeq)
+        }
     }
 
     private fun onGroupRecallByMsgPush(
@@ -216,8 +217,9 @@ object NewPreventRetractingMessageCore : MessageHandler {
         )
 
         param.args[1] = ProtoBuf.encodeToByteArray(newMsgPush)
-        RecallManager.markGroup(operationInfo.peerId.toString(), operationInfo.info.msgInfo.msgSeq.toLong())
-        showGroupRecallTip(operationInfo)
+        if (RecallManager.markGroup(operationInfo.peerId.toString(), operationInfo.info.msgInfo.msgSeq.toLong())) {
+            showGroupRecallTip(operationInfo)
+        }
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -24,7 +24,7 @@ internal object RecallManager {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val listeners = CopyOnWriteArrayList<(MessageKey) -> Unit>()
-    private val recalledMessages = LinkedHashSet<MessageKey>()
+    private val recalledMessages = RecallEventHistory<MessageKey>(MAX_STORED_MESSAGES)
     private var loaded = false
 
     private val recalledMessagesKv: FastKV by lazy {
@@ -34,13 +34,12 @@ internal object RecallManager {
         ).build()
     }
 
-    fun markC2C(peerUid: String, msgSeq: Long) {
+    /** Returns true only for the first observation, including across process restarts. */
+    fun markC2C(peerUid: String, msgSeq: Long): Boolean =
         mark(MsgConstant.KCHATTYPEC2C, peerUid, msgSeq)
-    }
 
-    fun markGroup(groupPeerId: String, msgSeq: Long) {
+    fun markGroup(groupPeerId: String, msgSeq: Long): Boolean =
         mark(MsgConstant.KCHATTYPEGROUP, groupPeerId, msgSeq)
-    }
 
     fun keysOf(msg: MsgRecord): Set<MessageKey> {
         if (msg.msgSeq <= 0) return emptySet()
@@ -65,32 +64,29 @@ internal object RecallManager {
 
     fun isMessageRecalled(keys: Set<MessageKey>): Boolean = synchronized(this) {
         ensureLoaded()
-        keys.any(recalledMessages::contains)
+        recalledMessages.containsAny(keys)
     }
 
     fun addListener(listener: (MessageKey) -> Unit) {
         listeners.add(listener)
     }
 
-    private fun mark(chatType: Int, peerId: String, msgSeq: Long) {
-        if (peerId.isBlank() || msgSeq <= 0) return
+    private fun mark(chatType: Int, peerId: String, msgSeq: Long): Boolean {
+        if (peerId.isBlank() || msgSeq <= 0) return false
 
         val key = MessageKey(currentAccount(), chatType, peerId, msgSeq)
-        if (key.account.isBlank()) return
+        if (key.account.isBlank()) return false
 
         val added = synchronized(this) {
             ensureLoaded()
             if (!recalledMessages.add(key)) return@synchronized false
 
-            while (recalledMessages.size > MAX_STORED_MESSAGES) {
-                val oldest = recalledMessages.firstOrNull() ?: break
-                recalledMessages.remove(oldest)
-            }
             persist()
             true
         }
 
         if (added) listeners.forEach { listener -> runCatching { listener(key) } }
+        return added
     }
 
     private fun ensureLoaded() {
@@ -104,14 +100,14 @@ internal object RecallManager {
                 json.decodeFromString<List<MessageKey>>(stored)
             }.getOrNull()
                 ?.takeLast(MAX_STORED_MESSAGES)
-                ?.let(recalledMessages::addAll)
+                ?.let(recalledMessages::restore)
         }
     }
 
     private fun persist() {
         recalledMessagesKv.putString(
             STORAGE_KEY,
-            json.encodeToString(recalledMessages.toList())
+            json.encodeToString(recalledMessages.snapshot())
         )
     }
 

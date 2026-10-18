@@ -18,9 +18,7 @@ object NTServiceFetcher {
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
-        if (!TCQTSetting.getBoolean("msg_anti_recall") ||
-            !AntiRecallConfig.hasEnabledReminder()
-        ) return
+        if (!TCQTSetting.getBoolean("msg_anti_recall")) return
 
         isMsgHookInitialized.runOnce {
             msgPushHook()
@@ -42,9 +40,7 @@ object NTServiceFetcher {
     }
 
     private fun action(cmd: String, buffer: ByteArray, param: MethodHookParam) {
-        if (!TCQTSetting.getBoolean("msg_anti_recall") ||
-            !AntiRecallConfig.hasEnabledReminder()
-        ) return
+        if (!TCQTSetting.getBoolean("msg_anti_recall")) return
 
         // 新旧解析器的区别：旧版用 Google Protobuf，新版用 kotlinx-serialization
         val handler: MessageHandler = if (AntiRecallConfig.useNewParser()) {

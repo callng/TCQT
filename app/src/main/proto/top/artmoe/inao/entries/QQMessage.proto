@@ -79,9 +79,10 @@ message QQMessage {
       message Info {
         string operator_uid = 1;
         string receiver_uid = 2;
+        int32 sender_msg_seq = 3;
         int64 msg_time = 5;
         int64 msg_random = 6;
-        int32 msg_seq = 20;
+        int32 msg_seq = 20; // Receiver-side sequence, used by the original anti-recall parser
       }
     }
   }

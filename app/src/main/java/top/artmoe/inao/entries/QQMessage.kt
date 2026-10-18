@@ -118,6 +118,7 @@ data class QQMessage(
             data class Info(
                 @ProtoNumber(1) val operatorUid: String = "",
                 @ProtoNumber(2) val receiverUid: String = "",
+                @ProtoNumber(3) val senderMsgSeq: Int = 0,
                 @ProtoNumber(5) val msgTime: Long = 0L,
                 @ProtoNumber(6) val msgRandom: Long = 0L,
                 @ProtoNumber(20) val msgSeq: Int = 0

@@ -1,0 +1,53 @@
+syntax = "proto3";
+package top.artmoe.inao.entries;
+option java_package = "top.artmoe.inao.entries";
+option java_outer_classname = "RecallPushOuterClass";
+
+// A projection for anti-recall only. Do not decode rich text / sender profiles / guild
+// data through an incomplete schema: length-delimited fields are not necessarily UTF-8.
+message RecallMessage {
+  Head head = 1;
+  Content content = 2;
+  Body body = 3;
+  message Head {
+    bytes sender_uid = 2;
+    bytes receiver_uid = 6;
+  }
+  message Content {
+    uint32 msg_type = 1;
+    uint32 msg_sub_type = 2;
+    uint32 sub_seq = 3;
+  }
+  message Body {
+    bytes operation_info = 2;
+  }
+}
+
+message C2CRecall {
+  repeated Info info = 1;
+  message Info {
+    bytes operator_uid = 1;
+    bytes receiver_uid = 2;
+    uint32 sender_msg_seq = 3; // Sender-side wire sequence; not an AIO navigation key.
+    uint64 msg_id = 4;
+    uint64 msg_time = 5;
+    uint64 msg_random = 6;
+    uint32 msg_seq = 20; // Restore the receiver-side sequence used by the old parser.
+  }
+}
+
+message GroupRecall {
+  uint64 peer_id = 4;
+  Info info = 11;
+  // Field 37 is the notification sequence, NOT the recalled message sequence.
+  message Info {
+    bytes operator_uid = 1;
+    repeated MsgInfo msg_info = 3;
+    message MsgInfo {
+      uint32 msg_seq = 1;
+      uint64 msg_time = 2;
+      uint64 msg_random = 3;
+      bytes sender_uid = 6;
+    }
+  }
+}

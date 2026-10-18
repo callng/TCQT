@@ -1,183 +1,82 @@
 package com.owo233.tcqt.host.service
 
-import com.google.protobuf.ByteString
 import com.owo233.tcqt.core.env.ifNullOrEmpty
 import com.owo233.tcqt.core.env.launchWithCatch
 import com.owo233.tcqt.core.hook.MethodHookParam
+import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.qqnt.kernel.nativeinterface.JsonGrayBusiId
 import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
-import kotlinx.coroutines.DelicateCoroutinesApi
-import top.artmoe.inao.entries.InfoSyncPushOuterClass
-import top.artmoe.inao.entries.MsgPushOuterClass
-import top.artmoe.inao.entries.QQMessageOuterClass
 
-@OptIn(DelicateCoroutinesApi::class)
 object AioListener : MessageHandler {
 
-    private const val MSG_TYPE_C2C = 528
-    private const val SUB_TYPE_C2C_RECALL = 138
-
-    private const val MSG_TYPE_GROUP = 732
-    private const val SUB_TYPE_GROUP_RECALL = 17
-
-    private const val GROUP_OP_HEADER_SIZE = 7
-    private const val INFO_SYNC_PUSH_FLAG_RECALL = 2
-
-    /**
-     * 单条消息推送 (MsgPush)
-     */
     override fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
-        val msgPush = MsgPushOuterClass.MsgPush.parseFrom(buffer)
-        val msg = msgPush.qqMessage
-        val msgType = msg.messageContentInfo.msgType
-        val subType = msg.messageContentInfo.subSeq
-
-        when (msgType to subType) {
-            MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> processC2CRecallPush(msgPush, param)
-            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> processGroupRecallPush(msgPush, param)
-        }
+        val result = RecallPacketParser.msgPush(buffer, QQInterfaces.currentUid)
+        if (result.recalls.isEmpty()) return
+        if (result.blockPush) param.result = null else param.args[1] = result.bytes
+        notifyRecalls(result.recalls)
     }
 
-    /**
-     * 消息同步推送 (InfoSyncPush)
-     */
     override fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
-        val infoSyncPush = InfoSyncPushOuterClass.InfoSyncPush.parseFrom(buffer)
-        if (infoSyncPush.pushFlag != INFO_SYNC_PUSH_FLAG_RECALL) return
+        val result = RecallPacketParser.infoSyncPush(buffer, QQInterfaces.currentUid)
+        if (result.recalls.isEmpty()) return
+        param.args[1] = result.bytes
+        notifyRecalls(result.recalls)
+    }
 
-        val interceptedC2CRecalls = mutableListOf<Pair<String, Long>>()
-        val interceptedGroupRecalls = mutableListOf<Pair<String, Long>>()
-
-        val newInfoSyncPush = infoSyncPush.toBuilder().apply {
-            syncMsgRecall = syncMsgRecall.toBuilder().apply {
-                for (i in 0 until syncInfoBodyCount) {
-                    val bodyBuilder = getSyncInfoBody(i).toBuilder()
-                    val keptMessages = mutableListOf<QQMessageOuterClass.QQMessage>()
-
-                    bodyBuilder.msgList.forEach { msg ->
-                        when (msg.messageContentInfo.msgType to msg.messageContentInfo.subSeq) {
-                            MSG_TYPE_GROUP to SUB_TYPE_GROUP_RECALL -> {
-                                extractGroupRecallInfo(msg)?.let(interceptedGroupRecalls::add)
-                            }
-                            MSG_TYPE_C2C to SUB_TYPE_C2C_RECALL -> {
-                                extractC2CRecallInfo(msg)?.let { interceptedC2CRecalls.add(it) }
-                            }
-
-                            else -> keptMessages.add(msg) // 保留其他消息
-                        }
-                    }
-
-                    setSyncInfoBody(i, bodyBuilder.clearMsg().addAllMsg(keptMessages).build())
-                }
-            }.build()
-        }.build()
-
-        param.args[1] = newInfoSyncPush.toByteArray()
-        interceptedC2CRecalls.forEach { (peerUid, msgSeq) ->
-            RecallManager.markC2C(peerUid, msgSeq)
+    private fun notifyRecalls(recalls: List<RecallPacketParser.Recall>) {
+        recalls.distinct().forEach { recall ->
+            if (recall.group) {
+                if (RecallManager.markGroup(recall.peerId, recall.msgSeq)) showGroupRecallTip(recall)
+            } else {
+                if (RecallManager.markC2C(recall.peerId, recall.msgSeq)) showC2CRecallTip(recall)
+            }
         }
-        interceptedGroupRecalls.forEach { (groupPeerId, msgSeq) ->
-            RecallManager.markGroup(groupPeerId, msgSeq)
-        }
-        showInterceptedC2CTips(interceptedC2CRecalls)
     }
 
-    private fun processC2CRecallPush(msgPush: MsgPushOuterClass.MsgPush, param: MethodHookParam) {
-        val opInfoBytes = msgPush.qqMessage.messageBody.operationInfo.toByteArray()
-        val operationInfo =
-            QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfoBytes)
-
-        val operatorUid = operationInfo.info.operatorUid
-        if (operatorUid == QQInterfaces.currentUid) return
-
-        // 使撤回失效
-        val newOpInfoBytes = operationInfo.toBuilder().apply {
-            info = info.toBuilder().setMsgSeq(1).build()
-        }.build().toByteArray()
-
-        param.args[1] = msgPush.updateOperationInfo(newOpInfoBytes).toByteArray()
-        RecallManager.markC2C(operatorUid, operationInfo.info.msgSeq.toLong())
-        showC2CRecallTip(operatorUid, operationInfo.info.msgSeq)
-    }
-
-    private fun processGroupRecallPush(msgPush: MsgPushOuterClass.MsgPush, param: MethodHookParam) {
-        val fullOpBytes = msgPush.qqMessage.messageBody.operationInfo.toByteArray()
-        if (fullOpBytes.size <= GROUP_OP_HEADER_SIZE) return
-
-        val headerBytes = fullOpBytes.copyOfRange(0, GROUP_OP_HEADER_SIZE)
-        val bodyBytes = fullOpBytes.copyOfRange(GROUP_OP_HEADER_SIZE, fullOpBytes.size)
-
-        val operationInfo =
-            QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(bodyBytes)
-        if (operationInfo.info.operatorUid == QQInterfaces.currentUid) return
-
-        // 使撤回失效
-        val modifiedBodyBytes = operationInfo.toBuilder().apply {
-            msgSeq = 1
-            info = info.toBuilder().apply {
-                msgInfo = msgInfo.toBuilder().setMsgSeq(1).build()
-            }.build()
-        }.build().toByteArray()
-
-        param.args[1] = msgPush.updateOperationInfo(headerBytes + modifiedBodyBytes).toByteArray()
-        RecallManager.markGroup(operationInfo.peerId.toString(), operationInfo.info.msgInfo.msgSeq.toLong())
-        showGroupRecallTip(operationInfo)
-    }
-
-    private fun showC2CRecallTip(operatorUid: String, msgSeq: Int) {
+    private fun showC2CRecallTip(recall: RecallPacketParser.Recall) {
         if (!AntiRecallConfig.isGrayTipEnabled()) return
-
+        val account = QQInterfaces.currentUid
         ModuleScope.launchWithCatch {
-            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, operatorUid)
+            if (QQInterfaces.currentUid != account) return@launchWithCatch
+            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, recall.peerId)
+            val target = RecallTargetResolver.resolve(recall, contact)
+            if (QQInterfaces.currentUid != account) return@launchWithCatch
+            target.msgSeq?.let { RecallManager.markC2C(recall.peerId, it) }
+            logTarget(recall, target)
             LocalGrayTips.addLocalGrayTip(
                 contact,
                 JsonGrayBusiId.AIO_AV_C2C_NOTICE,
                 LocalGrayTips.Align.CENTER
             ) {
                 text("对方想撤回一条")
-                msgRef("消息", msgSeq.toLong())
-                text(", 已拦截")
+                recallMessage(target)
             }
         }
     }
 
-    private fun showInterceptedC2CTips(list: List<Pair<String, Long>>) {
-        if (list.isEmpty() || !AntiRecallConfig.isGrayTipEnabled()) return
-        ModuleScope.launchWithCatch {
-            list.forEach { (senderUid, msgSeq) ->
-                val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, senderUid)
-                LocalGrayTips.addLocalGrayTip(
-                    contact,
-                    JsonGrayBusiId.AIO_AV_C2C_NOTICE,
-                    LocalGrayTips.Align.CENTER
-                ) {
-                    text("对方想撤回一条")
-                    msgRef("消息", msgSeq)
-                    text(", 已拦截")
-                }
-            }
-        }
-    }
-
-    private fun showGroupRecallTip(operationInfo: QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo) {
+    private fun showGroupRecallTip(recall: RecallPacketParser.Recall) {
         if (!AntiRecallConfig.isGrayTipEnabled()) return
-
+        val account = QQInterfaces.currentUid
         ModuleScope.launchWithCatch {
-            val groupPeerId = operationInfo.peerId
-            val msgInfo = operationInfo.info.msgInfo
-            val targetUid = msgInfo.senderUid
-            val operatorUid = operationInfo.info.operatorUid
+            if (QQInterfaces.currentUid != account) return@launchWithCatch
+            val groupPeerId = recall.peerId.toLong()
+            val targetUid = recall.senderUid
+            val operatorUid = recall.operatorUid
+
+            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, recall.peerId)
+            val target = RecallTargetResolver.resolve(recall, contact)
+            if (QQInterfaces.currentUid != account) return@launchWithCatch
+            target.msgSeq?.let { RecallManager.markGroup(recall.peerId, it) }
+            logTarget(recall, target)
 
             val targetNick = getMemberDisplayName(groupPeerId, targetUid)
             val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
 
             val targetUin = ContactHelper.getUinByUidAsync(targetUid)
             val operatorUin = ContactHelper.getUinByUidAsync(operatorUid)
-
-            val contact =
-                ContactHelper.generateContact(MsgConstant.KCHATTYPEGROUP, groupPeerId.toString())
+            if (QQInterfaces.currentUid != account) return@launchWithCatch
 
             LocalGrayTips.addLocalGrayTip(
                 contact,
@@ -192,10 +91,27 @@ object AioListener : MessageHandler {
                     member(targetUid, targetUin, targetNick, "3")
                 }
                 text("的")
-                msgRef("消息", msgInfo.msgSeq.toLong())
-                text(", 已拦截")
+                recallMessage(target)
             }
         }
+    }
+
+    private fun LocalGrayTips.Builder.recallMessage(target: RecallTargetLookup.Result) {
+        val seq = target.msgSeq
+        if (seq != null) msgRef("消息", seq) else text("消息")
+        text(when (target.state) {
+            RecallTargetLookup.State.FOUND -> ", 已拦截"
+            RecallTargetLookup.State.MISSING -> ", 已拦截（原消息暂未在本地找到）"
+            RecallTargetLookup.State.UNAVAILABLE -> ", 已拦截（原消息暂无法确认）"
+        })
+    }
+
+    private fun logTarget(recall: RecallPacketParser.Recall, target: RecallTargetLookup.Result) {
+        // No message text or account identifiers; available in exported logs in release too.
+        LogUtils.xposedNoFilter.i(
+            "AntiRecallTarget group=${recall.group} seq=${recall.msgSeq} " +
+                "senderSeq=${recall.senderMsgSeq} lookup=${target.state} localSeq=${target.msgSeq} ${target.detail}"
+        )
     }
 
     private suspend fun getMemberDisplayName(groupPeerId: Long, uid: String): String {
@@ -205,37 +121,5 @@ object AioListener : MessageHandler {
         return GroupHelper.getTroopMemberNickByUin(groupPeerId, uin.toLong())
             ?.let { it.troopNick.ifNullOrEmpty { it.friendNick } }
             ?: uid
-    }
-
-    private fun extractC2CRecallInfo(qqMessage: QQMessageOuterClass.QQMessage): Pair<String, Long>? {
-        return runCatching {
-            val opInfo = qqMessage.messageBody.operationInfo
-            val c2cRecall =
-                QQMessageOuterClass.QQMessage.MessageBody.C2CRecallOperationInfo.parseFrom(opInfo)
-            qqMessage.messageHead.senderUid to c2cRecall.info.msgSeq.toLong()
-        }.getOrNull()
-    }
-
-    private fun extractGroupRecallInfo(qqMessage: QQMessageOuterClass.QQMessage): Pair<String, Long>? {
-        return runCatching {
-            val operationInfo = qqMessage.messageBody.operationInfo.toByteArray()
-            if (operationInfo.size <= GROUP_OP_HEADER_SIZE) return null
-
-            val groupRecall =
-                QQMessageOuterClass.QQMessage.MessageBody.GroupRecallOperationInfo.parseFrom(
-                    operationInfo.copyOfRange(GROUP_OP_HEADER_SIZE, operationInfo.size)
-                )
-            groupRecall.peerId.toString() to groupRecall.info.msgInfo.msgSeq.toLong()
-        }.getOrNull()
-    }
-
-    private fun MsgPushOuterClass.MsgPush.updateOperationInfo(newBytes: ByteArray): MsgPushOuterClass.MsgPush {
-        return toBuilder().apply {
-            qqMessage = qqMessage.toBuilder().apply {
-                messageBody = messageBody.toBuilder().apply {
-                    setOperationInfo(ByteString.copyFrom(newBytes))
-                }.build()
-            }.build()
-        }.build()
     }
 }
