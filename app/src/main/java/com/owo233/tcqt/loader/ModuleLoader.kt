@@ -218,12 +218,11 @@ internal object ModuleLoader {
                     HookSteps.initContext(app)
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
-                    val cacheValid = DexKitCache.initCache(HostCodeMode.isHotPatched(activeClassLoader))
+                    val cacheValid = DexKitCache.initCache(HostCodeMode.identify(activeClassLoader))
                     val missingKeys = DexKitFinder.getMissingKeys()
                     val proc = HookSteps.resolveActionProcess()
-                    // 热补丁可能改变混淆符号而不改变宿主版本，主进程必须用补丁 loader 全量重查。
-                    val forceFullDexKitFind = proc == ActionProcess.MAIN && DexKitCache.isHotPatched
-                    val needDexKitFind = forceFullDexKitFind || !cacheValid || DexKitFinder.needsFind()
+                    // 同一补丁跨重启复用缓存；代码指纹变化由 initCache 使缓存失效。
+                    val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
 
                     installPipelineDecorators()
 
@@ -232,7 +231,6 @@ internal object ModuleLoader {
                     StartupScheduler.schedule(
                         app, proc, plan, needDexKitFind,
                         dexKitClassLoader = activeClassLoader,
-                        forceFullDexKitFind = forceFullDexKitFind,
                     )
                 }
             }
@@ -299,19 +297,16 @@ internal object ModuleLoader {
         }
 
         // 始终根据正在运行的 loader 判断，不让旧模块保存的布尔值覆盖真实代码来源。
-        val hostHotPatched = HostCodeMode.isHotPatched(HookEnv.hostClassLoader)
-        val cacheValid = DexKitCache.initCache(hostHotPatched)
+        val cacheValid = DexKitCache.initCache(HostCodeMode.identify(HookEnv.hostClassLoader))
         val missingKeys = DexKitFinder.getMissingKeys()
         val proc = HookSteps.resolveActionProcess()
-        val forceFullDexKitFind = proc == ActionProcess.MAIN && hostHotPatched
-        val needDexKitFind = forceFullDexKitFind || !cacheValid || DexKitFinder.needsFind()
+        val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
 
         val app = state["hostApplication"] as Application
         installPipelineDecorators()
         val plan = HookSteps.initStartup(app, proc, missingKeys)
         StartupScheduler.schedule(
             app, proc, plan, needDexKitFind,
-            forceFullDexKitFind = forceFullDexKitFind,
         )
     }
 

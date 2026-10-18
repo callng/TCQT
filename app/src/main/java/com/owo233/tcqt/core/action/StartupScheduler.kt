@@ -21,7 +21,7 @@ import com.owo233.tcqt.core.sync.SyncUtils
  *        ├─ EARLY      onCreate 返回后立刻，后台线程
  *        ├─ DEFERRED   MAIN 等首帧后 / 后台进程立刻，后台分批
  *        ├─ BACKGROUND 最后一批，后台分批
- *        └─ DexKit     缓存缺失或主进程热更新时触发查找
+ *        └─ DexKit     缓存缺失、版本或补丁 DEX 变化时触发查找
  * ```
  */
 internal object StartupScheduler {
@@ -32,7 +32,6 @@ internal object StartupScheduler {
         plan: ActionPlan,
         needDexKitFind: Boolean,
         dexKitClassLoader: ClassLoader = HookEnv.hostClassLoader,
-        forceFullDexKitFind: Boolean = false,
     ) {
         if (plan.isEmpty && !needDexKitFind) return
 
@@ -69,11 +68,11 @@ internal object StartupScheduler {
             }
         }
 
-        // DexKit 缓存缺失或主进程检测到热补丁：触发后台查找，不阻塞 onCreate。
+        // DexKit 缓存失效：触发后台查找，不阻塞 onCreate。
         if (needDexKitFind) {
             SyncUtils.post {
                 ModuleScope.launchIO("TCQT-DexKit") {
-                    DexKitFinder.doFind(dexKitClassLoader, forceFullDexKitFind)
+                    DexKitFinder.doFind(dexKitClassLoader)
                 }
             }
         }

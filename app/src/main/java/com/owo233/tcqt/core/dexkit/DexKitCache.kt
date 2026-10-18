@@ -21,11 +21,17 @@ internal object DexKitCache {
         val generation: Long,
         val values: Map<String, String>,
         val versionMatched: Boolean,
+        val hostCode: DexKitHostCode,
+        val previousCacheUsable: Boolean,
     )
 
     private var generation = 0L
 
-    var isHotPatched = false
+    private var hostCode = DexKitHostCode(isHotPatched = false)
+
+    val isHotPatched: Boolean get() = hostCode.isHotPatched
+
+    var isHostCodeMatched = false
         private set
 
     var isVersionMatched = false
@@ -39,6 +45,7 @@ internal object DexKitCache {
 
     private const val KEY_HOST_VER = "__host_ver"
     private const val KEY_MODULE_VER = "__module_ver"
+    private const val KEY_HOST_CODE = "__host_code"
 
     private val cacheName: String
         get() = "DexKitCache_${getModuleBuildType()}_${if (isHotPatched) "hot_patch" else "normal"}"
@@ -61,10 +68,13 @@ internal object DexKitCache {
     }
 
     @Synchronized
-    fun initCache(isHotPatched: Boolean): Boolean {
-        this.isHotPatched = isHotPatched
+    fun initCache(hostCode: DexKitHostCode): Boolean {
+        this.hostCode = hostCode
         if (ProcUtil.isMain) {
             Log.i("DexKit 使用${if (isHotPatched) "热更新" else "普通"}缓存: $cacheName")
+            if (isHotPatched && hostCode.fingerprint == null) {
+                Log.w("DexKit 无法识别当前补丁 DEX，保守地全量扫描")
+            }
         }
         // 切换到空的缓存分区时也必须清空内存，不能残留另一种代码来源的描述符。
         cacheMap = emptyMap()
@@ -75,6 +85,7 @@ internal object DexKitCache {
             isVersionMatched = false
             isHostVersionMatched = false
             isModuleVersionMatched = false
+            isHostCodeMatched = false
             return false
         }
 
@@ -82,33 +93,42 @@ internal object DexKitCache {
         val cachedModuleVer = all[KEY_MODULE_VER]?.toLongOrNull()
 
         cacheMap = all
-            .filterKeys { it != KEY_HOST_VER && it != KEY_MODULE_VER }
+            .filterKeys { it != KEY_HOST_VER && it != KEY_MODULE_VER && it != KEY_HOST_CODE }
             .toMap()
 
         val hostMatched = cachedHostVer == HookEnv.versionCode
         val moduleMatched = cachedModuleVer == TCQTBuild.VER_CODE.toLong()
+        isHostCodeMatched = hostCode.matches(all[KEY_HOST_CODE])
         isHostVersionMatched = hostMatched
         isModuleVersionMatched = moduleMatched
-        this.isVersionMatched = hostMatched && moduleMatched
+        this.isVersionMatched = hostMatched && moduleMatched && isHostCodeMatched
+        if (ProcUtil.isMain) {
+            Log.i("DexKit 缓存校验: 宿主=$hostMatched, 模块=$moduleMatched, 代码=$isHostCodeMatched, 补丁=${hostCode.fingerprint?.take(12) ?: "无/未知"}")
+        }
         return isVersionMatched
     }
 
     @Synchronized
-    fun snapshotForScan() = ScanSnapshot(cacheName, generation, cacheMap.toMap(), isVersionMatched)
+    fun snapshotForScan() = ScanSnapshot(
+        cacheName, generation, cacheMap.toMap(), isVersionMatched, hostCode,
+        previousCacheUsable = isHostVersionMatched && isHostCodeMatched,
+    )
 
     @Synchronized
     fun saveCache(snapshot: ScanSnapshot, values: Map<String, String>): Boolean {
         check(ProcUtil.isMain) { "Only the main process may write DexKit scan results" }
-        if (snapshot.name != cacheName || snapshot.generation != generation) return false
+        if (snapshot.name != cacheName || snapshot.generation != generation || snapshot.hostCode != hostCode) return false
         val persisted = values + mapOf(
             KEY_HOST_VER to HookEnv.versionCode.toString(),
             KEY_MODULE_VER to TCQTBuild.VER_CODE.toString(),
+            KEY_HOST_CODE to hostCode.fingerprint.orEmpty(),
         )
         if (!storage.write(cacheName, snapshot.generation, persisted)) return false
         cacheMap = values.toMap()
         isHostVersionMatched = true
         isModuleVersionMatched = true
-        isVersionMatched = true
+        isHostCodeMatched = hostCode.matches(persisted[KEY_HOST_CODE])
+        isVersionMatched = isHostCodeMatched
         Log.i("DexKit 已保存 $cacheName: 成功 ${values.count { it.value.isNotEmpty() }} / ${values.size}")
         return true
     }
@@ -134,6 +154,7 @@ internal object DexKitCache {
             cacheMap = emptyMap()
             isHostVersionMatched = false
             isModuleVersionMatched = false
+            isHostCodeMatched = false
             isVersionMatched = false
             Log.i("DexKit 已清空 debug/release 的普通、热更新和旧版缓存")
             true

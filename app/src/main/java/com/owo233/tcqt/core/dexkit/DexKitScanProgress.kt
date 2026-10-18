@@ -35,8 +35,14 @@ internal class DexKitScanProgress(
         ))
     }
 
-    fun finish(previousCache: Map<String, String>, savedCache: Map<String, String>) {
-        finish(restartRequired = previousCache != savedCache)
+    fun finish(
+        previousCache: Map<String, String>,
+        savedCache: Map<String, String>,
+        previousCacheUsable: Boolean = true,
+    ) {
+        // Code changes skip dependent hooks at startup, even if the new descriptors are identical.
+        finish(restartRequired = previousCache != savedCache ||
+            (!previousCacheUsable && savedCache.values.any { it.isNotEmpty() }))
     }
 
     private fun snapshot() = DexKitScanState(

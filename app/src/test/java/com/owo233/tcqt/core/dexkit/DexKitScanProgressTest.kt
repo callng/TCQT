@@ -104,4 +104,19 @@ class DexKitScanProgressTest {
         DexKitScanProgress(emptySet()) { state = it }.finish(emptyMap(), emptyMap())
         assertTrue(state.canDismiss)
     }
+
+    @Test
+    fun changedHostCodeRequiresRestartEvenWhenDescriptorsStayTheSame() {
+        var state = DexKitScanState(total = 1)
+        val descriptors = mapOf("method" to "Lhost;->method()V")
+        val progress = DexKitScanProgress(descriptors.keys) { state = it }
+        progress.record("method", true)
+        progress.finish(descriptors, descriptors, previousCacheUsable = false)
+        assertTrue(state.restartRequired)
+        assertFalse(state.canDismiss)
+
+        progress.finish(descriptors, descriptors, previousCacheUsable = true)
+        assertFalse(state.restartRequired)
+        assertTrue(state.canDismiss)
+    }
 }

@@ -36,17 +36,10 @@ internal object DexKitFinder {
 
     fun doFind(
         classLoader: ClassLoader = HookEnv.hostClassLoader,
-        forceFullFind: Boolean = false,
     ) {
         if (ProcUtil.isMain && initDexKit()) {
             ModuleScope.launchMain {
-                if (forceFullFind) {
-                    // 补丁可在宿主版本号不变时替换，因此仍保守地每次全量重查。
-                    Log.i("检测到热更新，使用当前 ClassLoader 全量查找混淆类和方法")
-                    startOnce(classLoader, forceFullFind = true)
-                } else {
-                    waitForHostResume(classLoader)
-                }
+                waitForHostResume(classLoader)
             }
         }
     }
@@ -58,7 +51,7 @@ internal object DexKitFinder {
 
     fun getMissingKeys(): Set<String> {
         val allKeys = getAllTaskKeys()
-        if (!DexKitCache.isHostVersionMatched) {
+        if (!DexKitCache.isHostVersionMatched || !DexKitCache.isHostCodeMatched) {
             return allKeys
         }
         return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
@@ -82,7 +75,7 @@ internal object DexKitFinder {
         val app = HookEnv.application
         resumeCallback = object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
-                startOnce(classLoader, forceFullFind = false)
+                startOnce(classLoader)
             }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
             override fun onActivityStarted(activity: Activity) = Unit
@@ -94,20 +87,20 @@ internal object DexKitFinder {
         // Modern 模块热重载时宿主可能已经在前台，不再等一次已经发生的首页 onResume。
         HostBridge.topActivity()?.takeIf {
             !it.isFinishing && !it.isDestroyed && it.window.decorView.isAttachedToWindow
-        }?.let { startOnce(classLoader, forceFullFind = false) }
+        }?.let { startOnce(classLoader) }
     }
 
-    private fun startOnce(classLoader: ClassLoader, forceFullFind: Boolean) {
+    private fun startOnce(classLoader: ClassLoader) {
         if (!findStarted.compareAndSet(false, true)) return
         resumeCallback?.let(HookEnv.application::unregisterActivityLifecycleCallbacks)
         resumeCallback = null
-        startFind(classLoader, forceFullFind)
+        startFind(classLoader)
     }
 
-    private fun startFind(classLoader: ClassLoader, forceFullFind: Boolean) {
+    private fun startFind(classLoader: ClassLoader) {
         ModuleScope.launchIO(TAG) {
             val snapshot = DexKitCache.snapshotForScan()
-            val partialFind = !forceFullFind && snapshot.versionMatched
+            val partialFind = snapshot.versionMatched
 
             val tasks = if (partialFind) {
                 getTasks(getMissingKeys())
@@ -171,7 +164,10 @@ internal object DexKitFinder {
                 progress.finish(restartRequired = false, errorMessage = "缓存保存失败，请查看日志后重试。")
             }.onSuccess { saved ->
                 if (saved) {
-                    progress.finish(previousCache = oldCache, savedCache = newCache)
+                    progress.finish(
+                        previousCache = oldCache, savedCache = newCache,
+                        previousCacheUsable = snapshot.previousCacheUsable,
+                    )
                 } else {
                     progress.finish(restartRequired = false, errorMessage = "扫描期间缓存已被清空或切换，本次结果已丢弃，请重启宿主后重新扫描。")
                 }
