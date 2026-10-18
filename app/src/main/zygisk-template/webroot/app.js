@@ -1,596 +1,102 @@
-import { exec, toast } from "./kernelsu.js";
+import { exec } from "./kernelsu.js";
 
-const DATA_DIRECTORY = "/data/adb/tcqt";
-
-const apps = {
-    qq: { label: "QQ", package: "com.tencent.mobileqq", marker: "qq.disable" },
-    tim: { label: "TIM", package: "com.tencent.tim", marker: "tim.disable" },
+const DATA = "/data/adb/tcqt";
+const PACKAGES = { qq: "com.tencent.mobileqq", tim: "com.tencent.tim" };
+const state = {
+    users: [{ id: 0, name: "主用户" }], userId: 0, busy: true, ready: false,
+    installed: [], qq: false, tim: false, qqHook: false, timHook: false,
+    compat: false, debug: false, error: "", message: "", sharing: false, openingLink: false,
 };
+const listeners = new Set();
+const emit = () => listeners.forEach((listener) => listener());
+const quote = (value) => "'" + String(value).replaceAll("'", "'\\''") + "'";
+const managerAvailable = () => typeof window.ksu?.exec === "function";
+const marker = (name) => state.userId === 0 ? `${DATA}/${name}` : `${DATA}/user_${state.userId}/${name}`;
 
-const hooks = [
-    {
-        id: "key1",
-        label: "fopen 重定向",
-        desc: "对 /proc/self/smaps 的 fopen 调用重定向到 /dev/null",
-    },
-];
-
-const scopeList = document.querySelector("#scope-list");
-const scopeCount = document.querySelector("#scope-count");
-const compatList = document.querySelector("#compat-list");
-const compatStatus = document.querySelector("#compat-status");
-const compatInput = document.querySelector("#compat-input");
-const hookList = document.querySelector("#hook-list");
-const hookCount = document.querySelector("#hook-count");
-const errorPanel = document.querySelector("#error-panel");
-const errorMessage = document.querySelector("#error-message");
-const retryButton = document.querySelector("#retry-button");
-const liveStatus = document.querySelector("#live-status");
-const userTabs = document.querySelector("#user-tabs");
-const exportButton = document.querySelector("#export-log-button");
-const exportResult = document.querySelector("#export-log-result");
-
-const COMPAT_MARKER_PATH = `${DATA_DIRECTORY}/compat.enable`;
-
-const DEFAULT_USER = { id: 0, name: "主用户" };
-let users = [DEFAULT_USER];
-let currentUserId = 0;
-// userId -> Set(已安装包名), null 表示无法确定
-const installedCache = new Map();
-
-function getItem(scopeName) {
-    return document.querySelector(`[data-scope="${scopeName}"]`);
+async function run(command) {
+    const result = await exec(command);
+    if (Number(result.errno) !== 0) throw new Error(result.stderr || `命令退出码 ${result.errno}`);
+    return result.stdout || "";
 }
-
-function getInput(scopeName) {
-    return getItem(scopeName).querySelector("input");
-}
-
-function getNote(scopeName) {
-    return getItem(scopeName).querySelector(".scope-note");
-}
-
-function getHookCard(hookId) {
-    return document.querySelector(`[data-hook="${hookId}"]`);
-}
-
-function getHookTargetItem(hookId, appName) {
-    return getHookCard(hookId).querySelector(`[data-target="${appName}"]`);
-}
-
-function getHookInput(hookId, appName) {
-    return getHookTargetItem(hookId, appName).querySelector("input");
-}
-
-function getHookNote(hookId, appName) {
-    return getHookTargetItem(hookId, appName).querySelector(".scope-note");
-}
-
-function getMarkerPath(userId, marker) {
-    return userId === 0
-        ? `${DATA_DIRECTORY}/${marker}`
-        : `${DATA_DIRECTORY}/user_${userId}/${marker}`;
-}
-
-function getHookMarkerPath(userId, hookId, appName) {
-    return getMarkerPath(userId, `${appName}.${hookId}.disable`);
-}
-
-function isScopeAvailable(scopeName, userId) {
-    const installed = installedCache.get(userId);
-    if (!installed) {
-        return true;
-    }
-    return installed.has(apps[scopeName].package);
-}
-
-function setInputsDisabled(disabled) {
-    Object.keys(apps).forEach((appName) => {
-        getInput(appName).disabled = disabled || !isScopeAvailable(appName, currentUserId);
-    });
-    compatInput.disabled = disabled;
-    hooks.forEach((hook) => {
-        Object.keys(apps).forEach((appName) => {
-            getHookInput(hook.id, appName).disabled =
-                disabled || !isScopeAvailable(appName, currentUserId);
-        });
-    });
-}
-
-function setTabsDisabled(disabled) {
-    userTabs.querySelectorAll("button").forEach((button) => {
-        button.disabled = disabled;
-    });
-}
-
-function updateAvailability() {
-    Object.keys(apps).forEach((appName) => {
-        const available = isScopeAvailable(appName, currentUserId);
-        getItem(appName).classList.toggle("is-unavailable", !available);
-        getNote(appName).hidden = available;
-    });
-
-    hooks.forEach((hook) => {
-        Object.keys(apps).forEach((appName) => {
-            const available = isScopeAvailable(appName, currentUserId);
-            const targetItem = getHookTargetItem(hook.id, appName);
-            targetItem.classList.toggle("is-unavailable", !available);
-            getHookNote(hook.id, appName).hidden = available;
-        });
-    });
-}
-
-function updateCount() {
-    const appNames = Object.keys(apps);
-    const availableApps = appNames.filter((name) => isScopeAvailable(name, currentUserId));
-    const enabledApps = availableApps.filter((name) => getInput(name).checked).length;
-    scopeCount.textContent = availableApps.length === appNames.length
-        ? `已开启 ${enabledApps} 个`
-        : `已开启 ${enabledApps} 个 · 可用 ${availableApps.length} 个`;
-
-    let totalHookSlots = 0;
-    let enabledHooks = 0;
-    hooks.forEach((hook) => {
-        availableApps.forEach((appName) => {
-            totalHookSlots++;
-            if (getHookInput(hook.id, appName).checked) {
-                enabledHooks++;
-            }
-        });
-    });
-    hookCount.textContent = `已开启 ${enabledHooks}/${totalHookSlots} 个`;
-}
-
-function showError(message) {
-    errorMessage.textContent = message;
-    errorPanel.hidden = false;
-}
-
-function hideError() {
-    errorPanel.hidden = true;
-}
-
-function hasManager() {
-    return window.ksu && typeof window.ksu.exec === "function";
-}
-
-function parseUsers(output) {
-    const parsed = [];
-    const pattern = /UserInfo\{(\d+):([^:}]*)/g;
-    let match = pattern.exec(output);
-    while (match !== null) {
-        const id = Number.parseInt(match[1], 10);
-        if (!Number.isNaN(id) && !parsed.some((user) => user.id === id)) {
-            const name = match[2].trim();
-            parsed.push({ id, name: name || `用户 ${id}` });
-        }
-        match = pattern.exec(output);
-    }
-    parsed.sort((left, right) => left.id - right.id);
-    return parsed;
-}
-
-async function loadUsers() {
-    try {
-        const result = await exec("pm list users 2>/dev/null");
-        const parsed = result.errno === 0 ? parseUsers(result.stdout || "") : [];
-        users = parsed.length > 0 ? parsed : [DEFAULT_USER];
-    } catch (error) {
-        console.error("Failed to list users", error);
-        users = [DEFAULT_USER];
-    }
-
-    if (!users.some((user) => user.id === currentUserId)) {
-        currentUserId = users[0].id;
-    }
-    renderUserTabs();
-}
-
-function renderUserTabs() {
-    userTabs.textContent = "";
-    if (users.length <= 1) {
-        userTabs.hidden = true;
-        return;
-    }
-
-    users.forEach((user) => {
-        const tab = document.createElement("button");
-        tab.type = "button";
-        tab.className = "user-tab";
-        tab.dataset.userId = String(user.id);
-        tab.textContent = user.name;
-        tab.title = `${user.name} (ID ${user.id})`;
-        tab.setAttribute("role", "tab");
-        tab.setAttribute("aria-selected", user.id === currentUserId ? "true" : "false");
-        tab.addEventListener("click", () => switchUser(user.id));
-        userTabs.append(tab);
-    });
-    userTabs.hidden = false;
-}
-
-function updateTabSelection() {
-    userTabs.querySelectorAll("button").forEach((tab) => {
-        tab.setAttribute("aria-selected", Number(tab.dataset.userId) === currentUserId ? "true" : "false");
-    });
-}
-
-async function switchUser(userId) {
-    if (userId === currentUserId) {
-        return;
-    }
-    currentUserId = userId;
-    updateTabSelection();
-    await loadStates();
-}
-
-async function loadInstalledPackages(userId) {
-    if (installedCache.has(userId)) {
-        return installedCache.get(userId);
-    }
-
-    let installed = null;
-    try {
-        const result = await exec(`pm list packages --user ${userId} 2>/dev/null`);
-        if (result.errno === 0 && result.stdout && result.stdout.includes("package:")) {
-            installed = new Set();
-            result.stdout.split("\n").forEach((line) => {
-                const match = line.trim().match(/^package:(\S+)/);
-                if (match) {
-                    installed.add(match[1]);
-                }
-            });
-        }
-    } catch (error) {
-        console.error(`Failed to list packages for user ${userId}`, error);
-    }
-
-    installedCache.set(userId, installed);
-    return installed;
-}
-
-function renderHookCards() {
-    hookList.textContent = "";
-    hooks.forEach((hook) => {
-        const card = document.createElement("div");
-        card.className = "hook-card";
-        card.dataset.hook = hook.id;
-
-        const info = document.createElement("div");
-        info.className = "hook-info";
-        info.innerHTML = `
-            <strong>${hook.label}</strong>
-            <p class="hook-desc">${hook.desc}</p>
-        `;
-
-        const targets = document.createElement("div");
-        targets.className = "hook-targets";
-
-        Object.keys(apps).forEach((appName) => {
-            const app = apps[appName];
-            const targetLabel = document.createElement("label");
-            targetLabel.className = "hook-target-item";
-            targetLabel.dataset.target = appName;
-            targetLabel.innerHTML = `
-                <span class="hook-target-label">${app.label}</span>
-                <small class="scope-note" hidden>未安装</small>
-                <span class="switch switch-sm">
-                    <input type="checkbox" disabled aria-label="${app.label} · ${hook.label}">
-                    <span class="switch-track" aria-hidden="true"></span>
-                </span>
-            `;
-            targetLabel.querySelector("input").addEventListener("change", (event) => {
-                changeHookState(hook, appName, event.currentTarget.checked);
-            });
-            targets.append(targetLabel);
-        });
-
-        card.append(info, targets);
-        hookList.append(card);
-    });
-}
-
-async function loadStates() {
-    hideError();
-    setInputsDisabled(true);
-    setTabsDisabled(true);
-    scopeList.setAttribute("aria-busy", "true");
-    compatList.setAttribute("aria-busy", "true");
-    hookList.setAttribute("aria-busy", "true");
-    scopeCount.textContent = "正在读取";
-    compatStatus.textContent = "正在读取";
-    hookCount.textContent = "正在读取";
-
-    if (!hasManager()) {
-        showError("请在支持模块 WebUI 的管理器（KernelSU / APatch）中打开此页面");
-        scopeCount.textContent = "不可用";
-        compatStatus.textContent = "不可用";
-        hookCount.textContent = "不可用";
-        scopeList.setAttribute("aria-busy", "false");
-        compatList.setAttribute("aria-busy", "false");
-        hookList.setAttribute("aria-busy", "false");
-        return;
-    }
-
-    const userId = currentUserId;
-    const appChecks = Object.values(apps)
-        .map(({ marker }) => `[ -f '${getMarkerPath(userId, marker)}' ] && printf '1\\n' || printf '0\\n'`)
-        .join("; ");
-    const compatCheck = `[ -f '${COMPAT_MARKER_PATH}' ] && printf '1\\n' || printf '0\\n'`;
-    const hookChecks = [];
-    hooks.forEach((hook) => {
-        Object.keys(apps).forEach((appName) => {
-            hookChecks.push(
-                `[ -f '${getHookMarkerPath(userId, hook.id, appName)}' ] && printf '1\\n' || printf '0\\n'`
-            );
-        });
-    });
-    const checks = [appChecks, compatCheck, ...hookChecks].join("; ");
-    const totalChecks = Object.keys(apps).length + 1 + hooks.length * Object.keys(apps).length;
-
-    try {
-        await loadInstalledPackages(userId);
-        const result = await exec(checks);
-        const states = (result.stdout || "").trim().split(/\s+/);
-        if (result.errno !== 0 || states.length !== totalChecks) {
-            throw new Error(result.stderr || "状态数据不完整");
-        }
-        if (userId !== currentUserId) {
-            return;
-        }
-
-        // TCQT 标记是 disable 文件：存在(1)表示禁用(checked=false)，不存在(0)表示启用(checked=true)
-        Object.keys(apps).forEach((appName, index) => {
-            getInput(appName).checked = states[index] !== "1";
-        });
-
-        // 兼容模式是 enable 文件：存在(1)表示启用(checked=true)，不存在(0)表示禁用(checked=false)
-        const compatIndex = Object.keys(apps).length;
-        const compatEnabled = states[compatIndex] === "1";
-        compatInput.checked = compatEnabled;
-        compatStatus.textContent = compatEnabled ? "已开启" : "已关闭";
-
-        let hookIndex = compatIndex + 1;
-        hooks.forEach((hook) => {
-            Object.keys(apps).forEach((appName) => {
-                getHookInput(hook.id, appName).checked = states[hookIndex] !== "1";
-                hookIndex++;
-            });
-        });
-
-        updateAvailability();
-        setInputsDisabled(false);
-        updateCount();
-    } catch (error) {
-        console.error("Failed to load TCQT scopes", error);
-        if (userId !== currentUserId) {
-            return;
-        }
-        showError("读取作用域失败，请稍后重试");
-        scopeCount.textContent = "读取失败";
-        compatStatus.textContent = "读取失败";
-        hookCount.textContent = "读取失败";
-    } finally {
-        if (userId === currentUserId) {
-            setTabsDisabled(false);
-            scopeList.setAttribute("aria-busy", "false");
-            compatList.setAttribute("aria-busy", "false");
-            hookList.setAttribute("aria-busy", "false");
-        }
-    }
-}
-
-async function changeScope(appName, enabled) {
-    const input = getInput(appName);
-    const app = apps[appName];
-    const userId = currentUserId;
-    input.disabled = true;
-    hideError();
-
-    const markerPath = getMarkerPath(userId, app.marker);
-    const markerDirectory = markerPath.slice(0, markerPath.lastIndexOf("/"));
-    // enabled = true 表示启用注入（删除 disable 文件）；enabled = false 表示禁用（创建 disable 文件）
-    const command = enabled
-        ? `rm -f '${markerPath}'`
-        : `mkdir -p '${markerDirectory}' && touch '${markerPath}'`;
-
-    try {
-        const result = await exec(command);
-        if (result.errno !== 0) {
-            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
-        }
-
-        updateCount();
-        const stateText = enabled ? "已开启" : "已关闭";
-        const userText = users.length > 1 ? `[${getUserName(userId)}] ` : "";
-        const message = `${userText}${app.label} 注入 ${stateText}`;
-        liveStatus.textContent = message;
-        toast(message);
-    } catch (error) {
-        console.error(`Failed to update ${appName} scope`, error);
-        if (userId === currentUserId) {
-            input.checked = !enabled;
-            updateCount();
-        }
-        showError(`${app.label} 作用域修改失败`);
-        toast("作用域修改失败");
-    } finally {
-        if (userId === currentUserId) {
-            input.disabled = !isScopeAvailable(appName, currentUserId);
-        }
-    }
-}
-
-async function changeHookState(hook, appName, enabled) {
-    const app = apps[appName];
-    const input = getHookInput(hook.id, appName);
-    const userId = currentUserId;
-    input.disabled = true;
-    hideError();
-
-    const markerPath = getHookMarkerPath(userId, hook.id, appName);
-    const markerDirectory = markerPath.slice(0, markerPath.lastIndexOf("/"));
-    const command = enabled
-        ? `rm -f '${markerPath}'`
-        : `mkdir -p '${markerDirectory}' && touch '${markerPath}'`;
-
-    try {
-        const result = await exec(command);
-        if (result.errno !== 0) {
-            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
-        }
-
-        updateCount();
-        const stateText = enabled ? "已开启" : "已关闭";
-        const userText = users.length > 1 ? `[${getUserName(userId)}] ` : "";
-        const message = `${userText}${app.label} · ${hook.label} ${stateText}`;
-        liveStatus.textContent = message;
-        toast(message);
-    } catch (error) {
-        console.error(`Failed to update ${hook.id} state for ${appName}`, error);
-        if (userId === currentUserId) {
-            input.checked = !enabled;
-            updateCount();
-        }
-        showError(`${app.label} · ${hook.label} 修改失败`);
-        toast("修改失败");
-    } finally {
-        if (userId === currentUserId) {
-            input.disabled = !isScopeAvailable(appName, currentUserId);
-        }
-    }
-}
-
-async function changeCompatMode(enabled) {
-    compatInput.disabled = true;
-    hideError();
-
-    const command = enabled
-        ? `mkdir -p '${DATA_DIRECTORY}' && touch '${COMPAT_MARKER_PATH}'`
-        : `rm -f '${COMPAT_MARKER_PATH}'`;
-
-    try {
-        const result = await exec(command);
-        if (result.errno !== 0) {
-            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
-        }
-
-        compatStatus.textContent = enabled ? "已开启" : "已关闭";
-        const message = `兼容模式 ${enabled ? "已开启" : "已关闭"}`;
-        liveStatus.textContent = message;
-        toast(message);
-    } catch (error) {
-        console.error("Failed to update compatibility mode", error);
-        compatInput.checked = !enabled;
-        compatStatus.textContent = !enabled ? "已开启" : "已关闭";
-        showError("兼容模式修改失败");
-        toast("修改失败");
-    } finally {
-        compatInput.disabled = false;
-    }
-}
-
-function getUserName(userId) {
-    const user = users.find((item) => item.id === userId);
-    return user ? user.name : `用户 ${userId}`;
-}
-
-async function exportLog() {
-    exportButton.disabled = true;
-    exportResult.hidden = true;
-    exportResult.textContent = "";
-    hideError();
-
-    const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-    const dest = `/sdcard/Download/tcqt_zygisk_report_${stamp}.log`;
-
-    const logSources = Object.values(apps)
-        .map((app) => `/data/user/*/${app.package}/files/.tcqt/log*.txt`)
-        .join(" ");
-
-    const command = [
-        "mkdir -p /sdcard/Download || exit 1",
-        "{",
-        '  echo "===== 设备信息 $(date \'+%F %T\') ====="',
-        '  echo "[设备] $(getprop ro.product.manufacturer) $(getprop ro.product.model) ($(getprop ro.product.device))"',
-        '  echo "[系统] Android $(getprop ro.build.version.release) (SDK $(getprop ro.build.version.sdk))"',
-        '  echo "[指纹] $(getprop ro.build.fingerprint)"',
-        '  echo "[内核] $(uname -r)"',
-        '  echo "[页大小] $(getconf PAGE_SIZE) 字节"',
-        '  echo "[SELinux] $(getenforce)"',
-        '  echo "[KSU] $(ksud --version 2>/dev/null || echo unknown)"',
-        '  echo "[模块]"',
-        "  for f in /data/adb/modules/*/module.prop; do",
-        '    [ -f "$f" ] || continue',
-        '    echo "  $(sed -n \'s/^name=//p\' "$f") $(sed -n \'s/^version=//p\' "$f") [$(sed -n \'s/^id=//p\' "$f")]"',
-        "  done",
-        '  echo "[QQ] $(dumpsys package com.tencent.mobileqq 2>/dev/null | grep -m1 versionName | sed \'s/.*versionName=//\')"',
-        '  echo "[TIM] $(dumpsys package com.tencent.tim 2>/dev/null | grep -m1 versionName | sed \'s/.*versionName=//\')"',
-        '  echo "===== TCQT 日志 ====="',
-        `  cat ${logSources} 2>/dev/null || true`,
-        `} > '${dest}'`,
-        `wc -c < '${dest}'`,
-    ].join("\n");
-
-    try {
-        const result = await exec(command);
-        if (result.errno !== 0) {
-            throw new Error(result.stderr || `命令退出码 ${result.errno}`);
-        }
-        const size = (result.stdout || "0").trim();
-        exportResult.hidden = false;
-        if (size === "0") {
-            exportResult.textContent = "导出失败：未找到任何日志内容";
-            toast("导出失败");
-        } else {
-            exportResult.textContent =
-                `已导出 (${size} 字节) → Download/tcqt_zygisk_report_${stamp}.log`;
-            toast("日志已导出");
-        }
-    } catch (error) {
-        console.error("Failed to export log", error);
-        exportResult.hidden = false;
-        exportResult.textContent = "日志导出失败，请重试";
-        showError("日志导出失败");
-        toast("导出失败");
-    } finally {
-        exportButton.disabled = false;
-    }
-}
-
-Object.keys(apps).forEach((appName) => {
-    getInput(appName).addEventListener("change", (event) => {
-        changeScope(appName, event.currentTarget.checked);
-    });
-});
-
-compatInput.addEventListener("change", (event) => {
-    changeCompatMode(event.currentTarget.checked);
-});
-
-renderHookCards();
-exportButton.addEventListener("click", exportLog);
-
-document.querySelectorAll(".app-icon img").forEach((image) => {
-    const hideBrokenImage = () => {
-        image.hidden = true;
-    };
-
-    if (image.complete && image.naturalWidth === 0) {
-        hideBrokenImage();
-    } else {
-        image.addEventListener("error", hideBrokenImage, { once: true });
-    }
-});
 
 async function reload() {
-    if (!hasManager()) {
-        await loadStates();
-        return;
-    }
-    installedCache.clear();
-    await loadUsers();
-    await loadStates();
+    if (state.busy && state.ready) return;
+    state.busy = true;
+    state.ready = false;
+    state.error = "";
+    emit();
+    try {
+        if (!managerAvailable()) throw new Error("请在 KernelSU / APatch 的模块 WebUI 中打开此页面");
+        const output = await run("pm list users");
+        const users = [...output.matchAll(/UserInfo\{(\d+):([^:}]*)/g)]
+            .map((match) => ({ id: Number(match[1]), name: match[2].trim() || `用户 ${match[1]}` }));
+        if (users.length) state.users = users.sort((a, b) => a.id - b.id);
+        if (!state.users.some((user) => user.id === state.userId)) state.userId = state.users[0].id;
+        const packages = await run(`pm list packages --user ${state.userId}`);
+        state.installed = Object.keys(PACKAGES).filter((app) => packages.split(/\r?\n/).includes(`package:${PACKAGES[app]}`));
+        const paths = [marker("qq.disable"), marker("tim.disable"), marker("qq.key1.disable"), marker("tim.key1.disable"), `${DATA}/compat.enable`, `${DATA}/debug.enable`];
+        const flags = (await run(paths.map((path) => `if [ -f ${quote(path)} ]; then echo 1; else echo 0; fi`).join("\n"))).trim().split(/\s+/);
+        if (flags.length !== 6 || flags.some((flag) => !/^[01]$/.test(flag))) throw new Error("状态数据不完整，请重试");
+        [state.qq, state.tim, state.qqHook, state.timHook] = flags.slice(0, 4).map((flag) => flag === "0");
+        state.compat = flags[4] === "1";
+        state.debug = flags[5] === "1";
+        state.ready = true;
+    } catch (error) {
+        state.error = error.message || "读取失败，请重试";
+    } finally { state.busy = false; emit(); }
 }
 
-retryButton.addEventListener("click", reload);
+async function toggle(key, enabled) {
+    if (state.busy || !state.ready || state.sharing) return;
+    const paths = { qq: marker("qq.disable"), tim: marker("tim.disable"), qqHook: marker("qq.key1.disable"), timHook: marker("tim.key1.disable"), compat: `${DATA}/compat.enable`, debug: `${DATA}/debug.enable` };
+    if (!(key in paths) || typeof enabled !== "boolean") return;
+    const path = paths[key];
+    const create = ["compat", "debug"].includes(key) ? enabled : !enabled;
+    state.busy = true;
+    state.error = "";
+    emit();
+    try {
+        await run(create ? `mkdir -p ${quote(path.slice(0, path.lastIndexOf("/")))} && touch ${quote(path)}` : `rm -f ${quote(path)}`);
+        state[key] = enabled;
+        state.message = "已保存，下次启动对应应用时生效";
+    } catch (error) { state.error = `保存失败：${error.message}`; }
+    finally { state.busy = false; emit(); }
+}
+
+// Report collection stays in the module, keeping the root shell out of the UI layer.
+async function share() {
+    if (state.sharing || state.busy || !state.ready) return;
+    state.sharing = true;
+    state.error = "";
+    state.message = "正在整理日志…";
+    emit();
+    try {
+        const output = await run("sh /data/adb/modules/zygisk_tcqt/share-logs.sh");
+        if (!output.includes("TCQT_SHARE_OK")) throw new Error("系统分享入口未确认打开");
+        state.message = "已打开系统分享面板，请选择接收应用";
+    } catch (error) { state.error = `分享失败：${error.message}`; state.message = "可重试分享；无需到文件管理器查找日志"; }
+    finally { state.sharing = false; emit(); }
+}
+
+async function openLink(key) {
+    if (state.openingLink || !["source", "channel", "group"].includes(key)) return;
+    state.openingLink = true;
+    state.error = "";
+    emit();
+    try {
+        const output = await run(`sh /data/adb/modules/zygisk_tcqt/open-link.sh ${quote(key)}`);
+        if (!output.includes("TCQT_BROWSER_OK")) throw new Error("浏览器未能启动");
+    } catch (error) { state.error = `打开失败：${error.message}`; }
+    finally { state.openingLink = false; emit(); }
+}
+
+window.tcqt = {
+    snapshot: () => JSON.stringify(state),
+    subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
+    reload, toggle, share, openLink,
+    selectUser: (id) => {
+        if (!state.busy && !state.sharing && state.users.some((user) => user.id === id)) { state.userId = id; reload(); }
+    },
+};
+
 reload();

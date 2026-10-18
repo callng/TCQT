@@ -3,6 +3,7 @@ package com.owo233.tcqt.core.log
 import android.util.Log
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
+import com.owo233.tcqt.core.hook.HookFramework
 
 enum class LogLevel {
 
@@ -72,7 +73,8 @@ class DebugFilterLogger(
 ) : Logger by delegate {
 
     override fun log(level: LogLevel, message: String, throwable: Throwable?) {
-        if (isDebug) {
+        if (isDebug || (level >= LogLevel.INFO && HookEngineManager.isInitialized &&
+                    HookEngineManager.engine.frameworkName == HookFramework.ZYGISK)) {
             delegate.log(level, message, throwable)
         }
     }

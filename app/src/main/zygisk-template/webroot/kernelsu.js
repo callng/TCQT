@@ -1,5 +1,14 @@
 let callbackSeq = 0;
 
+// Keep system bars visible; the manager supplies their insets as CSS variables.
+export function enableEdgeToEdge() {
+    try {
+        if (typeof window.ksu?.enableEdgeToEdge !== "function") return false;
+        window.ksu.enableEdgeToEdge(true);
+        return true;
+    } catch (_) { return false; }
+}
+
 /**
  * 在 root 环境执行一条 shell 命令。
  * @param {string} command
@@ -9,7 +18,12 @@ let callbackSeq = 0;
 export function exec(command, options = {}) {
     return new Promise((resolve, reject) => {
         const callbackName = `ksu_cb_${Date.now()}_${++callbackSeq}`;
+        const timer = setTimeout(() => {
+            delete window[callbackName];
+            reject(new Error("管理器执行超时，请重新打开 WebUI 后重试"));
+        }, 120000);
         window[callbackName] = (errno, stdout, stderr) => {
+            clearTimeout(timer);
             try {
                 delete window[callbackName];
             } catch (_) {
@@ -20,6 +34,7 @@ export function exec(command, options = {}) {
         try {
             window.ksu.exec(command, JSON.stringify(options), callbackName);
         } catch (error) {
+            clearTimeout(timer);
             try {
                 delete window[callbackName];
             } catch (_) {

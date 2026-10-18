@@ -361,9 +361,11 @@ fun registerPrepareTask(
         description = "组装 Zygisk 模块目录（$variant）"
         notCompatibleWithConfigurationCache("stages the Zygisk module ZIP")
         dependsOn("externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}")
+        dependsOn(":webui:assembleWebUi")
 
         val stageDirProvider = layout.buildDirectory.dir(stagingDirName)
         val templateDir = layout.projectDirectory.dir("src/main/zygisk-template")
+        val webuiDir = rootProject.layout.projectDirectory.dir("webui/build/dist")
         val objDirProvider = layout.buildDirectory.dir(objPath)
 
         // NDK llvm-strip（任务已 notCompatibleWithConfigurationCache 配置期解析即可）
@@ -385,6 +387,7 @@ fun registerPrepareTask(
         )
 
         inputs.dir(templateDir)
+        inputs.dir(webuiDir)
         inputs.dir(objDirProvider)
         inputs.file(stripExe)
         outputs.dir(stageDirProvider)
@@ -395,7 +398,10 @@ fun registerPrepareTask(
             stageDir.mkdirs()
 
             // 模板
-            templateDir.asFile.copyRecursively(stageDir)
+            templateDir.asFile.listFiles().orEmpty().filter { it.name != "webroot" }.forEach { source ->
+                source.copyRecursively(File(stageDir, source.name), overwrite = true)
+            }
+            webuiDir.asFile.copyRecursively(File(stageDir, "webroot"), overwrite = true)
 
             stageDir.walkTopDown().forEach { f ->
                 if (f.isFile && f.extension == "sh") {
@@ -550,7 +556,8 @@ val buildDualApkRelease = tasks.register("buildDualApkRelease") {
             }
         }
 
-        // 2. 注入 zygisk 模块内容
+        // 2. 替换 WebUI，避免增量构建残留旧运行时或字体
+        File(unpacked, "webroot").deleteRecursively()
         stageDirProvider.get().asFile.copyRecursively(unpacked, overwrite = true)
 
         // 3. 重打包为未对齐 APK
@@ -670,7 +677,8 @@ val buildDualApkDebug = tasks.register("buildDualApkDebug") {
             }
         }
 
-        // 2. 注入 zygisk 模块内容
+        // 2. 替换 WebUI，避免增量构建残留旧运行时或字体
+        File(unpacked, "webroot").deleteRecursively()
         stageDirProvider.get().asFile.copyRecursively(unpacked, overwrite = true)
 
         // 3. 重打包为未对齐 APK

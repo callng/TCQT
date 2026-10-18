@@ -145,6 +145,7 @@ public:
         bool compat_mode = (access(COMPAT_MARKER, F_OK) == 0 ||
                             access("/data/adb/tcqt/compat", F_OK) == 0);
         set_compat_mode(compat_mode);
+        debug_logs_ = access("/data/adb/tcqt/debug.enable", F_OK) == 0;
         if (compat_mode) {
             LOGI("preAppSpecialize: compatibility mode enabled via WebUI");
         }
@@ -221,7 +222,9 @@ public:
         }
 
         // 本地文件日志：目录就绪后初始化
-        log_file_init(target_dir + "/log.txt");
+        log_file_init(target_dir + "/logs", process_name_, debug_logs_);
+        LOGI("session start: process=%s pid=%d compat=%d debug=%d payload=%s",
+             process_name_.c_str(), getpid(), is_compat_mode(), debug_logs_, payload_hash_.c_str());
 
         // install hooks
         if (process_name_.size() >= 4 &&
@@ -355,6 +358,7 @@ private:
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
     bool enabled_ = false;
+    bool debug_logs_ = false;
     std::vector<std::string> disabled_hook_ids_;
     std::string process_name_;
     std::string data_dir_;

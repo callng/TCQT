@@ -113,8 +113,12 @@ Architecture:
   `<host>.<hookId>.disable` (e.g. `qq.fekit.disable`, default enabled); the
   injector re-checks them in `preAppSpecialize` on every fork, so changes take
   effect on the next app start without rebooting (mirrors FunBox's scope
-  markers, but default-enabled). Also has a 「导出日志」button: copies
-  `files/.tcqt/log.txt` (QQ/TIM) to `/sdcard/Download` for bug reporting.
+  markers, but default-enabled). The UI uses native HTML/CSS/JS following Miuix styling, with a 64 KiB raw
+  asset budget. `:webui:assembleWebUi` checks and stages the offline assets;
+  no Node/npm, WASM runtime or bundled font is required for builds.
+  「导出并分享日志」 calls `share-logs.sh` and the APK's `LogShare` app_process
+  entry point as shell UID: publishes an attachment in MediaStore and opens
+  the Android chooser with a content URI/read grant; APK installation is not required.
 - `app/src/main/cpp/plt_hook.h/.cpp` — generic PLT/GOT hook engine with a
   declarative spec table: new hooks are added by writing one same-signature
   replacement function and appending one `PLT_HOOK_SPEC(id, lib, symbol,
@@ -129,12 +133,14 @@ Architecture:
   skips them, so each hook can be toggled per host × user. Currently contains
   the `libfekit.so` `fopen` detection evasion (`/proc/self/smaps` → `/dev/null`),
   installed only in the `:MSF` process.
-- `app/src/main/cpp/log_file.h/.cpp` — local file logging: every `LOG*` macro
-  (see `log.h`) also appends to the app's `files/.tcqt/log.txt` (1MB cap per
-  file; over the cap the file rotates to `log.1.txt`, keeping one generation).
-  New log files start with a one-time device header (model / Android SDK /
-  kernel / page size). Java-side key lifecycle logs reach the same file via
-  `ZygiskEntry.nativeLog`.
+- `app/src/main/cpp/log_file.h/.cpp` — logs in `files/.tcqt/logs/`, separated
+  by process: INFO+ in `*.events.log` (1 MiB + 3 backups), optional DEBUG in
+  `*.debug.log` (512 KiB + 1 backup). `debug.enable` globally opts in at next
+  app start. A stable per-file flock protects append/rotation across overlapping
+  process instances; every rotated file has a device header. A bounded 64 KiB
+  buffer replays early injection events after specialization. Java framework,
+  lifecycle and callback failures use priority-aware `ZygiskEntry.nativeLog`.
+  Export includes new and legacy rotations (`log.txt.1`) plus recent injection logcat.
 - `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
   `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk`, keeps the fd
   and reads the global SHA-256 fingerprint `/data/adb/tcqt/main.apk.sha256`

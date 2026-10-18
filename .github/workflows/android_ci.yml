@@ -297,4 +297,4 @@ jobs:
           done
 
           echo "::error::All $MAX_RETRIES attempts failed"
-          exit 1
+          exit 1

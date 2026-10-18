@@ -25,11 +25,11 @@ namespace {
 
 // ── ZygiskEntry natives ──────────────────────────────────────────────────────
 
-extern "C" void jni_native_log(JNIEnv *env, jclass, jstring j_tag, jstring j_msg) {
+extern "C" void jni_native_log(JNIEnv *env, jclass, jint priority, jstring j_tag, jstring j_msg) {
     const char *tag = j_tag != nullptr ? env->GetStringUTFChars(j_tag, nullptr) : nullptr;
     const char *msg = j_msg != nullptr ? env->GetStringUTFChars(j_msg, nullptr) : nullptr;
     if (tag != nullptr && msg != nullptr) {
-        tcqt_log_write(ANDROID_LOG_INFO, "[%s] %s", tag, msg);
+        tcqt_log_write(priority, "[%s] %s", tag, msg);
     }
     if (tag != nullptr) env->ReleaseStringUTFChars(j_tag, tag);
     if (msg != nullptr) env->ReleaseStringUTFChars(j_msg, msg);
@@ -37,6 +37,10 @@ extern "C" void jni_native_log(JNIEnv *env, jclass, jstring j_tag, jstring j_msg
 
 extern "C" jboolean jni_native_is_compat_mode(JNIEnv *, jclass) {
     return s_compat_mode ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" jboolean jni_native_is_debug_logging(JNIEnv *, jclass) {
+    return log_debug_enabled() ? JNI_TRUE : JNI_FALSE;
 }
 
 jobject get_class_loader(JNIEnv *env, jclass entry_class) {
@@ -114,17 +118,19 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
         return false;
     }
     JNINativeMethod methods[] = {
+            {const_cast<char *>("nativeIsDebugLogging"), const_cast<char *>("()Z"),
+             reinterpret_cast<void *>(jni_native_is_debug_logging)},
             {const_cast<char *>("nativeArtInit"), const_cast<char *>("()Z"),
              reinterpret_cast<void *>(jni_native_art_init)},
             {const_cast<char *>("nativeLog"),
-             const_cast<char *>("(Ljava/lang/String;Ljava/lang/String;)V"),
+             const_cast<char *>("(ILjava/lang/String;Ljava/lang/String;)V"),
              reinterpret_cast<void *>(jni_native_log)},
             {const_cast<char *>("isCompatMode"), const_cast<char *>("()Z"),
              reinterpret_cast<void *>(jni_native_is_compat_mode)},
             {const_cast<char *>("nativeIsCompatMode"), const_cast<char *>("()Z"),
              reinterpret_cast<void *>(jni_native_is_compat_mode)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 4);
+    jint rc = env->RegisterNatives(clazz, methods, sizeof(methods) / sizeof(methods[0]));
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         LOGE("register_entry_natives: RegisterNatives failed (%d)", rc);

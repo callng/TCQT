@@ -50,6 +50,7 @@ plugins {
 rootProject.name = "TCQT"
 
 include(":app")
+include(":webui")
 include(":libs:annotations")
 include(":libs:qqinterface")
 include(":libs:processor")

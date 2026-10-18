@@ -14,6 +14,7 @@
             <option value="$PROJECT_DIR$/libs/annotations" />
             <option value="$PROJECT_DIR$/libs/processor" />
             <option value="$PROJECT_DIR$/libs/qqinterface" />
+            <option value="$PROJECT_DIR$/webui" />
           </set>
         </option>
       </GradleProjectSettings>

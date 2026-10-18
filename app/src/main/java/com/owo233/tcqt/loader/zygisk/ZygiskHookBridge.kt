@@ -74,7 +74,7 @@ internal object ZygiskHookBridge {
 
     /** native 层判定该成员不可安全 hook（布局探测失败/校验失败）时，优雅降级为 no-op。 */
     private fun failedHook(member: Member): Unhook {
-        Log.e(TAG, "hook skipped (native hook unavailable): $member")
+        ZygiskEntry.log(Log.ERROR, TAG, "hook skipped (native hook unavailable): $member")
         return Unhook {}
     }
 
@@ -84,7 +84,7 @@ internal object ZygiskHookBridge {
                 val target = member as Executable
                 val targetArt = nativeGetArtMethod(target)
                 if (targetArt == 0L) {
-                    Log.e(TAG, "failed to get ArtMethod for $member")
+                    ZygiskEntry.log(Log.ERROR, TAG, "failed to get ArtMethod for $member")
                     return@run null
                 }
 
@@ -92,7 +92,7 @@ internal object ZygiskHookBridge {
                 val bridgeArt = nativeGetArtMethod(pair.bridgeMethod)
                 val backupArt = nativeGetArtMethod(pair.backupMethod)
                 if (bridgeArt == 0L || backupArt == 0L) {
-                    Log.e(TAG, "failed to get ArtMethod for generated bridge/backup of $member")
+                    ZygiskEntry.log(Log.ERROR, TAG, "failed to get ArtMethod for generated bridge/backup of $member")
                     return@run null
                 }
 
@@ -101,11 +101,11 @@ internal object ZygiskHookBridge {
 
                 val rc = nativeHookMethod(targetArt, backupArt, bridgeArt)
                 if (rc != 0) {
-                    Log.e(TAG, "nativeHookMethod failed ($rc) for $member — hook skipped")
+                    ZygiskEntry.log(Log.ERROR, TAG, "nativeHookMethod failed ($rc) for $member — hook skipped")
                     return@run null
                 }
 
-                Log.d(TAG, "hooked #$hookId ${member.declaringClass?.name}.${member.name}")
+                ZygiskEntry.log(Log.DEBUG, TAG, "hooked #$hookId ${member.declaringClass?.name}.${member.name}")
 
                 val entry = HookEntry(member, pair.backupMethod)
                 hooks[hookId] = entry
@@ -134,7 +134,7 @@ internal object ZygiskHookBridge {
     fun invokeOriginal(member: Member, thisObject: Any?, args: Array<Any?>): Any? {
         val id = memberToHookId[member] ?: run {
             // native hook 失败被跳过时，原方法未被替换，直接返回 null 比抛异常安全
-            Log.w(TAG, "invokeOriginal: member is not hooked (native hook failed?): $member")
+            ZygiskEntry.log(Log.WARN, TAG, "invokeOriginal: member is not hooked (native hook failed?): $member")
             return null
         }
         val entry = hooks[id]
@@ -160,7 +160,7 @@ internal object ZygiskHookBridge {
             ?: run {
                 // Unhook 与进行中调用的窗口：entry 已移除但 trampoline 入口仍可能被命中。
                 // 异常会穿过 trampoline 的裸跳帧，因此静默返回 null 而不是抛出。
-                Log.w(TAG, "dispatch: no entry for hookId=$hookId (unhooked?)")
+                ZygiskEntry.log(Log.WARN, TAG, "dispatch: no entry for hookId=$hookId (unhooked?)")
                 return null
             }
         val param = MutableHookParam(entry.member, thisObject, args)
@@ -182,7 +182,7 @@ internal object ZygiskHookBridge {
                 }
             } catch (t: Throwable) {
                 // 与 Xposed 一致：before 回调抛异常不中断原方法。
-                Log.e(TAG, "before callback failed for ${entry.member}", t)
+                ZygiskEntry.log(Log.ERROR, TAG, "before callback failed for ${entry.member}", t)
                 param.resetAfterBeforeFailure()
             }
             beforeCount++
@@ -209,7 +209,7 @@ internal object ZygiskHookBridge {
                 (reg.callback as (HookParam) -> Unit).invoke(param)
             } catch (t: Throwable) {
                 // 恢复进入该回调前的状态，继续执行剩余 after 回调。
-                Log.e(TAG, "after callback failed for ${entry.member}", t)
+                ZygiskEntry.log(Log.ERROR, TAG, "after callback failed for ${entry.member}", t)
                 param.restore(state)
             }
         }

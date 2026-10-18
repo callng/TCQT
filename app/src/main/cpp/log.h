@@ -8,8 +8,10 @@
 
 #define LOGD(...)                                                          \
     do {                                                                   \
-        tcqt_log_write(ANDROID_LOG_DEBUG, __VA_ARGS__);                    \
-        __android_log_print(ANDROID_LOG_DEBUG, TCQT_TAG, __VA_ARGS__);     \
+        if (log_debug_enabled()) {                                        \
+            tcqt_log_write(ANDROID_LOG_DEBUG, __VA_ARGS__);                 \
+            __android_log_print(ANDROID_LOG_DEBUG, TCQT_TAG, __VA_ARGS__);  \
+        }                                                                 \
     } while (0)
 #define LOGI(...)                                                          \
     do {                                                                   \

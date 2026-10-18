@@ -4,126 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#f6f7f9">
-    <title>TCQT 作用域</title>
+    <title>TCQT · Zygisk</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main class="page">
-    <header class="topbar">
-        <div class="brand-mark" aria-hidden="true">TC</div>
-        <div>
-            <h1>TCQT</h1>
-            <p>作用域控制 & Hook</p>
+<main>
+    <header class="page-header"><h1>TCQT</h1><span class="subtitle">Zygisk</span></header>
+    <p id="error" role="alert" hidden></p>
+    <section class="panel" aria-labelledby="info-title">
+        <div class="section-heading"><h2 id="info-title">基本信息</h2><button id="share" class="primary" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v4H4zM5 10v10h14V10M12 9v8m-3-3 3 3 3-3"/></svg><span id="share-label">导出日志</span></button></div>
+        <div class="info-row"><strong>TCQT</strong><span>QQ / TIM · Zygisk 模块管理</span></div>
+    </section>
+    <section class="panel" aria-labelledby="scope-title">
+        <div class="section-heading"><h2 id="scope-title">应用作用域</h2><button id="reload" class="icon-button" aria-label="刷新状态" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M19 12a7 7 0 1 0-2 5M20 12l-3-5"/></svg></button></div>
+        <div id="users-section" class="user-row" hidden><label for="users">当前用户</label><select id="users"></select></div>
+        <div class="preferences">
+            <label class="preference"><span><strong>QQ</strong></span><small id="qq-status" class="badge">尚未读取</small><input type="checkbox" role="switch" data-key="qq" aria-describedby="qq-status" disabled></label>
+            <label class="preference"><span><strong>TIM</strong></span><small id="tim-status" class="badge">尚未读取</small><input type="checkbox" role="switch" data-key="tim" aria-describedby="tim-status" disabled></label>
         </div>
-    </header>
-
-    <nav id="user-tabs" class="user-tabs" role="tablist" aria-label="用户" hidden></nav>
-
-    <!-- 应用作用域 -->
-    <section class="scope-section" aria-labelledby="scope-title">
-        <div class="section-heading">
-            <h2 id="scope-title">应用作用域</h2>
-            <span id="scope-count" class="scope-count">正在读取</span>
+        <p class="hint">修改后重启对应应用生效。请勿与 LSPosed 中的 TCQT 同时启用。</p>
+    </section>
+    <section class="panel" aria-labelledby="native-title">
+        <div class="section-heading"><h2 id="native-title">原生 Hook</h2></div>
+        <div class="preferences">
+            <label class="preference"><span><strong>QQ · fopen 重定向</strong><small>在 MSF 进程中将 smaps 检测重定向至 /dev/null</small></span><input type="checkbox" role="switch" data-key="qqHook" disabled></label>
+            <label class="preference"><span><strong>TIM · fopen 重定向</strong><small>在 MSF 进程中将 smaps 检测重定向至 /dev/null</small></span><input type="checkbox" role="switch" data-key="timHook" disabled></label>
         </div>
-
-        <div class="scope-list" id="scope-list" aria-busy="true">
-            <label class="scope-item" data-scope="qq">
-                <span class="app-icon app-icon-qq">
-                    <img src="ksu://icon/com.tencent.mobileqq" alt="" aria-hidden="true">
-                    <span aria-hidden="true">QQ</span>
-                </span>
-                <span class="app-details">
-                    <strong>QQ</strong>
-                    <small>com.tencent.mobileqq</small>
-                    <small class="scope-note" hidden>该应用未安装</small>
-                </span>
-                <span class="switch">
-                    <input type="checkbox" disabled aria-label="QQ 作用域">
-                    <span class="switch-track" aria-hidden="true"></span>
-                </span>
-            </label>
-
-            <label class="scope-item" data-scope="tim">
-                <span class="app-icon app-icon-tim">
-                    <img src="ksu://icon/com.tencent.tim" alt="" aria-hidden="true">
-                    <span aria-hidden="true">TIM</span>
-                </span>
-                <span class="app-details">
-                    <strong>TIM</strong>
-                    <small>com.tencent.tim</small>
-                    <small class="scope-note" hidden>该应用未安装</small>
-                </span>
-                <span class="switch">
-                    <input type="checkbox" disabled aria-label="TIM 作用域">
-                    <span class="switch-track" aria-hidden="true"></span>
-                </span>
-            </label>
-        </div>
-
-        <div id="error-panel" class="error-panel" hidden>
-            <p id="error-message">读取作用域失败</p>
-            <button id="retry-button" type="button">重新加载</button>
+        <p class="hint">原生 Hook 随当前 Android 用户分别保存。</p>
+    </section>
+    <section class="panel" aria-labelledby="settings-title">
+        <div class="section-heading"><h2 id="settings-title">设置</h2></div>
+        <div class="preferences">
+            <label class="preference"><span><strong>兼容模式</strong><small>不知道有什么用，开启后对所有用户生效</small></span><input type="checkbox" role="switch" data-key="compat" disabled></label>
+            <label class="preference"><span><strong>详细调试日志</strong><small>额外记录 ART Hook 等细节，复现问题后可关闭。对所有用户生效</small></span><input type="checkbox" role="switch" data-key="debug" disabled></label>
         </div>
     </section>
-
-    <!-- 兼容模式 -->
-    <section class="scope-section" aria-labelledby="compat-title">
-        <div class="section-heading">
-            <h2 id="compat-title">兼容模式</h2>
-            <span id="compat-status" class="scope-count">正在读取</span>
-        </div>
-
-        <div class="scope-list" id="compat-list">
-            <label class="scope-item" id="compat-item">
-                <span class="app-icon app-icon-compat">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </span>
-                <span class="app-details">
-                    <strong>兼容模式</strong>
-                    <small>尝试和其他 XP 模块兼容运行</small>
-                    <small>兼容模式不显示设置入口，访问 tcqt.qq.com 进入</small>
-                    <small>部分功能可能无法使用或出现异常属于正常情况</small>
-                    <small style="color: red;">此功能如启用则不接受与本功能相关的BUG反馈</small>
-                </span>
-                <span class="switch">
-                    <input type="checkbox" id="compat-input" disabled aria-label="兼容模式">
-                    <span class="switch-track" aria-hidden="true"></span>
-                </span>
-            </label>
-        </div>
-    </section>
-
-    <!-- 原生 Hook -->
-    <section class="scope-section" aria-labelledby="hook-title">
-        <div class="section-heading">
-            <h2 id="hook-title">原生 Hook</h2>
-            <span id="hook-count" class="scope-count">正在读取</span>
-        </div>
-
-        <div class="hook-list" id="hook-list" aria-busy="true"></div>
-    </section>
-
-    <!-- 日志导出 -->
-    <section class="scope-section" aria-labelledby="log-title">
-        <div class="section-heading">
-            <h2 id="log-title">日志导出</h2>
-        </div>
-
-        <div class="log-card">
-            <p class="log-desc">排查问题时导出模块日志，保存至 Download 目录</p>
-            <button id="export-log-button" type="button" class="btn-action">导出日志</button>
-            <p id="export-log-result" class="log-result" aria-live="polite" hidden></p>
-        </div>
-    </section>
-
-    <p class="restart-note">作用域及 Hook 变更将在对应应用下次启动时生效</p>
-    <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>
+    <nav class="project-links" aria-label="项目链接">
+        <button type="button" data-link="source">开源地址</button>
+        <button type="button" data-link="channel">构建频道</button>
+        <button type="button" data-link="group">反馈群组</button>
+    </nav>
 </main>
-
-<script type="module" src="app.js"></script>
+<script type="module" src="view.js"></script>
 </body>
 </html>

@@ -36,10 +36,6 @@ class ZygiskHookEngine : IHookEngine {
 
     override fun log(priority: Int, tag: String?, msg: String, t: Throwable?) {
         val tagName = tag ?: TCQTBuild.HOOK_TAG
-        if (t != null) {
-            Log.println(priority, tagName, "$msg\n${Log.getStackTraceString(t)}")
-        } else {
-            Log.println(priority, tagName, msg)
-        }
+        ZygiskEntry.log(priority, tagName, msg, t)
     }
 }

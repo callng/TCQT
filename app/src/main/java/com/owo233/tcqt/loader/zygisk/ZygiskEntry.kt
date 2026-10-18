@@ -11,6 +11,7 @@ import androidx.annotation.Keep
 import com.owo233.tcqt.core.env.HostTypeEnum
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.ProcUtil
+import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookBefore
@@ -29,7 +30,22 @@ object ZygiskEntry {
     private external fun nativeArtInit(): Boolean
 
     @JvmStatic
-    private external fun nativeLog(tag: String, msg: String)
+    private external fun nativeLog(priority: Int, tag: String, msg: String)
+
+    @JvmStatic
+    private external fun nativeIsDebugLogging(): Boolean
+
+    private val debugLogging by lazy { runCatching { nativeIsDebugLogging() }.getOrDefault(false) }
+
+    fun log(priority: Int, tag: String, msg: String, t: Throwable? = null) {
+        if (priority < Log.INFO && !debugLogging) return
+        val text = if (t == null) msg else "$msg\n${Log.getStackTraceString(t)}"
+        Log.println(priority, tag, text)
+        // Logging must never change the outcome of a host callback.
+        runCatching { nativeLog(priority, tag, text) }
+    }
+
+    private fun nativeLog(tag: String, msg: String) = log(Log.INFO, tag, msg)
 
     @JvmStatic
     external fun isCompatMode(): Boolean
@@ -50,7 +66,7 @@ object ZygiskEntry {
         }
 
         try {
-            nativeLog(TAG, "init: $processName (zygisk mode claimed, compat=${isCompatMode()})")
+            nativeLog(TAG, "init: $processName module=${TCQTBuild.VER_NAME} (zygisk mode claimed, compat=${isCompatMode()})")
 
             val nativeDir = prepareNativeLibs(apkPath, dataDir)
             NativeLibs.register(nativeDir)
@@ -73,7 +89,7 @@ object ZygiskEntry {
             nativeLog(TAG, "init done: $processName")
         } catch (t: Throwable) {
             Log.e(TAG, "ZygiskEntry.init failed", t)
-            nativeLog(TAG, "init failed: ${t.javaClass.simpleName}: ${t.message}")
+            log(Log.ERROR, TAG, "init failed", t)
         }
     }
 
@@ -108,7 +124,7 @@ object ZygiskEntry {
 
                 // 防止 ZIP entry 中出现奇怪的路径
                 if (fileName.isEmpty() || fileName == "." || fileName == "..") {
-                    Log.w(TAG, "skip invalid native library entry: ${entry.name}")
+                    log(Log.WARN, TAG, "skip invalid native library entry: ${entry.name}")
                     return@forEach
                 }
 
@@ -123,8 +139,8 @@ object ZygiskEntry {
                     }
                 } catch (t: Throwable) {
                     allOk = false
-                    Log.e(
-                        TAG,
+                    log(
+                        Log.ERROR, TAG,
                         "failed to prepare native library: ${outFile.name}",
                         t
                     )
@@ -244,12 +260,13 @@ object ZygiskEntry {
             instantiate.hookAfter { p2 ->
                 if (p2.throwable != null) return@hookAfter
                 val hostLoader = p2.result as? ClassLoader ?: return@hookAfter
-                ModuleLoader.initialize(
+                val initialized = ModuleLoader.initialize(
                     hostLoader,
                     apkPath,
                     pkg,
                     processName
                 )
+                log(if (initialized) Log.INFO else Log.WARN, TAG, "host bootstrap initialize=$initialized process=$processName")
             }
         }
     }
@@ -265,6 +282,7 @@ object ZygiskEntry {
             val hostLoader = app.baseContext?.classLoader ?: app.classLoader ?: return@hookBefore
             if (hostLoader === javaClass.classLoader) return@hookBefore
 
+            nativeLog(TAG, "compat host bootstrap: $processName")
             ModuleLoader.reload(
                 mapOf(
                     "moduleApkPath" to apkPath,

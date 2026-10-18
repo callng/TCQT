@@ -19,10 +19,21 @@ TCQT 是嵌入 QQ/TIM 的工具模块。优先保证设置容易寻找、状态�
 | 消息 JSON 查看与搜索                 | `features/chat/MsgDetailDialog.kt`                        |
 | 群管理菜单与子表单                   | `features/menu/troop/`                                    |
 | DexKit 扫描进度、结果                | `ui/component/DexKitScanDialog.kt`                        |
-| KernelSU/APatch WebUI                | `zygisk-template/webroot/`，使用对应的网页样式            |
+| KernelSU/APatch WebUI                | 原生 HTML/CSS/JS，源文件位于 `zygisk-template/webroot/`   |
 
 宿主原有的聊天气泡、导航条、系统应用选择器和系统 Toast 保留各自的平台语义。
-WebUI 是管理器加载的静态网页，不运行 Compose；其配色、分组、间距与 Android 界面保持一致。
+WebUI 因模块体积预算使用原生 DOM 和系统字体；按参考图采用白底、浅灰细边框卡片、
+柔和绿色开关和浅绿状态标签，标题放在卡片内部，减少装饰与字体粗细层级，
+不引入 Compose/Skiko、WASM 或字库。Android 设置界面继续使用真实 Miuix 组件。
+WebUI 主题颜色集中在 CSS 变量；内容宽度上限 800px，手机边距 12px，跟随系统浅色/深色，
+使用语义化表单、可见键盘焦点、实时错误反馈，读取失败不得显示为“未安装”。
+KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，以管理器注入的安全区变量
+避让状态栏、导航栏和横屏缺口，浏览器 `env()` 仅作回退。外部链接由模块脚本调用前台用户的
+默认浏览器，不能依赖 WebView 的 A 标签或 `target="_blank"`。
+`:webui:assembleWebUi` 检查 HTML/CSS/JS/SVG 总量不超过 64 KiB，并自动合并进双格式 APK。
+构建不需要 Node/npm；勿提交 `webui/build/`。`UiLayout.kt` / `UiDialog.kt` 仅供 Android 使用。
+日志导出应打开系统分享面板，附件使用 MediaStore `content://` 和临时读取授权，禁止共享 `file://`。
+`share-logs.sh` 在 root 下收集日志，`LogShare` 以 shell UID 调用 Android 分享；不依赖 APK 安装。
 
 ## 颜色、文字与形状
 
