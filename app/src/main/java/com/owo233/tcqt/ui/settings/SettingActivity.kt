@@ -247,6 +247,8 @@ class SettingActivity : BaseComposeActivity() {
 
                 BackHandler {
                     when {
+                        viewModel.isAppearanceActive -> viewModel.navigateUp()
+                        viewModel.detailFeatureKey != null -> viewModel.navigateUp()
                         viewModel.isSearchActive -> viewModel.exitSearch()
                         viewModel.isErrorOverviewActive -> viewModel.navigateUp()
                         !viewModel.isAtRoot -> viewModel.navigateUp()
@@ -471,6 +473,7 @@ class SettingActivity : BaseComposeActivity() {
                             ThemeSettings.monetEnabled = enabled
                             monetEnabled = enabled
                         },
+                        onBack = { if (!viewModel.navigateUp()) finish() },
                         onSearchRequested = viewModel::enterSearch,
                         onSearchClosed = viewModel::exitSearch,
                         onIssueClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, false) },

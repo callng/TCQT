@@ -36,7 +36,6 @@ data class FeatureItemUiState(
     val key: String,
     val feature: SettingFeature,
     val enabled: Boolean,
-    val expanded: Boolean,
     val hasPending: Boolean,
     val optionGroups: List<FeatureOptionGroup>,
     val optionValues: Map<String, Int>,

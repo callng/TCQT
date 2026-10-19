@@ -9,13 +9,11 @@ import com.owo233.tcqt.core.env.isFlagEnabled
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookBefore
-import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.kernel.nativeinterface.MsgAttributeInfo
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
-import java.util.ConcurrentModificationException
 
 @RegisterAction
 object DefaultVASAttributes : Feature(

@@ -54,18 +54,23 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
   不再手工拼一个只有图标、没有页面标题的顶栏。返回用 `MiuixIcons.Back`。
 - `AdaptiveContent` 提供水平边距：手机 12dp，宽窗口居中、内容宽度最多 800dp。
   列表本身保持全宽，边缘区域也可以滚动。使用 `horizontalSafePadding()` 避让横屏缺口。
-- 消费 Scaffold 的 top/bottom padding；底部保留 24dp，保存悬浮按钮出现时额外让位。
-  系统栏 inset 只消费一次；输入列表使用 `imePadding()`。
+- 消费 Scaffold 的 top/bottom padding；列表末尾保留 24dp。保存栏使用 Scaffold `bottomBar`，
+  由测量结果自动为列表让位；导航栏 inset 只消费一次。`imePadding()` 放在 Scaffold 上，键盘出现时仍可保存。
 - 一个语义分组是一张连续卡片。分类行使用 `ArrowPreference`，直接布尔项使用 `SwitchPreference`；
-  带子设置的功能行可以组合 `BasicComponent` 与 `Switch`，点击行展开、点击开关只切换开关。
+  带子设置的功能使用箭头行进入独立详情页，尾部显示启用状态；详情页首行是总开关。
+  行内统一使用 16dp 水平/垂直边距，说明采用 body2，不用装饰图标和状态药丸挤占正文。
 - 每个分类或功能是独立 lazy item，使用功能 key / 分类完整路径作稳定 key。
   通过 `PreferenceSegment(first, last)` 拼接首末圆角，不把整个功能目录放进一个 lazy item。
-  单个功能的有限子表单可以随该行展开，长日志保持可选择复制。
-- 单选用 `RadioButtonPreference`，多选用 `CheckboxPreference`，数值用 `SliderPreference`。
+  详情页的选项、滑块和文本域也按字段拆成稳定 lazy item；长日志保持可选择复制。
+  每个页面分别保存列表位置和大标题折叠状态；返回详情页来源时保留搜索条件。
+- 单选用 `OverlayDropdownPreference` 的锚定勾选菜单，多选用 `CheckboxPreference`，数值用 `SliderPreference`。
   不给每个子选项再套一张不同底色的卡片。滑块保存值必须经过 `normalizeSliderValue`。
 - 搜索使用 Miuix `InputField`，保留其低版本 Android 的焦点修复。空查询只显示提示/历史；
   搜索、高亮统一使用原字符串的忽略大小写匹配，不通过转小写字符串计算偏移。
-- 设置仍是“修改 → 保存 → 重启生效”。行内标识未保存，悬浮按钮显示待保存数量。
+  保留默认前置搜索图标及内边距，不能用空 `leadingIcon` 槽移除留白；验收空输入、输入和清空后的光标位置。
+- 设置仍是“修改 → 保存 → 重启生效”。行内标识未保存，仅有草稿时显示底部主按钮和待保存数量。
+  保存按钮最小高度 52dp、图标 20dp，文字/图标都用 onPrimary，不使用无尺寸约束的 FAB 内容。
+  主题设置和备份入口放在首页的通用分组；分类页不重复反馈按钮和版权页脚。
   分类和页面切换不得清除草稿。运行异常、初始化条件不满足和未保存要分别表达。
 
 ## 弹窗与宿主窗口

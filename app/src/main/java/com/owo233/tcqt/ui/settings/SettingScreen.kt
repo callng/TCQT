@@ -1,7 +1,6 @@
 package com.owo233.tcqt.ui.settings
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -9,26 +8,25 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.owo233.tcqt.core.action.ActionUiType
 import com.owo233.tcqt.core.config.ModuleThemeMode
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.PlatformTools
@@ -43,54 +41,46 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
-private const val PageTransitionDurationMillis = 380
+internal val SettingsRowPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+private const val PageTransitionDurationMillis = 220
 
 internal fun softFadeScaleIn(initialScale: Float, durationMillis: Int) =
     fadeIn(animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)) +
-        scaleIn(
-            initialScale = initialScale,
-            animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
-        )
+        scaleIn(initialScale = initialScale, animationSpec = tween(durationMillis))
 
 internal fun softFadeScaleOut(targetScale: Float, durationMillis: Int) =
     fadeOut(animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)) +
-        scaleOut(
-            targetScale = targetScale,
-            animationSpec = tween(durationMillis, easing = FastOutSlowInEasing),
-        )
-
-private fun String.navigationDepth(): Int = if (isEmpty()) 0 else count { it == '/' } + 1
+        scaleOut(targetScale = targetScale, animationSpec = tween(durationMillis))
 
 private data class SettingsPageContentState(
     val path: String,
     val isAtRoot: Boolean,
     val isSearchActive: Boolean,
     val isErrorOverviewActive: Boolean,
+    val isAppearanceActive: Boolean,
+    val detail: FeatureItemUiState?,
     val searchQuery: String,
     val categories: List<CategoryUiState>,
     val features: List<FeatureItemUiState>,
-    val enabledCount: Int,
-    val disabledCount: Int,
     val errorCount: Int,
-    val showSaveAction: Boolean,
-    val currentCategoryLabel: String,
 ) {
-
     val animationKey: String
-        get() =
-            when {
-                isErrorOverviewActive -> "errors"
-                isSearchActive -> "search"
-                else -> path
-            }
+        get() = when {
+            detail != null -> "detail:${detail.key}"
+            isAppearanceActive -> "appearance"
+            isSearchActive -> "search"
+            isErrorOverviewActive -> "errors"
+            else -> "category:$path"
+        }
 }
 
 @Composable
@@ -101,6 +91,7 @@ internal fun SettingScreen(
     monetEnabled: Boolean,
     onThemeModeChange: (ModuleThemeMode) -> Unit,
     onMonetEnabledChange: (Boolean) -> Unit,
+    onBack: () -> Unit,
     onSearchRequested: () -> Unit,
     onSearchClosed: () -> Unit,
     onIssueClick: () -> Unit,
@@ -111,311 +102,281 @@ internal fun SettingScreen(
     onExportBugReportClick: () -> Unit,
     onFeatureClick: (String) -> Unit,
 ) {
-    val hasPending by rememberUpdatedState(viewModel.hasPendingChanges)
-    val isSearchActive = viewModel.isSearchActive
-    val density = LocalDensity.current
-    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
-    val showSaveAction = hasPending && !isImeVisible
-    val pageColor = MiuixTheme.colorScheme.surface
-    val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
-
-    LaunchedEffect(Unit) {
-        viewModel.reloadActionErrors()
+    val categories by viewModel.currentCategories
+    val features by viewModel.currentFeatures
+    val errorFeatures by viewModel.errorFeatures
+    val detail by viewModel.detailFeature
+    val isAppearanceActive = viewModel.isAppearanceActive
+    val isSearchActive = viewModel.isSearchActive && detail == null && !isAppearanceActive
+    val isErrorOverviewActive = viewModel.isErrorOverviewActive && detail == null
+    val pageState = SettingsPageContentState(
+        path = viewModel.currentPath,
+        isAtRoot = viewModel.isAtRoot,
+        isSearchActive = isSearchActive,
+        isErrorOverviewActive = isErrorOverviewActive,
+        isAppearanceActive = isAppearanceActive,
+        detail = detail,
+        searchQuery = viewModel.searchQuery,
+        categories = categories,
+        features = if (isErrorOverviewActive) errorFeatures else features,
+        errorCount = viewModel.errorCount,
+    )
+    val scrollBehavior = MiuixScrollBehavior(viewModel.getTopBarState(pageState.animationKey))
+    val title = when {
+        detail != null -> detail!!.feature.label
+        isAppearanceActive -> "主题设置"
+        isErrorOverviewActive -> "运行异常"
+        viewModel.isAtRoot -> "设置"
+        else -> viewModel.currentCategoryLabel.value
     }
+    LaunchedEffect(Unit) { viewModel.reloadActionErrors() }
 
     Scaffold(
-        containerColor = pageColor,
+        modifier = Modifier.imePadding(),
+        containerColor = MiuixTheme.colorScheme.surface,
         topBar = {
             TopBar(
-                viewModel = viewModel,
+                title = title,
+                showBack = true,
                 isSearchActive = isSearchActive,
                 searchQuery = viewModel.searchQuery,
-                onSearchRequested = onSearchRequested,
+                onBack = onBack,
+                onSearchRequested = if (detail == null && !isAppearanceActive) onSearchRequested else null,
                 onSearchClosed = onSearchClosed,
                 onSearchQueryChange = viewModel::updateSearchQuery,
-                onBackupRestoreClick = onBackupRestoreClick,
+                isErrorOverviewActive = isErrorOverviewActive,
                 isExportingBugReport = isExportingBugReport,
                 onExportBugReportClick = onExportBugReportClick,
-                themeMode = themeMode,
-                monetEnabled = monetEnabled,
-                onThemeModeChange = onThemeModeChange,
-                onMonetEnabledChange = onMonetEnabledChange,
-                containerColor = pageColor,
                 scrollBehavior = scrollBehavior,
             )
         },
         snackbarHost = {
-            SnackbarHost(
-                state = snackbarHostState,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            SnackbarHost(state = snackbarHostState, modifier = Modifier.padding(horizontal = 16.dp))
         },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = showSaveAction,
-                enter =
-                    fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-                        scaleIn(
-                            initialScale = 0.85f,
-                            animationSpec = tween(220, easing = FastOutSlowInEasing),
-                        ),
-                exit =
-                    fadeOut(tween(180, easing = FastOutSlowInEasing)) +
-                        scaleOut(
-                            targetScale = 0.85f,
-                            animationSpec = tween(180, easing = FastOutSlowInEasing),
-                        ),
-            ) {
-                SavePill(
-                    pendingCount = viewModel.pendingChangeCount,
-                    onClick = onSaveClick,
-                )
+        bottomBar = {
+            if (viewModel.hasPendingChanges) {
+                Box(Modifier.background(MiuixTheme.colorScheme.surface).navigationBarsPadding()) {
+                    SaveChangesBar(pendingCount = viewModel.pendingChangeCount, onClick = onSaveClick)
+                }
             }
         },
     ) { innerPadding ->
-        val categories by viewModel.currentCategories
-        val features by viewModel.currentFeatures
-        val errorFeatures by viewModel.errorFeatures
-        val currentPath = viewModel.currentPath
-        val isErrorOverviewActive = viewModel.isErrorOverviewActive
-        val pageState =
-            SettingsPageContentState(
-                path = currentPath,
-                isAtRoot = viewModel.isAtRoot,
-                isSearchActive = isSearchActive,
-                isErrorOverviewActive = isErrorOverviewActive,
-                searchQuery = viewModel.searchQuery,
-                categories = if (isErrorOverviewActive) emptyList() else categories,
-                features = if (isErrorOverviewActive) errorFeatures else features,
-                enabledCount = viewModel.enabledCount,
-                disabledCount = viewModel.disabledCount,
-                errorCount = viewModel.errorCount,
-                showSaveAction = showSaveAction,
-                currentCategoryLabel = viewModel.currentCategoryLabel.value,
-            )
-
         AnimatedContent(
             targetState = pageState,
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentKey = { it.animationKey },
             transitionSpec = {
-                val forward =
-                    targetState.isErrorOverviewActive ||
-                        targetState.path.navigationDepth() >= initialState.path.navigationDepth()
-                softFadeScaleIn(
-                        initialScale = if (forward) 0.96f else 1.015f,
-                        durationMillis = PageTransitionDurationMillis,
-                    )
-                    .togetherWith(
-                        softFadeScaleOut(
-                            targetScale = if (forward) 1.015f else 0.985f,
-                            durationMillis = PageTransitionDurationMillis,
-                        )
-                    )
+                softFadeScaleIn(0.985f, PageTransitionDurationMillis)
+                    .togetherWith(softFadeScaleOut(1f, PageTransitionDurationMillis))
             },
             label = "settings_page_transition",
-        ) { targetPageState ->
-            PageContent(
-                pageState = targetPageState,
-                viewModel = viewModel,
-                innerPadding = innerPadding,
-                onIssueClick = onIssueClick,
-                onIssueLongClick = onIssueLongClick,
-                onFeatureClick = onFeatureClick,
+        ) { targetPage ->
+            val listState = remember(targetPage.animationKey) {
+                viewModel.getScrollState(targetPage.animationKey)
+            }
+            AdaptiveContent { sidePadding ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().horizontalSafePadding().overScrollVertical(),
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = sidePadding,
+                        end = sidePadding,
+                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 24.dp,
+                    ),
+                ) {
+                    when {
+                        targetPage.detail != null -> featureDetail(targetPage.detail, viewModel, onFeatureClick)
+                        targetPage.isAppearanceActive -> {
+                            settingsGroupTitle("外观")
+                            item(key = "theme_mode") {
+                                PreferenceSegment(first = true, last = false) {
+                                    OverlayDropdownPreference(
+                                        title = "主题模式",
+                                        items = listOf("跟随系统", "浅色模式", "深色模式"),
+                                        selectedIndex = ModuleThemeMode.entries.indexOf(themeMode),
+                                        insideMargin = SettingsRowPadding,
+                                        onSelectedIndexChange = { onThemeModeChange(ModuleThemeMode.entries[it]) },
+                                    )
+                                }
+                            }
+                            item(key = "monet") {
+                                PreferenceSegment(first = false, last = true) {
+                                    SwitchPreference(
+                                        title = "动态颜色",
+                                        summary = "使用系统壁纸配色",
+                                        checked = monetEnabled,
+                                        onCheckedChange = onMonetEnabledChange,
+                                        insideMargin = SettingsRowPadding,
+                                    )
+                                }
+                            }
+                        }
+                        else -> featureDirectory(
+                            page = targetPage,
+                            viewModel = viewModel,
+                            onFeatureClick = onFeatureClick,
+                            onBackupRestoreClick = onBackupRestoreClick,
+                            onIssueClick = onIssueClick,
+                            onIssueLongClick = onIssueLongClick,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.settingsGroupTitle(title: String) {
+    item(key = "group:$title") {
+        SmallTitle(text = title, insideMargin = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp))
+    }
+}
+
+private fun LazyListScope.featureDetail(
+    item: FeatureItemUiState,
+    viewModel: SettingViewModel,
+    onFeatureClick: (String) -> Unit,
+) {
+    item(key = "feature_enable:${item.key}") {
+        PreferenceSegment(first = true, last = true) {
+            if (item.uiType == ActionUiType.ENTRY) {
+                ArrowPreference(
+                    title = item.feature.label,
+                    summary = item.feature.desc.takeIf(String::isNotBlank),
+                    insideMargin = SettingsRowPadding,
+                    enabled = item.initReady,
+                    onClick = { onFeatureClick(item.key) },
+                )
+            } else {
+                SwitchPreference(
+                    title = "启用功能",
+                    summary = if (item.initReady) item.feature.desc.takeIf(String::isNotBlank) else "当前宿主不支持此功能",
+                    checked = item.enabled,
+                    enabled = item.initReady,
+                    onCheckedChange = { viewModel.setFeatureEnabled(item.key, it) },
+                    insideMargin = SettingsRowPadding,
+                )
+            }
+        }
+    }
+    if (item.initReady) {
+        val fieldCount = item.optionGroups.size + item.sliders.size + item.textAreas.size
+        if (fieldCount > 0) settingsGroupTitle("选项")
+        itemsIndexed(item.optionGroups, key = { _, group -> "option:${group.key}" }) { index, group ->
+            PreferenceSegment(first = index == 0, last = index == fieldCount - 1) {
+                OptionGroup(group, item.optionValues[group.key] ?: group.fallbackValue) {
+                    viewModel.setOptionValue(group.key, it)
+                }
+            }
+        }
+        itemsIndexed(item.sliders, key = { _, slider -> "slider:${slider.key}" }) { index, slider ->
+            val position = item.optionGroups.size + index
+            PreferenceSegment(first = position == 0, last = position == fieldCount - 1) {
+                FeatureSlider(slider) { viewModel.setSliderValue(slider.key, it) }
+            }
+        }
+        itemsIndexed(item.textAreas, key = { _, area -> "text:${area.key}" }) { index, area ->
+            val position = item.optionGroups.size + item.sliders.size + index
+            PreferenceSegment(first = position == 0, last = position == fieldCount - 1) {
+                Box(Modifier.padding(16.dp)) {
+                    FeatureTextArea(area, repositionKey = Unit) { viewModel.setTextValue(area.key, it) }
+                }
+            }
+        }
+    }
+    item.error?.let { error ->
+        settingsGroupTitle("诊断")
+        item(key = "error:${item.key}") {
+            FeatureErrorPanel(error) { viewModel.clearActionError(item.key) }
+        }
+    }
+}
+
+private fun LazyListScope.featureDirectory(
+    page: SettingsPageContentState,
+    viewModel: SettingViewModel,
+    onFeatureClick: (String) -> Unit,
+    onBackupRestoreClick: () -> Unit,
+    onIssueClick: () -> Unit,
+    onIssueLongClick: () -> Unit,
+) {
+    val isRoot = page.isAtRoot && !page.isSearchActive && !page.isErrorOverviewActive
+    if (isRoot) {
+        item(key = "host") {
+            CompactHeaderCard(
+                hostName = HookEnv.appName,
+                hostVersion = "${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
+                moduleName = TCQTBuild.APP_NAME,
+                moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
+                errorCount = page.errorCount,
+                onErrorClick = viewModel::openErrorOverview,
             )
         }
     }
-}
-
-// ───── Page Content ─────
-
-@Composable
-private fun PageContent(
-    pageState: SettingsPageContentState,
-    viewModel: SettingViewModel,
-    innerPadding: PaddingValues,
-    onIssueClick: () -> Unit,
-    onIssueLongClick: () -> Unit,
-    onFeatureClick: (String) -> Unit,
-) {
-    val categories = pageState.categories
-    val features = pageState.features
-    val isSearchActive = pageState.isSearchActive
-    val isErrorOverviewActive = pageState.isErrorOverviewActive
-    val lazyListState =
-        remember(pageState.animationKey) {
-            viewModel.getScrollState(pageState.animationKey)
+    if (page.isErrorOverviewActive) {
+        item(key = "error_overview_intro") { ErrorOverviewHeader(page.errorCount) }
+        settingsGroupTitle("异常功能")
+    }
+    if (page.isSearchActive) {
+        if (page.searchQuery.isBlank()) {
+            item(key = "search_history") {
+                if (viewModel.searchHistory.isEmpty()) SearchPromptCard()
+                else SearchHistoryLayout(
+                    history = viewModel.searchHistory,
+                    onTagClick = viewModel::updateSearchQuery,
+                    onClearClick = viewModel::clearSearchHistory,
+                )
+            }
+        } else if (page.features.isEmpty()) {
+            item(key = "search_empty") {
+                EmptyStateCard(MiuixIcons.Search, "未找到相关功能", "换一个关键词试试")
+            }
+        } else settingsGroupTitle("搜索结果 · ${page.features.size}")
+    } else if (!page.isErrorOverviewActive && page.categories.isNotEmpty()) {
+        settingsGroupTitle(if (isRoot) "功能" else "分类")
+        itemsIndexed(page.categories, key = { _, category -> "category:${category.fullPath}" }) { index, category ->
+            PreferenceSegment(first = index == 0, last = index == page.categories.lastIndex) {
+                CategoryCard(category) { viewModel.navigateTo(category.fullPath) }
+            }
         }
-
-    AdaptiveContent { sidePadding ->
-        LazyColumn(
-            modifier =
-                Modifier.fillMaxSize().horizontalSafePadding().overScrollVertical().imePadding(),
-            state = lazyListState,
-            contentPadding =
-                PaddingValues(
-                    start = sidePadding,
-                    top = innerPadding.calculateTopPadding() + 12.dp,
-                    end = sidePadding,
-                    bottom =
-                        innerPadding.calculateBottomPadding() +
-                            if (pageState.showSaveAction) 100.dp else 24.dp,
-                ),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            // Header (root only)
-            if (!isSearchActive && !isErrorOverviewActive && pageState.isAtRoot) {
-                item(key = "header") {
-                    CompactHeaderCard(
-                        hostName = HookEnv.appName,
-                        hostVersion =
-                            "${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
-                        moduleName = TCQTBuild.APP_NAME,
-                        moduleVersion =
-                            "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
-                        enabledCount = pageState.enabledCount,
-                        disabledCount = pageState.disabledCount,
-                        errorCount = pageState.errorCount,
-                        onErrorClick = viewModel::openErrorOverview,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                }
+    }
+    if (page.features.isNotEmpty()) {
+        if (!page.isSearchActive && !page.isErrorOverviewActive && page.categories.isNotEmpty()) settingsGroupTitle("其他功能")
+        itemsIndexed(page.features, key = { _, feature -> feature.key }) { index, feature ->
+            PreferenceSegment(first = index == 0, last = index == page.features.lastIndex) {
+                FeatureCard(
+                    item = feature,
+                    searchQuery = if (page.isSearchActive) page.searchQuery else "",
+                    onOpenDetails = { viewModel.openFeatureDetails(feature.key) },
+                    onFeatureEnabledChange = { viewModel.setFeatureEnabled(feature.key, it) },
+                    onFeatureClick = { onFeatureClick(feature.key) },
+                )
             }
-
-            if (isErrorOverviewActive) {
-                item(key = "error_overview_intro") {
-                    ErrorOverviewHeader(errorCount = pageState.errorCount)
-                }
+        }
+    } else if (page.categories.isEmpty() && !page.isSearchActive && !page.isErrorOverviewActive) {
+        item(key = "empty") { EmptyStateCard(MiuixIcons.Folder, "暂无可用内容") }
+    }
+    if (isRoot) {
+        settingsGroupTitle("通用")
+        item(key = "appearance_entry") {
+            PreferenceSegment(first = true, last = false) {
+                ArrowPreference(title = "主题设置", insideMargin = SettingsRowPadding, onClick = viewModel::openAppearance)
             }
-
-            // Search: prompt before typing or history
-            if (isSearchActive && pageState.searchQuery.isBlank()) {
-                if (viewModel.searchHistory.isEmpty()) {
-                    item(key = "search_prompt") {
-                        SearchPromptCard()
-                    }
-                } else {
-                    item(key = "search_history") {
-                        SearchHistoryLayout(
-                            history = viewModel.searchHistory,
-                            onTagClick = { tag ->
-                                viewModel.updateSearchQuery(tag)
-                            },
-                            onClearClick = {
-                                viewModel.clearSearchHistory()
-                            },
-                        )
-                    }
-                }
+        }
+        item(key = "backup_entry") {
+            PreferenceSegment(first = false, last = false) {
+                ArrowPreference(title = "备份与还原", insideMargin = SettingsRowPadding, onClick = onBackupRestoreClick)
             }
-
-            // Search: result count (only when there are results)
-            if (isSearchActive && pageState.searchQuery.isNotBlank() && features.isNotEmpty()) {
-                item(key = "search_result_count") {
-                    Text(
-                        text = "共找到 ${features.size} 项",
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
-            }
-
-            // Search: zero results
-            if (isSearchActive && pageState.searchQuery.isNotBlank() && features.isEmpty()) {
-                item(key = "search_empty") {
-                    EmptyStateCard(
-                        icon = MiuixIcons.Search,
-                        title = "未找到相关功能",
-                        summary = "换一个关键词试试",
-                    )
-                }
-            }
-
-            // Sub-category title (non-root, non-search)
-            if (
-                !isSearchActive &&
-                    !isErrorOverviewActive &&
-                    !pageState.isAtRoot &&
-                    categories.isNotEmpty()
-            ) {
-                item(key = "subcat_title") {
-                    SmallTitle(text = "分类")
-                }
-            }
-
-            // Category cards
-            if (!isSearchActive && !isErrorOverviewActive) {
-                itemsIndexed(
-                    items = categories,
-                    key = { _, category -> "cat_${category.fullPath}" },
-                    contentType = { _, _ -> "category_row" },
-                ) { index, category ->
-                    PreferenceSegment(first = index == 0, last = index == categories.lastIndex) {
-                        CategoryCard(
-                            category = category,
-                            onClick = { viewModel.navigateTo(category.fullPath) },
-                        )
-                    }
-                }
-
-                // Separator between categories and features
-                if (categories.isNotEmpty() && features.isNotEmpty()) {
-                    item(key = "separator") {
-                        SmallTitle(text = "功能")
-                    }
-                }
-            }
-
-            // Feature cards
-            if (
-                features.isEmpty() &&
-                    categories.isEmpty() &&
-                    !isSearchActive &&
-                    !isErrorOverviewActive
-            ) {
-                item(key = "empty") {
-                    EmptyStateCard(
-                        icon = MiuixIcons.Folder,
-                        title = "暂无可用内容",
-                    )
-                }
-            } else if (features.isNotEmpty()) {
-                itemsIndexed(
-                    items = features,
-                    key = { _, feature -> feature.key },
-                    contentType = { _, _ -> "feature_row" },
-                ) { index, item ->
-                    PreferenceSegment(first = index == 0, last = index == features.lastIndex) {
-                        FeatureCard(
-                            item = item,
-                            searchQuery = pageState.searchQuery,
-                            onToggleExpanded = { viewModel.toggleExpanded(item.key) },
-                            onFeatureEnabledChange = { viewModel.setFeatureEnabled(item.key, it) },
-                            onOptionValueChange = { key, value ->
-                                viewModel.setOptionValue(key, value)
-                            },
-                            onSliderValueChange = { key, value ->
-                                viewModel.setSliderValue(key, value)
-                            },
-                            onTextValueChange = { key, value ->
-                                viewModel.setTextValue(key, value)
-                            },
-                            onClearError = { viewModel.clearActionError(item.key) },
-                            onFeatureClick = { onFeatureClick(item.key) },
-                            forceExpanded = isSearchActive,
-                        )
-                    }
-                }
-            }
-
-            if (!isSearchActive && !isErrorOverviewActive) {
-                item(key = "footer") {
-                    FooterCard(onIssueClick = onIssueClick, onIssueLongClick = onIssueLongClick)
-                }
+        }
+        item(key = "feedback_entry") {
+            PreferenceSegment(first = false, last = true) {
+                ArrowPreference(
+                    title = "反馈与建议",
+                    insideMargin = SettingsRowPadding,
+                    modifier = Modifier.combinedClickable(onClick = onIssueClick, onLongClick = onIssueLongClick),
+                )
             }
         }
     }
 }
-
-// ───── Top Bar ─────

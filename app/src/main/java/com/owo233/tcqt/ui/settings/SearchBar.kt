@@ -25,7 +25,6 @@ internal fun SearchBar(query: String, onQueryChange: (String) -> Unit, onBackCli
             onExpandedChange = { if (!it) onBackClick() },
             modifier = Modifier.weight(1f),
             label = "搜索功能名称或描述",
-            leadingIcon = {},
             trailingIcon = {
                 if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
                     Icon(MiuixIcons.Clear, contentDescription = "清除搜索")

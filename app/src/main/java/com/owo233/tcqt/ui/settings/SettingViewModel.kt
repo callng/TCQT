@@ -14,7 +14,6 @@ import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.log.ActionErrorStore
 import com.owo233.tcqt.host.service.AntiRecallConfig
-import com.owo233.tcqt.ui.settings.model.BreadcrumbItem
 import com.owo233.tcqt.ui.settings.model.CategoryNode
 import com.owo233.tcqt.ui.settings.model.CategoryUiState
 import com.owo233.tcqt.ui.settings.model.FeatureErrorUiState
@@ -26,8 +25,15 @@ import com.owo233.tcqt.ui.settings.model.SettingFeature
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
 import com.owo233.tcqt.ui.settings.model.normalizeSliderValue
 import kotlinx.serialization.json.Json
+import top.yukonga.miuix.kmp.basic.TopAppBarState
 
 class SettingViewModel : ViewModel() {
+
+    private val topBarStates = mutableMapOf<String, TopAppBarState>()
+
+    fun getTopBarState(path: String) = topBarStates.getOrPut(path) {
+        TopAppBarState(-Float.MAX_VALUE, 0f, 0f)
+    }
 
     private val scrollStates = mutableMapOf<String, LazyListState>()
 
@@ -45,7 +51,19 @@ class SettingViewModel : ViewModel() {
     private val pendingInts = mutableStateMapOf<String, Int>()
     private val pendingStrings = mutableStateMapOf<String, String>()
 
-    private val expandedKeys = mutableStateMapOf<String, Boolean>()
+    var detailFeatureKey by mutableStateOf<String?>(null)
+        private set
+
+    var isAppearanceActive by mutableStateOf(false)
+        private set
+
+    fun openAppearance() {
+        isAppearanceActive = true
+    }
+
+    val detailFeature: State<FeatureItemUiState?> = derivedStateOf {
+        detailFeatureKey?.let(featureByKey::get)?.let(::toFeatureItemUiState)
+    }
     private val actionErrors = mutableStateMapOf<String, FeatureErrorUiState>()
 
     // ───── All features (flat) ─────
@@ -136,11 +154,6 @@ class SettingViewModel : ViewModel() {
             .map(::toFeatureItemUiState)
     }
 
-    /** Breadcrumb trail for the top bar. */
-    val breadcrumbs: State<List<BreadcrumbItem>> = derivedStateOf {
-        buildBreadcrumbs()
-    }
-
     /** Page title for the current category level. */
     val currentCategoryLabel: State<String> = derivedStateOf {
         if (isAtRoot) "功能配置"
@@ -164,6 +177,14 @@ class SettingViewModel : ViewModel() {
     }
 
     fun navigateUp(): Boolean {
+        if (isAppearanceActive) {
+            isAppearanceActive = false
+            return true
+        }
+        if (detailFeatureKey != null) {
+            detailFeatureKey = null
+            return true
+        }
         if (isErrorOverviewActive) {
             isErrorOverviewActive = false
             return true
@@ -174,6 +195,8 @@ class SettingViewModel : ViewModel() {
     }
 
     fun navigateToRoot() {
+        isAppearanceActive = false
+        detailFeatureKey = null
         isErrorOverviewActive = false
         _navStack.clear()
     }
@@ -183,22 +206,6 @@ class SettingViewModel : ViewModel() {
         isSearchActive = false
         searchQuery = ""
         isErrorOverviewActive = true
-    }
-
-    fun navigateToBreadcrumb(fullPath: String) {
-        if (fullPath.isEmpty()) {
-            navigateToRoot()
-            return
-        }
-        val idx = _navStack.indexOf(fullPath)
-        if (idx >= 0) {
-            while (_navStack.size > idx + 1) {
-                _navStack.removeAt(_navStack.lastIndex)
-            }
-        } else {
-            _navStack.clear()
-            _navStack.add(fullPath)
-        }
     }
 
     private fun popNavStack(): String = _navStack.removeAt(_navStack.lastIndex)
@@ -262,9 +269,8 @@ class SettingViewModel : ViewModel() {
 
     // ───── Feature interaction ─────
 
-    fun toggleExpanded(key: String) {
-        if (!FeatureCatalog.isInitReady(key)) return
-        expandedKeys[key] = !(expandedKeys[key] ?: false)
+    fun openFeatureDetails(key: String) {
+        if (featureByKey.containsKey(key)) detailFeatureKey = key
     }
 
     fun reloadActionErrors() {
@@ -382,7 +388,7 @@ class SettingViewModel : ViewModel() {
         pendingBooleans.clear()
         pendingInts.clear()
         pendingStrings.clear()
-        expandedKeys.clear()
+        topBarStates.clear()
         scrollStates.clear()
         searchHistory.clear()
         pendingKeywordsToSave.clear()
@@ -504,18 +510,6 @@ class SettingViewModel : ViewModel() {
         return null
     }
 
-    private fun buildBreadcrumbs(): List<BreadcrumbItem> {
-        if (_navStack.isEmpty()) return emptyList()
-
-        val result = mutableListOf<BreadcrumbItem>()
-        for (path in _navStack) {
-            val node = resolveNode(path)
-            val name = node?.name ?: path.substringAfterLast('/')
-            result.add(BreadcrumbItem(name = name, fullPath = path))
-        }
-        return result
-    }
-
     // ───── Internal: feature computation ─────
 
     private fun computeVisibleFeatureUiStates(): List<FeatureItemUiState> {
@@ -572,7 +566,6 @@ class SettingViewModel : ViewModel() {
             key = feature.key,
             feature = feature,
             enabled = initReady && effectiveBoolean(feature.key),
-            expanded = expandedKeys[feature.key] == true,
             hasPending = hasPendingFor(feature),
             optionGroups = feature.optionGroups,
             optionValues = feature.optionGroups.associate { it.key to currentOptionValue(it) },

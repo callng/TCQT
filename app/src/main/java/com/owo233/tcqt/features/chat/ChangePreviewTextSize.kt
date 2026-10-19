@@ -22,7 +22,8 @@ object ChangePreviewTextSize : Feature(
 
     private val textSize by stringOption(
         settingKey = "string.textSize",
-        name = "textSize",
+        name = "字体大小",
+        placeholder = "默认 14，留空恢复默认",
         desc = "默认大小 14\n配置为空或无效值则使用默认大小\n",
     )
 
