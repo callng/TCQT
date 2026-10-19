@@ -52,6 +52,39 @@ jobs:
           build-scan-terms-of-use-url: 'https://gradle.com/terms-of-service'
           build-scan-terms-of-use-agree: 'yes'
 
+      - name: Prepare Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cmake_version=$(sed -nE 's/^val androidCmakeVersion = "([^"]+)".*/\1/p' build.gradle.kts)
+          ndk_version=$(sed -nE 's/^val androidNdkVersion = "([^"]+)".*/\1/p' build.gradle.kts)
+          test -n "$cmake_version" && test -n "$ndk_version"
+          sdk_root="${ANDROID_HOME:?ANDROID_HOME is not set}"
+          sdkmanager="$sdk_root/cmdline-tools/latest/bin/sdkmanager"
+
+          # Reuse the pinned tools when preinstalled; only download missing packages.
+          for package in "cmake;$cmake_version" "ndk;$ndk_version"; do
+            package_dir="$sdk_root/${package/;/\/}"
+            if [ -f "$package_dir/source.properties" ]; then
+              continue
+            fi
+            for attempt in 1 2 3; do
+              if "$sdkmanager" --sdk_root="$sdk_root" --install "$package"; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "::error::Failed to install Android SDK package: $package"
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+
+          "$sdk_root/cmake/$cmake_version/bin/cmake" --version
+          "$sdk_root/cmake/$cmake_version/bin/ninja" --version
+          test -f "$sdk_root/ndk/$ndk_version/build/cmake/android.toolchain.cmake"
+
       - name: Build with Gradle
         env:
           SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}

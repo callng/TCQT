@@ -34,6 +34,8 @@ val androidTargetCompatibility =
     rootProject.extra["androidTargetCompatibility"] as JavaVersion
 val androidNdkVersion =
     rootProject.extra["androidNdkVersion"] as String
+val androidCmakeVersion =
+    rootProject.extra["androidCmakeVersion"] as String
 val appVersionName =
     rootProject.extra["appVersionName"] as String
 val appVersionCode =
@@ -158,6 +160,7 @@ extensions.configure<ApplicationExtension> {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
+            version = androidCmakeVersion
         }
     }
 
@@ -390,6 +393,8 @@ fun registerPrepareTask(
         inputs.dir(webuiDir)
         inputs.dir(objDirProvider)
         inputs.file(stripExe)
+        inputs.property("appVersionName", appVersionName)
+        inputs.property("appVersionCode", appVersionCode)
         outputs.dir(stageDirProvider)
 
         doLast {
