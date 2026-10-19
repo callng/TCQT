@@ -1,13 +1,18 @@
 package com.owo233.tcqt.features.message
 
+import android.view.ViewGroup
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
+import com.owo233.tcqt.core.hook.MethodHookParam
 import com.owo233.tcqt.core.hook.hookMethodAfter
+import com.owo233.tcqt.features.internal.pipeline.OnAIOViewUpdate
 import com.owo233.tcqt.host.service.AntiRecallConfig
 import com.owo233.tcqt.host.service.NTServiceFetcher
+import com.owo233.tcqt.host.service.RecallTargetResolver
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
+import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import mqq.app.MobileQQ
 
 @RegisterAction
@@ -17,7 +22,13 @@ object MsgAntiRecall : Feature(
     desc = "阻止消息被撤回后删除，需要保活进程。",
     uiOrder = 1,
     processes = setOf(ActionProcess.MAIN),
-) {
+), OnAIOViewUpdate {
+
+    override val decoratorOrder: Int = 50
+
+    override fun onGetViewNt(view: ViewGroup, msgRecord: MsgRecord, param: MethodHookParam) {
+        if (canRun() && AntiRecallConfig.isGrayTipEnabled()) RecallTargetResolver.remember(msgRecord)
+    }
 
     /**
      * settingKey 必须与 `AntiRecallConfig.SETTING_KEY` 一致；本功能只负责把该项注册进

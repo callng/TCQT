@@ -59,6 +59,77 @@ class RecallPacketParserTest(private val useKotlinx: Boolean) {
     private fun sync(vararg messages: ByteArray, flag: Long = 2): ByteArray =
         num(3, flag) + bytes(8, bytes(4, messages.fold(text(2, actor)) { all, msg -> all + bytes(8, msg) }))
 
+    private fun deleted(seq: Long, peer: Long = 123456, routeType: Long = 127): ByteArray =
+        bytes(1, bytes(8, num(1, peer) + num(2, routeType))) +
+            bytes(2, num(1, 82) + num(3, 1) + num(5, seq) + num(7, 1)) +
+            bytes(3, bytes(1, bytes(2, bytes(1, text(1, "[已删除]")))))
+
+    private fun groupSync(vararg messages: ByteArray, peer: Long = 123456): ByteArray =
+        bytes(7, bytes(3,
+            num(3, peer) + num(4, 500) + num(5, 501) + num(8, 1792387008) +
+                messages.fold(byteArrayOf()) { all, msg -> all + bytes(6, msg) } + num(99, 1)
+        ))
+
+    @Test
+    fun syncRemovesMatchingDeletionOutsideSyncRangeAndPreservesLiteralTextAndCursors() {
+        val notice = message(732, 17, group(410))
+        val ordinary = deleted(410, routeType = 1)
+        val unrelated = deleted(411)
+        val unknown = bytes(100, byteArrayOf(-1, -2))
+        val packet = groupSync(deleted(410), ordinary, unrelated) + sync(notice) + unknown
+        val result = infoSyncPush(packet, self)
+        assertEquals(listOf(410L), result.recalls.map { it.msgSeq })
+        assertContentEquals(groupSync(ordinary, unrelated) + sync() + unknown, result.bytes)
+    }
+
+    @Test
+    fun deletionOnlySyncUsesRecallHistoryWithoutCreatingAnotherNotice() {
+        val packet = groupSync(deleted(410), deleted(411)) + num(3, 1)
+        val result = RecallPacketParser.infoSyncPush(packet, self, decoder) { peer, seq ->
+            peer == "123456" && seq == 410L
+        }
+        assertTrue(result.recalls.isEmpty())
+        assertContentEquals(groupSync(deleted(411)) + num(3, 1), result.bytes)
+        assertContentEquals(packet, infoSyncPush(packet, self).bytes)
+    }
+
+    @Test
+    fun ownRecallUnknownTargetsAndOtherGroupsKeepTheirDeletionRecords() {
+        val packet = groupSync(deleted(410), deleted(410, peer = 654321)) +
+            sync(message(732, 17, group(410, uid = self)))
+        assertContentEquals(packet, infoSyncPush(packet, self).bytes)
+        val protected = RecallPacketParser.infoSyncPush(packet, self, decoder) { peer, seq ->
+            peer == "123456" && seq == 410L
+        }
+        assertContentEquals(packet, protected.bytes)
+        assertEquals(setOf("123456" to 410L), protected.allowedGroupRecalls)
+        val live = msgPush(bytes(1, message(732, 17, group(410, uid = self))), self)
+        assertEquals(protected.allowedGroupRecalls, live.allowedGroupRecalls)
+        assertFalse(live.blockPush)
+    }
+
+    @Test
+    fun syncFiltersEveryBatchDeletionButLeavesMalformedRecordsByteIdentical() {
+        val malformed = bytes(1, byteArrayOf(66, 127, 1))
+        val invalidSeq = deleted(0)
+        val packet = sync(message(732, 17, group(410, 411))) +
+            groupSync(deleted(410), malformed, deleted(411), invalidSeq)
+        val result = infoSyncPush(packet, self)
+        assertEquals(listOf(410L, 411L), result.recalls.map { it.msgSeq })
+        assertContentEquals(sync() + groupSync(malformed, invalidSeq), result.bytes)
+    }
+
+    @Test
+    fun ownRecallInSameSyncWinsOverAnOlderForeignRecallOfThatMessage() {
+        val foreign = message(732, 17, group(410))
+        val own = message(732, 17, group(410, uid = self))
+        val packet = sync(foreign, own) + groupSync(deleted(410))
+        val result = infoSyncPush(packet, self)
+        assertTrue(result.recalls.isEmpty())
+        assertEquals(setOf("123456" to 410L), result.allowedGroupRecalls)
+        assertContentEquals(sync(own) + groupSync(deleted(410)), result.bytes)
+    }
+
     @Test
     fun c2cRestoresField20AndRetainsSenderSequenceAndMessageIdForLookup() {
         val packet = bytes(1, message(528, 138, c2c()))
@@ -261,6 +332,25 @@ class RecallPacketParserTest(private val useKotlinx: Boolean) {
                 assertTrue(infoSyncPush(result.bytes, uid).recalls.isEmpty(), file)
                 // Output is still a valid protobuf envelope.
                 UnknownFieldSet.parseFrom(result.bytes)
+                val groups = UnknownFieldSet.parseFrom(result.bytes).getField(7).lengthDelimitedList
+                    .flatMap { UnknownFieldSet.parseFrom(it).getField(3).lengthDelimitedList }
+                groups.forEach { groupBytes ->
+                    val groupFields = UnknownFieldSet.parseFrom(groupBytes)
+                    val peer = groupFields.getField(3).varintList.lastOrNull()?.toString()
+                    val protected = result.recalls.filter { it.group && it.peerId == peer }.map { it.msgSeq }
+                    groupFields.getField(6).lengthDelimitedList.forEach { msgBytes ->
+                        val msg = UnknownFieldSet.parseFrom(msgBytes)
+                        val seq = msg.getField(2).lengthDelimitedList.flatMap {
+                            UnknownFieldSet.parseFrom(it).getField(5).varintList
+                        }.lastOrNull()
+                        if (seq in protected) {
+                            val routeTypes = msg.getField(1).lengthDelimitedList.flatMap {
+                                UnknownFieldSet.parseFrom(it).getField(8).lengthDelimitedList
+                            }.flatMap { UnknownFieldSet.parseFrom(it).getField(2).varintList }
+                            assertFalse(127L in routeTypes, "Protected original replaced by deletion in $file")
+                        }
+                    }
+                }
             }
         }
     }

@@ -41,6 +41,16 @@ internal object RecallManager {
     fun markGroup(groupPeerId: String, msgSeq: Long): Boolean =
         mark(MsgConstant.KCHATTYPEGROUP, groupPeerId, msgSeq)
 
+    fun isGroupRecalled(account: String, groupPeerId: String, msgSeq: Long): Boolean =
+        account.isNotBlank() && msgSeq > 0 && isMessageRecalled(
+            setOf(MessageKey(account, MsgConstant.KCHATTYPEGROUP, groupPeerId, msgSeq))
+        )
+
+    fun allowGroupRecall(account: String, groupPeerId: String, msgSeq: Long) = synchronized(this) {
+        ensureLoaded()
+        if (recalledMessages.remove(MessageKey(account, MsgConstant.KCHATTYPEGROUP, groupPeerId, msgSeq))) persist()
+    }
+
     fun keysOf(msg: MsgRecord): Set<MessageKey> {
         if (msg.msgSeq <= 0) return emptySet()
 

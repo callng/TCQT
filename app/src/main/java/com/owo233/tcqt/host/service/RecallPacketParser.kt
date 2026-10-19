@@ -22,10 +22,16 @@ internal object RecallPacketParser {
         val bytes: ByteArray,
         val recalls: List<Recall> = emptyList(),
         val blockPush: Boolean = false,
+        val allowedGroupRecalls: Set<Pair<String, Long>> = emptySet(),
     )
 
     private data class Field(val number: Int, val wire: Int, val raw: ByteArray, val payload: ByteArray)
-    private data class Operation(val bytes: ByteArray, val recalls: List<Recall>, val empty: Boolean)
+    private data class Operation(
+        val bytes: ByteArray,
+        val recalls: List<Recall>,
+        val empty: Boolean,
+        val allowedGroupRecalls: Set<Pair<String, Long>> = emptySet(),
+    )
     private const val GROUP_HEADER_SIZE = 7
 
     fun msgPush(bytes: ByteArray, currentUid: String, decoder: RecallMetadataDecoder = GoogleRecallMetadataDecoder): Result {
@@ -35,19 +41,30 @@ internal object RecallPacketParser {
         if (messages.size != 1) return Result(bytes)
         val message = messages.single()
         val op = operation(message.payload, currentUid, decoder) ?: return Result(bytes)
+        if (op.recalls.isEmpty()) return Result(bytes, allowedGroupRecalls = op.allowedGroupRecalls)
         if (op.empty) return Result(bytes, op.recalls, blockPush = true)
         val rewritten = rewriteOperation(message.payload, op.bytes) ?: return Result(bytes)
-        return Result(join(fields.map { if (it === message) encoded(1, rewritten) else it.raw }), op.recalls)
+        return Result(
+            join(fields.map { if (it === message) encoded(1, rewritten) else it.raw }), op.recalls,
+            allowedGroupRecalls = op.allowedGroupRecalls,
+        )
     }
 
-    fun infoSyncPush(bytes: ByteArray, currentUid: String, decoder: RecallMetadataDecoder = GoogleRecallMetadataDecoder): Result {
+    fun infoSyncPush(
+        bytes: ByteArray,
+        currentUid: String,
+        decoder: RecallMetadataDecoder = GoogleRecallMetadataDecoder,
+        isGroupRecalled: (String, Long) -> Boolean = { _, _ -> false },
+    ): Result {
         val recalls = mutableListOf<Recall>()
+        val allowedGroupRecalls = mutableSetOf<Pair<String, Long>>()
         // 8 = system notifications, 4 = notification body, 8 = QQMessage.
         // push_flag also carries unrelated sync state; inspect the actual messages instead.
-        val rewritten = rewriteChildren(bytes, 8) { content ->
+        val withoutEvents = rewriteChildren(bytes, 8) { content ->
             rewriteChildren(content, 4) { body ->
                 rewriteChildren(body, 8) { message ->
                     val op = operation(message, currentUid, decoder)
+                    if (op != null) allowedGroupRecalls.addAll(op.allowedGroupRecalls)
                     if (op == null) message else if (op.empty) {
                         recalls.addAll(op.recalls)
                         null
@@ -59,8 +76,42 @@ internal object RecallPacketParser {
                 }
             }
         }
-        return Result(if (recalls.isEmpty()) bytes else rewritten, recalls)
+        val blockedRecalls = recalls.filterNot { it.group && (it.peerId to it.msgSeq) in allowedGroupRecalls }
+        val groupTargets = blockedRecalls.filter { it.group }.mapTo(hashSetOf()) { it.peerId to it.msgSeq }
+        // The same sync can carry a recalled message again as a type-127 deletion
+        // placeholder in 7 -> 3 -> 6, even outside that group's start/end range.
+        // Inspect all records and preserve every unrelated field and sync cursor.
+        val rewritten = rewriteChildren(withoutEvents, 7) { content ->
+            rewriteChildren(content, 3) { group ->
+                val peerId = scalar(group, 3)?.takeIf { it > 0 }?.toString()
+                if (peerId == null) group else rewriteChildren(group, 6) { message ->
+                    val seq = groupDeletionSequence(message, peerId)
+                    if (seq != null && (peerId to seq) !in allowedGroupRecalls &&
+                        ((peerId to seq) in groupTargets || isGroupRecalled(peerId, seq))) {
+                        null
+                    } else message
+                }
+            }
+        }
+        return Result(rewritten, blockedRecalls, allowedGroupRecalls = allowedGroupRecalls)
     }
+
+    private fun groupDeletionSequence(message: ByteArray, peerId: String): Long? = runCatching {
+        val head = child(message, 1) ?: return null
+        val route = child(head, 8) ?: return null
+        if (scalar(route, 1)?.toString() != peerId || scalar(route, 2) != 127L) return null
+        val content = child(message, 2) ?: return null
+        if (scalar(content, 1) != 82L) return null
+        scalar(content, 5)?.takeIf { it in 1..0xffffffffL }
+    }.getOrNull()
+
+    private fun child(bytes: ByteArray, number: Int): ByteArray? =
+        fields(bytes)?.lastOrNull { it.number == number && it.wire == 2 }?.payload
+
+    private fun scalar(bytes: ByteArray, number: Int): Long? = runCatching {
+        val field = fields(bytes)?.lastOrNull { it.number == number && it.wire == 0 } ?: return null
+        CodedInputStream.newInstance(field.raw).run { readTag(); readUInt64() }
+    }.getOrNull()
 
     private fun operation(bytes: ByteArray, currentUid: String, decoder: RecallMetadataDecoder): Operation? = runCatching {
         val msg = decoder.message(bytes)
@@ -106,7 +157,7 @@ internal object RecallPacketParser {
         if (bytes.size <= GROUP_HEADER_SIZE) return null
         val op = decoder.group(bytes.copyOfRange(GROUP_HEADER_SIZE, bytes.size))
         val operator = op.operatorUid
-        if (op.peerId <= 0 || operator.isBlank() || operator == currentUid) return null
+        if (op.peerId <= 0 || operator.isBlank()) return null
         val recalls = op.targets.mapNotNull { msg ->
             val seq = msg.msgSeq
             if (seq == 0L) null else Recall(
@@ -116,6 +167,12 @@ internal object RecallPacketParser {
         }
         // An incomplete target must not make us drop other operation data we cannot identify.
         if (recalls.isEmpty() || recalls.size != op.targets.size) return null
+        if (operator == currentUid) {
+            return Operation(
+                bytes, emptyList(), empty = false,
+                allowedGroupRecalls = recalls.mapTo(hashSetOf()) { it.peerId to it.msgSeq },
+            )
+        }
         return Operation(bytes, recalls, empty = true)
     }
 

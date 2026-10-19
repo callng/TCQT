@@ -36,6 +36,17 @@ class RecallEventHistoryTest {
     }
 
     @Test
+    fun allowingOwnRecallOnlyRemovesThatAccountAndMessageProtection() {
+        val history = RecallEventHistory<RecallManager.MessageKey>(2048)
+        val otherAccount = key.copy(account = "u_other")
+        val otherMessage = key.copy(msgSeq = 3921)
+        listOf(key, otherAccount, otherMessage).forEach { history.add(it) }
+        assertTrue(history.remove(key))
+        assertFalse(history.remove(key))
+        assertEquals(listOf(otherAccount, otherMessage), history.snapshot())
+    }
+
+    @Test
     fun simultaneousLiveAndSyncCallbacksClaimExactlyOnce() {
         val history = RecallEventHistory<RecallManager.MessageKey>(2048)
         val start = CountDownLatch(1)

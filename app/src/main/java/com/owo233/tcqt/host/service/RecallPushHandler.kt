@@ -13,16 +13,22 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgConstant
 internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : MessageHandler {
 
     override fun handleMsgPush(buffer: ByteArray, param: MethodHookParam) {
-        val result = RecallPacketParser.msgPush(buffer, QQInterfaces.currentUid, decoder)
+        val account = QQInterfaces.currentUid
+        val result = RecallPacketParser.msgPush(buffer, account, decoder)
+        result.allowedGroupRecalls.forEach { (peer, seq) -> RecallManager.allowGroupRecall(account, peer, seq) }
         if (result.recalls.isEmpty()) return
         if (result.blockPush) param.result = null else param.args[1] = result.bytes
         notifyRecalls(result.recalls)
     }
 
     override fun handleInfoSyncPush(buffer: ByteArray, param: MethodHookParam) {
-        val result = RecallPacketParser.infoSyncPush(buffer, QQInterfaces.currentUid, decoder)
-        if (result.recalls.isEmpty()) return
-        param.args[1] = result.bytes
+        val account = QQInterfaces.currentUid
+        val result = RecallPacketParser.infoSyncPush(buffer, account, decoder) { peerId, seq ->
+            RecallManager.isGroupRecalled(account, peerId, seq)
+        }
+        result.allowedGroupRecalls.forEach { (peer, seq) -> RecallManager.allowGroupRecall(account, peer, seq) }
+        // A later sync may contain only deletion placeholders, with no new recall event.
+        if (!result.bytes.contentEquals(buffer)) param.args[1] = result.bytes
         notifyRecalls(result.recalls)
     }
 
@@ -100,11 +106,9 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
     private fun LocalGrayTips.Builder.recallMessage(target: RecallTargetLookup.Result) {
         val seq = target.msgSeq
         if (seq != null) msgRef("消息", seq) else text("消息")
-        text(when (target.state) {
-            RecallTargetLookup.State.FOUND -> ", 已拦截"
-            RecallTargetLookup.State.MISSING -> ", 已拦截（原消息暂未在本地找到）"
-            RecallTargetLookup.State.UNAVAILABLE -> ", 已拦截（原消息暂无法确认）"
-        })
+        // Interception is already complete. A best-effort navigation lookup cannot
+        // establish that the original is absent; retain its diagnostics in the log.
+        text(", 已拦截")
     }
 
     private fun logTarget(recall: RecallPacketParser.Recall, target: RecallTargetLookup.Result) {

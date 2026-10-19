@@ -37,7 +37,7 @@ class PipelineDecoratorDiscoveryTest {
         // RecallHeaderTip 是非注册装饰器，需由 loader 显式登记；
         // 这里只断言注册 Action 的发现结果（迁移前的顺序也是先 ShowMsgInfo）。
         assertEquals(
-            listOf("ShowMsgInfo", "AitChameleon"),
+            listOf("MsgAntiRecall", "ShowMsgInfo", "AitChameleon"),
             names(OnAIOViewUpdate::class.java),
             "AIO 视图装饰器的装配顺序变了 —— 视图条的先后会跟着变",
         )
@@ -48,7 +48,7 @@ class PipelineDecoratorDiscoveryTest {
         PipelineDecorators.register(RecallHeaderTip())
 
         assertEquals(
-            listOf("ShowMsgInfo", "RecallHeaderTip", "AitChameleon"),
+            listOf("MsgAntiRecall", "ShowMsgInfo", "RecallHeaderTip", "AitChameleon"),
             names(OnAIOViewUpdate::class.java),
             "RecallHeaderTip 的装配位置变了（它应排在顺序 200）",
         )

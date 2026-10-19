@@ -16,6 +16,9 @@ internal class RecallEventHistory<K>(private val capacity: Int) {
     }
 
     @Synchronized
+    fun remove(key: K): Boolean = entries.remove(key)
+
+    @Synchronized
     fun restore(keys: Collection<K>) {
         entries.clear()
         keys.forEach(::add)
