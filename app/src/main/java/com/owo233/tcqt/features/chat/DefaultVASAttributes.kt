@@ -9,10 +9,13 @@ import com.owo233.tcqt.core.env.isFlagEnabled
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookBefore
+import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
+import com.tencent.qqnt.kernel.nativeinterface.MsgAttributeInfo
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
+import java.util.ConcurrentModificationException
 
 @RegisterAction
 object DefaultVASAttributes : Feature(
@@ -36,7 +39,7 @@ object DefaultVASAttributes : Feature(
         }.hookAfter { param ->
             val msgRecord = param.result as MsgRecord
             if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
-                msgRecord.msgAttrs?.values?.forEach { u ->
+                snapshotVasAttributes(msgRecord.msgAttrs).forEach { u ->
                     u?.vasMsgInfo?.let { vasInfo ->
 
                         // 隐藏头像挂件
@@ -76,5 +79,21 @@ object DefaultVASAttributes : Feature(
                     }
             }
         }
+    }
+
+    private fun snapshotVasAttributes(
+        attributes: Map<Int, MsgAttributeInfo?>?,
+    ): List<MsgAttributeInfo?> {
+        if (attributes == null) return emptyList()
+        repeat(2) {
+            try {
+                return ArrayList<MsgAttributeInfo?>(attributes.size).also { list ->
+                    for (attribute in attributes.values) list.add(attribute)
+                }
+            } catch (_: ConcurrentModificationException) {
+                // retry
+            }
+        }
+        return emptyList()
     }
 }
