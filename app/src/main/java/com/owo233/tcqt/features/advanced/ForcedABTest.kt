@@ -6,7 +6,8 @@ import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.loadOrThrow
 import com.owo233.tcqt.core.hook.hookMethodAfter
 import com.owo233.tcqt.core.hook.hookMethodBefore
-import com.owo233.tcqt.core.reflect.getObject
+import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.reflect.getObjectOrNull
 import com.owo233.tcqt.core.reflect.invoke
 import com.owo233.tcqt.core.reflect.setObject
 
@@ -14,7 +15,7 @@ import com.owo233.tcqt.core.reflect.setObject
 object ForcedABTest : Feature(
     key = "forced_to_ab",
     name = "AB测试强制转组",
-    desc = "在AB测试中强制转到指定组，想优先体验某些灰度功能时可以尝试本功能，或者留在对照组。",
+    desc = "调整已下发的 A/B 实验分组。独立 JSON 灰度配置和服务端权限不属于 AB 分组，不能通过转组开启。",
     processes = setOf(ActionProcess.ALL),
 ) {
 
@@ -25,97 +26,62 @@ object ForcedABTest : Feature(
         options = listOf("强制A组（对照组）", "强制B组（实验组）"),
     )
 
+    private val experimentNames by stringOption(
+        settingKey = "experiment_names",
+        name = "实验名称",
+        desc = "一行一个，精确匹配。留空处理所有已下发的 A/B 格式赋值；其他格式的分组保持原样。",
+    )
+
     private val forcedConfigIds by stringOption(
         settingKey = "forced_config_ids",
-        name = "强制开启的配置 ID / 开关 Key",
-        desc = "一行一个。填 Freesia 配置 ID（如 107793）或布尔开关 Key（如 qq_share_panel_config）。" +
-            "留空表示不改配置，仅强制 AB 转组。",
+        name = "布尔开关 Key / 缺失配置 ID",
+        desc = "一行一个。布尔开关设为开启；Freesia 配置 ID 仅在读取结果为空时补解析器默认值，" +
+            "默认值不一定开启功能。不支持 loadAsString 读取的 JSON 配置。留空不改配置。",
         placeholder = "107793\nqq_share_panel_config",
     )
 
     override fun install() {
+        // 配置读取与 AB 分组是两条独立路径，不能依赖 AB 类安装成功。
+        installConfigHooks()
+        val names = ABTestAssignment.parseNames(experimentNames)
         val controllerClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ABTestController")
         val expEntityClz = loadOrThrow("com.tencent.mobileqq.utils.abtest.ExpEntityInfo")
 
-        expEntityClz.hookMethodBefore("isExpInvalid") { param ->
-            param.result = false
-        }
-
-        expEntityClz.hookMethodBefore("isExpOnline") { param ->
-            param.result = mode == 2
-        }
-
-        expEntityClz.hookMethodBefore(
-            "isExpHit",
-            String::class.java
-        ) { param ->
-            param.result = mode == 2
-        }
-
-        expEntityClz.hookMethodBefore("getAssignment") { param ->
-            val expName = param.thisObject.invoke("getExpName") as String
-            if (expName.isNotEmpty()) {
-                param.result = assignmentOf(expName)
-            }
-        }
-
-        expEntityClz.hookMethodBefore(
-            "isExperiment",
-            String::class.java
-        ) { param ->
-            param.result = mode == 2
-        }
-
-        expEntityClz.hookMethodBefore(
-            "isContrast",
-            String::class.java
-        ) { param ->
-            param.result = mode == 1
-        }
-
-        expEntityClz.hookMethodBefore("isExperimentNew") { param ->
-            param.result = mode == 2
-        }
-
-        expEntityClz.hookMethodAfter("getGrayId") { param ->
-            val grayId = param.result as? String
-            if (grayId.isNullOrEmpty()) {
-                val expName = param.thisObject.invoke("getExpName") as? String
-                if (!expName.isNullOrEmpty()) param.result = expName
-            }
+        // 只修改实际赋值，保留宿主的有效性、在线状态和参数比较语义。
+        // isExpHit/isExperiment/isContrast(String) 都是与传入的完整赋值串比较，
+        // 不能按 mode 直接返回 true，否则 A、B、C 甚至空参数会同时命中。
+        expEntityClz.hookMethodAfter("getAssignment") { param ->
+            if (param.throwable != null) return@hookMethodAfter
+            val assignment = forcedAssignment(param.thisObject, param.result as? String, names)
+                ?: return@hookMethodAfter
+            param.thisObject.setObject("mAssignment", assignment)
+            param.result = assignment
         }
 
         controllerClz.hookMethodAfter(
             "getExpEntityInner",
             String::class.java,
             String::class.java,
-            Boolean::class.java
+            Boolean::class.javaPrimitiveType
         ) { param ->
+            if (param.throwable != null) return@hookMethodAfter
             val entity = param.result ?: return@hookMethodAfter
-            val expName = entity.invoke("getExpName") as? String
-            if (!expName.isNullOrEmpty()) {
-                entity.setObject("mAssignment", assignmentOf(expName))
-                val grayId = entity.getObject("mExpGrayId") as? String
-                if (grayId.isNullOrEmpty()) {
-                    entity.setObject("mExpGrayId", expName)
-                }
-            }
-            param.result = entity
+            val assignment = forcedAssignment(entity, entity.getObjectOrNull("mAssignment") as? String, names)
+                ?: return@hookMethodAfter
+            entity.setObject("mAssignment", assignment)
         }
-
-        installConfigHooks()
     }
 
-    /** 按当前模式生成 A/B 赋值串。 */
-    private fun assignmentOf(expName: String): String =
-        "${expName}_${if (mode == 1) "A" else "B"}"
+    private fun forcedAssignment(entity: Any, current: String?, names: Set<String>): String? {
+        // 无效实体可能只有实验名，不能为其伪造分组或灰度 ID。
+        val appId = entity.getObjectOrNull("mExpAppId") as? String
+        if (appId.isNullOrEmpty()) return null
+        val name = entity.invoke("getExpName") as? String
+        return ABTestAssignment.overrideOf(name, current, mode, names)
+    }
 
     private fun installConfigHooks() {
-        val ids = forcedConfigIds
-            .lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .toSet()
+        val ids = ABTestAssignment.parseNames(forcedConfigIds)
         if (ids.isEmpty()) return
 
         val implClz = runCatching {
@@ -125,24 +91,25 @@ object ForcedABTest : Feature(
         implClz.hookMethodBefore(
             name = "isSwitchOn",
             String::class.java,
-            null
+            Boolean::class.javaPrimitiveType
         ) { param ->
             val key = param.args.getOrNull(0) as? String ?: return@hookMethodBefore
             if (key in ids) param.result = true
         }
 
-        implClz.hookMethodBefore(
+        implClz.hookMethodAfter(
             "loadConfig",
             String::class.java
         ) { param ->
-            val id = param.args.getOrNull(0) as? String ?: return@hookMethodBefore
-            if (id !in ids) return@hookMethodBefore
+            if (param.throwable != null || param.result != null) return@hookMethodAfter
+            val id = param.args.getOrNull(0) as? String ?: return@hookMethodAfter
+            if (id !in ids) return@hookMethodAfter
             runCatching {
                 val parserClz = loadOrThrow(parserClassOf(id))
                 val parser = parserClz.getDeclaredConstructor().newInstance()
                 val defaultConfig = parserClz.getMethod("defaultConfig").invoke(parser)
                 if (defaultConfig != null) param.result = defaultConfig
-            }
+            }.onFailure { Log.w("ForcedABTest: 配置 $id 默认值读取失败", it) }
         }
     }
 
