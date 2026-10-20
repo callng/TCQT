@@ -2,6 +2,7 @@ package com.tencent.qqnt.kernel.nativeinterface;
 
 public final class GroupMemberNewExtInfo {
     public long groupCode;
+    public TopicGroupMemberPermissions memberPermissions;
     public long groupStatusBarSeq;
     public GroupAuthInfo identifier = new GroupAuthInfo();
     public int joinGroupSeq;

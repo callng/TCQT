@@ -4,6 +4,10 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.MemberRole;
 import java.util.ArrayList;
 
 public interface IKernelGroupService {
+    void getMemberInfoForMqq(long groupId, ArrayList<String> uids, boolean force, IGroupMemberListCallback callback);
+    void GetGroupPartMemberNewExtInfo(long groupId, ArrayList<Long> uins, IGroupMemberNewExtInfoCallback callback);
+    void ForceFetchGroupPartMemberNewExtInfo(long groupId, ArrayList<Long> uins, IGroupMemberNewExtInfoCallback callback);
+    void setRcvJoinVerifyMsg(RcvJoinVerifyMsgReq req, IRcvJoinVerifyMsgCallback callback);
     void setGroupShutUp(long groupId, boolean isShutUp, IOperateCallback iOperateCallback);
     void setMemberShutUp(long groupId, ArrayList<GroupMemberShutUpInfo> info, IOperateCallback iOperateCallback);
     void modifyMemberRole(long groupId, String uid, MemberRole memberRole, IOperateCallback iOperateCallback);

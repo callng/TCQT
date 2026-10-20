@@ -26,7 +26,7 @@ import org.luckypray.dexkit.query.base.BaseMatcher
 object SimpleTroopManagement : Feature(
     key = "simple_troop_management",
     name = "简易群管菜单",
-    desc = "点击群聊对于群成员头像开启群管菜单，快速进行群成员相关操作。",
+    desc = "点击群成员头像开启群管菜单,快速进行群成员权限相关操作。",
 ), DexKitTask {
 
 

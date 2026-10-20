@@ -67,6 +67,7 @@ internal fun MainMenuView(
     onRecall: () -> Unit,
     onSetAdmin: () -> Unit,
     onCancelAdmin: () -> Unit,
+    onEditAdminPermissions: () -> Unit,
     onSetMute: () -> Unit,
     onCancelMute: () -> Unit,
     onSetTitle: () -> Unit,
@@ -158,6 +159,9 @@ internal fun MainMenuView(
                             }
                             if (permissions.canCancelAdmin) {
                                 add(ManagementButtonData("取消管理员", customGreen, onCancelAdmin))
+                            }
+                            if (permissions.canEditAdminPermissions) {
+                                add(ManagementButtonData("管理员权限", customPrimary, onEditAdminPermissions))
                             }
 
                             if (permissions.canMute) {
@@ -344,7 +348,7 @@ internal fun MuteDurationMenuView(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    DurationWheelColumn(
+                    ManagementWheelColumn(
                         label = "天",
                         value = days,
                         range = 0..30,
@@ -354,7 +358,7 @@ internal fun MuteDurationMenuView(
                         },
                         modifier = Modifier.weight(1f),
                     )
-                    DurationWheelColumn(
+                    ManagementWheelColumn(
                         label = "时",
                         value = hours,
                         range = 0..23,
@@ -362,7 +366,7 @@ internal fun MuteDurationMenuView(
                         onValueChange = { hours = it },
                         modifier = Modifier.weight(1f),
                     )
-                    DurationWheelColumn(
+                    ManagementWheelColumn(
                         label = "分",
                         value = minutes,
                         range = 0..59,
@@ -370,7 +374,7 @@ internal fun MuteDurationMenuView(
                         onValueChange = { minutes = it },
                         modifier = Modifier.weight(1f),
                     )
-                    DurationWheelColumn(
+                    ManagementWheelColumn(
                         label = "秒",
                         value = seconds,
                         range = 1..59,
@@ -457,13 +461,14 @@ internal fun MuteDurationMenuView(
 }
 
 @Composable
-private fun DurationWheelColumn(
+internal fun ManagementWheelColumn(
     label: String,
     value: Int,
     range: IntRange,
     enabled: Boolean,
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    valueLabel: (Int) -> String = { it.toString() },
 ) {
     Column(
         modifier = modifier,
@@ -484,6 +489,7 @@ private fun DurationWheelColumn(
                 onValueChange = onValueChange,
                 enabled = enabled,
                 range = range,
+                label = valueLabel,
                 visibleItemCount = 5,
                 wrapAround = true,
                 itemHeight = 40.dp,

@@ -36,6 +36,7 @@ internal fun Int.toMuteDurationParts(): MuteDurationParts {
 
 internal sealed interface MenuState {
     data object Main : MenuState
+    data object AdminPermissions : MenuState
 
     data class MuteDuration(
         val initialValue: Int,
@@ -69,6 +70,7 @@ internal data class TroopManagementPermissions(
     val canRecall: Boolean,
     val canSetAdmin: Boolean,
     val canCancelAdmin: Boolean,
+    val canEditAdminPermissions: Boolean,
     val canMute: Boolean,
     val canSetTitle: Boolean,
     val canEditCard: Boolean,
@@ -84,6 +86,7 @@ internal fun TroopMemberRoles.permissions(isQQ: Boolean): TroopManagementPermiss
         canRecall = canManageTarget,
         canSetAdmin = currentUserIsOwner && !isTargetOwner && !isTargetAdmin,
         canCancelAdmin = currentUserIsOwner && !isTargetOwner && isTargetAdmin,
+        canEditAdminPermissions = isQQ && currentUserIsOwner && !isTargetOwner && isTargetAdmin,
         canMute = canManageTarget,
         canSetTitle = currentUserIsOwner && isQQ,
         canEditCard = currentUserIsOwner || currentUserIsAdmin,

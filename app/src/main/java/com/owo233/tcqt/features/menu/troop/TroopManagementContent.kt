@@ -109,6 +109,7 @@ internal fun TroopManagementContent(
                     onRecall = onRecall,
                     onSetAdmin = onSetAdmin,
                     onCancelAdmin = onCancelAdmin,
+                    onEditAdminPermissions = { menuState = MenuState.AdminPermissions },
                     onSetMute = {
                         menuState = MenuState.MuteDuration(
                             initialValue = MUTE_MAX_SECONDS - 1,
@@ -152,6 +153,14 @@ internal fun TroopManagementContent(
                     },
                     onMuteAll = onMuteAll,
                     onUnmuteAll = onUnmuteAll
+                )
+            }
+            MenuState.AdminPermissions -> {
+                TroopAdminPermissionsMenu(
+                    groupId = groupId,
+                    memberUin = memberUin,
+                    memberNick = memberNick,
+                    onBack = { menuState = MenuState.Main }
                 )
             }
             is MenuState.MuteDuration -> {
