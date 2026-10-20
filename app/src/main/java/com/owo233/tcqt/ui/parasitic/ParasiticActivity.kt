@@ -427,8 +427,9 @@ object ParasiticActivity {
         }
 
         private fun prepareActivityCreate(activity: Activity, icicle: Bundle?) {
+            if (!isTargetActivity(activity.javaClass.name)) return
             ResourcesUtils.injectResourcesToContext(activity.resources)
-            if (icicle != null && isTargetActivity(activity.javaClass.name)) {
+            if (icicle != null) {
                 icicle.classLoader = moduleLoader
             }
         }

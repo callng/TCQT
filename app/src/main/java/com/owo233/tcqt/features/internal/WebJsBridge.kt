@@ -49,11 +49,14 @@ object WebJsBridge : InfraTask(
         val context = QQInterfaces.topActivity ?: return
         runCatching {
             ModuleScope.launchMain {
+                val launchStarted = android.os.SystemClock.elapsedRealtime()
                 val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader
                     ?: this.javaClass.classLoader
                 val settingActivityClass =
                     latestLoader.loadClass(ModuleComponents.SETTINGS_ACTIVITY)
-                val intent = Intent(context, settingActivityClass)
+                val intent = Intent(context, settingActivityClass).apply {
+                    putExtra(ModuleComponents.SETTINGS_LAUNCH_STARTED, launchStarted)
+                }
                 context.startActivity(intent)
                 context.finish()
                 context.clearTransition()

@@ -12,18 +12,22 @@ import android.os.ParcelFileDescriptor
 import androidx.annotation.RequiresApi
 import com.owo233.tcqt.core.log.Log
 import java.io.File
+import java.util.WeakHashMap
 
 internal object ResourcesUtils {
 
     private lateinit var resourcesLoader: ResourcesLoader
+    private val legacyAssetPaths = WeakHashMap<AssetManager, String>()
 
     fun injectResourcesToContext(res: Resources) {
         if (ProcUtil.isMSF.not()) {
             val moduleApkPath = HookEnv.moduleApkPath
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                injectResourcesAboveApi30(res, moduleApkPath)
-            } else {
-                injectResourcesBelowApi30(res, moduleApkPath)
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    injectResourcesAboveApi30(res, moduleApkPath)
+                } else {
+                    injectResourcesBelowApi30(res, moduleApkPath)
+                }
             }
         }
     }
@@ -40,22 +44,21 @@ internal object ResourcesUtils {
                     }
                 }
             }.onFailure {
+                injectResourcesBelowApi30(res, path)
                 return
             }
         }
-        runOnUiThread {
-            try {
-                res.addLoaders(resourcesLoader)
+        // addLoaders 自身按 loader 去重；成功后无需再用 addAssetPath 重建资源表。
+        try {
+            res.addLoaders(resourcesLoader)
+        } catch (e: IllegalArgumentException) {
+            val expected1 =
+                "Cannot modify resource loaders of ResourcesImpl not registered with ResourcesManager"
+            if (expected1 == e.message) {
+                Log.e("injectResourcesBelowApi30", e)
                 injectResourcesBelowApi30(res, path)
-            } catch (e: IllegalArgumentException) {
-                val expected1 =
-                    "Cannot modify resource loaders of ResourcesImpl not registered with ResourcesManager"
-                if (expected1 == e.message) {
-                    Log.e("injectResourcesBelowApi30", e)
-                    injectResourcesBelowApi30(res, path)
-                } else {
-                    throw e
-                }
+            } else {
+                throw e
             }
         }
     }
@@ -64,10 +67,12 @@ internal object ResourcesUtils {
     private fun injectResourcesBelowApi30(res: Resources, path: String) {
         runCatching {
             val assetManager = res.assets
+            if (legacyAssetPaths[assetManager] == path) return
             val method =
                 AssetManager::class.java.getDeclaredMethod("addAssetPath", String::class.java)
             method.isAccessible = true
-            method.invoke(assetManager, path)
+            val cookie = method.invoke(assetManager, path) as? Int ?: 0
+            if (cookie != 0) legacyAssetPaths[assetManager] = path
         }
     }
 

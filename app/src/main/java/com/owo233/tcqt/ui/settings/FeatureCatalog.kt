@@ -39,6 +39,11 @@ internal object FeatureCatalog {
     }
 
     fun getAllFeatures(): List<SettingFeature> {
+        return features
+    }
+
+    // 目录只包含当前模块的静态声明；动态描述与开关值仍在每次展示时读取。
+    private val features: List<SettingFeature> by lazy {
         val features = mutableListOf<SettingFeature>()
         ActionRegistry.allActionClasses().forEach { actionClass ->
             val action = ActionRegistry.instanceOf(actionClass) ?: return@forEach
@@ -109,6 +114,7 @@ internal object FeatureCatalog {
                 )
             )
         }
-        return features
+        features.sortedBy { it.order }
+            .mapIndexed { index, feature -> feature.copy(order = index) }
     }
 }

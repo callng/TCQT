@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.os.Process
-import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.action.HookSteps
 import com.owo233.tcqt.core.action.StartupScheduler
 import com.owo233.tcqt.core.dexkit.DexKitCache
@@ -28,9 +27,10 @@ import com.owo233.tcqt.core.sync.SyncUtils
 import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
 import com.owo233.tcqt.host.QQInterfaces
-import com.owo233.tcqt.ui.component.DexKitScanDialogHost
 import com.owo233.tcqt.loader.modern.ModernHookEngine
+import com.owo233.tcqt.ui.component.DexKitScanDialogHost
 import com.owo233.tcqt.ui.parasitic.ParasiticActivity
+import com.owo233.tcqt.ui.settings.SettingsEntryWarmup
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
 import io.fastkv.FastKV
@@ -262,6 +262,7 @@ internal object ModuleLoader {
      */
     private fun installHostBridge() {
         HostBridge.topActivityProvider = { QQInterfaces.topActivity }
+        HostBridge.prepareSettings = SettingsEntryWarmup::schedule
         HostBridge.showDexKitScan = { state, onClosed ->
             DexKitScanDialogHost(
                 HookEnv.application, state, onClosed,

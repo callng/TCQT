@@ -30,6 +30,10 @@ object HostBridge {
     @Volatile
     internal var showDexKitScan: ((StateFlow<DexKitScanState>, () -> Unit) -> Unit)? = null
 
+    /** 宿主设置入口出现后，由 UI 层异步准备静态设置目录。 */
+    @Volatile
+    internal var prepareSettings: (() -> Unit)? = null
+
     fun topActivity(): Activity? =
         runCatching { topActivityProvider?.invoke() }.getOrNull()
 

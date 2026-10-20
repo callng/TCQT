@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.owo233.tcqt.core.action.ActionUiType
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.dexkit.DexKitCache
@@ -25,6 +26,10 @@ import com.owo233.tcqt.ui.settings.model.SettingFeature
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
 import com.owo233.tcqt.ui.settings.model.normalizeSliderValue
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.TopAppBarState
 
 class SettingViewModel : ViewModel() {
@@ -65,13 +70,12 @@ class SettingViewModel : ViewModel() {
         detailFeatureKey?.let(featureByKey::get)?.let(::toFeatureItemUiState)
     }
     private val actionErrors = mutableStateMapOf<String, FeatureErrorUiState>()
+    private var errorReloadJob: Job? = null
 
     // ───── All features (flat) ─────
 
     private val allFeatures: List<SettingFeature> =
         FeatureCatalog.getAllFeatures()
-            .sortedBy { it.order }
-            .mapIndexed { index, feature -> feature.copy(order = index) }
 
     private val featureByKey: Map<String, SettingFeature> = allFeatures.associateBy { it.key }
 
@@ -274,26 +278,33 @@ class SettingViewModel : ViewModel() {
     }
 
     fun reloadActionErrors() {
-        actionErrors.clear()
-        actionErrors.putAll(
-            ActionErrorStore.readAll().mapValues { (_, record) ->
-                FeatureErrorUiState(
-                    occurredAt = record.occurredAt,
-                    processName = record.processName,
-                    stage = record.stage,
-                    summary = record.summary,
-                    details = record.details,
-                )
+        errorReloadJob?.cancel()
+        errorReloadJob = viewModelScope.launch {
+            // 文件枚举、跨进程文件锁和 JSON 解码不应阻塞设置页首帧。
+            val errors = withContext(Dispatchers.IO) {
+                ActionErrorStore.readAll().mapValues { (_, record) ->
+                    FeatureErrorUiState(
+                        occurredAt = record.occurredAt,
+                        processName = record.processName,
+                        stage = record.stage,
+                        summary = record.summary,
+                        details = record.details,
+                    )
+                }
             }
-        )
-        if (actionErrors.keys.none(featureByKey::containsKey)) {
-            isErrorOverviewActive = false
+            actionErrors.clear()
+            actionErrors.putAll(errors)
+            if (actionErrors.keys.none(featureByKey::containsKey)) {
+                isErrorOverviewActive = false
+            }
         }
     }
 
     fun clearActionError(key: String) {
+        errorReloadJob?.cancel()
         ActionErrorStore.clear(key)
         actionErrors.remove(key)
+        reloadActionErrors()
         if (actionErrors.keys.none(featureByKey::containsKey)) {
             isErrorOverviewActive = false
         }

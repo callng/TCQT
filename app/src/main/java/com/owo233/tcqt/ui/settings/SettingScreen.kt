@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -129,7 +128,6 @@ internal fun SettingScreen(
         viewModel.isAtRoot -> "设置"
         else -> viewModel.currentCategoryLabel.value
     }
-    LaunchedEffect(Unit) { viewModel.reloadActionErrors() }
 
     Scaffold(
         modifier = Modifier.imePadding(),

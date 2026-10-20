@@ -36,11 +36,8 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
 
     @Throws(ClassNotFoundException::class)
     override fun findClass(name: String): Class<*> {
-        try {
-            return parent.loadClass(name)
-        } catch (_: ClassNotFoundException) {
-        }
-
+        // ClassLoader.loadClass 已经查询过 parent；首次加载 Compose 的大量类时，
+        // 再查一次只会为每个模块类额外制造一次 ClassNotFoundException。
         if (name.startsWith("com.owo233.tcqt.")) {
             return loaderParent!!.loadClass(name)
         }

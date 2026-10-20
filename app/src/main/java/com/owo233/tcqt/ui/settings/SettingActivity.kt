@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.owo233.tcqt.core.action.ActionRegistry
 import com.owo233.tcqt.core.command.ModuleCommandBus
@@ -32,6 +33,7 @@ import com.owo233.tcqt.core.config.ConfigBackupManager
 import com.owo233.tcqt.core.config.ThemeSettings
 import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.env.TCQTBuild
+import com.owo233.tcqt.core.env.ModuleComponents
 import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.copyToClipboard
 import com.owo233.tcqt.core.log.BugReportExporter
@@ -205,7 +207,19 @@ class SettingActivity : BaseComposeActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val createdAt = android.os.SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
+
+        val launchStarted = intent.getLongExtra(ModuleComponents.SETTINGS_LAUNCH_STARTED, 0L)
+        if (savedInstanceState == null && launchStarted > 0L) {
+            window.decorView.doOnPreDraw {
+                val readyAt = android.os.SystemClock.elapsedRealtime()
+                Log.i(
+                    "[SettingsStartup] activity=${createdAt - launchStarted}ms, " +
+                        "content=${readyAt - createdAt}ms, total=${readyAt - launchStarted}ms"
+                )
+            }
+        }
 
         setContent {
             var moduleThemeMode by remember { mutableStateOf(ThemeSettings.themeMode) }

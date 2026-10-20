@@ -13,6 +13,7 @@ import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.CalculationUtils
 import com.owo233.tcqt.core.env.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.core.env.HookEnv
+import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.ModuleComponents
 import com.owo233.tcqt.core.env.QQVersion
 import com.owo233.tcqt.core.env.ResourcesUtils
@@ -124,6 +125,7 @@ object AddModuleEntrance : Feature(
             val processorInfo = resolveProcessorInfo(result) ?: return@hookAfter
 
             ResourcesUtils.injectResourcesToContext(context.resources)
+            HostBridge.prepareSettings?.invoke()
 
             val showAttached = TCQTSetting.getBoolean(key)
 
@@ -345,11 +347,14 @@ object AddModuleEntrance : Feature(
         val activity = ctx ?: QQInterfaces.topActivity ?: return
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             runCatching {
+                val launchStarted = android.os.SystemClock.elapsedRealtime()
                 val latestLoader = System.getProperties()["tcqt.module_class_loader"] as? ClassLoader
                     ?: this.javaClass.classLoader
                 val settingActivityClass =
                     latestLoader.loadClass(ModuleComponents.SETTINGS_ACTIVITY)
-                activity.startActivity(Intent(activity, settingActivityClass))
+                activity.startActivity(Intent(activity, settingActivityClass).apply {
+                    putExtra(ModuleComponents.SETTINGS_LAUNCH_STARTED, launchStarted)
+                })
             }.onFailure {
                 Toasts.error("需要重新启动${HookEnv.appName}")
                 HookEnv.resetApp()

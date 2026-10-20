@@ -9,6 +9,8 @@ object ModuleComponents {
     /** 模块设置主界面（`ui/settings/SettingActivity.kt`）。 */
     const val SETTINGS_ACTIVITY: String = "com.owo233.tcqt.ui.settings.SettingActivity"
 
+    internal const val SETTINGS_LAUNCH_STARTED = "tcqt.settings.launch_started"
+
     /** 通知渠道管理页（`ui/settings/NotificationChannelManagerActivity.kt`）。 */
     const val NOTIFICATION_CHANNEL_ACTIVITY: String =
         "com.owo233.tcqt.ui.settings.NotificationChannelManagerActivity"
