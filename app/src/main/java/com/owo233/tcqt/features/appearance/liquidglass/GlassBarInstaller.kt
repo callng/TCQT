@@ -338,7 +338,7 @@ internal object GlassBarInstaller {
                 extendPagesToBottom(backdrop)
                 // 窗口尺寸变化略滞后于布局，补一次延迟拉伸。
                 host.postDelayed({ extendPagesToBottom(backdrop) }, 500L)
-                Log.i("液态玻璃已安装: hostW=${host.width} hostH=${host.height} barH=${tabView.height}")
+                // Log.i("液态玻璃已安装: hostW=${host.width} hostH=${host.height} barH=${tabView.height}")
             }
         })
     }
@@ -563,11 +563,11 @@ internal object GlassBarInstaller {
             dropletGeometryKey = computeDropletGeometryKey(host, tab)
             if (!dropletLogged) {
                 dropletLogged = true
-                Log.i(
+                /*Log.i(
                     "液滴已就位: tab=${tmpPos[0]},${tmpPos[1]} size=${w}x$h " +
                             "pill=$pillTop..$pillBottom hostPad=${host.paddingLeft},${host.paddingTop} " +
                             "tabH=${tab.height}"
-                )
+                )*/
             }
         }.onFailure { Log.e("液滴尺寸同步失败", it) }
     }
@@ -670,7 +670,7 @@ internal object GlassBarInstaller {
     private fun holdHidden(view: View) {
         if (view.isGone) return
         view.visibility = View.GONE
-        Log.i("宿主重新点亮了自绘装饰层，已保持隐藏: ${view.javaClass.simpleName}")
+        // Log.i("宿主重新点亮了自绘装饰层，已保持隐藏: ${view.javaClass.simpleName}")
     }
 
     /** 皮肤刷新会恢复底栏的导航预留与停靠高度；拓扑指纹刻意不含几何，该不变量单独在 pre-draw 路径上维持。 */
@@ -1274,7 +1274,7 @@ internal object GlassBarInstaller {
             if (QQTabLocator.isBlurWrapper(child) && child.visibility != View.GONE) {
                 child.visibility = View.GONE
                 blurLayerRef = WeakReference(child)
-                Log.i("已隐藏宿主自绘毛玻璃层: ${child.javaClass.name}")
+                // Log.i("已隐藏宿主自绘毛玻璃层: ${child.javaClass.name}")
             }
         }
     }
@@ -1303,7 +1303,7 @@ internal object GlassBarInstaller {
             ) {
                 child.visibility = View.GONE
                 hairlineRef = WeakReference(child)
-                Log.i("已隐藏底栏 ${child.height}px 发丝线")
+                // Log.i("已隐藏底栏 ${child.height}px 发丝线")
             }
         }
     }

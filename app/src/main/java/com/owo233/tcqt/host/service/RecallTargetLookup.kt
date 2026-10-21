@@ -19,6 +19,15 @@ internal object RecallTargetLookup {
     enum class State { FOUND, MISSING, UNAVAILABLE }
     data class Result(val state: State, val msgSeq: Long? = null, val detail: String = "")
 
+    /**
+     * Prefer the verified local sequence. Only fall back to the protocol sequence when the lookup
+     * could not complete: a MISSING result is proof the host never stored the original (e.g. it was
+     * delivered while the kernel was silent), so a link would point at nothing.
+     */
+    fun navigationSequence(recall: RecallPacketParser.Recall, result: Result): Long? =
+        result.msgSeq?.takeIf { it > 0 }
+            ?: recall.msgSeq.takeIf { it > 0 && result.state == State.UNAVAILABLE }
+
     suspend fun resolve(
         recall: RecallPacketParser.Recall,
         timeoutMillis: Long = 2500,

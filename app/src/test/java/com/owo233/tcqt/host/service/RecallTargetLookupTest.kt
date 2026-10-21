@@ -147,4 +147,28 @@ class RecallTargetLookupTest {
             RecallTargetLookup.Query(0, listOf(target(seq = 415)))
         }.msgSeq)
     }
+
+    @Test
+    fun navigationFallsBackToProtocolSequenceOnlyWhenLocalRecordIsNotQueryable() {
+        val missing = RecallTargetLookup.Result(RecallTargetLookup.State.MISSING)
+        val unavailable = RecallTargetLookup.Result(RecallTargetLookup.State.UNAVAILABLE)
+        assertNull(RecallTargetLookup.navigationSequence(recall, missing))
+        assertEquals(3914L, RecallTargetLookup.navigationSequence(recall, unavailable))
+        assertNull(RecallTargetLookup.navigationSequence(recall.copy(msgSeq = 0), unavailable))
+    }
+
+    @Test
+    fun verifiedHostSequenceTakesPrecedenceOverProtocolSequence() {
+        val found = RecallTargetLookup.Result(RecallTargetLookup.State.FOUND, msgSeq = 9876)
+        assertEquals(9876L, RecallTargetLookup.navigationSequence(recall, found))
+        assertEquals(3914L, RecallTargetLookup.navigationSequence(
+            recall,
+            RecallTargetLookup.Result(RecallTargetLookup.State.UNAVAILABLE, msgSeq = 0),
+        ))
+        // A confirmed miss never links, even if a stale local sequence slipped through as 0.
+        assertNull(RecallTargetLookup.navigationSequence(
+            recall,
+            RecallTargetLookup.Result(RecallTargetLookup.State.MISSING, msgSeq = 0),
+        ))
+    }
 }

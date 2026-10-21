@@ -10,6 +10,7 @@ captures/
 .cxx/
 .reasonix/
 .codebuddy/
+.claude/
 
 # --- Gradle & Build Output ---
 .gradle/
@@ -45,3 +46,4 @@ local.properties
 .temp/
 .tmp/
 .dsh/
+.mcp.json

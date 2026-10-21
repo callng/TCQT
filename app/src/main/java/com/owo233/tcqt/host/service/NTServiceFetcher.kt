@@ -26,7 +26,9 @@ object NTServiceFetcher {
     }
 
     private fun msgPushHook() {
-        kernelService.wrapperSession.javaClass.hookMethodBefore(
+        val sessionClass = kernelService.wrapperSession.javaClass
+
+        sessionClass.hookMethodBefore(
             "onMsfPush",
             String::class.java,
             ByteArray::class.java,
@@ -36,6 +38,10 @@ object NTServiceFetcher {
             val buffer = it.args[1] as ByteArray
 
             action(cmd, buffer, it)
+        }
+
+        sessionClass.hookMethodBefore("switchToBackGround") {
+            if (TCQTSetting.getBoolean("msg_anti_recall")) it.result = null
         }
     }
 

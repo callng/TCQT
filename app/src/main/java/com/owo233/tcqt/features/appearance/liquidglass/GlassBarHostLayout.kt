@@ -1,5 +1,6 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -29,6 +30,7 @@ import kotlin.math.max
  * 其三，探测深浅色主题——QQ 皮肤引擎的夜间模式独立于系统 uiMode，
  * 以全部标签文字颜色的众数投票判定。
  */
+@SuppressLint("ViewConstructor")
 internal class GlassBarHostLayout(
     context: Context,
     /** 玻璃折射的背景页面容器。 */
@@ -86,8 +88,8 @@ internal class GlassBarHostLayout(
     init {
         val probe = detectDarkFromText(bar)
         isDarkTheme = probe ?: HookEnv.isNightMode()
-        Log.i("玻璃容器创建: dark=$isDarkTheme 信号=${if (probe != null) "标签色投票" else "宿主主题"}")
-        setTag(GLASS_HOST_TAG)
+        // Log.i("玻璃容器创建: dark=$isDarkTheme 信号=${if (probe != null) "标签色投票" else "宿主主题"}")
+        tag = GLASS_HOST_TAG
         setWillNotDraw(false)
     }
 
@@ -181,6 +183,7 @@ internal class GlassBarHostLayout(
         return dragHandler?.onIntercept(event) == true || super.onInterceptTouchEvent(event)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         protectGestureFromAncestors(event)
         return dragHandler?.onTouch(event) == true || super.onTouchEvent(event)

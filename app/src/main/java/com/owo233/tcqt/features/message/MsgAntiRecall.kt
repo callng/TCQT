@@ -21,7 +21,7 @@ object MsgAntiRecall : Feature(
     name = "消息防撤回",
     desc = "阻止消息被撤回后删除，需要保活进程。",
     uiOrder = 1,
-    processes = setOf(ActionProcess.MAIN),
+    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
 ), OnAIOViewUpdate {
 
     override val decoratorOrder: Int = 50

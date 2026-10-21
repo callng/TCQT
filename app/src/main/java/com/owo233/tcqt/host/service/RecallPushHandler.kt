@@ -52,13 +52,16 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markC2C(recall.peerId, it) }
             logTarget(recall, target)
+            // The recall is still blocked, but a tip for a message that was never stored locally
+            // can only be an unlocatable gray bar.
+            if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
             LocalGrayTips.addLocalGrayTip(
                 contact,
                 JsonGrayBusiId.AIO_AV_C2C_NOTICE,
                 LocalGrayTips.Align.CENTER
             ) {
                 text("对方想撤回一条")
-                recallMessage(target)
+                recallMessage(recall, target)
             }
         }
     }
@@ -77,6 +80,8 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markGroup(recall.peerId, it) }
             logTarget(recall, target)
+            // Still blocked, but no tip for a message that was never stored locally.
+            if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
 
             val targetNick = getMemberDisplayName(groupPeerId, targetUid)
             val operatorNick = getMemberDisplayName(groupPeerId, operatorUid)
@@ -98,25 +103,28 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
                     member(targetUid, targetUin, targetNick, "3")
                 }
                 text("的")
-                recallMessage(target)
+                recallMessage(recall, target)
             }
         }
     }
 
-    private fun LocalGrayTips.Builder.recallMessage(target: RecallTargetLookup.Result) {
-        val seq = target.msgSeq
+    private fun LocalGrayTips.Builder.recallMessage(
+        recall: RecallPacketParser.Recall,
+        target: RecallTargetLookup.Result,
+    ) {
+        val seq = RecallTargetLookup.navigationSequence(recall, target)
         if (seq != null) msgRef("消息", seq) else text("消息")
-        // Interception is already complete. A best-effort navigation lookup cannot
-        // establish that the original is absent; retain its diagnostics in the log.
         text(", 已拦截")
     }
 
     private fun logTarget(recall: RecallPacketParser.Recall, target: RecallTargetLookup.Result) {
         // No message text or account identifiers; available in exported logs in release too.
-        LogUtils.xposedNoFilter.i(
-            "AntiRecallTarget group=${recall.group} seq=${recall.msgSeq} " +
-                "senderSeq=${recall.senderMsgSeq} lookup=${target.state} localSeq=${target.msgSeq} ${target.detail}"
-        )
+        if (target.state != RecallTargetLookup.State.FOUND) {
+            LogUtils.xposedNoFilter.w(
+                "AntiRecallTarget group=${recall.group} seq=${recall.msgSeq} " +
+                        "senderSeq=${recall.senderMsgSeq} lookup=${target.state} localSeq=${target.msgSeq} ${target.detail}"
+            )
+        }
     }
 
     private suspend fun getMemberDisplayName(groupPeerId: Long, uid: String): String {
