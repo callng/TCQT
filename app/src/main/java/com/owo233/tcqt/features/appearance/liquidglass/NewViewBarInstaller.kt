@@ -43,6 +43,8 @@ internal object NewViewBarInstaller {
     private var indicatorRef = WeakReference<View?>(null)
     private var surfaceRef = WeakReference<View?>(null)
     private var parentRef = WeakReference<ViewGroup?>(null)
+    private var activityRef = WeakReference<Activity?>(null)
+    private var themeChangeActivityRef = WeakReference<Activity?>(null)
     private var driver: DropletGestureDriver? = null
     private var refreshListener: ViewTreeObserver.OnPreDrawListener? = null
 
@@ -71,6 +73,19 @@ internal object NewViewBarInstaller {
     private var layoutSyncPending = false
 
     fun currentPager(): ViewGroup? = backdropRef.get()
+
+    fun onHostThemeChanging() {
+        val activity = activityRef.get() ?: return
+        restore()
+        themeChangeActivityRef = WeakReference(activity)
+    }
+
+    fun onHostThemeChanged() {
+        val activity = themeChangeActivityRef.get() ?: return
+        themeChangeActivityRef.clear()
+        // Wait for QQ's theme callback to finish before measuring the new tab content.
+        scheduleInstall(activity)
+    }
 
     fun scheduleInstall(activity: Activity) {
         val decor = activity.window.decorView
@@ -258,6 +273,7 @@ internal object NewViewBarInstaller {
         indicatorRef = WeakReference(indicator)
         surfaceRef = WeakReference(surface)
         parentRef = WeakReference(parent)
+        activityRef = WeakReference(activity)
         appliedScale = 0f
         installedMode = mode
         installedPosition = config.position
@@ -362,6 +378,7 @@ internal object NewViewBarInstaller {
         indicatorRef = WeakReference(null)
         surfaceRef = WeakReference(null)
         parentRef = WeakReference(null)
+        activityRef.clear()
         refreshListener = null
         originalBackgrounds.clear()
         hiddenChrome.clear()
@@ -567,7 +584,10 @@ internal object NewViewBarInstaller {
         if (isTitleCandidate(view)) view else (view as? ViewGroup)?.children?.firstNotNullOfOrNull(::findTitleCandidate)
 
     private fun isTitleCandidate(view: View): Boolean =
-        view is android.widget.TextView && !view.text.isNullOrBlank() && view.background == null
+        view is android.widget.TextView && !view.text.isNullOrBlank() &&
+            // A skin can attach a transparent drawable to the label. Its background
+            // is not a reliable distinction from QQ's separate badge widget.
+            !view.javaClass.name.contains("Badge", ignoreCase = true)
 
     private fun collectContentBounds(view: View, offset: Int, tabHeight: Int, out: IntArray) {
         if (view.visibility != View.VISIBLE || view.width <= 0 || view.height <= 0) return
@@ -628,7 +648,7 @@ internal object NewViewBarInstaller {
     }
 
     private fun findTabTitle(view: View): View? {
-        if (view is android.widget.TextView && !view.text.isNullOrBlank() && view.background == null) return view
+        if (isTitleCandidate(view)) return view
         if (view is ViewGroup) view.children.forEach { findTabTitle(it)?.let { found -> return found } }
         return null
     }

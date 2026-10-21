@@ -38,7 +38,7 @@ object PurifyMenuButton : Feature(
         settingKey = "purify.blocked_names",
         name = "要隐藏的按钮名称",
         desc = "多个名称用英文逗号隔开，匹配到的长按菜单按钮会被隐藏；本模块添加的功能不会被隐藏",
-        placeholder = "例如：转发,收藏,撤回,复制",
+        placeholder = "多个名称用英文逗号隔开\n例如: 转发,收藏,撤回,复制",
     )
 
     /** 无 hook 需求，纯菜单装饰器。 */

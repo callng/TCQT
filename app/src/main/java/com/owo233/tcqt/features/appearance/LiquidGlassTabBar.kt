@@ -104,6 +104,19 @@ object LiquidGlassTabBar : Feature(
     override fun install() {
         hookTabSwitch()
         hookActivityResume()
+        hookThemeChange()
+    }
+
+    private fun hookThemeChange() {
+        val fragment = load("com.tencent.mobileqq.app.FrameFragment") ?: return
+        // QQ re-applies the native tab layout while changing skins. Let it operate on
+        // the original hierarchy, then measure and install against the refreshed views.
+        runCatching { fragment.getDeclaredMethod("onPreThemeChanged") }.getOrNull()
+            ?.hookBefore { NewViewBarInstaller.onHostThemeChanging() }
+        val postThemeChange = runCatching { fragment.getDeclaredMethod("onPostThemeChanged") }.getOrNull()
+        // Also cover hosts which dispatch only the post callback.
+        postThemeChange?.hookBefore { NewViewBarInstaller.onHostThemeChanging() }
+        postThemeChange?.hookAfter { NewViewBarInstaller.onHostThemeChanged() }
     }
 
     /**
