@@ -33,7 +33,7 @@ import java.lang.reflect.Method
 object RepeatMessage : Feature(
     key = "repeat_message",
     name = "复读机 +1",
-    desc = "人类的本质是什么？不支持修改+1图标，可选触发方式，默认200ms内重复点击触发。",
+    desc = "可通过 +1 图标、长按菜单或右滑消息复读。图标默认在 200ms 内双击触发。",
 ), OnMenuBuilder {
 
     /** 装配顺序：排在 PttForward(100) 之后，决定加号菜单里的先后。 */
@@ -46,7 +46,7 @@ object RepeatMessage : Feature(
         settingKey = "options",
         name = "可选项",
         defaultValue = DISPLAY_ICON,
-        options = listOf("单击触发复读", "显示图标", "显示长按菜单"),
+        options = listOf("单击图标复读(默认双击)", "显示 +1 图标", "气泡菜单中显示 +1", "右滑消息复读"),
     )
 
     /** 解析后的选项掩码。 */
@@ -56,6 +56,12 @@ object RepeatMessage : Feature(
         get() = if (showMenu) REPEAT_MENU_COMPONENTS else emptyArray()
 
     override fun install() {
+        if (repeatOptions.isFlagEnabled(SWIPE_REPEAT_INDEX)) {
+            RepeatMessageSwipe.install(
+                canRepeat = { !isInMultiForwardActivity() && !shouldDisableRepeat(it) },
+                repeat = ::performRepeatMessage,
+            )
+        }
         if (!showIcon) return
 
         val componentClz =
@@ -159,7 +165,13 @@ object RepeatMessage : Feature(
                 return@getMsgsByMsgId
             }
 
-            if (list[0].elements[0].picElement != null) {
+            val elements = list[0].elements
+            if (elements.isNullOrEmpty()) {
+                Toasts.error("该消息不支持复读")
+                return@getMsgsByMsgId
+            }
+
+            if (elements[0].picElement != null) {
                 msgServer.forwardMsg(
                     msgIds,
                     contact.inner,
@@ -172,7 +184,7 @@ object RepeatMessage : Feature(
                 }
             } else {
                 val iMsgServer = QRoute.api(IMsgService::class.java)
-                iMsgServer.sendMsg(contact.inner, list[0].elements) { result, str ->
+                iMsgServer.sendMsg(contact.inner, elements) { result, str ->
                     if (result != 0) {
                         Log.e("repeat message failed: (type=${msg.msgType}, code=$result, msg=$str)")
                     }
@@ -182,7 +194,7 @@ object RepeatMessage : Feature(
     }
 
     private fun shouldDisableRepeat(msg: MsgRecord): Boolean {
-        return msg.msgType == MsgConstant.KMSGTYPEWALLET
+        return msg.msgType == MsgConstant.KMSGTYPEWALLET || msg.elements.isNullOrEmpty()
     }
 
     private fun View.setDoubleClickListener(
@@ -250,6 +262,7 @@ object RepeatMessage : Feature(
     private const val OPTION_SINGLE_CLICK_INDEX = 0
     private const val DISPLAY_ICON_INDEX = 1
     private const val DISPLAY_MENU_INDEX = 2
+    private const val SWIPE_REPEAT_INDEX = 3
     private const val OPTION_SINGLE_CLICK = 1 shl OPTION_SINGLE_CLICK_INDEX
     private const val DISPLAY_ICON = 1 shl DISPLAY_ICON_INDEX
 
