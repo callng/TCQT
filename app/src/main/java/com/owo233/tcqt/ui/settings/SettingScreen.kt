@@ -121,7 +121,11 @@ internal fun SettingScreen(
         features = if (isErrorOverviewActive) errorFeatures else features,
         errorCount = viewModel.errorCount,
     )
-    val scrollBehavior = MiuixScrollBehavior(viewModel.getTopBarState(pageState.animationKey))
+    // The fixed search field has no collapsing app bar to measure the scroll range.
+    // Attaching its unmeasured behavior would consume upward drags indefinitely.
+    val scrollBehavior = if (isSearchActive) null else {
+        MiuixScrollBehavior(viewModel.getTopBarState(pageState.animationKey))
+    }
     val title = when {
         detail != null -> detail!!.feature.label
         isAppearanceActive -> "主题设置"
@@ -162,7 +166,7 @@ internal fun SettingScreen(
     ) { innerPadding ->
         AnimatedContent(
             targetState = pageState,
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier.fillMaxSize(),
             contentKey = { it.animationKey },
             transitionSpec = {
                 softFadeScaleIn(0.985f, PageTransitionDurationMillis)
@@ -173,9 +177,14 @@ internal fun SettingScreen(
             val listState = remember(targetPage.animationKey) {
                 viewModel.getScrollState(targetPage.animationKey)
             }
+            // Only the active page may drive the currently displayed app bar during transitions.
+            val listScrollModifier = if (scrollBehavior != null && targetPage.animationKey == pageState.animationKey) {
+                Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+            } else Modifier
             AdaptiveContent { sidePadding ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().horizontalSafePadding().overScrollVertical(),
+                    modifier = Modifier.fillMaxSize().horizontalSafePadding()
+                        .then(listScrollModifier).overScrollVertical(),
                     state = listState,
                     contentPadding = PaddingValues(
                         start = sidePadding,

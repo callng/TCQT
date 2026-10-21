@@ -29,7 +29,7 @@ internal fun TopBar(
     isErrorOverviewActive: Boolean,
     isExportingBugReport: Boolean,
     onExportBugReportClick: () -> Unit,
-    scrollBehavior: ScrollBehavior,
+    scrollBehavior: ScrollBehavior?,
 ) {
     if (isSearchActive) {
         Box(

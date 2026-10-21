@@ -51,6 +51,8 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
 ## 页面与分组
 
 - `Scaffold` + `TopAppBar(scrollBehavior)` + `LazyColumn`；列表接入顶栏的 nested scroll 和 Miuix overscroll。
+  固定搜索框页面只保留列表滚动和 overscroll，不创建或接入折叠顶栏的 scrollBehavior，
+  避免未测量的折叠范围吞掉滚动；切页动画中的旧列表不得驱动新页面的顶栏。
   不再手工拼一个只有图标、没有页面标题的顶栏。返回用 `MiuixIcons.Back`。
 - `AdaptiveContent` 提供水平边距：手机 12dp，宽窗口居中、内容宽度最多 800dp。
   列表本身保持全宽，边缘区域也可以滚动。使用 `horizontalSafePadding()` 避让横屏缺口。
