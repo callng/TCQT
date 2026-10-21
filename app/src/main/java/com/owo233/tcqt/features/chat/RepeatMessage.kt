@@ -1,10 +1,12 @@
 package com.owo233.tcqt.features.chat
 
+import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.ImageView
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
+import com.owo233.tcqt.core.config.PngIconCodec
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.isFlagEnabled
@@ -28,6 +30,7 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.msg.api.IMsgService
 import java.lang.reflect.Field
 import java.lang.reflect.Method
+import androidx.core.graphics.drawable.toDrawable
 
 @RegisterAction
 object RepeatMessage : Feature(
@@ -49,6 +52,8 @@ object RepeatMessage : Feature(
         options = listOf("单击图标复读(默认双击)", "显示 +1 图标", "气泡菜单中显示 +1", "右滑消息复读"),
     )
 
+    private val customIcon by pngIconOption("icon", "自定义 +1 图标")
+
     /** 解析后的选项掩码。 */
     private val repeatOptions: Int by lazy { resolveRepeatOptions() }
 
@@ -56,10 +61,12 @@ object RepeatMessage : Feature(
         get() = if (showMenu) REPEAT_MENU_COMPONENTS else emptyArray()
 
     override fun install() {
+        val iconBitmap = PngIconCodec.decodeOrNull(customIcon)
         if (repeatOptions.isFlagEnabled(SWIPE_REPEAT_INDEX)) {
             RepeatMessageSwipe.install(
                 canRepeat = { !isInMultiForwardActivity() && !shouldDisableRepeat(it) },
                 repeat = ::performRepeatMessage,
+                customIcon = iconBitmap,
             )
         }
         if (!showIcon) return
@@ -112,6 +119,13 @@ object RepeatMessage : Feature(
 
             if (imageView.visibility != View.VISIBLE) {
                 setRepeatMsgIconMethod.invoke(hostObject, View.VISIBLE)
+            }
+
+            if (iconBitmap != null) {
+                imageView.imageTintList = null
+                imageView.clearColorFilter()
+                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                imageView.setImageDrawable(iconBitmap.toDrawable(imageView.resources))
             }
 
             imageView.setDoubleClickListener(

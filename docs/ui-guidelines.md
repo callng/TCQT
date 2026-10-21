@@ -65,7 +65,10 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
   每个页面分别保存列表位置和大标题折叠状态；返回详情页来源时保留搜索条件。
 - 单选用 `OverlayDropdownPreference` 的锚定勾选菜单，多选用 `CheckboxPreference`，数值用 `SliderPreference`。
   不给每个子选项再套一张不同底色的卡片。滑块保存值必须经过 `normalizeSliderValue`。
-- 搜索使用 Miuix `InputField`，保留其低版本 Android 的焦点修复。空查询只显示提示/历史；
+- 搜索沿用 Miuix `InputField` 的外观；0.9.4 的 String 接口无法指定选区，因此展开态使用
+  `BasicTextField(TextFieldValue)` 保留完整编辑状态。历史词等外部填入将光标置于末尾，
+  普通输入、手动选择和中文组合输入不得强制移到末尾。搜索框仅在展开时挂载，进入时请求焦点，
+  关闭时移除，避免低版本 Android 折叠态焦点重分配问题。空查询只显示提示/历史；
   搜索、高亮统一使用原字符串的忽略大小写匹配，不通过转小写字符串计算偏移。
   保留默认前置搜索图标及内边距，不能用空 `leadingIcon` 槽移除留白；验收空输入、输入和清空后的光标位置。
 - 设置仍是“修改 → 保存 → 重启生效”。行内标识未保存，仅有草稿时显示底部主按钮和待保存数量。

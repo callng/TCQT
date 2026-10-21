@@ -56,7 +56,8 @@ internal object FeatureCatalog {
                     TextAreaField(
                         key = s.key,
                         label = s.name,
-                        placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" }
+                        placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" },
+                        isPngIcon = s.isPngIcon,
                     )
                 }
 

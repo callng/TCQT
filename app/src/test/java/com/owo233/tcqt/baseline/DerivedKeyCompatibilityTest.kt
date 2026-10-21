@@ -26,7 +26,7 @@ class DerivedKeyCompatibilityTest {
     )
 
     private val optionArg = Regex(
-        "(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption)" +
+        "(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption|pngIconOption)" +
                 "\\s*\\(\\s*(?:settingKey\\s*=\\s*)?\"([^\"]+)\""
     )
 

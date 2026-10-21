@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
 class RuntimeSettingsRegistrationTest {
 
     private val optionCtor = Regex(
-        "\\b(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption)\\s*\\("
+        "\\b(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption|pngIconOption)\\s*\\("
     )
 
     /** 取注册单例：Kotlin `object` 直接读 `INSTANCE`，普通类走无参构造。 */
@@ -45,6 +45,13 @@ class RuntimeSettingsRegistrationTest {
 
     private fun registeredClasses(): List<Class<*>> =
         GeneratedActionList.ACTIONS.toList()
+
+    @Test
+    fun `复读图标在目录中保留 PNG 选择器元数据`() {
+        val repeat = FeatureCatalog.getAllFeatures().single { it.key == "repeat_message" }
+        val icon = repeat.textAreas.single { it.key == "repeat_message.icon" }
+        assertTrue(icon.isPngIcon, "PNG 配置不能渲染成 Base64 文本输入框")
+    }
 
     @Test
     fun `每个功能的运行时 settings 数量等于源码里的 xxxOption 声明数`() {

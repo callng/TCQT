@@ -1,5 +1,7 @@
 package com.owo233.tcqt.ui.settings
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -12,6 +14,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.owo233.tcqt.core.action.ActionUiType
 import com.owo233.tcqt.core.config.TCQTSetting
+import com.owo233.tcqt.core.config.PngIconCodec
+import com.owo233.tcqt.core.env.Toasts
+import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.log.ActionErrorStore
 import com.owo233.tcqt.host.service.AntiRecallConfig
@@ -27,6 +32,7 @@ import com.owo233.tcqt.ui.settings.model.TextAreaUiState
 import com.owo233.tcqt.ui.settings.model.normalizeSliderValue
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,6 +61,12 @@ class SettingViewModel : ViewModel() {
     private val pendingBooleans = mutableStateMapOf<String, Boolean>()
     private val pendingInts = mutableStateMapOf<String, Int>()
     private val pendingStrings = mutableStateMapOf<String, String>()
+
+    private var pickingPngIconKey: String? = null
+    private var pngIconImportJob: Job? = null
+
+    var isImportingPngIcon by mutableStateOf(false)
+        private set
 
     var detailFeatureKey by mutableStateOf<String?>(null)
         private set
@@ -367,6 +379,39 @@ class SettingViewModel : ViewModel() {
         }
     }
 
+    fun beginPngIconSelection(key: String): Boolean {
+        if (isImportingPngIcon || pickingPngIconKey != null) return false
+        if (allFeatures.none { feature -> feature.textAreas.any { it.key == key && it.isPngIcon } }) return false
+        pickingPngIconKey = key
+        return true
+    }
+
+    fun importPngIcon(resolver: ContentResolver, uri: Uri?) {
+        val key = pickingPngIconKey ?: return
+        pickingPngIconKey = null
+        if (uri == null) return
+        isImportingPngIcon = true
+        pngIconImportJob = viewModelScope.launch {
+            try {
+                val value = withContext(Dispatchers.IO) {
+                    requireNotNull(resolver.openInputStream(uri)) { "无法打开 PNG 图片" }
+                        .use(PngIconCodec::importPng)
+                }
+                setTextValue(key, value)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Failed to import custom PNG icon", e)
+                Toasts.error(e.message ?: "PNG 图片读取失败")
+            } finally {
+                if (pngIconImportJob == coroutineContext[Job]) {
+                    pngIconImportJob = null
+                    isImportingPngIcon = false
+                }
+            }
+        }
+    }
+
     fun saveChanges() {
         pendingBooleans.forEach { (key, value) ->
             TCQTSetting.setValue(key, value)
@@ -408,6 +453,10 @@ class SettingViewModel : ViewModel() {
     }
 
     fun reloadPersistedSettings() {
+        pngIconImportJob?.cancel()
+        pngIconImportJob = null
+        pickingPngIconKey = null
+        isImportingPngIcon = false
         persistedBooleans.clear()
         persistedInts.clear()
         persistedStrings.clear()
@@ -601,6 +650,7 @@ class SettingViewModel : ViewModel() {
                         label = area.label,
                         placeholder = area.placeholder,
                         value = effectiveString(area.key),
+                        isPngIcon = area.isPngIcon,
                     )
                 },
             uiType = feature.uiType,

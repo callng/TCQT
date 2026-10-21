@@ -169,7 +169,7 @@ class SliderOption internal constructor(
         IntSliderSetting(key, name, defaultValue, desc, min, max, step, suffix, isHide)
 }
 
-/** 字符串配置项：渲染为多行文本输入框。 */
+/** 字符串配置项：文本输入框或 PNG 图标选择器。 */
 class StringOption internal constructor(
     override val featureKey: String,
     override val settingKey: String,
@@ -178,6 +178,7 @@ class StringOption internal constructor(
     override val desc: String,
     val placeholder: String,
     override val isHide: Boolean = false,
+    val isPngIcon: Boolean = false,
 ) : Option<String>() {
 
     override var value: String
@@ -187,5 +188,5 @@ class StringOption internal constructor(
     override fun set(value: String) = TCQTSetting.setString(key, value)
 
     override fun toSetting(): Setting<String> =
-        StringSetting(key, name, defaultValue, desc, placeholder, isHide = isHide)
+        StringSetting(key, name, defaultValue, desc, placeholder, isHide = isHide, isPngIcon = isPngIcon)
 }

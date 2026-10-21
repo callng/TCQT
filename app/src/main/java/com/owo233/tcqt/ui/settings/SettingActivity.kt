@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.core.view.doOnPreDraw
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import com.owo233.tcqt.core.action.ActionRegistry
 import com.owo233.tcqt.core.command.ModuleCommandBus
 import com.owo233.tcqt.core.config.ConfigBackupManager
@@ -61,6 +61,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 
 class SettingActivity : BaseComposeActivity() {
+
+    private val settingsModel by lazy { ViewModelProvider(this)[SettingViewModel::class.java] }
+
+    private val pngIconPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            settingsModel.importPngIcon(contentResolver, uri)
+        }
 
     private var onRestoreSuccessCallback: (() -> Unit)? = null
 
@@ -235,7 +242,7 @@ class SettingActivity : BaseComposeActivity() {
                 monetEnabled = monetEnabled,
                 systemDarkTheme = isDarkTheme,
             ) {
-                val viewModel: SettingViewModel = viewModel()
+                val viewModel = settingsModel
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
 
@@ -493,6 +500,10 @@ class SettingActivity : BaseComposeActivity() {
                         onIssueClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, false) },
                         onIssueLongClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, true) },
                         onSaveClick = {
+                            if (viewModel.isImportingPngIcon) {
+                                scope.launch { snackbarHostState.showSnackbar("请等待 PNG 图片读取完成") }
+                                return@SettingScreen
+                            }
                             if (!viewModel.hasPendingChanges) {
                                 scope.launch {
                                     snackbarHostState.showSnackbar("没有修改需要保存")
@@ -505,6 +516,17 @@ class SettingActivity : BaseComposeActivity() {
                         },
                         onBackupRestoreClick = {
                             showBackupDialog = true
+                        },
+                        onSelectPngIcon = { key ->
+                            if (viewModel.beginPngIconSelection(key)) {
+                                try {
+                                    pngIconPicker.launch(arrayOf("image/png"))
+                                } catch (e: Exception) {
+                                    viewModel.importPngIcon(contentResolver, null)
+                                    Toasts.error("无法打开图片选择器")
+                                    Log.w("Failed to launch PNG icon picker", e)
+                                }
+                            }
                         },
                         isExportingBugReport = isExportingBugReport,
                         onExportBugReportClick = {

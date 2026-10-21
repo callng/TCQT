@@ -190,6 +190,11 @@ abstract class Feature(
         StringOption(key, settingKey, name, defaultValue, desc, placeholder, isHide)
     )
 
+    /** PNG 图标选择器，空值表示使用宿主默认图标。 */
+    protected fun pngIconOption(settingKey: String, name: String): StringOption = register(
+        StringOption(key, settingKey, name, "", "", "", isPngIcon = true)
+    )
+
     private fun <O : Option<*>> register(option: O): O {
         declaredOptions += option
         return option

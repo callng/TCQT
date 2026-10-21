@@ -60,14 +60,16 @@ data class TextAreaUiState(
     val key: String,
     val label: String,
     val placeholder: String,
-    val value: String
+    val value: String,
+    val isPngIcon: Boolean = false,
 )
 
 @Immutable
 data class TextAreaField(
     val key: String,
     val label: String,
-    val placeholder: String
+    val placeholder: String,
+    val isPngIcon: Boolean = false,
 )
 
 @Immutable

@@ -97,6 +97,7 @@ internal fun SettingScreen(
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
     onBackupRestoreClick: () -> Unit,
+    onSelectPngIcon: (String) -> Unit,
     isExportingBugReport: Boolean,
     onExportBugReportClick: () -> Unit,
     onFeatureClick: (String) -> Unit,
@@ -184,7 +185,7 @@ internal fun SettingScreen(
                     ),
                 ) {
                     when {
-                        targetPage.detail != null -> featureDetail(targetPage.detail, viewModel, onFeatureClick)
+                        targetPage.detail != null -> featureDetail(targetPage.detail, viewModel, onFeatureClick, onSelectPngIcon)
                         targetPage.isAppearanceActive -> {
                             settingsGroupTitle("外观")
                             item(key = "theme_mode") {
@@ -235,6 +236,7 @@ private fun LazyListScope.featureDetail(
     item: FeatureItemUiState,
     viewModel: SettingViewModel,
     onFeatureClick: (String) -> Unit,
+    onSelectPngIcon: (String) -> Unit,
 ) {
     item(key = "feature_enable:${item.key}") {
         PreferenceSegment(first = true, last = true) {
@@ -277,8 +279,17 @@ private fun LazyListScope.featureDetail(
         itemsIndexed(item.textAreas, key = { _, area -> "text:${area.key}" }) { index, area ->
             val position = item.optionGroups.size + item.sliders.size + index
             PreferenceSegment(first = position == 0, last = position == fieldCount - 1) {
-                Box(Modifier.padding(16.dp)) {
-                    FeatureTextArea(area, repositionKey = Unit) { viewModel.setTextValue(area.key, it) }
+                if (area.isPngIcon) {
+                    PngIconPreference(
+                        area = area,
+                        importing = viewModel.isImportingPngIcon,
+                        onSelect = { onSelectPngIcon(area.key) },
+                        onReset = { viewModel.setTextValue(area.key, "") },
+                    )
+                } else {
+                    Box(Modifier.padding(16.dp)) {
+                        FeatureTextArea(area, repositionKey = Unit) { viewModel.setTextValue(area.key, it) }
+                    }
                 }
             }
         }

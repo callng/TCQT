@@ -80,12 +80,13 @@ class BooleanSetting(
 ) : Setting<Boolean>()
 
 /**
- * 字符串配置项，渲染为多行文本输入框。
+ * 字符串配置项，默认渲染为多行文本输入框。
  *
  * 典型用途：GUID、设备信息、自定义文本等。读取用 `TCQTSetting.getString(key)`（内部 trim，未配置返回空串）。
  *
  * @param placeholder 输入框占位提示文案；为空时界面自动使用“填写{name}内容”
- * @param hasTextAreas 预留字段：当前设置界面未读取，所有 [StringSetting] 均按多行文本域渲染，保持默认 false
+ * @param hasTextAreas 预留字段，保持默认 false
+ * @param isPngIcon 使用 PNG 选择器，值为内嵌 PNG 的 Base64，空值使用默认图标
  */
 class StringSetting(
     override val key: String,
@@ -94,7 +95,8 @@ class StringSetting(
     override val desc: String = "",
     val placeholder: String = "",
     val hasTextAreas: Boolean = false,
-    override val isHide: Boolean = false
+    override val isHide: Boolean = false,
+    val isPngIcon: Boolean = false,
 ) : Setting<String>()
 
 /**

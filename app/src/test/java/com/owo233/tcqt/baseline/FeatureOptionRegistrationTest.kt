@@ -1,6 +1,7 @@
 package com.owo233.tcqt.baseline
 
 import com.owo233.tcqt.api.Feature
+import com.owo233.tcqt.core.config.StringSetting
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -29,6 +30,7 @@ class FeatureOptionRegistrationTest {
         val strings by stringOption("text", "文本框", placeholder = "占位")
         val sliders by sliderOption("scale", "滑块", min = 0, max = 10, suffix = "%")
         val bools by booleanOption("flag", "布尔")
+        val icon by pngIconOption("icon", "自定义图标")
 
         override fun install() = Unit
     }
@@ -44,6 +46,7 @@ class FeatureOptionRegistrationTest {
                 "probe_feature.text",
                 "probe_feature.scale",
                 "probe_feature.flag",
+                "probe_feature.icon",
             ),
             settings.map { it.key },
             "声明即注册失效 —— 设置界面只会剩下功能开关",
@@ -59,6 +62,10 @@ class FeatureOptionRegistrationTest {
         assertEquals("StringSetting", byKey.getValue("probe_feature.text")::class.simpleName)
         assertEquals("IntSliderSetting", byKey.getValue("probe_feature.scale")::class.simpleName)
         assertEquals("BooleanSetting", byKey.getValue("probe_feature.flag")::class.simpleName)
+        val icon = byKey.getValue("probe_feature.icon") as StringSetting
+        assertEquals(true, icon.isPngIcon)
+        assertEquals("", icon.defaultValue)
+        assertEquals(false, (byKey.getValue("probe_feature.text") as StringSetting).isPngIcon)
     }
 
     @Test

@@ -3,12 +3,14 @@ package com.owo233.tcqt.features.chat
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -31,7 +33,11 @@ import kotlin.math.roundToInt
 
 internal object RepeatMessageSwipe {
 
-    fun install(canRepeat: (MsgRecord) -> Boolean, repeat: (MsgRecord) -> Unit) {
+    fun install(
+        canRepeat: (MsgRecord) -> Boolean,
+        repeat: (MsgRecord) -> Unit,
+        customIcon: Bitmap? = null,
+    ) {
         // if (!HookEnv.isQQ()) return
 
         val holder = loadOrThrow("com.tencent.mobileqq.aio.msglist.holder.AIOBubbleMsgItemVB")
@@ -73,7 +79,7 @@ internal object RepeatMessageSwipe {
                 if (container.scrollX != 0 || !content.isShown) return@hookAfter
                 if (event.x !in content.x..(content.x + content.width) ||
                     event.y !in content.y..(content.y + content.height)) return@hookAfter
-                sessions[instance] = SwipeSession(container, content, msg).also { it.begin(event) }
+                sessions[instance] = SwipeSession(container, content, msg, customIcon).also { it.begin(event) }
             } else if (session != null) {
                 if (session.captured) {
                     if (event.pointerCount != 1) session.cancelDrag()
@@ -122,7 +128,7 @@ internal object RepeatMessageSwipe {
         it.type == type && !Modifier.isStatic(it.modifiers)
     }.apply { isAccessible = true }
 
-    private class SwipeSession(container: ViewGroup, content: View, msg: MsgRecord) :
+    private class SwipeSession(container: ViewGroup, content: View, msg: MsgRecord, customIcon: Bitmap?) :
         View.OnAttachStateChangeListener {
         // WeakHashMap 的 value 不能经 View / listener 间接强持有 holder
         private val containerRef = WeakReference(container)
@@ -138,7 +144,7 @@ internal object RepeatMessageSwipe {
             ViewConfiguration.getLongPressTimeout().toLong(),
         )
         private var overlayRef: WeakReference<ViewGroup>? = null
-        private val badge = RepeatBadge(density, HookEnv.isNightMode())
+        private val badge = RepeatBadge(density, HookEnv.isNightMode(), customIcon)
         private var animator: ValueAnimator? = null
         private var wasReady = false
         private var ownsScroll = false
@@ -247,18 +253,33 @@ internal object RepeatMessageSwipe {
         override fun onViewDetachedFromWindow(v: View) = reset()
     }
 
-    private class RepeatBadge(density: Float, dark: Boolean) : Drawable() {
+    private class RepeatBadge(density: Float, dark: Boolean, private val customIcon: Bitmap?) : Drawable() {
         private val darkMode = dark
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
             textSize = 16f * density
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
+        private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        private val iconBounds = RectF()
         var progress = 0f
         var ready = false
 
         override fun draw(canvas: Canvas) {
             val alpha = (progress * 255).roundToInt()
+            customIcon?.let { icon ->
+                val scale = min(bounds.width().toFloat() / icon.width, bounds.height().toFloat() / icon.height) *
+                    (0.8f + progress * 0.2f)
+                val halfWidth = icon.width * scale / 2f
+                val halfHeight = icon.height * scale / 2f
+                iconBounds.set(
+                    bounds.exactCenterX() - halfWidth, bounds.exactCenterY() - halfHeight,
+                    bounds.exactCenterX() + halfWidth, bounds.exactCenterY() + halfHeight,
+                )
+                bitmapPaint.alpha = if (ready) alpha else (alpha * 0.7f).roundToInt()
+                canvas.drawBitmap(icon, null, iconBounds, bitmapPaint)
+                return
+            }
             paint.color = if (darkMode) Color.rgb(59, 80, 98) else Color.rgb(211, 226, 237)
             paint.alpha = alpha
             val radius = bounds.width() / 2f * (0.8f + progress * 0.2f)
