@@ -18,6 +18,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
         result.allowedGroupRecalls.forEach { (peer, seq) -> RecallManager.allowGroupRecall(account, peer, seq) }
         if (result.recalls.isEmpty()) return
         if (result.blockPush) param.result = null else param.args[1] = result.bytes
+        // logIntercepted("MsgPush", result.recalls.size, result.blockPush)
         notifyRecalls(result.recalls)
     }
 
@@ -29,7 +30,15 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
         result.allowedGroupRecalls.forEach { (peer, seq) -> RecallManager.allowGroupRecall(account, peer, seq) }
         // A later sync may contain only deletion placeholders, with no new recall event.
         if (!result.bytes.contentEquals(buffer)) param.args[1] = result.bytes
+        // if (result.recalls.isNotEmpty()) logIntercepted("InfoSyncPush", result.recalls.size, false)
         notifyRecalls(result.recalls)
+    }
+
+    private fun logIntercepted(source: String, count: Int, droppedPush: Boolean) {
+        LogUtils.xposedNoFilter.i(
+            "AntiRecall intercepted source=$source count=$count droppedPush=$droppedPush " +
+                    "decoder=${decoder.javaClass.simpleName}"
+        )
     }
 
     private fun notifyRecalls(recalls: List<RecallPacketParser.Recall>) {
