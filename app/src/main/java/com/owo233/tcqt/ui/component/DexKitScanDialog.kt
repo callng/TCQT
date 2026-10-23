@@ -51,7 +51,7 @@ internal class DexKitScanDialogHost(
         if (activity === host && dialog?.isShowing == true) return
         hide()
         runCatching {
-            DexKitScanDialog(host, state, onClose = ::close).also {
+            DexKitScanDialog(host, state, onClose = ::close, onRestart = ::restart).also {
                 activity = host
                 dialog = it
                 it.show()
@@ -71,11 +71,26 @@ internal class DexKitScanDialogHost(
 
     private fun close() {
         if (!state.value.canDismiss) return
+        detach()?.dismiss()
+        onClosed()
+    }
+
+    private fun restart() {
+        if (!state.value.finished || !state.value.restartRequired) return
+        detach()?.dismissImmediately()
+        onClosed()
+        ModuleCommandBus.sendCommand(
+            HookEnv.application,
+            ModuleCommandBus.CMD_RESTART,
+        )
+    }
+
+    private fun detach(): DexKitScanDialog? {
         application.unregisterActivityLifecycleCallbacks(this)
-        dialog?.dismiss()
+        val currentDialog = dialog
         dialog = null
         activity = null
-        onClosed()
+        return currentDialog
     }
 
     override fun onActivityResumed(activity: Activity) = show(activity)
@@ -101,6 +116,7 @@ private class DexKitScanDialog(
     activity: Activity,
     private val scanState: StateFlow<DexKitScanState>,
     private val onClose: () -> Unit,
+    private val onRestart: () -> Unit,
 ) : CompatibleComposeDialog(activity) {
     init {
         setCancelable(false)
@@ -130,10 +146,7 @@ private class DexKitScanDialog(
                     Button(
                         onClick = {
                             if (state.restartRequired) {
-                                ModuleCommandBus.sendCommand(
-                                    HookEnv.application,
-                                    ModuleCommandBus.CMD_RESTART,
-                                )
+                                onRestart()
                             } else {
                                 onClose()
                             }

@@ -26,7 +26,7 @@ internal object NativeLibs {
 
     @SuppressLint("UnsafeDynamicallyLoadedCode")
     fun load(name: String): Boolean {
-        loadState[name]?.let { return it }
+        if (loadState[name] == true) return true
         val ok = try {
             val dir = nativeDir
             if (dir != null) {
@@ -43,7 +43,8 @@ internal object NativeLibs {
             Log.e(TAG, "load lib$name.so failed", t)
             false
         }
-        loadState[name] = ok
+        // A missing extraction or ClassLoader path can become available later.
+        if (ok) loadState[name] = true
         return ok
     }
 }
