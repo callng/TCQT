@@ -14,6 +14,7 @@ import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.dexkit.DexKitLookupTracker
 import com.owo233.tcqt.core.dexkit.DexKitTask
+import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.loadOrThrow
 import com.owo233.tcqt.core.hook.MethodHookParam
@@ -29,7 +30,6 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import java.lang.ref.WeakReference
-import androidx.core.view.isVisible
 
 /**
  * 编辑重发。
@@ -42,7 +42,7 @@ import androidx.core.view.isVisible
 @RegisterAction
 object EditAndResend : Feature(
     key = "edit_and_resend",
-    name = "编辑重发",
+    name = "消息编辑重发",
     desc = "长按菜单添加编辑功能",
     priority = ActionPriority.EARLY,
 ), DexKitTask, OnMenuBuilder {
@@ -60,14 +60,7 @@ object EditAndResend : Feature(
     @Volatile
     private var editTextRef: WeakReference<EditText>? = null
 
-    /**
-     * 必须自己声明 DexKit 查询。
-     *
-     * 只实现 [DexKitTask] 而不重写查询的话，`getCacheKeys()` 默认返回空集，
-     * `DexKitFinder` 就不会去查找这个 key，`requireMethod` 必然失败 ——
-     * 表现就是「菜单项能出现，但点了一直提示找不到输入框」。
-     * （`GetSign` 也用了同一个 key，但它默认关闭，所以指望不上。）
-     */
+    /** 独立声明输入框初始化查询，不依赖其他功能提供缓存。 */
     override fun getCacheKeys(): Set<String> = setOf(TASK_INPUT_ROOT_INIT)
 
     override fun execute(
@@ -76,7 +69,8 @@ object EditAndResend : Feature(
         tracker: DexKitLookupTracker,
     ) {
         lookup(TASK_INPUT_ROOT_INIT, bridge, cache, tracker) {
-            findMethod(
+            val isTim = HookEnv.isTIM()
+            val primary = if (isTim) null else findMethod(
                 FindMethod().apply {
                     searchPackages("com.tencent.mobileqq.aio.input.simpleui")
                     matcher {
@@ -90,6 +84,28 @@ object EditAndResend : Feature(
                     }
                 },
             ).singleOrNull()?.descriptor
+
+            primary ?: findMethod(
+                FindMethod().apply {
+                    searchPackages(
+                        if (isTim) "com.tencent.tim.aio.inputbar.simpleui"
+                        else "com.tencent.mobileqq.aio.input.simpleui",
+                    )
+                    matcher {
+                        // TIM 还包含临时会话的另一个 Delegate，不能对整个包 singleOrNull。
+                        if (isTim) {
+                            declaredClass(
+                                "com.tencent.tim.aio.inputbar.simpleui.TimAIOInputSimpleUIVBDelegate",
+                            )
+                        }
+                        usingEqStrings(
+                            "binding",
+                            "inputRoot.findViewById(R.id.input)",
+                            "inputRoot.findViewById(R.id.send_btn)",
+                        )
+                    }
+                },
+            ).singleOrNull()?.descriptor
         }
     }
 
@@ -98,8 +114,10 @@ object EditAndResend : Feature(
         requireMethod(TASK_INPUT_ROOT_INIT).hookAfter { param ->
             val et = runCatching {
                 param.thisObject.javaClass
-                    .findField { type == EditText::class.java }
+                    .findField { type = EditText::class.java }
                     .get(param.thisObject) as? EditText
+            }.onFailure {
+                Log.e("edit_and_resend: 读取输入框失败，method=${param.method}", it)
             }.getOrNull() ?: return@hookAfter
             editTextRef = WeakReference(et)
         }
@@ -141,14 +159,13 @@ object EditAndResend : Feature(
             return
         }
 
-        val editText = findInputEditText()
-        if (editText == null) {
-            Toasts.error("未找到输入框，请先点开聊天输入框再试")
-            return
-        }
-
-        // setText 必须在主线程
+        // 查找、写入都在主线程；写入成功后才能撤回原消息。
         Handler(Looper.getMainLooper()).post {
+            val editText = findInputEditText()
+            if (editText == null) {
+                Toasts.error("未找到输入框，请先点开聊天输入框再试")
+                return@post
+            }
             runCatching {
                 editText.setText(text)
                 editText.setSelection(editText.text?.length ?: text.length)
@@ -162,10 +179,13 @@ object EditAndResend : Feature(
                         imm?.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
                     }
                 }, 120L)
-            }.onFailure { Log.e("edit_and_resend: 写入输入框失败", it) }
+            }.onSuccess {
+                recall(record)
+            }.onFailure {
+                Log.e("edit_and_resend: 写入输入框失败", it)
+                Toasts.error("写入输入框失败，未撤回原消息")
+            }
         }
-
-        recall(record)
     }
 
     /**
@@ -210,13 +230,6 @@ object EditAndResend : Feature(
      */
     @SuppressLint("DiscouragedApi")
     private fun findInputEditText(): EditText? {
-        // ① 优先用 hook 缓存的引用
-        editTextRef?.get()?.let { cached ->
-            if (cached.isAttachedToWindow) {
-                return cached
-            }
-        }
-
         val activity = runCatching { QQInterfaces.topActivity }.getOrNull()
         val root = runCatching { activity?.window?.decorView }.getOrNull()
         if (root == null) {
@@ -224,10 +237,28 @@ object EditAndResend : Feature(
             return null
         }
 
-        // ② 精确找聊天输入框：它一定和「发送按钮」在同一个输入栏容器里。
-        //    只按 is Shown 之类找的话，第一个命中往往是搜索框 QuickPinyinEditText。
+        // 只复用当前窗口里可见的输入框，避免切换聊天后写入旧窗口。
+        editTextRef?.get()?.let { cached ->
+            if (cached.rootView === root && cached.isAttachedToWindow &&
+                cached.isShown && cached.isEnabled
+            ) {
+                return cached
+            }
+        }
+
         val res = root.resources
         val pkg = activity?.packageName ?: return null
+        // TIM 的普通和临时会话输入栏都通过 R.id.input 获取 EditText。
+        val inputId = runCatching { res.getIdentifier("input", "id", pkg) }.getOrDefault(0)
+        if (inputId != 0) {
+            val input = root.findViewById<View>(inputId) as? EditText
+            if (input != null && input.isShown && input.isEnabled) {
+                editTextRef = WeakReference(input)
+                return input
+            }
+        }
+
+        // 资源名不可用时，从发送按钮附近查找，避免误取页面上的搜索框。
         val sendBtnId = runCatching { res.getIdentifier("send_btn", "id", pkg) }.getOrDefault(0)
         if (sendBtnId == 0) return null
 
@@ -253,7 +284,7 @@ object EditAndResend : Feature(
     private fun findEditTextIn(view: View?): EditText? {
         if (view == null) return null
         if (view is EditText) {
-            return view.takeIf { it.isVisible && it.isEnabled }
+            return view.takeIf { it.isShown && it.isEnabled }
         }
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
