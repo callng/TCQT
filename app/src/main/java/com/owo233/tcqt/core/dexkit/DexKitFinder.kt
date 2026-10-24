@@ -60,17 +60,12 @@ internal object DexKitFinder {
     }
 
     private fun getAllTaskKeys(): Set<String> {
-        return allTasks
+        return getTasks()
             .flatMap { it.getCacheKeys() }
             .toSet()
     }
 
-    private fun getTasks(missingKeys: Set<String>? = null): List<DexKitTask> {
-        return allTasks.filter { task ->
-            val keys = task.getCacheKeys()
-            keys.isNotEmpty() && (missingKeys == null || keys.any { it in missingKeys })
-        }
-    }
+    private fun getTasks(): List<DexKitTask> = selectDexKitTasks(allTasks)
 
     private fun waitForHostResume(classLoader: ClassLoader) {
         if (findStarted.get() || resumeCallback != null) return
@@ -103,15 +98,18 @@ internal object DexKitFinder {
         ModuleScope.launchIO(TAG) {
             val snapshot = DexKitCache.snapshotForScan()
             val partialFind = snapshot.versionMatched
+            // Re-evaluate Requires for each scan, then use the same eligible task
+            // snapshot for key collection, execution, cache cleanup and failure owners.
+            val availableTasks = getTasks()
+            val oldCache = snapshot.values
+            val allKeys = availableTasks.flatMap { it.getCacheKeys() }.toSet()
 
             val tasks = if (partialFind) {
-                getTasks(getMissingKeys())
+                availableTasks.filter { task -> task.getCacheKeys().any { it !in oldCache } }
             } else {
-                getTasks(null)
+                availableTasks
             }
 
-            val oldCache = snapshot.values
-            val allKeys = getAllTaskKeys()
             // 全量重查不能复用旧描述符或把旧 key 标记为已成功，否则会跳过热补丁中的变化。
             val newCache = if (partialFind) {
                 oldCache.filterKeys { it in allKeys }.toMutableMap()
@@ -124,7 +122,7 @@ internal object DexKitFinder {
             }
             // Shared keys affect every declaring feature, including owners not executed
             // in this incremental scan. Read Feature metadata through the core interface.
-            val ownersByKey = allTasks.flatMap { task ->
+            val ownersByKey = availableTasks.flatMap { task ->
                 task.getCacheKeys().map { key -> key to task }
             }.groupBy({ it.first }, { it.second })
             val featureNamesByKey = ownersByKey.mapValues { (_, owners) ->
@@ -213,6 +211,17 @@ internal object DexKitFinder {
 
 private val DexKitTask.scanOwner: String
     get() = (this as? ActionSpec)?.let { "${it.name} (featureKey=${it.key})" } ?: javaClass.name
+
+/** Feature.onInit evaluates Requires without depending on the user's enable switch. */
+internal fun selectDexKitTasks(tasks: List<DexKitTask>): List<DexKitTask> = tasks.filter { task ->
+    val available = runCatching { (task as? ActionSpec)?.onInit() ?: true }
+        .onFailure {
+            LogUtils.xposedNoFilter.e("DexKit 功能条件判断异常，跳过扫描: ${task.scanOwner}", it)
+        }
+        .getOrDefault(false)
+    // Do not even construct queries or collect cache keys for an unavailable feature.
+    available && task.getCacheKeys().isNotEmpty()
+}
 
 interface DexKitTask {
 
