@@ -7,6 +7,8 @@ internal data class DexKitScanState(
     val finished: Boolean = false,
     val restartRequired: Boolean = false,
     val errorMessage: String? = null,
+    val failedKeys: List<String> = emptyList(),
+    val failedFeatureNames: List<String> = emptyList(),
 ) {
     val failed: Int get() = completed - succeeded
     val canDismiss: Boolean get() = finished && !restartRequired
@@ -15,6 +17,7 @@ internal data class DexKitScanState(
 /** Count descriptors rather than tasks: several tasks can share the same cache key. */
 internal class DexKitScanProgress(
     private val keys: Set<String>,
+    private val featureNamesByKey: Map<String, List<String>> = emptyMap(),
     private val onUpdate: (DexKitScanState) -> Unit,
 ) {
     private val outcomes = mutableMapOf<String, Boolean>()
@@ -45,9 +48,16 @@ internal class DexKitScanProgress(
             (!previousCacheUsable && savedCache.values.any { it.isNotEmpty() }))
     }
 
-    private fun snapshot() = DexKitScanState(
-        total = keys.size,
-        completed = outcomes.size,
-        succeeded = outcomes.count { it.value },
-    )
+    private fun snapshot(): DexKitScanState {
+        val failedKeys = keys.filter { outcomes[it] == false }
+        return DexKitScanState(
+            total = keys.size,
+            completed = outcomes.size,
+            succeeded = outcomes.count { it.value },
+            failedKeys = failedKeys,
+            failedFeatureNames = failedKeys.flatMap { key ->
+                featureNamesByKey[key].orEmpty().ifEmpty { listOf(key) }
+            }.distinct(),
+        )
+    }
 }

@@ -223,7 +223,13 @@ private class DexKitScanDialog(
                                 },
                         style = MiuixTheme.textStyles.body2,
                     )
-
+                    if (state.failedFeatureNames.isNotEmpty()) {
+                        Text(
+                            text = "失败功能：\n" + state.failedFeatureNames.joinToString("\n"),
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }

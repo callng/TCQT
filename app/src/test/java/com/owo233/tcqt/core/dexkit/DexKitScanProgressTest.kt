@@ -47,17 +47,62 @@ class DexKitScanProgressTest {
         progress.finish(restartRequired = true)
         assertEquals(1, state.total)
         assertEquals(1, state.succeeded)
+        assertTrue(state.failedKeys.isEmpty())
+        assertTrue(state.failedFeatureNames.isEmpty())
+    }
+
+    @Test
+    fun sharedFailuresListEveryOwnerOnceAndRecoveredKeysAreRemoved() {
+        var state = DexKitScanState(total = 2)
+        val owners = mapOf(
+            "shared" to listOf("功能甲", "功能乙"),
+            "other" to listOf("功能乙", "功能丙"),
+        )
+        val progress = DexKitScanProgress(linkedSetOf("shared", "other"), owners) { state = it }
+        progress.record("other", false)
+        progress.record("shared", false)
+        assertEquals(listOf("shared", "other"), state.failedKeys)
+        assertEquals(listOf("功能甲", "功能乙", "功能丙"), state.failedFeatureNames)
+        assertEquals(state.failed, state.failedKeys.size)
+
+        progress.record("shared", true)
+        progress.record("shared", false)
+        assertEquals(listOf("other"), state.failedKeys)
+        assertEquals(listOf("功能乙", "功能丙"), state.failedFeatureNames)
+
+        progress.record("other", true)
+        progress.finish(restartRequired = false)
+        assertTrue(state.failedKeys.isEmpty())
+        assertTrue(state.failedFeatureNames.isEmpty())
+    }
+
+    @Test
+    fun unknownOwnerFallsBackToScanKeyWithoutIncludingUnscannedKeys() {
+        var state = DexKitScanState(total = 1)
+        val progress = DexKitScanProgress(setOf("unknown")) { state = it }
+        progress.record("cached", false)
+        assertTrue(state.failedKeys.isEmpty())
+        progress.finish(restartRequired = false)
+        assertEquals(listOf("unknown"), state.failedKeys)
+        assertEquals(listOf("unknown"), state.failedFeatureNames)
     }
 
     @Test
     fun abortedTasksAndBridgeFailureStillProduceCompleteFailureCounts() {
         var state = DexKitScanState(total = 3)
-        val progress = DexKitScanProgress(setOf("ok", "throws", "skipped")) { state = it }
+        val owners = mapOf(
+            "ok" to listOf("成功功能"),
+            "throws" to listOf("异常功能"),
+            "skipped" to listOf("未执行功能"),
+        )
+        val progress = DexKitScanProgress(setOf("ok", "throws", "skipped"), owners) { state = it }
         progress.record("ok", true)
         progress.finish(restartRequired = false, errorMessage = "保留原缓存")
         assertEquals(3, state.completed)
         assertEquals(1, state.succeeded)
         assertEquals(2, state.failed)
+        assertEquals(listOf("throws", "skipped"), state.failedKeys)
+        assertEquals(listOf("异常功能", "未执行功能"), state.failedFeatureNames)
         assertEquals("保留原缓存", state.errorMessage)
         assertTrue(state.canDismiss)
     }

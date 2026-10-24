@@ -3,11 +3,13 @@ package com.owo233.tcqt.core.dexkit
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import com.owo233.tcqt.core.action.ActionSpec
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.reflect.TAG
 import com.owo233.tcqt.core.reflect.new
 import com.owo233.tcqt.core.sync.ModuleScope
@@ -120,9 +122,30 @@ internal object DexKitFinder {
             val scanKeys = tasks.flatMap { it.getCacheKeys() }.toSet().filterTo(mutableSetOf()) {
                 !partialFind || newCache[it].isNullOrEmpty()
             }
+            // Shared keys affect every declaring feature, including owners not executed
+            // in this incremental scan. Read Feature metadata through the core interface.
+            val ownersByKey = allTasks.flatMap { task ->
+                task.getCacheKeys().map { key -> key to task }
+            }.groupBy({ it.first }, { it.second })
+            val featureNamesByKey = ownersByKey.mapValues { (_, owners) ->
+                owners.map { (it as? ActionSpec)?.name ?: it.javaClass.name }.distinct()
+            }
             Log.i("DexKit 开始${if (partialFind) "增量" else "全量"}扫描: ${snapshot.name}, ${scanKeys.size} 项")
             val state = MutableStateFlow(DexKitScanState(total = scanKeys.size))
-            val progress = DexKitScanProgress(scanKeys) { state.value = it }
+            val progress = DexKitScanProgress(scanKeys, featureNamesByKey) { update ->
+                state.value = update
+                if (update.finished) {
+                    update.failedKeys.forEach { key ->
+                        val owners = ownersByKey[key].orEmpty().joinToString { it.scanOwner }
+                        LogUtils.xposedNoFilter.e("DexKit 扫描失败: key=$key, 关联功能=[$owners]")
+                    }
+                    LogUtils.xposedNoFilter.i(
+                        "DexKit 扫描结束: ${snapshot.name}, 共 ${update.total} 项, " +
+                            "成功 ${update.succeeded} 项, 失败 ${update.failed} 项" +
+                            (update.errorMessage?.let { ", $it" } ?: ""),
+                    )
+                }
+            }
             ModuleScope.onMain {
                 HostBridge.showDexKitScan?.invoke(state) {
                     findStarted.set(false)
@@ -140,14 +163,20 @@ internal object DexKitFinder {
                         tasks.forEach { task ->
                             coroutineContext.ensureActive()
                             runCatching { task.execute(bridge, newCache, tracker) }
-                                .onFailure { Log.e("", it) }
+                                .onFailure {
+                                    LogUtils.xposedNoFilter.e(
+                                        "DexKit 任务执行异常: 关联功能=${task.scanOwner}, " +
+                                            "keys=${task.getCacheKeys().joinToString()}",
+                                        it,
+                                    )
+                                }
                             // Include keys skipped by an early return or a task-level exception.
                             task.getCacheKeys().forEach(tracker::markCompleted)
                         }
                     }
                 }
             }.onFailure {
-                Log.e("create DexKitBridge failed", it)
+                LogUtils.xposedNoFilter.e("create DexKitBridge failed: ${snapshot.name}", it)
             }.getOrElse {
                 progress.finish(restartRequired = false, errorMessage = "扫描失败，已保留原缓存。请查看日志后重试。")
                 return@launchIO
@@ -160,7 +189,7 @@ internal object DexKitFinder {
             runCatching {
                 DexKitCache.saveCache(snapshot, newCache)
             }.onFailure {
-                Log.e("save DexKit cache failed", it)
+                LogUtils.xposedNoFilter.e("save DexKit cache failed: ${snapshot.name}", it)
                 progress.finish(restartRequired = false, errorMessage = "缓存保存失败，请查看日志后重试。")
             }.onSuccess { saved ->
                 if (saved) {
@@ -182,6 +211,9 @@ internal object DexKitFinder {
     }
 }
 
+private val DexKitTask.scanOwner: String
+    get() = (this as? ActionSpec)?.let { "${it.name} (featureKey=${it.key})" } ?: javaClass.name
+
 interface DexKitTask {
 
     fun getQueryMap(): Map<String, BaseMatcher> = emptyMap()
@@ -202,11 +234,20 @@ interface DexKitTask {
     ) {
         if (tracker.isSucceeded(name)) return
 
-        val descriptor = runCatching { bridge.query() }
-            .onFailure { Log.e("$name: query failed", it) }
-            .getOrNull()
+        val result = runCatching { bridge.query() }
+            .onFailure {
+                LogUtils.xposedNoFilter.e(
+                    "DexKit 查询异常: key=$name, 关联功能=$scanOwner",
+                    it,
+                )
+            }
+        val descriptor = result.getOrNull()
         if (descriptor.isNullOrEmpty()) {
-            Log.e("$name: No result found matching query")
+            if (result.isSuccess) {
+                LogUtils.xposedNoFilter.e(
+                    "DexKit 查询未返回描述符: key=$name, 关联功能=$scanOwner",
+                )
+            }
             cache[name] = ""
         } else {
             cache[name] = descriptor
@@ -224,12 +265,23 @@ interface DexKitTask {
         activeQueries().forEach { (name, matcher) ->
             lookup(name, bridge, cache, tracker) {
                 when (matcher) {
-                    is FindClass -> findClass(matcher).singleOrNull()?.descriptor
-                    is FindMethod -> findMethod(matcher).singleOrNull()?.descriptor
-                    else -> {
-                        Log.e("$name: unsupported matcher type: ${matcher.javaClass.name}")
-                        null
+                    is FindClass -> {
+                        val matches = findClass(matcher)
+                        check(matches.size == 1) {
+                            "期望唯一类匹配，实际 ${matches.size} 项，候选（最多 5 项）=" +
+                                matches.take(5).joinToString { it.descriptor }
+                        }
+                        matches.single().descriptor
                     }
+                    is FindMethod -> {
+                        val matches = findMethod(matcher)
+                        check(matches.size == 1) {
+                            "期望唯一方法匹配，实际 ${matches.size} 项，候选（最多 5 项）=" +
+                                matches.take(5).joinToString { it.descriptor }
+                        }
+                        matches.single().descriptor
+                    }
+                    else -> error("不支持的 matcher 类型: ${matcher.javaClass.name}")
                 }
             }
         }
