@@ -14,6 +14,7 @@ import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findMethod
+import com.owo233.tcqt.core.reflect.findMethodOrNull
 import com.owo233.tcqt.core.reflect.findMethods
 import com.owo233.tcqt.core.reflect.getObject
 import com.owo233.tcqt.core.reflect.getStaticObject
@@ -24,6 +25,7 @@ import com.tencent.qqnt.kernelpublic.nativeinterface.Contact
 import kotlinx.coroutines.delay
 import java.lang.Thread.sleep
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.core.view.isEmpty
@@ -178,10 +180,24 @@ object MultiSelectRecall : Feature(
                 paramCount = 0
             }
 
-            getVM = "com.tencent.mvi.mvvm.framework.FrameworkVB".toHostClass().findMethod {
+            val frameworkVB = "com.tencent.mvi.mvvm.framework.FrameworkVB".toHostClass()
+            val baseVM = "com.tencent.mvi.mvvm.BaseVM".toHostClass()
+            getVM = frameworkVB.findMethodOrNull {
                 name = "getMUIModel"
-                returnType = "com.tencent.mvi.mvvm.BaseVM".toHostClass()
+                returnType = baseVM
                 paramCount = 0
+                isStatic = false
+            } ?: frameworkVB.findMethods {
+                scope = declared
+                visibility = public
+                returnType = baseVM
+                paramCount = 0
+                isStatic = false
+                includeBridge = false
+            }.single {
+                // TIM 4.1.0 calls this getter e1(). The other zero-argument BaseVM
+                // method (W0) creates a model, so only use the final getter.
+                Modifier.isFinal(it.modifiers)
             }
         }
     }
@@ -236,8 +252,10 @@ internal object MultiSelectRecallUi {
                 alpha = hostAlpha
             }
             val index = (row.childCount - 2).coerceAtLeast(0)
-            row.addView(button, index)
-            row.addView(View(row.context), index + 1, LinearLayout.LayoutParams(0, 0, 1f))
+            // Insert before the host's final spacer: the new spacer separates the
+            // previous action from Recall, and the host spacer separates Recall from More.
+            row.addView(View(row.context), index, LinearLayout.LayoutParams(0, 0, 1f))
+            row.addView(button, index + 1)
         }
     }
 }
