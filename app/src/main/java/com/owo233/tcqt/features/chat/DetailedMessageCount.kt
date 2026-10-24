@@ -4,6 +4,7 @@ package com.owo233.tcqt.features.chat
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -26,6 +27,7 @@ import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
+import kotlin.math.ceil
 
 @RegisterAction
 object DetailedMessageCount : Feature(
@@ -58,6 +60,30 @@ object DetailedMessageCount : Feature(
     private fun hookQuiBadge(clz: Class<*>) {
         val mNum = clz.getDeclaredField("mNum").apply { isAccessible = true }
         val mText = clz.getDeclaredField("mText").apply { isAccessible = true }
+        if (HookEnv.isTIM()) {
+            // TIM's setters call updateNum before requesting layout. Set the full
+            // text here so both measurement and drawing use the same number.
+            clz.getDeclaredMethod("updateNum", Int::class.java).hookAfter { param ->
+                val num = mNum.getInt(param.thisObject)
+                if (num > 99) mText.set(param.thisObject, num.toString())
+            }
+            val mViewType = clz.getDeclaredField("mViewType").apply { isAccessible = true }
+            val mTextPaint = clz.getDeclaredField("mTextPaint").apply { isAccessible = true }
+            clz.getDeclaredMethod("getMinWidth").hookAfter { param ->
+                val badge = param.thisObject
+                val num = mNum.getInt(badge)
+                val type = mViewType.getInt(badge)
+                // Red/gray numeric badges have a fixed 31dp width above 99.
+                // Other styles (including the AIO back badge) already measure mText.
+                if (num <= 99 || (type != 2 && type != 3)) return@hookAfter
+                val paint = mTextPaint.get(badge) as Paint
+                val extraWidth = ceil(
+                    (paint.measureText(num.toString()) - paint.measureText("99+")).coerceAtLeast(0f)
+                ).toInt()
+                param.result = (param.result as Int) + extraWidth
+            }
+            return
+        }
         clz.getDeclaredMethod("onDraw", Canvas::class.java).hookBefore { param ->
             val badge = param.thisObject
             val num = mNum.get(badge) as? Int ?: return@hookBefore
@@ -277,45 +303,51 @@ object DetailedMessageCount : Feature(
             matcher {
                 usingStrings(listOf("^NEW$"), StringMatchType.SimilarRegex)
                 methods {
-                    // 9.0.8+: updateCustomNoteTxt(QUIBadge, int, int, int, String)
                     add {
-                        paramTypes(
-                            "com.tencent.mobileqq.quibadge.QUIBadge",
-                            "int", "int", "int", "java.lang.String"
-                        )
-                    }
-                    add {
-                        paramTypes(
-                            "com.tencent.mobileqq.quibadge.QUIBadge",
-                            "java.lang.Integer", "java.lang.Integer",
-                            "java.lang.Integer", "java.lang.String"
-                        )
-                    }
-                    // 9.0.0 ~ 9.0.7: updateCustomNoteTxt(TextView, int, int, int, int, String, boolean)
-                    add {
-                        paramTypes(
-                            "android.widget.TextView", "int", "int", "int", "int",
-                            "java.lang.String", "boolean"
-                        )
-                    }
-                    add {
-                        paramTypes(
-                            "android.widget.TextView", "java.lang.Integer", "java.lang.Integer",
-                            "java.lang.Integer", "java.lang.Integer",
-                            "java.lang.String", "java.lang.Boolean"
-                        )
-                    }
-                    // < 9.0.0: updateCustomNoteTxt(TextView, int, int, int, int, String)
-                    add {
-                        paramTypes(
-                            "android.widget.TextView", "int", "int", "int", "int", "java.lang.String"
-                        )
-                    }
-                    add {
-                        paramTypes(
-                            "android.widget.TextView", "java.lang.Integer", "java.lang.Integer",
-                            "java.lang.Integer", "java.lang.Integer", "java.lang.String"
-                        )
+                        // These are alternative version/boxing signatures. Separate
+                        // methods.add entries would require ALL six overloads to exist.
+                        anyOf {
+                            // QQ 9.0.8+ / TIM NT: QUIBadge, int, int, int, String
+                            add {
+                                paramTypes(
+                                    "com.tencent.mobileqq.quibadge.QUIBadge",
+                                    "int", "int", "int", "java.lang.String"
+                                )
+                            }
+                            add {
+                                paramTypes(
+                                    "com.tencent.mobileqq.quibadge.QUIBadge",
+                                    "java.lang.Integer", "java.lang.Integer",
+                                    "java.lang.Integer", "java.lang.String"
+                                )
+                            }
+                            // QQ 9.0.0 ~ 9.0.7: TextView, int x4, String, boolean
+                            add {
+                                paramTypes(
+                                    "android.widget.TextView", "int", "int", "int", "int",
+                                    "java.lang.String", "boolean"
+                                )
+                            }
+                            add {
+                                paramTypes(
+                                    "android.widget.TextView", "java.lang.Integer", "java.lang.Integer",
+                                    "java.lang.Integer", "java.lang.Integer",
+                                    "java.lang.String", "java.lang.Boolean"
+                                )
+                            }
+                            // QQ < 9.0.0: TextView, int x4, String
+                            add {
+                                paramTypes(
+                                    "android.widget.TextView", "int", "int", "int", "int", "java.lang.String"
+                                )
+                            }
+                            add {
+                                paramTypes(
+                                    "android.widget.TextView", "java.lang.Integer", "java.lang.Integer",
+                                    "java.lang.Integer", "java.lang.Integer", "java.lang.String"
+                                )
+                            }
+                        }
                     }
                 }
             }
