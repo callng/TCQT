@@ -178,6 +178,17 @@ Android Studio 里直接 Build / Generate Signed APK 也会得到同样的双格
 app/build/outputs/zygisk/TCQT-zygisk-<版本>.zip   # 双格式 APK 的 .zip 副本
 ```
 
+### Zygisk 原生回归测试
+
+Windows 下可使用项目指定的 NDK，在明确指定的 Android 测试设备或模拟器上运行：
+
+~~~powershell
+./tools/test-zygisk-companion.ps1 -Serial emulator-5556
+~~~
+
+覆盖配置隔离、权限拒绝、companion 文件描述符传递与异常清理。
+注入流程及用户设备验证步骤见 [Zygisk companion](docs/zygisk-companion.md)。
+
 ### 产物输出
 
 编译完成后，APK 输出到以下目录：

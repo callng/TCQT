@@ -141,17 +141,21 @@ Architecture:
   buffer replays early injection events after specialization. Java framework,
   lifecycle and callback failures use priority-aware `ZygiskEntry.nativeLog`.
   Export includes new and legacy rotations (`log.txt.1`) plus recent injection logcat.
-- `app/src/main/cpp/zygisk_entry.cpp` — Zygisk API v4 injector: in
-  `preAppSpecialize` (still root) opens `/data/adb/tcqt/main.apk`, keeps the fd
-  and reads the global SHA-256 fingerprint `/data/adb/tcqt/main.apk.sha256`
-  (must happen pre-specialization: the app loses access to `/data/adb` after);
-  in `postAppSpecialize` it re-copies the payload into the app's `files/.tcqt`
-  dir only when that fingerprint differs from the cached `main.apk.sha256`
-  (size is NOT compared — same-size new versions would otherwise keep the old
-  cached APK), reads every `classes*.dex` entry from that copy via JNI
-  `java.util.zip.ZipFile` (mirrors FunBox's loader), loads them via
-  `InMemoryDexClassLoader` and calls
+- `app/src/main/cpp/zygisk_entry.cpp` and `zygisk_companion.h/.cpp` —
+  Zygisk injector with a root companion. `preAppSpecialize` runs in the
+  Zygote SELinux domain, which may not traverse `/data/adb` even at UID 0.
+  It calls `connectCompanion()`; the companion checks the live module's
+  disable/remove markers, host/user scope, compatibility/debug and PLT switches,
+  opens `/data/adb/tcqt/main.apk`, and reads its SHA-256 fingerprint. The
+  read-only APK fd is transferred with `SCM_RIGHTS` and exempted from fd
+  sanitation. Configuration access errors abort injection instead of being
+  mistaken for missing markers. In `postAppSpecialize`, the payload is copied
+  into the app's `files/.tcqt` dir when the fingerprint changes (size alone
+  must never identify a version). All `classes*.dex` entries are then read
+  via JNI `java.util.zip.ZipFile`, loaded with `InMemoryDexClassLoader`,
+  and passed to
   `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.
+  See `docs/zygisk-companion.md` for protocol and regression checks.
 - `app/src/main/cpp/art_hook.cpp` — self-made ArtMethod hook engine:
   JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
   `ScopedSuspendAll` + `WritableArtMethod` for safe mutation, ELF-symbol-resolved

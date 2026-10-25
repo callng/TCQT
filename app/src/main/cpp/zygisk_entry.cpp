@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <cerrno>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -15,15 +16,11 @@
 #include "payload.h"
 #include "plt_hook.h"
 #include "zygisk.hpp"
+#include "zygisk_companion.h"
 
 namespace tcqt {
 
-constexpr const char *SHARED_PAYLOAD_APK = "/data/adb/tcqt/main.apk";
-constexpr const char *SHARED_PAYLOAD_HASH = "/data/adb/tcqt/main.apk.sha256";
-constexpr const char *SCOPE_DIR = "/data/adb/tcqt";
-constexpr const char *COMPAT_MARKER = "/data/adb/tcqt/compat.enable";
 constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
-constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
 
 enum class TargetApp {
     NONE,
@@ -94,6 +91,16 @@ void log_impl_ident(zygisk::Api *api) {
     LOGI("impl: getFlags()=0x%x", flags);
 }
 
+void companion_handler(int socket) {
+    const PltHookSpec *specs = default_plt_hooks();
+    std::vector<const char *> hook_ids;
+    for (size_t i = 0; i < default_plt_hook_count(); ++i) hook_ids.push_back(specs[i].id);
+    if (!handle_companion_request(socket, hook_ids)) {
+        LOGE("companion: request transport failed (errno=%d)", errno);
+    }
+    // The Zygisk framework owns the handler's socket.
+}
+
 class TcqtZygisk : public zygisk::ModuleBase {
 public:
     void onLoad(zygisk::Api *api_ptr, JNIEnv *env_ptr) override {
@@ -109,82 +116,57 @@ public:
             return;
         }
 
-        // KernelSU hot install moves the old directory aside. getModuleDir()
-        // may still refer to that old inode, so always check the live path while
-        // preAppSpecialize still has root access.
-        constexpr const char *MODULE_DIR = "/data/adb/modules/zygisk_tcqt";
-        bool disabled =
-                access((std::string(MODULE_DIR) + "/disable").c_str(), F_OK) == 0 ||
-                access((std::string(MODULE_DIR) + "/remove").c_str(), F_OK) == 0;
-
-        // 主动禁用模块时 disable 文件 → 本次跳过注入
-        // 卸载标记为 remove → 本次跳过注入
-        // 宿主（QQ/TIM）下次启动即不再注入
-        if (disabled) {
-            LOGI("preAppSpecialize: module disabled by user, skip injection");
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
-            return;
-        }
-
-        std::string scope_base = SCOPE_DIR;
-        int user_id = args->uid / 100000;
-        if (user_id != 0) {
-            scope_base += "/user_";
-            scope_base += std::to_string(user_id);
-        }
-        const std::string scope_path = scope_base + (target == TargetApp::QQ ? "/qq.disable" : "/tim.disable");
-        if (access(scope_path.c_str(), F_OK) == 0) {
-            LOGI("preAppSpecialize: %s disabled via WebUI (uid=%d), skip injection",
-                 target == TargetApp::QQ ? "QQ" : "TIM", args->uid);
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
-            return;
-        }
-
         log_impl_ident(api);
-
-        bool compat_mode = (access(COMPAT_MARKER, F_OK) == 0 ||
-                            access("/data/adb/tcqt/compat", F_OK) == 0);
-        set_compat_mode(compat_mode);
-        debug_logs_ = access("/data/adb/tcqt/debug.enable", F_OK) == 0;
-        if (compat_mode) {
-            LOGI("preAppSpecialize: compatibility mode enabled via WebUI");
+        int socket = api->connectCompanion();
+        if (socket < 0) {
+            LOGE("preAppSpecialize: root companion unavailable for %s (uid=%d)",
+                 nice_name.c_str(), args->uid);
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
         }
-
-        const char *app_tag = target == TargetApp::QQ ? "qq" : "tim";
+        InjectionState state;
+        const size_t hook_count = default_plt_hook_count();
+        const auto host = target == TargetApp::QQ ? InjectionTarget::QQ : InjectionTarget::TIM;
+        bool received = request_injection_state(socket, host, args->uid, hook_count, state);
+        int error = errno;
+        close(socket);
+        if (!received) {
+            LOGE("preAppSpecialize: companion %s failed for %s (uid=%d errno=%d: %s)",
+                 companion_stage_name(state.error_stage), nice_name.c_str(),
+                 args->uid, error, strerror(error));
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+        if (state.module_disabled || state.scope_disabled) {
+            LOGI("preAppSpecialize: %s disabled by %s, skip injection (uid=%d)",
+                 nice_name.c_str(), state.module_disabled ? "module marker" : "WebUI scope", args->uid);
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+        set_compat_mode(state.compat_mode);
+        debug_logs_ = state.debug_logs;
+        if (state.compat_mode) LOGI("preAppSpecialize: compatibility mode enabled via WebUI");
         const PltHookSpec *hook_specs = default_plt_hooks();
-        const std::size_t hook_count = default_plt_hook_count();
         disabled_hook_ids_.clear();
-        for (std::size_t i = 0; i < hook_count; ++i) {
-            const std::string marker =
-                    scope_base + "/" + app_tag + "." + hook_specs[i].id + ".disable";
-            if (access(marker.c_str(), F_OK) == 0) {
+        for (size_t i = 0; i < hook_count; ++i) {
+            if (state.disabled_hooks[i]) {
                 disabled_hook_ids_.push_back(hook_specs[i].id);
-                LOGI("preAppSpecialize: PLT hook %s disabled via WebUI (%s)",
-                     hook_specs[i].id, marker.c_str());
+                LOGI("preAppSpecialize: PLT hook %s disabled via WebUI (%s uid=%d)",
+                     hook_specs[i].id, nice_name.c_str(), args->uid);
             }
         }
-
-
-        int apk_fd = open(SHARED_PAYLOAD_APK, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
-        if (apk_fd < 0) {
-            LOGE("preAppSpecialize: open %s failed (errno=%d)", SHARED_PAYLOAD_APK, errno);
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
-            return;
-        }
-        struct stat st {};
-        if (fstat(apk_fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 ||
-            static_cast<uint64_t>(st.st_size) > APK_MAX_BYTES) {
-            LOGE("preAppSpecialize: invalid shared payload %s", SHARED_PAYLOAD_APK);
+        int apk_fd = state.apk_fd;
+        if (fstat(apk_fd, &payload_stat_) != 0) {
+            LOGE("preAppSpecialize: companion payload stat failed (errno=%d)", errno);
             close(apk_fd);
             api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
-
-        payload_hash_.clear();
-        if (read_text_file(SHARED_PAYLOAD_HASH, payload_hash_)) {
-            LOGI("preAppSpecialize: global payload hash %s", payload_hash_.c_str());
-        } else {
-            LOGW("preAppSpecialize: cannot read %s, cache will be refreshed", SHARED_PAYLOAD_HASH);
+        payload_hash_ = std::move(state.payload_hash);
+        LOGI("preAppSpecialize: companion ready for %s (uid=%d compat=%d debug=%d payload=%s)",
+             nice_name.c_str(), args->uid, state.compat_mode, debug_logs_, payload_hash_.c_str());
+        if (payload_hash_.empty()) {
+            LOGW("preAppSpecialize: payload hash missing, cache will be refreshed");
         }
 
         // 通知 Zygisk 实现保留该 fd：fork 路径下 ReZygisk 会在 pre 之后
@@ -242,7 +224,9 @@ public:
         std::string apk_dst = target_dir + "/main.apk";
         std::string hash_dst = target_dir + "/main.apk.sha256";
         struct stat st {};
-        bool fd_ok = fstat(apk_fd, &st) == 0 && S_ISREG(st.st_mode);
+        bool fd_ok = fstat(apk_fd, &st) == 0 && S_ISREG(st.st_mode) &&
+                     st.st_dev == payload_stat_.st_dev && st.st_ino == payload_stat_.st_ino &&
+                     st.st_size == payload_stat_.st_size;
         if (fd_ok) {
             std::string cached_hash;
             bool cached_hash_ok = read_text_file(hash_dst, cached_hash);
@@ -357,6 +341,7 @@ private:
     zygisk::Api *api = nullptr;
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
+    struct stat payload_stat_ {};
     bool enabled_ = false;
     bool debug_logs_ = false;
     std::vector<std::string> disabled_hook_ids_;
@@ -368,3 +353,4 @@ private:
 }  // namespace tcqt
 
 REGISTER_ZYGISK_MODULE(tcqt::TcqtZygisk)
+REGISTER_ZYGISK_COMPANION(tcqt::companion_handler)

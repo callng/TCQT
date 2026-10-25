@@ -14,6 +14,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 add_library(tcqtzygisk SHARED
         zygisk_entry.cpp
+        zygisk_companion.cpp
         payload.cpp
         art_hook.cpp
         elf_util.cpp

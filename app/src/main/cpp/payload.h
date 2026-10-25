@@ -14,8 +14,8 @@ constexpr size_t MAX_DEX_FILES = 256;
 // Create a directory (0700), ignoring EEXIST.
 bool ensure_dir(const std::string &path);
 
-// Copy a file from an already-open fd (opened in preAppSpecialize while still
-// root, so it stays readable after the app drops privileges) to dst_path using
+// Copy a file from a root-companion fd received and exempted during
+// preAppSpecialize to dst_path using
 // a PID-unique temp file and atomic rename. Returns false on any failure.
 bool copy_fd_to_path(int src_fd, const std::string &dst_path, uint64_t max_bytes);
 

@@ -21,6 +21,7 @@ gen/
 out/
 docs/*
 !docs/ui-guidelines.md
+!docs/zygisk-companion.md
 
 # --- Android / App Specific ---
 app/build/
