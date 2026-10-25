@@ -30,6 +30,8 @@ import com.owo233.tcqt.core.config.ModuleThemeMode
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.PlatformTools
 import com.owo233.tcqt.core.env.TCQTBuild
+import com.owo233.tcqt.core.hook.HookEngineManager
+import com.owo233.tcqt.core.hook.HookFramework
 import com.owo233.tcqt.ui.component.AdaptiveContent
 import com.owo233.tcqt.ui.component.PreferenceSegment
 import com.owo233.tcqt.ui.component.horizontalSafePadding
@@ -70,6 +72,8 @@ private data class SettingsPageContentState(
     val searchQuery: String,
     val categories: List<CategoryUiState>,
     val features: List<FeatureItemUiState>,
+    val enabledCount: Int,
+    val disabledCount: Int,
     val errorCount: Int,
 ) {
     val animationKey: String
@@ -119,6 +123,8 @@ internal fun SettingScreen(
         searchQuery = viewModel.searchQuery,
         categories = categories,
         features = if (isErrorOverviewActive) errorFeatures else features,
+        enabledCount = viewModel.enabledCount,
+        disabledCount = viewModel.disabledCount,
         errorCount = viewModel.errorCount,
     )
     // The fixed search field has no collapsing app bar to measure the scroll range.
@@ -327,6 +333,10 @@ private fun LazyListScope.featureDirectory(
                 hostVersion = "${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
                 moduleName = TCQTBuild.APP_NAME,
                 moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
+                isZygisk = HookEngineManager.isInitialized &&
+                    HookEngineManager.engine.frameworkName == HookFramework.ZYGISK,
+                enabledCount = page.enabledCount,
+                disabledCount = page.disabledCount,
                 errorCount = page.errorCount,
                 onErrorClick = viewModel::openErrorOverview,
             )
@@ -390,7 +400,7 @@ private fun LazyListScope.featureDirectory(
         item(key = "feedback_entry") {
             PreferenceSegment(first = false, last = true) {
                 ArrowPreference(
-                    title = "反馈与建议",
+                    title = "反馈与建议 · (试试长按)",
                     insideMargin = SettingsRowPadding,
                     modifier = Modifier.combinedClickable(onClick = onIssueClick, onLongClick = onIssueLongClick),
                 )

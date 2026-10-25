@@ -18,8 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.env.Toasts
@@ -50,6 +52,9 @@ internal fun CompactHeaderCard(
     hostVersion: String,
     moduleName: String,
     moduleVersion: String,
+    isZygisk: Boolean,
+    enabledCount: Int,
+    disabledCount: Int,
     errorCount: Int,
     onErrorClick: () -> Unit,
 ) {
@@ -62,62 +67,131 @@ internal fun CompactHeaderCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Text(
+                text = buildAnnotatedString {
+                    append(moduleName)
+                    if (isZygisk) {
+                        withStyle(
+                            SpanStyle(
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                                fontWeight = FontWeight.Normal,
+                            )
+                        ) {
+                            append(" · 经 Zygisk 注入")
+                        }
+                    }
+                },
+                style = MiuixTheme.textStyles.title4,
+                fontWeight = FontWeight.SemiBold,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                HeaderVersionRow(label = "宿主", version = "$hostName $hostVersion")
+                HeaderVersionRow(
+                    label = "模块",
+                    version = moduleVersion,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        val currentTime = System.currentTimeMillis()
+                        clickCount = if (currentTime - lastClickTime < 500) clickCount + 1 else 1
+                        lastClickTime = currentTime
+                        if (clickCount >= 5) {
+                            clickCount = 0
+                            Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
+                        }
+                    },
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
+                HeaderFeatureStat(
+                    label = "已启用",
+                    count = enabledCount,
+                    highlighted = true,
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Text(
-                        text = moduleName,
-                        style = MiuixTheme.textStyles.title4,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MiuixTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = "$hostName $hostVersion",
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = moduleVersion,
-                        modifier =
-                            Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                val currentTime = System.currentTimeMillis()
-                                clickCount =
-                                    if (currentTime - lastClickTime < 500) clickCount + 1 else 1
-                                lastClickTime = currentTime
-                                if (clickCount >= 5) {
-                                    clickCount = 0
-                                    Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
-                                }
-                            },
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                )
+                HeaderFeatureStat(
+                    label = "未启用",
+                    count = disabledCount,
+                    modifier = Modifier.weight(1f),
+                )
+                HeaderFeatureStat(
+                    label = "功能总数",
+                    count = enabledCount + disabledCount,
+                    modifier = Modifier.weight(1f),
+                )
             }
 
             if (errorCount > 0) {
                 ArrowPreference(
                     title = "$errorCount 个功能运行异常",
-                    insideMargin = PaddingValues(top = 12.dp),
+                    insideMargin = PaddingValues(0.dp),
                     onClick = onErrorClick,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun HeaderVersionRow(
+    label: String,
+    version: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            softWrap = false,
+        )
+        Text(
+            text = version,
+            modifier = Modifier.weight(1f),
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+        )
+    }
+}
+
+@Composable
+private fun HeaderFeatureStat(
+    label: String,
+    count: Int,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(
+            text = count.toString(),
+            style = MiuixTheme.textStyles.title4,
+            fontWeight = FontWeight.Medium,
+            color = if (highlighted) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+        )
     }
 }
 
