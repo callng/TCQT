@@ -12,6 +12,7 @@ import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findField
+import com.owo233.tcqt.core.reflect.findFieldOrNull
 import com.owo233.tcqt.core.sync.ModuleScope
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.kernel.nativeinterface.MsgElement
@@ -60,7 +61,13 @@ object LongTextAsFile : Feature(
         val textContent = methods.getValue(TEXT_CONTENT)
         val delegateClass = sendClick.declaringClass
         val inputField = delegateClass.instanceField(readText.declaringClass)
-        val limitField = delegateClass.instanceField(readLimit.declaringClass)
+        val limitField = delegateClass.findFieldOrNull {
+            type = readLimit.declaringClass
+            isStatic = false
+            requireUnique = true
+        }
+        // 9.3.55 从 AIOEditText 的伴生对象读取上限，较新版本从输入 Delegate 读取。
+        val limitReceiver = if (limitField == null) readLimit.receiver() else null
         val runtimeField = delegateClass.instanceField(readParam.declaringClass)
         val contactReceiver = makeContact.receiver()
         val fileReceiver = makeFile.receiver()
@@ -71,7 +78,9 @@ object LongTextAsFile : Feature(
             runCatching {
                 val input = inputField.get(delegate)
                 val text = (readText.invoke(input) as CharSequence).toString()
-                val limit = readLimit.invoke(limitField.get(delegate)) as Int
+                val limit = readLimit.invoke(
+                    if (limitField != null) limitField.get(delegate) else limitReceiver,
+                ) as Int
                 check(limit > 0) { "QQ input limit is invalid: $limit" }
                 val inputParts = readElements.invoke(input) as List<*>
                 var measuredLength = 0L
@@ -175,7 +184,7 @@ object LongTextAsFile : Feature(
             matcher {
                 declaredClass(SEND_DELEGATE)
                 paramCount(0)
-                returnType("boolean")
+                // 9.3.55 将长度检查内联到 void 的发送点击入口，不能限定 boolean。
                 usingFields {
                     add { type($$"com.tencent.mobileqq.aio.input.sendmsg.AIOSendMsgUIState$ShowInputOverLengthToast") }
                 }
@@ -201,8 +210,7 @@ object LongTextAsFile : Feature(
         INPUT_CONVERTER to FindMethod().apply {
             matcher {
                 declaredClass(SEND_DELEGATE)
-                paramCount(2)
-                returnType("java.util.List")
+                // 旧版在合并并发送的方法中转换输入，新版拆成返回 List 的独立方法。
                 usingEqStrings("aio_input_insert_image_905_116748503")
             }
         },
@@ -247,9 +255,11 @@ object LongTextAsFile : Feature(
                 paramTypes("java.lang.String")
                 returnType("com.tencent.qqnt.kernel.nativeinterface.MsgElement")
                 usingEqStrings("path")
-                invokeMethods {
-                    add { declaredClass("com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil"); name = "genFileMd5Hex" }
-                    add { declaredClass("com.tencent.qqnt.kernel.nativeinterface.QQNTWrapperUtil"); name = "getFileSize" }
+                // 9.3.55 的 JNI 工具类及方法均被混淆，按文件元素的实际字段定位。
+                usingFields {
+                    add { declaredClass("com.tencent.qqnt.kernel.nativeinterface.FileElement"); name = "fileMd5" }
+                    add { declaredClass("com.tencent.qqnt.kernel.nativeinterface.FileElement"); name = "filePath" }
+                    add { declaredClass("com.tencent.qqnt.kernel.nativeinterface.FileElement"); name = "fileSize" }
                 }
             }
         },
@@ -289,8 +299,10 @@ object LongTextAsFile : Feature(
         }
         resolve(SPAN_FILTER) { filterMethods.single { it.descriptor != cache.getValue(TEXT_FILTER) } }
         resolve(MAX_LENGTH) {
+            // 内联入口还会调用 Integer.intValue，只选择聊天输入层的上限读取方法。
             calls(CHECK_LENGTH).single {
-                it.paramCount == 0 && it.returnTypeName == "int" && it.className != "java.lang.CharSequence"
+                it.paramCount == 0 && it.returnTypeName == "int" &&
+                    it.className.startsWith("com.tencent.mobileqq.aio.input.")
             }
         }
         resolve(INPUT_ELEMENTS) {
@@ -327,11 +339,19 @@ object LongTextAsFile : Feature(
         requireUnique = true
     }
 
-    private fun Method.receiver(): Any? = if (Modifier.isStatic(modifiers)) null else declaringClass.findField {
-        type = declaringClass
-        isStatic = true
-        requireUnique = true
-    }.get(null)
+    private fun Method.receiver(): Any? {
+        if (Modifier.isStatic(modifiers)) return null
+        val singleton = declaringClass.findFieldOrNull {
+            type = declaringClass
+            isStatic = true
+            requireUnique = true
+        } ?: declaringClass.enclosingClass?.findFieldOrNull {
+            type = declaringClass
+            isStatic = true
+            requireUnique = true
+        }
+        return checkNotNull(singleton) { "No singleton receiver for $this" }.get(null)
+    }
 
     private fun writeTextFile(text: String): File {
         val dir = File(HookEnv.hostAppContext.filesDir, "tcqt-long-text")
