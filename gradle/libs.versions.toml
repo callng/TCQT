@@ -22,7 +22,7 @@ ksp = "2.3.12"
 # KotlinX
 kotlinx-coroutines = "1.11.0"
 kotlinx-io = "0.1.16"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 
 # Google / Protobuf
 protobuf-plugin = "0.10.0"
