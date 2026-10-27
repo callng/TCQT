@@ -61,11 +61,11 @@ object NTServiceFetcher {
         install: () -> Unit,
     ) {
         runCatching { hookInstallations.installIfMissing(sessionClass, hook, install) }
-            .onSuccess { installed ->
+            /*.onSuccess { installed ->
                 if (installed) {
                     LogUtils.xposedNoFilter.i("AntiRecall hook installed: $hook on ${sessionClass.name}")
                 }
-            }
+            }*/
             .onFailure {
                 LogUtils.xposedNoFilter.e("AntiRecall hook installation failed: $hook on ${sessionClass.name}", it)
             }

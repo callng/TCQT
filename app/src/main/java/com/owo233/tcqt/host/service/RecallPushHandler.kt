@@ -60,7 +60,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             val target = RecallTargetResolver.resolve(recall, contact)
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markC2C(recall.peerId, it) }
-            logTarget(recall, target)
+            // logTarget(recall, target)
             // The recall is still blocked, but a tip for a message that was never stored locally
             // can only be an unlocatable gray bar.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
@@ -88,7 +88,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             val target = RecallTargetResolver.resolve(recall, contact)
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markGroup(recall.peerId, it) }
-            logTarget(recall, target)
+            // logTarget(recall, target)
             // Still blocked, but no tip for a message that was never stored locally.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
 

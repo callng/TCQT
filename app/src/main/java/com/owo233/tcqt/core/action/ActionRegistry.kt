@@ -196,7 +196,7 @@ internal object ActionRegistry {
         val phaseStart = SystemClock.elapsedRealtime()
         classes.forEach { executeOne(it, app, proc) }
         val phaseCost = SystemClock.elapsedRealtime() - phaseStart
-        Log.i("[Startup] [$tag] ${classes.size} actions completed in ${phaseCost}ms")
+        // Log.i("[Startup] [$tag] ${classes.size} actions completed in ${phaseCost}ms")
         LogAndroid.d("[ActionPerf] [$tag] ${classes.size} 个功能共耗时 ${phaseCost}ms")
     }
 
@@ -219,7 +219,7 @@ internal object ActionRegistry {
             }
         }
         val phaseCost = SystemClock.elapsedRealtime() - phaseStart
-        Log.i("[Startup] [$tag] ${classes.size} actions completed in ${phaseCost}ms")
+        // Log.i("[Startup] [$tag] ${classes.size} actions completed in ${phaseCost}ms")
         LogAndroid.d("[ActionPerf] [$tag] ${classes.size} 个功能共耗时 ${phaseCost}ms")
     }
 
