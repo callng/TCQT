@@ -1,6 +1,6 @@
 [versions]
 # Android Gradle Plugin / AndroidX / Compose
-agp = "9.4.1"
+agp = "9.5.0"
 androidx-annotation = "1.11.0"
 androidx-documentfile = "1.1.0"
 androidx-fragment = "1.9.1"
@@ -22,7 +22,7 @@ ksp = "2.3.12"
 # KotlinX
 kotlinx-coroutines = "1.11.0"
 kotlinx-io = "0.1.16"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 
 # Google / Protobuf
 protobuf-plugin = "0.10.0"
