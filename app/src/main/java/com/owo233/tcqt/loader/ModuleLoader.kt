@@ -29,7 +29,7 @@ import com.owo233.tcqt.features.message.RecallHeaderTip
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.loader.modern.ModernHookEngine
 import com.owo233.tcqt.ui.component.DexKitScanDialogHost
-import com.owo233.tcqt.ui.parasitic.ParasiticActivity
+import com.owo233.tcqt.ui.parasitic.ActivityProxyManager
 import com.owo233.tcqt.ui.settings.SettingsEntryWarmup
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
@@ -258,7 +258,7 @@ internal object ModuleLoader {
      *
      * 必须在 [HookSteps.initContext] 之前调用：`initContext` 会触发
      * `HostBridge.notifyHostApplicationReady`，若此时还没有订阅者，
-     * `ParasiticActivity` 就不会被初始化，寄生 Activity 直接失效。
+     * `ActivityProxyManager` 就不会被初始化，寄生 Activity 直接失效。
      */
     private fun installHostBridge() {
         HostBridge.topActivityProvider = { QQInterfaces.topActivity }
@@ -268,8 +268,8 @@ internal object ModuleLoader {
                 HookEnv.application, state, onClosed,
             ).attach()
         }
-        HostBridge.onHostApplicationReady { app ->
-            ParasiticActivity.initForStubActivity(app)
+        HostBridge.onHostApplicationReady {
+            ActivityProxyManager.install()
         }
     }
 

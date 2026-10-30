@@ -14,9 +14,22 @@ import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import com.owo233.tcqt.core.config.ThemeSettings
 import com.owo233.tcqt.core.env.HookEnv
+import com.owo233.tcqt.ui.parasitic.ModuleActivityClassLoader
 
 @Suppress("DEPRECATION")
 abstract class BaseComposeActivity : ComponentActivity() {
+
+    private val moduleActivityClassLoader by lazy(LazyThreadSafetyMode.NONE) {
+        ModuleActivityClassLoader(BaseComposeActivity::class.java.classLoader!!)
+    }
+
+    override fun getClassLoader(): ClassLoader = moduleActivityClassLoader
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        savedInstanceState.classLoader = classLoader
+        savedInstanceState.getBundle("android:viewHierarchyState")?.classLoader = classLoader
+        super.onRestoreInstanceState(savedInstanceState)
+    }
 
     protected var isDarkTheme by mutableStateOf(false)
 
