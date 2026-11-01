@@ -1,4 +1,4 @@
-#include "art_hook.h"
+#include "zygisk/art/art_hook.h"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -15,11 +15,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "elf_util.h"
-#include "log.h"
-#include "trampoline.h"
+#include "zygisk/art/elf_util.h"
+#include "zygisk/art/trampoline.h"
+#include "zygisk/logging/log.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
+namespace {
 
 // ── acc_flags constants (matching ART source) ────────────────────────────────
 constexpr uint32_t ACC_PUBLIC = 0x0001;
@@ -30,8 +31,6 @@ constexpr uint32_t ACC_COMPILE_DONT_BOTHER = 0x02000000;
 constexpr uint32_t ACC_FAST_INTERPRETER = 0x40000000;  // kAccFastInterpreterToInterpreterInvoke
 constexpr uint32_t ACC_INTRINSIC = 0x80000000;
 constexpr uint32_t ACC_PROXY_METHOD = 0x00400000;  // kAccProxyMethod
-
-namespace {
 
 // ── Global state ─────────────────────────────────────────────────────────────
 std::atomic<bool> g_initialized{false};
@@ -1202,4 +1201,4 @@ jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jobject this_objec
     return result;
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

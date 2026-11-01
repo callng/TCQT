@@ -1,4 +1,4 @@
-#include "zygisk_companion.h"
+#include "zygisk/zygisk_companion.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -25,7 +25,7 @@
 #include <utility>
 
 namespace fs = std::filesystem;
-using namespace tcqt;
+using namespace tcqt::zygisk;
 
 #define CHECK(condition) do { if (!(condition)) { \
     fprintf(stderr, "FAIL line %d: %s (errno=%d)\n", __LINE__, #condition, errno); \

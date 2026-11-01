@@ -2,12 +2,13 @@
 
 #include <sys/types.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
 #include <vector>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 constexpr uint64_t APK_MAX_BYTES = 256ULL * 1024 * 1024;
 
@@ -37,4 +38,4 @@ bool handle_companion_request(int socket, std::span<const char *const> hook_ids,
                               const CompanionPaths &paths = {});
 const char *companion_stage_name(uint32_t stage);
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

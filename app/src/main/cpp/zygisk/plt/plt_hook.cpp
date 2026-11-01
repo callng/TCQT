@@ -6,7 +6,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -18,55 +17,17 @@
 #include <string>
 #include <vector>
 
-#include "log.h"
-#include "plt_hook.h"
+#include "zygisk/logging/log.h"
+#include "zygisk/plt/plt_hook.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 namespace {
 
 // R_AARCH64_GLOB_DAT / R_AARCH64_JUMP_SLOT relocation types (from
 // bits/elf_common.h): their GOT slots point at imported symbols.
 
-// ══════════════════════════════════════════════════════════════════════════
-// 一、Hook 定义区
-//
-// 新增一个 PLT hook：
-//   1. 写一个与目标符号同签名的替换函数，内部通过真实指针调用原实现
-//   2. 用 PLT_HOOK_SPEC 在 kDefaultPltHooks 表中追加一行
-// ══════════════════════════════════════════════════════════════════════════
-
-// 真实 fopen：安装时由引擎 dlsym 解析写入
-FILE *(*real_fopen)(const char *, const char *) = nullptr;
-
-// fopen 检测规避：libfekit.so 读取 /proc/self/smaps 时改喂 /dev/null
-FILE *hook_fopen(const char *pathname, const char *mode) {
-    if (pathname != nullptr && strncmp(pathname, "/proc/self/smaps", 16) == 0) {
-        LOGD("plt_hook: fopen(%s) intercepted -> /dev/null", pathname);
-        return real_fopen("/dev/null", mode);
-    }
-    return real_fopen(pathname, mode);
-}
-
-// 声明式注册宏：{ id, 库名子串, 符号, 替换函数, 真实指针 }
-#define PLT_HOOK_SPEC(id, lib, symbol, hook_fn, real)                        \
-    {                                                                        \
-        (id), (lib), (symbol), reinterpret_cast<void *>(hook_fn),           \
-                reinterpret_cast<void **>(&(real))                           \
-    }
-
-// 内置默认 hook 表
-const PltHookSpec kDefaultPltHooks[] = {
-    PLT_HOOK_SPEC("key1", "libfekit.so", "fopen", &hook_fopen, real_fopen),
-};
-const std::size_t kDefaultPltHookCount = sizeof(kDefaultPltHooks) / sizeof(kDefaultPltHooks[0]);
-
-// ══════════════════════════════════════════════════════════════════════════
-// 二、通用 PLT 引擎
-//
-// 发现机制说明：bionic 的 dl_iterate_phdr 是一次性遍历、不会在后续 dlopen
-// 时主动回调，因此只靠后台轮询线程周期性扫描（50ms）发现目标库。
-// ══════════════════════════════════════════════════════════════════════════
+// Discover loaded libraries with the existing 50 ms poller.
 
 // ── 内存辅助（与 art_hook.cpp 中 WritableArtMethod 同一模式）──────────────────
 inline uintptr_t strip_pac(uintptr_t addr) {
@@ -369,28 +330,4 @@ void install_plt_hooks(const PltHookSpec *specs, std::size_t count) {
     pthread_detach(tid);
 }
 
-const PltHookSpec *default_plt_hooks() {
-    return kDefaultPltHooks;
-}
-
-std::size_t default_plt_hook_count() {
-    return kDefaultPltHookCount;
-}
-
-void install_default_plt_hooks(const std::vector<std::string> &disabled_ids) {
-    // 按 id 过滤出本次要安装的 hook（默认全部启用）
-    std::vector<PltHookSpec> enabled;
-    enabled.reserve(kDefaultPltHookCount);
-    for (const auto & spec : kDefaultPltHooks) {
-        const bool disabled = std::find(disabled_ids.begin(), disabled_ids.end(), spec.id) !=
-                              disabled_ids.end();
-        if (!disabled) enabled.push_back(spec);
-    }
-    if (enabled.empty()) {
-        LOGW("plt_hook: all default hooks disabled, nothing to install");
-        return;
-    }
-    install_plt_hooks(enabled.data(), enabled.size());
-}
-
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

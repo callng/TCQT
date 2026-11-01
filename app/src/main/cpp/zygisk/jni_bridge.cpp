@@ -1,17 +1,19 @@
-#include "jni_bridge.h"
+#include "zygisk/jni_bridge.h"
 
 #include <android/log.h>
 
 #include <string>
 
-#include "art_hook.h"
-#include "log.h"
-#include "log_file.h"
-#include "payload.h"
+#include "zygisk/art/art_hook.h"
+#include "zygisk/logging/log.h"
+#include "zygisk/logging/log_file.h"
+#include "zygisk/payload.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
-static bool s_compat_mode = false;
+namespace {
+bool s_compat_mode = false;
+}  // namespace
 
 void set_compat_mode(bool enabled) {
     s_compat_mode = enabled;
@@ -25,7 +27,7 @@ namespace {
 
 // ── ZygiskEntry natives ──────────────────────────────────────────────────────
 
-extern "C" void jni_native_log(JNIEnv *env, jclass, jint priority, jstring j_tag, jstring j_msg) {
+void jni_native_log(JNIEnv *env, jclass, jint priority, jstring j_tag, jstring j_msg) {
     const char *tag = j_tag != nullptr ? env->GetStringUTFChars(j_tag, nullptr) : nullptr;
     const char *msg = j_msg != nullptr ? env->GetStringUTFChars(j_msg, nullptr) : nullptr;
     if (tag != nullptr && msg != nullptr) {
@@ -35,11 +37,11 @@ extern "C" void jni_native_log(JNIEnv *env, jclass, jint priority, jstring j_tag
     if (msg != nullptr) env->ReleaseStringUTFChars(j_msg, msg);
 }
 
-extern "C" jboolean jni_native_is_compat_mode(JNIEnv *, jclass) {
+jboolean jni_native_is_compat_mode(JNIEnv *, jclass) {
     return s_compat_mode ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" jboolean jni_native_is_debug_logging(JNIEnv *, jclass) {
+jboolean jni_native_is_debug_logging(JNIEnv *, jclass) {
     return log_debug_enabled() ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -64,7 +66,7 @@ jobject get_class_loader(JNIEnv *env, jclass entry_class) {
     return loader;
 }
 
-extern "C" jboolean jni_native_art_init(JNIEnv *env, jclass entry_cls) {
+jboolean jni_native_art_init(JNIEnv *env, jclass entry_cls) {
     if (!art_hook_init(env)) {
         LOGE("ZygiskEntry.nativeArtInit: art_hook_init failed");
         return JNI_FALSE;
@@ -83,27 +85,27 @@ extern "C" jboolean jni_native_art_init(JNIEnv *env, jclass entry_cls) {
 
 // ── ZygiskHookBridge natives ─────────────────────────────────────────────────
 
-extern "C" jlong jni_native_get_art_method(JNIEnv *env, jclass, jobject executable) {
+jlong jni_native_get_art_method(JNIEnv *env, jclass, jobject executable) {
     return static_cast<jlong>(art_get_method(env, executable));
 }
 
-extern "C" jint jni_native_hook_method(JNIEnv *env, jclass, jlong target, jlong backup,
+jint jni_native_hook_method(JNIEnv *env, jclass, jlong target, jlong backup,
                                        jlong bridge) {
     return art_hook_method(env, static_cast<uintptr_t>(target),
                            static_cast<uintptr_t>(backup),
                            static_cast<uintptr_t>(bridge));
 }
 
-extern "C" jint jni_native_unhook_method(JNIEnv *env, jclass, jlong target, jlong backup) {
+jint jni_native_unhook_method(JNIEnv *env, jclass, jlong target, jlong backup) {
     return art_unhook_method(env, static_cast<uintptr_t>(target),
                              static_cast<uintptr_t>(backup));
 }
 
-extern "C" jboolean jni_native_trust_dex_file(JNIEnv *env, jclass, jobject dex_file) {
+jboolean jni_native_trust_dex_file(JNIEnv *env, jclass, jobject dex_file) {
     return art_trust_dex_file(env, dex_file) ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" jobject jni_native_invoke_backup(JNIEnv *env, jclass, jobject backup_method,
+jobject jni_native_invoke_backup(JNIEnv *env, jclass, jobject backup_method,
                                             jobject this_object, jobjectArray args) {
     return art_invoke_backup(env, backup_method, this_object, args);
 }
@@ -171,4 +173,4 @@ bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader) {
     return true;
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

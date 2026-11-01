@@ -2,11 +2,12 @@
 
 #include <jni.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Upper bound for classes*.dex entries probed inside the package APK.
 constexpr size_t MAX_DEX_FILES = 256;
@@ -43,4 +44,4 @@ jobject build_dex_classloader(JNIEnv *env, const std::vector<std::vector<uint8_t
 // Load a class via ClassLoader.loadClass(dot_name).
 jclass load_class_from_loader(JNIEnv *env, jobject loader, const char *dot_name);
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

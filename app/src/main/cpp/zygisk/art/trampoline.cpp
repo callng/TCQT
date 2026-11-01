@@ -1,4 +1,4 @@
-#include "trampoline.h"
+#include "zygisk/art/trampoline.h"
 
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -7,9 +7,9 @@
 #include <cerrno>
 #include <cstring>
 
-#include "log.h"
+#include "zygisk/logging/log.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 namespace {
 constexpr size_t POOL_SIZE = 1024 * 1024;   // 1 MB
@@ -93,4 +93,4 @@ const uint8_t *TrampolinePool::allocate(uintptr_t bridge_art, size_t ep_offset) 
 #endif
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

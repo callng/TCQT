@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Location of the loaded libart.so in the process address space.
 struct ArtLibrary {
@@ -18,4 +18,4 @@ bool find_art_library(ArtLibrary *out);
 // Returns base + st_value, or 0 when the symbol is not found.
 uintptr_t resolve_elf_symbol(const std::string &path, const char *symbol);
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

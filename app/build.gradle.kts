@@ -422,22 +422,12 @@ fun registerPrepareTask(
                     .replace("@VERSION_CODE@", appVersionCode.toString())
             )
 
-            val candidates = mutableListOf<File>()
-            val stableObj = File(objDirProvider.get().asFile, "arm64-v8a/libtcqtzygisk.so")
-            if (stableObj.isFile) candidates += stableObj
-            listOf("Debug", "RelWithDebInfo").forEach { buildType ->
-                File(layout.buildDirectory.get().asFile, "intermediates/cxx/$buildType")
-                    .listFiles()
-                    ?.forEach { hashDir ->
-                        val f = File(hashDir, "obj/arm64-v8a/libtcqtzygisk.so")
-                        if (f.isFile) candidates += f
-                    }
+            // Use only this variant's output; another variant's newer file must
+            // never win selection when debug/release native tasks run together.
+            val objSo = File(objDirProvider.get().asFile, "arm64-v8a/libtcqtzygisk.so")
+            if (!objSo.isFile) {
+                error("libtcqtzygisk.so 未找到（检查当前变体输出 $objPath）")
             }
-            val objSo = candidates.maxByOrNull { it.lastModified() }
-                ?: error(
-                    "libtcqtzygisk.so 未找到（检查 $objPath 或 intermediates/cxx，需先执行 " +
-                        "externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}）"
-                )
             if (!stripExe.isFile) {
                 error("NDK llvm-strip 不存在：$stripExe")
             }

@@ -1,4 +1,4 @@
-#include "zygisk_companion.h"
+#include "zygisk/zygisk_companion.h"
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -12,7 +12,7 @@
 #include <climits>
 #include <cstring>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 namespace {
 
 constexpr uint32_t MAGIC = 0x54435154;
@@ -310,4 +310,4 @@ bool request_injection_state(int socket, InjectionTarget target, uid_t uid,
     return true;
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

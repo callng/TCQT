@@ -8,19 +8,20 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
-#include <vector>
 #include <string_view>
+#include <utility>
+#include <vector>
 
-#include "jni_bridge.h"
-#include "log.h"
-#include "payload.h"
-#include "plt_hook.h"
-#include "zygisk.hpp"
-#include "zygisk_companion.h"
+#include "zygisk/api/zygisk.hpp"
+#include "zygisk/bootstrap.h"
+#include "zygisk/jni_bridge.h"
+#include "zygisk/logging/log.h"
+#include "zygisk/payload.h"
+#include "zygisk/plt/plt_hook.h"
+#include "zygisk/zygisk_companion.h"
 
-namespace tcqt {
-
-constexpr const char *ENTRY_CLASS = "com.owo233.tcqt.loader.zygisk.ZygiskEntry";
+namespace tcqt::zygisk {
+namespace {
 
 enum class TargetApp {
     NONE,
@@ -63,7 +64,7 @@ std::string get_jstring(JNIEnv *env, jstring str) {
     return out;
 }
 
-void log_impl_ident(zygisk::Api *api) {
+void log_impl_ident(::zygisk::Api *api) {
     FILE *fp = fopen("/proc/self/maps", "r");
     if (fp != nullptr) {
         char line[512];
@@ -101,18 +102,18 @@ void companion_handler(int socket) {
     // The Zygisk framework owns the handler's socket.
 }
 
-class TcqtZygisk : public zygisk::ModuleBase {
+class TcqtZygisk : public ::zygisk::ModuleBase {
 public:
-    void onLoad(zygisk::Api *api_ptr, JNIEnv *env_ptr) override {
+    void onLoad(::zygisk::Api *api_ptr, JNIEnv *env_ptr) override {
         this->api = api_ptr;
         this->env = env_ptr;
     }
 
-    void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
+    void preAppSpecialize(::zygisk::AppSpecializeArgs *args) override {
         std::string nice_name = get_jstring(env, args->nice_name);
         TargetApp target = match_target(nice_name);
         if (target == TargetApp::NONE) {
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
 
@@ -121,7 +122,7 @@ public:
         if (socket < 0) {
             LOGE("preAppSpecialize: root companion unavailable for %s (uid=%d)",
                  nice_name.c_str(), args->uid);
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
         InjectionState state;
@@ -134,13 +135,13 @@ public:
             LOGE("preAppSpecialize: companion %s failed for %s (uid=%d errno=%d: %s)",
                  companion_stage_name(state.error_stage), nice_name.c_str(),
                  args->uid, error, strerror(error));
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
         if (state.module_disabled || state.scope_disabled) {
             LOGI("preAppSpecialize: %s disabled by %s, skip injection (uid=%d)",
                  nice_name.c_str(), state.module_disabled ? "module marker" : "WebUI scope", args->uid);
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
         set_compat_mode(state.compat_mode);
@@ -159,7 +160,7 @@ public:
         if (fstat(apk_fd, &payload_stat_) != 0) {
             LOGE("preAppSpecialize: companion payload stat failed (errno=%d)", errno);
             close(apk_fd);
-            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
         payload_hash_ = std::move(state.payload_hash);
@@ -185,7 +186,7 @@ public:
         LOGI("preAppSpecialize: target %s (uid=%d)", process_name_.c_str(), args->uid);
     }
 
-    void postAppSpecialize(const zygisk::AppSpecializeArgs *) override {
+    void postAppSpecialize(const ::zygisk::AppSpecializeArgs *) override {
         if (!enabled_) return;
         enabled_ = false;
 
@@ -262,83 +263,15 @@ public:
             LOGW("postAppSpecialize: payload fd %d no longer valid, skip copy", apk_fd);
         }
 
-        // Read all classes*.dex from the copied package and build an
-        // InMemoryDexClassLoader. An APK-path DexClassLoader is not usable
-        // here: Android 10+ refuses to load dex from app-writable paths
-        // ("Attempt to load writable dex file"), so the payload is loaded
-        // from memory instead. kotlinx-coroutines' Main dispatcher discovery
-        // (META-INF/services) is therefore unavailable; the Java side
-        // compensates by hooking Dispatchers.getMain() in
-        // ModuleLoader.installMainDispatcher().
-        // Note: dex_bufs is intentionally never freed — the class loader
-        // holds direct ByteBuffers referencing the underlying dex memory.
-        auto *dex_bufs = new std::vector<std::vector<uint8_t>>();
-        if (!read_dex_from_apk(env, apk_dst, dex_bufs)) {
-            LOGE("postAppSpecialize: failed to read dex from %s", apk_dst.c_str());
-            return;
-        }
-        jobject loader = build_dex_classloader(env, *dex_bufs);
-        if (loader == nullptr) {
-            LOGE("postAppSpecialize: failed to build InMemoryDexClassLoader");
-            return;
-        }
-
-        // Load the entry class and register its natives.
-        jclass entry = load_class_from_loader(env, loader, ENTRY_CLASS);
-        if (entry == nullptr) {
-            LOGE("postAppSpecialize: ZygiskEntry class not found");
-            env->DeleteLocalRef(loader);
-            return;
-        }
-        if (!register_entry_natives(env, loader)) {
-            env->DeleteLocalRef(entry);
-            env->DeleteLocalRef(loader);
-            return;
-        }
-
-        // Call ZygiskEntry.init(processName, dataDir, apkPath).
-        jmethodID init = env->GetStaticMethodID(
-                entry, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-        if (init == nullptr) {
-            env->ExceptionClear();
-            LOGE("postAppSpecialize: ZygiskEntry.init not found");
-            env->DeleteLocalRef(entry);
-            env->DeleteLocalRef(loader);
-            return;
-        }
-        jstring j_process = env->NewStringUTF(process_name_.c_str());
-        jstring j_data = env->NewStringUTF(data_dir_.c_str());
-        jstring j_apk = env->NewStringUTF(apk_dst.c_str());
-        if (j_process == nullptr || j_data == nullptr || j_apk == nullptr ||
-            env->ExceptionCheck()) {
-            env->ExceptionClear();
-            LOGE("postAppSpecialize: string allocation failed");
-            env->DeleteLocalRef(entry);
-            env->DeleteLocalRef(loader);
-            return;
-        }
-        env->CallStaticVoidMethod(entry, init, j_process, j_data, j_apk);
-        if (env->ExceptionCheck()) {
-            env->ExceptionDescribe();
-            env->ExceptionClear();
-            LOGE("postAppSpecialize: ZygiskEntry.init failed");
-        } else {
-            LOGI("postAppSpecialize: ZygiskEntry.init completed for %s",
-                 process_name_.c_str());
-        }
-        env->DeleteLocalRef(j_process);
-        env->DeleteLocalRef(j_data);
-        env->DeleteLocalRef(j_apk);
-        env->DeleteLocalRef(entry);
-        env->DeleteLocalRef(loader);
+        bootstrap_payload(env, apk_dst, process_name_, data_dir_);
     }
 
-    void preServerSpecialize(zygisk::ServerSpecializeArgs *) override {
-        api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+    void preServerSpecialize(::zygisk::ServerSpecializeArgs *) override {
+        api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
     }
 
 private:
-    zygisk::Api *api = nullptr;
+    ::zygisk::Api *api = nullptr;
     JNIEnv *env = nullptr;
     int apk_fd_ = -1;
     struct stat payload_stat_ {};
@@ -350,7 +283,8 @@ private:
     std::string payload_hash_;
 };
 
-}  // namespace tcqt
+}  // namespace
+}  // namespace tcqt::zygisk
 
-REGISTER_ZYGISK_MODULE(tcqt::TcqtZygisk)
-REGISTER_ZYGISK_COMPANION(tcqt::companion_handler)
+REGISTER_ZYGISK_MODULE(tcqt::zygisk::TcqtZygisk)
+REGISTER_ZYGISK_COMPANION(tcqt::zygisk::companion_handler)

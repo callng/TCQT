@@ -4,7 +4,7 @@ preAppSpecialize runs in the Zygote SELinux domain. UID 0 does not imply that
 the process can traverse /data/adb. A denial of zygote -> adb_data_file:dir search
 used to make main.apk inaccessible and silently hide configuration markers.
 
-zygisk_companion.cpp now handles privileged reads through
+app/src/main/cpp/zygisk/zygisk_companion.cpp handles privileged reads through
 REGISTER_ZYGISK_COMPANION and Api::connectCompanion():
 
 - The request contains only a QQ/TIM identifier and Android UID. Paths are fixed
@@ -21,6 +21,30 @@ REGISTER_ZYGISK_COMPANION and Api::connectCompanion():
 - The existing exemptFd, app-private APK cache, and Dex loader remain in use.
   Post-specialization validation compares device/inode/size to avoid mistaking a
   reused FD number for the payload.
+
+## Native source layout
+
+Native sources are split by responsibility under app/src/main/cpp:
+
+- source32_scanner.h/.cpp: independent GetSign scanner in tcqt::source32,
+  built as libtcqtmem.so; its JNI symbol stays unchanged.
+- zygisk/zygisk_entry.cpp: framework callbacks, target selection and payload cache.
+- zygisk/zygisk_companion.h/.cpp: root companion protocol and privileged reads.
+- zygisk/bootstrap.h/.cpp: in-memory dex loading, JNI registration and Java entry.
+- zygisk/payload.h/.cpp: payload file and class-loader helpers.
+- zygisk/art/: ArtMethod hook engine, ELF resolution and trampoline pool.
+- zygisk/plt/: generic GOT/PLT engine and separate default_plt_hooks.cpp registry.
+- zygisk/logging/: per-process file logging and logcat macros.
+- zygisk/api/zygisk.hpp: framework API header, retained unchanged.
+
+Module implementation uses tcqt::zygisk. Framework types are explicitly
+qualified as ::zygisk, and registration macros remain at global scope so the
+framework's exported C entry points keep their names. JNI callbacks registered
+with RegisterNatives are private implementation functions. The root CMake file
+owns common compiler/linker settings; zygisk/CMakeLists.txt owns injector sources.
+The shared library names and Gradle staging paths remain unchanged. Staging
+reads only the requested variant's stable native output, so newer libraries
+from another variant or an older CMake hash directory cannot be selected.
 
 ## Regression checks
 

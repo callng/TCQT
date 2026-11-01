@@ -1,4 +1,4 @@
-#include "payload.h"
+#include "zygisk/payload.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -9,9 +9,9 @@
 #include <cstring>
 #include <vector>
 
-#include "log.h"
+#include "zygisk/logging/log.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 bool ensure_dir(const std::string &path) {
     if (path.empty()) return false;
@@ -382,4 +382,4 @@ jclass load_class_from_loader(JNIEnv *env, jobject loader, const char *dot_name)
     return clazz;
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

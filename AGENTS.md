@@ -42,7 +42,8 @@ Output Zygisk module: `app/build/outputs/zygisk/TCQT-zygisk-*.zip` (byte-identic
 ```
 app/                    # Main module (com.owo233.tcqt)
 ├── src/main/
-│   ├── cpp/            # Zygisk native injector + self-made ArtMethod hook engine
+│   ├── cpp/            # Native CMake entry + source32 scanner
+│   │   └── zygisk/    # Injector/bootstrap, ART, PLT, logging, framework API
 │   ├── java/
 │   │   ├── com/owo233/tcqt/
 │   │   │   ├── hooks/      # Hook implementations
@@ -119,8 +120,9 @@ Architecture:
   「导出并分享日志」 calls `share-logs.sh` and the APK's `LogShare` app_process
   entry point as shell UID: publishes an attachment in MediaStore and opens
   the Android chooser with a content URI/read grant; APK installation is not required.
-- `app/src/main/cpp/plt_hook.h/.cpp` — generic PLT/GOT hook engine with a
-  declarative spec table: new hooks are added by writing one same-signature
+- `app/src/main/cpp/zygisk/plt/plt_hook.h/.cpp` — generic PLT/GOT hook engine with a
+  declarative spec table in `zygisk/plt/default_plt_hooks.cpp`:
+  new hooks are added by writing one same-signature
   replacement function and appending one `PLT_HOOK_SPEC(id, lib, symbol,
   hook_fn, real)` row to `kDefaultPltHooks` (see `plt_hook.h`); the engine
   handles library discovery (background poller, 50ms — do NOT add a
@@ -133,7 +135,7 @@ Architecture:
   skips them, so each hook can be toggled per host × user. Currently contains
   the `libfekit.so` `fopen` detection evasion (`/proc/self/smaps` → `/dev/null`),
   installed only in the `:MSF` process.
-- `app/src/main/cpp/log_file.h/.cpp` — logs in `files/.tcqt/logs/`, separated
+- `app/src/main/cpp/zygisk/logging/log_file.h/.cpp` — logs in `files/.tcqt/logs/`, separated
   by process: INFO+ in `*.events.log` (1 MiB + 3 backups), optional DEBUG in
   `*.debug.log` (512 KiB + 1 backup). `debug.enable` globally opts in at next
   app start. A stable per-file flock protects append/rotation across overlapping
@@ -141,7 +143,7 @@ Architecture:
   buffer replays early injection events after specialization. Java framework,
   lifecycle and callback failures use priority-aware `ZygiskEntry.nativeLog`.
   Export includes new and legacy rotations (`log.txt.1`) plus recent injection logcat.
-- `app/src/main/cpp/zygisk_entry.cpp` and `zygisk_companion.h/.cpp` —
+- `app/src/main/cpp/zygisk/zygisk_entry.cpp` and `zygisk_companion.h/.cpp` —
   Zygisk injector with a root companion. `preAppSpecialize` runs in the
   Zygote SELinux domain, which may not traverse `/data/adb` even at UID 0.
   It calls `connectCompanion()`; the companion checks the live module's
@@ -151,12 +153,13 @@ Architecture:
   sanitation. Configuration access errors abort injection instead of being
   mistaken for missing markers. In `postAppSpecialize`, the payload is copied
   into the app's `files/.tcqt` dir when the fingerprint changes (size alone
-  must never identify a version). All `classes*.dex` entries are then read
+  must never identify a version). `zygisk/bootstrap.h/.cpp` owns the payload
+  class-loader and JNI bootstrap. All `classes*.dex` entries are then read
   via JNI `java.util.zip.ZipFile`, loaded with `InMemoryDexClassLoader`,
   and passed to
   `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.
   See `docs/zygisk-companion.md` for protocol and regression checks.
-- `app/src/main/cpp/art_hook.cpp` — self-made ArtMethod hook engine:
+- `app/src/main/cpp/zygisk/art/art_hook.cpp` — self-made ArtMethod hook engine:
   JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
   `ScopedSuspendAll` + `WritableArtMethod` for safe mutation, ELF-symbol-resolved
   libart.so helpers, memfd dual-mapped trampoline pool (arm64).
@@ -176,6 +179,12 @@ Architecture:
   (`.so` under `lib/` + `resources.arsc` STORED), `zipalign -p 4` and re-sign
   (v2 only; debug keystore fallback). `packageZygiskModule` just copies the
   dual-format release APK to `outputs/zygisk/TCQT-zygisk-*.zip`.
+
+Native implementation code in cpp/zygisk/ uses namespace tcqt::zygisk.
+The framework header in zygisk/api/zygisk.hpp retains its upstream
+::zygisk namespace; framework registration macros stay at global scope.
+source32_scanner.h/.cpp stays independent in tcqt::source32, with the
+existing GetSign JNI entry and libtcqtmem.so name preserved.
 
 Do NOT enable the TCQT module in LSPosed and Zygisk mode simultaneously
 (shared config, double hooking).

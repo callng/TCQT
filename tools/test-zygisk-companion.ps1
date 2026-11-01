@@ -31,7 +31,7 @@ $compilerArgs = @(
     '-std=c++20', '-Wall', '-Wextra', '-Werror', '-pthread', '-static-libstdc++',
     "-I$(Join-Path $repo 'app/src/main/cpp')",
     (Join-Path $repo 'app/src/test/cpp/zygisk_companion_test.cpp'),
-    (Join-Path $repo 'app/src/main/cpp/zygisk_companion.cpp'), '-o', $output
+    (Join-Path $repo 'app/src/main/cpp/zygisk/zygisk_companion.cpp'), '-o', $output
 )
 & $compiler @compilerArgs
 if ($LASTEXITCODE -ne 0) { throw 'Companion regression compilation failed.' }

@@ -1,4 +1,4 @@
-#include "log_file.h"
+#include "zygisk/logging/log_file.h"
 
 #include <android/log.h>
 #include <fcntl.h>
@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 namespace {
 std::mutex g_mutex;
 std::string g_directory;
@@ -158,4 +158,4 @@ void tcqt_log_write(int level, const char *fmt, ...) {
         g_early.push_back(std::move(record));
     }
 }
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

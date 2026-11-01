@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Executable trampoline pool backed by a dual-mapped memfd
 // (PROT_READ|PROT_WRITE alias for writing, PROT_READ|PROT_EXEC alias for
@@ -29,4 +29,4 @@ private:
     size_t pool_size_ = 0;
 };
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

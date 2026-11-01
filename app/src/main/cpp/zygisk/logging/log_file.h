@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Per-process events (1 MiB x 4) and optional debug details (512 KiB x 2).
 // Replays bounded pre-specialization events after the app log directory is ready.
@@ -13,4 +13,4 @@ bool log_debug_enabled();
 void tcqt_log_write(int level, const char *fmt, ...)
         __attribute__((format(printf, 2, 3)));
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

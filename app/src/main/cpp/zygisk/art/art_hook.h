@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Initialize the ART hook engine: resolve libart.so symbols, probe the
 // ArtMethod layout, and prepare the trampoline pool. Safe to call once.
@@ -29,4 +29,4 @@ bool art_trust_dex_file(JNIEnv *env, jobject dex_file);
 // Safely invoke a backup ArtMethod from Native code bypassing Java reflection receiver checks.
 jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jobject this_object, jobjectArray args);
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

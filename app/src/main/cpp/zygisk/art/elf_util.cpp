@@ -1,4 +1,4 @@
-#include "elf_util.h"
+#include "zygisk/art/elf_util.h"
 
 #include <dlfcn.h>
 #include <link.h>
@@ -7,9 +7,9 @@
 
 #include <cstring>
 
-#include "log.h"
+#include "zygisk/logging/log.h"
 
-namespace tcqt {
+namespace tcqt::zygisk {
 namespace {
 
 int dl_iterate_cb(dl_phdr_info *info, size_t /*size*/, void *data) {
@@ -177,4 +177,4 @@ done:
     return result;
 }
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk

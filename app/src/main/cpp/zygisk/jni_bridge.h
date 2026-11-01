@@ -2,7 +2,7 @@
 
 #include <jni.h>
 
-namespace tcqt {
+namespace tcqt::zygisk {
 
 // Set and get the global compatibility mode flag.
 void set_compat_mode(bool enabled);
@@ -15,4 +15,4 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader);
 // Register ZygiskHookBridge natives (getArtMethod/hook/unhook/trustDexFile).
 bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader);
 
-}  // namespace tcqt
+}  // namespace tcqt::zygisk
