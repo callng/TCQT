@@ -19,10 +19,9 @@ import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.smtt.sdk.WebView
 import java.net.URL
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.TOOL])
 object WebJsBridge : InfraTask(
     key = "WebJsBridge",
-    processes = setOf(ActionProcess.TOOL),
 ) {
 
     override fun install() {

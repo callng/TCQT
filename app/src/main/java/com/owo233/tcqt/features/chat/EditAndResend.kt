@@ -39,12 +39,11 @@ import java.lang.ref.WeakReference
  *
  * 复刻自 QAuxiliary 的 `me/hd/hook/menu/EditTextContent.kt`。
  */
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object EditAndResend : Feature(
     key = "edit_and_resend",
     name = "消息编辑重发",
     desc = "长按菜单添加编辑功能",
-    priority = ActionPriority.EARLY,
 ), DexKitTask, OnMenuBuilder {
 
     /** 排在 PttForward(100)、RepeatMessage(200) 之后。 */
@@ -113,9 +112,9 @@ object EditAndResend : Feature(
         // hook 输入框初始化，反射找 EditText 字段 —— 不依赖字段名（混淆了也找得到）。
         requireMethod(TASK_INPUT_ROOT_INIT).hookAfter { param ->
             val et = runCatching {
-                param.thisObject.javaClass
+                requireNotNull(param.thisObject).javaClass
                     .findField { type = EditText::class.java }
-                    .get(param.thisObject) as? EditText
+                    .get(requireNotNull(param.thisObject)) as? EditText
             }.onFailure {
                 Log.e("edit_and_resend: 读取输入框失败，method=${param.method}", it)
             }.getOrNull() ?: return@hookAfter

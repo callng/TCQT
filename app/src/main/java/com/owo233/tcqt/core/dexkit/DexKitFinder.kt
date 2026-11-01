@@ -3,6 +3,7 @@ package com.owo233.tcqt.core.dexkit
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import com.owo233.tcqt.core.action.ActionRegistry
 import com.owo233.tcqt.core.action.ActionSpec
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostBridge
@@ -11,11 +12,10 @@ import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.reflect.TAG
-import com.owo233.tcqt.core.reflect.new
 import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.generated.GeneratedActionList
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
@@ -32,7 +32,7 @@ internal object DexKitFinder {
         GeneratedActionList.ACTIONS
             .filter { DexKitTask::class.java.isAssignableFrom(it) }
             .mapNotNull { clazz ->
-                runCatching { clazz.new() as? DexKitTask }.getOrNull()
+                ActionRegistry.instanceOf(clazz) as? DexKitTask
             }
     }
 

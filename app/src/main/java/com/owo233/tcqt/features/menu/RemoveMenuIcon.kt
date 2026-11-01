@@ -29,7 +29,7 @@ object RemoveMenuIcon : Feature(
             paramTypes = arrayOf(int, null, boolean, floatArr)
         }.apply {
             hookBefore { param ->
-                val layout = param.thisObject
+                val layout = requireNotNull(param.thisObject)
                 if (scaledObjects.containsKey(layout)) return@hookBefore
 
                 val fields = layout.javaClass.declaredFields

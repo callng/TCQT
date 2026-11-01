@@ -12,12 +12,11 @@ import oicq.wlogin_sdk.tools.MD5
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.OPENSDK])
 object SignSpoof : Feature(
     key = "share_sign_spoof",
     name = "绕过签名验证",
     desc = "绕过从其他APP分享或授权登录时的签名校验，已内置部分常见APP「哔哩哔哩、酷我、知乎、小红书、网易云、酷安、QQ邮箱」",
-    processes = setOf(ActionProcess.MAIN, ActionProcess.OPENSDK),
 ), DexKitTask {
 
     private val customMap by stringOption(

@@ -16,12 +16,11 @@ import com.tencent.mobileqq.selectmember.ResultRecord
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.BACKGROUND)
 object RemoveShareLimit : Feature(
     key = "remove_share_limit",
     name = "移除转发选择数量限制",
     desc = "移除转发消息时最多选择9名联系人的限制。",
-    priority = ActionPriority.BACKGROUND,
 ), DexKitTask {
 
     private lateinit var friendListActivityCls: Class<*>
@@ -60,7 +59,7 @@ object RemoveShareLimit : Feature(
             selectTroopListFragmentCls
         ).forEach { cls ->
             cls.allConstructors().first().hookAfter { param ->
-                param.thisObject.setObjectByType<Map<String, ResultRecord>>(UnlimitedMap(), cls)
+                requireNotNull(param.thisObject).setObjectByType<Map<String, ResultRecord>>(UnlimitedMap(), cls)
             }
         }
     }

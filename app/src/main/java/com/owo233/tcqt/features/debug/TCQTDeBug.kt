@@ -16,12 +16,11 @@ import com.tencent.mobileqq.fe.EventCallback
 import com.tencent.mobileqq.sign.QQSecuritySign
 import java.lang.reflect.Proxy
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MSF])
 object TCQTDeBug : Feature(
     key = "tcqt_debug",
     name = "FEKit打印调用内容",
     desc = "向框架日志中输出指定内容，本功能仅做调试使用，正常使用模块请勿启用本功能。",
-    processes = setOf(ActionProcess.MSF),
 ) {
 
     override fun install() {

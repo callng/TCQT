@@ -3,7 +3,6 @@ package com.owo233.tcqt.core.env
 import android.app.Application
 import android.content.Context
 import com.owo233.tcqt.core.log.Log
-import com.tencent.mobileqq.vas.theme.api.ThemeUtil
 
 internal object HookEnv {
 
@@ -120,10 +119,7 @@ internal object HookEnv {
     }
 
     fun isNightMode(): Boolean {
-        return ThemeUtil.isNowThemeIsNight(null, true, null) ||
-                isQQ() &&
-                requireMinQQVersion(QQVersion.QQ_9_2_55_BETA_32895) &&
-                ThemeUtil.isThemeNightModeV2()
+        return HostServicesProvider.requireServices().isNightMode()
     }
 
     fun resetApp() {

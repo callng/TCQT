@@ -17,12 +17,11 @@ import com.owo233.tcqt.core.hook.isNotStatic
 import com.owo233.tcqt.core.hook.isPublic
 import com.owo233.tcqt.core.hook.paramCount
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.CRITICAL)
 object RemoveAD : Feature(
     key = "remove_ad",
     name = "移除部分广告",
     desc = "移除一些常见的广告弹窗。",
-    priority = ActionPriority.CRITICAL,
 ) {
 
 

@@ -16,12 +16,11 @@ import com.owo233.tcqt.core.sync.SyncUtils
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object RestoreMessageBadgePosition : Feature(
     key = "restore_message_badge_position",
     name = "还原消息红点气泡位置",
     desc = "将会话列表的未读消息红点气泡移动到消息区域右下角，并隐藏多余的免打扰图标。",
-    priority = ActionPriority.EARLY,
     requires = Requires(host = Requires.Host.QQOnly, ntOnly = true),
 ), DexKitTask {
 

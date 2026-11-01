@@ -19,44 +19,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Logical dimensions shared by the runtime bar and the settings preview. */
-internal data class FloatingBarGeometry(
-    val totalWidth: Int,
-    val barHeight: Int,
-    val tabWidth: Int,
-    val tabHeight: Int,
-    val horizontalPadding: Int,
-    val shadowPadding: Int,
-    val scale: Float,
-) {
-    companion object {
-        fun fromBase(
-            baseBarHeight: Int,
-            baseTabWidth: Int,
-            baseTabHeight: Int,
-            baseShadowPadding: Int,
-            tabCount: Int,
-            scale: Float,
-        ): FloatingBarGeometry {
-            val safeScale = scale.coerceIn(0.8f, 1.2f)
-            val safeTabCount = tabCount.coerceAtLeast(1)
-            val scaledTabWidth = (baseTabWidth * safeScale).roundToInt().coerceAtLeast(1)
-            val scaledPadding = (4f * safeScale).roundToInt().coerceAtLeast(1)
-            return FloatingBarGeometry(
-                // Derive the total from slots instead of scaling it independently:
-                // independent rounding leaves a one-pixel remainder on one side.
-                totalWidth = scaledTabWidth * safeTabCount + scaledPadding * 2,
-                barHeight = (baseBarHeight * safeScale).roundToInt(),
-                tabWidth = scaledTabWidth,
-                tabHeight = (baseTabHeight * safeScale).roundToInt(),
-                horizontalPadding = scaledPadding,
-                shadowPadding = (baseShadowPadding * safeScale).roundToInt(),
-                scale = safeScale,
-            )
-        }
-    }
-}
-
 /** View-based surface used by NewView in both normal and reduced-glass modes. */
 internal class FloatingBarSurfaceView(
     context: Context,

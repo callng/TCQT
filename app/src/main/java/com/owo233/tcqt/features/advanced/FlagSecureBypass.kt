@@ -7,12 +7,11 @@ import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.hook.hookMethodBefore
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object FlagSecureBypass : Feature(
     key = "flag_secure_bypass",
     name = "绕过FLAG_SECURE",
     desc = "绕过FlagSecure，允许截图和录屏。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
 

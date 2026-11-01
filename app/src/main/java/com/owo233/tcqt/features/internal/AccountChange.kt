@@ -10,10 +10,9 @@ import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.sync.ReceiverRegistry
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MSF])
 object AccountChange : InfraTask(
     key = "AccountChange",
-    processes = setOf(ActionProcess.MSF),
 ) {
 
     private val receiver = object : BroadcastReceiver() {

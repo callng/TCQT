@@ -41,7 +41,7 @@ object SimpleTroopManagement : Feature(
 
     private fun handleClick(param: Chain): Any? {
         val view = param.args[0] as View
-        val component = param.thisObject.getObjectByType<AIOAvatarContentComponent>()
+        val component = requireNotNull(param.thisObject).getObjectByType<AIOAvatarContentComponent>()
         val msgItem = component.getObjectByType<AIOMsgItem>()
         val msgRecord = msgItem.msgRecord
 

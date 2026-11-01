@@ -1,3 +1,7 @@
+import com.android.build.api.artifact.ArtifactTransformationRequest
+import com.android.build.api.artifact.SingleArtifact
+import com.owo233.tcqt.build.DualApkTask
+import com.owo233.tcqt.build.PrepareZygiskModule
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.SigningConfig
 import com.android.build.api.variant.impl.VariantOutputImpl
@@ -7,12 +11,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.Properties
 import java.util.TimeZone
-import java.util.zip.CRC32
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
-import java.util.zip.ZipOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -191,6 +190,10 @@ extensions.configure<ApplicationExtension> {
     }
 
     sourceSets {
+        named("debug") {
+            // Compile the documented example without registering it or shipping it in release.
+            kotlin.directories += rootProject.layout.projectDirectory.dir("examples").asFile.absolutePath
+        }
         named("main") {
             proto {
                 srcDirs("src/main/proto")
@@ -267,6 +270,7 @@ dependencies {
     ksp(projects.libs.processor)
 
     implementation(projects.libs.annotations)
+    implementation(projects.libs.core)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)
@@ -299,462 +303,74 @@ dependencies {
     implementation(libs.kyant0.shapes)
 }
 
-// 解析 Android SDK 目录（local.properties 的 sdk.dir 优先，其次 ANDROID_HOME）
-fun resolveSdkDir(): File {
-    val fromLocalProps = project.rootProject.file("local.properties")
-        .takeIf { it.exists() }
-        ?.let { f ->
-            Properties().apply { f.inputStream().use { load(it) } }.getProperty("sdk.dir")
-        }
-        ?.trim()
-    return fromLocalProps?.let { File(it) }
-        ?: System.getenv("ANDROID_HOME")?.let { File(it) }
-        ?: error("无法定位 Android SDK：请设置 ANDROID_HOME 或 local.properties 的 sdk.dir")
+abstract class TransformDualApkTask : DualApkTask() {
+    @get:Internal abstract val transformationRequest: Property<ArtifactTransformationRequest<TransformDualApkTask>>
+    @TaskAction fun transform() {
+        initializeOutput()
+        transformationRequest.get().submit(this) { packArtifact(File(it.outputFile)) }
+    }
 }
 
-// 解析双格式 APK 重签时使用的签名参数
-// 优先级：Android Studio 注入的签名配置（Generate Signed APK）> 环境变量 > debug keystore
-fun resolveSigningArgs(): List<String> {
-    fun gradleProp(name: String): String? =
-        providers.gradleProperty(name).orNull?.takeIf { it.isNotBlank() }
-
-    val injStore = gradleProp("android.injected.signing.store.file")
-    val injStorePass = gradleProp("android.injected.signing.store.password")
-    val injAlias = gradleProp("android.injected.signing.key.alias")
-    val injKeyPass = gradleProp("android.injected.signing.key.password")
-    if (injStore != null) {
-        val f = File(injStore)
-        return listOf(
-            "--ks", (if (f.isAbsolute) f.absolutePath else project.file(injStore).absolutePath),
-            "--ks-pass", "pass:${injStorePass ?: ""}",
-            "--ks-key-alias", injAlias ?: "",
-            "--key-pass", "pass:${injKeyPass ?: ""}"
-        )
-    }
-
-    val envStore = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
-    if (envStore != null) {
-        val f = File(envStore)
-        return listOf(
-            "--ks", (if (f.isAbsolute) f.absolutePath else project.file(envStore).absolutePath),
-            "--ks-pass", "pass:${System.getenv("KEYSTORE_PASSWORD") ?: ""}",
-            "--ks-key-alias", System.getenv("KEY_ALIAS") ?: "",
-            "--key-pass", "pass:${System.getenv("KEY_PASSWORD") ?: ""}"
-        )
-    }
-
-    val debugKs = File(System.getProperty("user.home"), ".android/debug.keystore")
-    return listOf(
-        "--ks", debugKs.absolutePath,
-        "--ks-pass", "pass:android",
-        "--ks-key-alias", "androiddebugkey",
-        "--key-pass", "pass:android"
-    )
+// AGP owns SDK/tool versions and the raw APK; all variants share typed packaging tasks.
+val sdkDirectory = androidComponents.sdkComponents.sdkDirectory
+val androidDsl = extensions.getByType<ApplicationExtension>()
+val osName = providers.systemProperty("os.name").get().lowercase()
+val executableSuffix = if (osName.contains("win")) ".exe" else ""
+// Android NDK's macOS bundle is darwin-x86_64 (also on Apple Silicon).
+val ndkHost = when { osName.contains("win") -> "windows-x86_64"; osName.contains("mac") -> "darwin-x86_64"; else -> "linux-x86_64" }
+val toolDirectory = sdkDirectory.map { it.dir("build-tools/${androidDsl.buildToolsVersion}") }
+val injectedStore = providers.gradleProperty("android.injected.signing.store.file").orNull
+val envStore = providers.environmentVariable("KEYSTORE_PATH").orNull
+val signingStore = (injectedStore ?: envStore)?.takeIf { it.isNotBlank() }
+val debugStore = File(providers.systemProperty("user.home").get(), ".android/debug.keystore")
+val packagingKeystore = signingStore?.let { file(it) } ?: debugStore
+fun signingValue(injectedName: String, envName: String, fallback: String): String = when {
+    injectedStore != null -> providers.gradleProperty(injectedName).getOrElse("")
+    envStore != null -> providers.environmentVariable(envName).getOrElse("")
+    else -> fallback
 }
 
-// ── Zygisk 模块打包 ──────────────────────────────────────────────────────────
-fun registerPrepareTask(
-    taskName: String,
-    variant: String,
-    stagingDirName: String,
-    objPath: String,
-): TaskProvider<Task> {
-    return tasks.register(taskName) {
+androidComponents.onVariants { variant ->
+    val capitalized = variant.name.replaceFirstChar { it.uppercase() }
+    val prepare = tasks.register<PrepareZygiskModule>("prepareZygiskModule$capitalized") {
         group = "zygisk"
-        description = "组装 Zygisk 模块目录（$variant）"
-        notCompatibleWithConfigurationCache("stages the Zygisk module ZIP")
-        dependsOn("externalNativeBuild${variant.replaceFirstChar { it.uppercase() }}")
-        dependsOn(":webui:assembleWebUi")
-
-        val stageDirProvider = layout.buildDirectory.dir(stagingDirName)
-        val templateDir = layout.projectDirectory.dir("src/main/zygisk-template")
-        val webuiDir = rootProject.layout.projectDirectory.dir("webui/build/dist")
-        val objDirProvider = layout.buildDirectory.dir(objPath)
-
-        // NDK llvm-strip（任务已 notCompatibleWithConfigurationCache 配置期解析即可）
-        val sdkDir = resolveSdkDir()
-        val ndkDir = File(sdkDir, "ndk/$androidNdkVersion")
-        val osName = System.getProperty("os.name")?.lowercase().orEmpty()
-        val osArch = System.getProperty("os.arch")?.lowercase().orEmpty()
-        val hostDir = when {
-            osName.contains("mac") ->
-                if (osArch.contains("aarch64") || osArch.contains("arm64")) "darwin-arm64"
-                else "darwin-x86_64"
-            osName.contains("win") -> "windows-x86_64"
-            else -> "linux-x86_64"
-        }
-        val stripExe = File(
-            ndkDir,
-            "toolchains/llvm/prebuilt/$hostDir/bin/llvm-strip" +
-                if (osName.contains("win")) ".exe" else ""
-        )
-
-        inputs.dir(templateDir)
-        inputs.dir(webuiDir)
-        inputs.dir(objDirProvider)
-        inputs.file(stripExe)
-        inputs.property("appVersionName", appVersionName)
-        inputs.property("appVersionCode", appVersionCode)
-        outputs.dir(stageDirProvider)
-
-        doLast {
-            val stageDir = stageDirProvider.get().asFile
-            stageDir.deleteRecursively()
-            stageDir.mkdirs()
-
-            // 模板
-            templateDir.asFile.listFiles().orEmpty().filter { it.name != "webroot" }.forEach { source ->
-                source.copyRecursively(File(stageDir, source.name), overwrite = true)
-            }
-            webuiDir.asFile.copyRecursively(File(stageDir, "webroot"), overwrite = true)
-
-            stageDir.walkTopDown().forEach { f ->
-                if (f.isFile && f.extension == "sh") {
-                    f.writeText(f.readText(Charsets.UTF_8).replace("\r\n", "\n"), Charsets.UTF_8)
-                }
-            }
-
-            // 版本占位符
-            val propFile = File(stageDir, "module.prop")
-            propFile.writeText(
-                propFile.readText()
-                    .replace("@VERSION@", appVersionName)
-                    .replace("@VERSION_CODE@", appVersionCode.toString())
-            )
-
-            // Use only this variant's output; another variant's newer file must
-            // never win selection when debug/release native tasks run together.
-            val objSo = File(objDirProvider.get().asFile, "arm64-v8a/libtcqtzygisk.so")
-            if (!objSo.isFile) {
-                error("libtcqtzygisk.so 未找到（检查当前变体输出 $objPath）")
-            }
-            if (!stripExe.isFile) {
-                error("NDK llvm-strip 不存在：$stripExe")
-            }
-
-            val targetSo = File(stageDir, "zygisk/arm64-v8a.so")
-            targetSo.parentFile.mkdirs()
-            val p = ProcessBuilder(
-                stripExe.absolutePath, "-o", targetSo.absolutePath, objSo.absolutePath
-            ).redirectErrorStream(true).start()
-            p.inputStream.bufferedReader().use { r ->
-                r.forEachLine { line -> if (line.isNotBlank()) logger.lifecycle("  $line") }
-            }
-            val code = p.waitFor()
-            if (code != 0) {
-                error("llvm-strip failed (exit=$code): ${objSo.absolutePath}")
-            }
-
-            logger.lifecycle("Zygisk module ($variant) staged at $stageDir")
-        }
+        dependsOn("externalNativeBuild$capitalized", ":webui:assembleWebUi")
+        templateDirectory.set(layout.projectDirectory.dir("src/main/zygisk-template"))
+        webUiDirectory.set(rootProject.layout.projectDirectory.dir("webui/build/dist"))
+        nativeLibrary.set(layout.buildDirectory.file("intermediates/cmake/${variant.name}/obj/arm64-v8a/libtcqtzygisk.so"))
+        stripExecutable.set(sdkDirectory.map { it.file("ndk/$androidNdkVersion/toolchains/llvm/prebuilt/$ndkHost/bin/llvm-strip$executableSuffix") })
+        versionName.set(appVersionName)
+        versionCode.set(appVersionCode)
+        outputDirectory.set(layout.buildDirectory.dir("zygisk-module-${variant.name}"))
+    }
+    val dual = tasks.register<TransformDualApkTask>("buildDualApk$capitalized") {
+        group = "zygisk"
+        description = "Build signed dual-format ${variant.name} APK"
+        moduleDirectory.set(prepare.flatMap { it.outputDirectory })
+        zipalign.set(toolDirectory.map { it.file("zipalign$executableSuffix") })
+        apksignerJar.set(toolDirectory.map { it.file("lib/apksigner.jar") })
+        javaExecutable.set(File(System.getProperty("java.home"), "bin/java$executableSuffix"))
+        keystore.set(packagingKeystore)
+        keyAlias.set(signingValue("android.injected.signing.key.alias", "KEY_ALIAS", "androiddebugkey"))
+        storePassword.set(signingValue("android.injected.signing.store.password", "KEYSTORE_PASSWORD", "android"))
+        keyPassword.set(signingValue("android.injected.signing.key.password", "KEY_PASSWORD", "android"))
+    }
+    val transformation = variant.artifacts.use(dual)
+        .wiredWithDirectories(DualApkTask::getInputApkDirectory, DualApkTask::getOutputApkDirectory)
+        .toTransformMany(SingleArtifact.APK)
+    dual.configure {
+        transformationRequest.set(transformation)
     }
 }
 
-val prepareZygiskModuleRelease = registerPrepareTask(
-    "prepareZygiskModuleRelease", "release", "zygisk-module-release",
-    "intermediates/cmake/release/obj")
-val prepareZygiskModuleDebug = registerPrepareTask(
-    "prepareZygiskModuleDebug", "debug", "zygisk-module-debug",
-    "intermediates/cmake/debug/obj")
-
-// 兼容旧引用：prepareZygiskModule = release 变体
-val prepareZygiskModule = tasks.register("prepareZygiskModule") {
+tasks.register("prepareZygiskModule") { group = "zygisk"; dependsOn("prepareZygiskModuleRelease") }
+tasks.register("buildDualApk") { group = "zygisk"; dependsOn("buildDualApkRelease") }
+val packageZygiskModule = tasks.register<Copy>("packageZygiskModule") {
     group = "zygisk"
-    description = "组装 Zygisk 模块目录（release，兼容旧名）"
-    dependsOn(prepareZygiskModuleRelease)
-}
-
-val packageZygiskModule = tasks.register("packageZygiskModule") {
-    group = "zygisk"
-    description = "打包 TCQT Zygisk 模块 ZIP（双格式 APK 的 .zip 副本）"
-    notCompatibleWithConfigurationCache("packages the Zygisk module ZIP")
-    dependsOn(buildDualApkRelease)
-
-    val srcFile = layout.buildDirectory
-        .file("outputs/apk/release/TCQT-${appVersionName}-release.apk")
-    val outFile = layout.buildDirectory
-        .file("outputs/zygisk/TCQT-zygisk-${appVersionName}.zip")
-    inputs.file(srcFile)
-    outputs.file(outFile)
-
-    doLast {
-        val dst = outFile.get().asFile
-        dst.parentFile.mkdirs()
-        srcFile.get().asFile.copyTo(dst, overwrite = true)
-        logger.lifecycle("Zygisk module ZIP: $dst")
-    }
-}
-
-tasks.named("assemble") {
-    dependsOn(packageZygiskModule)
-}
-
-// ── 双格式 APK（release）──────────────────────────────────────────────────────
-val buildDualApkRelease = tasks.register("buildDualApkRelease") {
-    group = "zygisk"
-    description = "构建双格式 APK（release：.apk = XP 模块，.zip = Zygisk 模块）"
-    notCompatibleWithConfigurationCache("stages the dual-format APK")
-    dependsOn("packageRelease")
-    dependsOn(prepareZygiskModuleRelease)
-
-    val apkName = "TCQT-${appVersionName}-release.apk"
-    val srcApkProvider = layout.buildDirectory.file("outputs/apk/release/$apkName")
-    val stageDirProvider = layout.buildDirectory.dir("zygisk-module-release")
-    val outApkProvider = layout.buildDirectory.file("outputs/apk/release/$apkName")
-
-    // 配置期捕获 SDK 路径（doLast 闭包里 android 扩展不可见）。
-    val sdkDir: File = run {
-        val fromLocalProps = project.rootProject.file("local.properties")
-            .takeIf { it.exists() }
-            ?.let { f ->
-                Properties().apply { f.inputStream().use { load(it) } }.getProperty("sdk.dir")
-            }
-            ?.trim()
-        fromLocalProps?.let { File(it) }
-            ?: System.getenv("ANDROID_HOME")?.let { File(it) }
-            ?: error("无法定位 Android SDK：请设置 ANDROID_HOME 或 local.properties 的 sdk.dir")
-    }
-    val btDir = File(sdkDir, "build-tools")
-        .listFiles()?.maxByOrNull { it.name }
-        ?: error("no build-tools found under $sdkDir")
-
-    inputs.file(srcApkProvider)
-    inputs.dir(stageDirProvider)
-    outputs.file(outApkProvider)
-
-    // 运行外部工具（zipalign / apksigner），回显输出，失败抛错。
-    fun runCmd(vararg args: String) {
-        val p = ProcessBuilder(*args).redirectErrorStream(true).start()
-        p.inputStream.bufferedReader().use { r ->
-            r.forEachLine { line -> if (line.isNotBlank()) logger.lifecycle("  $line") }
-        }
-        val code = p.waitFor()
-        if (code != 0) error("command failed (exit=$code): ${args.joinToString(" ")}")
-    }
-
-    doLast {
-        val workDir = File(layout.buildDirectory.get().asFile, "dual-apk-work-release")
-        workDir.deleteRecursively()
-        workDir.mkdirs()
-        val unpacked = File(workDir, "unpacked").apply { mkdirs() }
-
-        // 1. 解压签名 APK
-        ZipFile(srcApkProvider.get().asFile).use { zip ->
-            zip.entries().asSequence().forEach { e ->
-                val out = File(unpacked, e.name)
-                if (e.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile.mkdirs()
-                    zip.getInputStream(e).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-                }
-            }
-        }
-
-        // 2. 替换 WebUI，避免增量构建残留旧运行时或字体
-        File(unpacked, "webroot").deleteRecursively()
-        stageDirProvider.get().asFile.copyRecursively(unpacked, overwrite = true)
-
-        // 3. 重打包为未对齐 APK
-        val unaligned = File(workDir, "dual-unaligned.apk")
-        ZipOutputStream(unaligned.outputStream()).use { zos ->
-            unpacked.walkTopDown().forEach { f ->
-                if (f.isFile) {
-                    val rel = f.relativeTo(unpacked).path.replace('\\', '/')
-                    val stored = rel.startsWith("lib/") && rel.endsWith(".so") ||
-                        rel == "resources.arsc"
-                    if (stored) {
-                        val entry = ZipEntry(rel)
-                        entry.method = ZipEntry.STORED
-                        entry.size = f.length()
-                        entry.compressedSize = f.length()
-                        val crc = CRC32()
-                        f.inputStream().use { input ->
-                            val buf = ByteArray(64 * 1024)
-                            while (true) {
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                crc.update(buf, 0, n)
-                            }
-                        }
-                        entry.crc = crc.value
-                        zos.putNextEntry(entry)
-                        f.inputStream().use { it.copyTo(zos) }
-                        zos.closeEntry()
-                    } else {
-                        zos.putNextEntry(ZipEntry(rel))
-                        f.inputStream().use { it.copyTo(zos) }
-                        zos.closeEntry()
-                    }
-                }
-            }
-        }
-
-        // 4. zipalign（4 字节 + .so 页对齐）→ apksigner 签名
-        val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
-        val zipalignExe = File(btDir, if (isWindows) "zipalign.exe" else "zipalign")
-        val aligned = File(workDir, "dual-aligned.apk")
-        runCmd(zipalignExe.absolutePath, "-f", "-p", "4", unaligned.absolutePath, aligned.absolutePath)
-
-        val outFile = outApkProvider.get().asFile
-        outFile.parentFile.mkdirs()
-        val signArgs = resolveSigningArgs()
-        runCmd(
-            "java", "-jar", File(btDir, "lib/apksigner.jar").absolutePath, "sign",
-            *signArgs.toTypedArray(),
-            "--v1-signing-enabled", "false",
-            "--v3-signing-enabled", "false",
-            "--out", outFile.absolutePath, aligned.absolutePath
-        )
-        logger.lifecycle("Dual-format APK (release): $outFile")
-    }
-}
-
-// ── 双格式 APK（debug）───────────────────────────────────────────────────────
-val buildDualApkDebug = tasks.register("buildDualApkDebug") {
-    group = "zygisk"
-    description = "构建双格式 APK（debug：.apk = XP 模块，.zip = Zygisk 模块）"
-    notCompatibleWithConfigurationCache("stages the dual-format APK")
-    dependsOn("packageDebug")
-    dependsOn(prepareZygiskModuleDebug)
-
-    val apkName = "TCQT-${appVersionName}-debug.apk"
-    val srcApkProvider = layout.buildDirectory.file("outputs/apk/debug/$apkName")
-    val stageDirProvider = layout.buildDirectory.dir("zygisk-module-debug")
-    val outApkProvider = layout.buildDirectory.file("outputs/apk/debug/$apkName")
-
-    // 配置期捕获 SDK 路径（doLast 闭包里 android 扩展不可见）。
-    val sdkDir: File = run {
-        val fromLocalProps = project.rootProject.file("local.properties")
-            .takeIf { it.exists() }
-            ?.let { f ->
-                Properties().apply { f.inputStream().use { load(it) } }.getProperty("sdk.dir")
-            }
-            ?.trim()
-        fromLocalProps?.let { File(it) }
-            ?: System.getenv("ANDROID_HOME")?.let { File(it) }
-            ?: error("无法定位 Android SDK：请设置 ANDROID_HOME 或 local.properties 的 sdk.dir")
-    }
-    val btDir = File(sdkDir, "build-tools")
-        .listFiles()?.maxByOrNull { it.name }
-        ?: error("no build-tools found under $sdkDir")
-
-    inputs.file(srcApkProvider)
-    inputs.dir(stageDirProvider)
-    outputs.file(outApkProvider)
-
-    // 运行外部工具（zipalign / apksigner），回显输出，失败抛错。
-    fun runCmd(vararg args: String) {
-        val p = ProcessBuilder(*args).redirectErrorStream(true).start()
-        p.inputStream.bufferedReader().use { r ->
-            r.forEachLine { line -> if (line.isNotBlank()) logger.lifecycle("  $line") }
-        }
-        val code = p.waitFor()
-        if (code != 0) error("command failed (exit=$code): ${args.joinToString(" ")}")
-    }
-
-    doLast {
-        val workDir = File(layout.buildDirectory.get().asFile, "dual-apk-work-debug")
-        workDir.deleteRecursively()
-        workDir.mkdirs()
-        val unpacked = File(workDir, "unpacked").apply { mkdirs() }
-
-        // 1. 解压签名 APK
-        ZipFile(srcApkProvider.get().asFile).use { zip ->
-            zip.entries().asSequence().forEach { e ->
-                val out = File(unpacked, e.name)
-                if (e.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile.mkdirs()
-                    zip.getInputStream(e).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-                }
-            }
-        }
-
-        // 2. 替换 WebUI，避免增量构建残留旧运行时或字体
-        File(unpacked, "webroot").deleteRecursively()
-        stageDirProvider.get().asFile.copyRecursively(unpacked, overwrite = true)
-
-        // 3. 重打包为未对齐 APK
-        val unaligned = File(workDir, "dual-unaligned.apk")
-        ZipOutputStream(unaligned.outputStream()).use { zos ->
-            unpacked.walkTopDown().forEach { f ->
-                if (f.isFile) {
-                    val rel = f.relativeTo(unpacked).path.replace('\\', '/')
-                    val stored = rel.startsWith("lib/") && rel.endsWith(".so") ||
-                        rel == "resources.arsc"
-                    if (stored) {
-                        val entry = ZipEntry(rel)
-                        entry.method = ZipEntry.STORED
-                        entry.size = f.length()
-                        entry.compressedSize = f.length()
-                        val crc = CRC32()
-                        f.inputStream().use { input ->
-                            val buf = ByteArray(64 * 1024)
-                            while (true) {
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                crc.update(buf, 0, n)
-                            }
-                        }
-                        entry.crc = crc.value
-                        zos.putNextEntry(entry)
-                        f.inputStream().use { it.copyTo(zos) }
-                        zos.closeEntry()
-                    } else {
-                        zos.putNextEntry(ZipEntry(rel))
-                        f.inputStream().use { it.copyTo(zos) }
-                        zos.closeEntry()
-                    }
-                }
-            }
-        }
-
-        // 4. zipalign（4 字节 + .so 页对齐）→ apksigner 签名
-        val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
-        val zipalignExe = File(btDir, if (isWindows) "zipalign.exe" else "zipalign")
-        val aligned = File(workDir, "dual-aligned.apk")
-        runCmd(zipalignExe.absolutePath, "-f", "-p", "4", unaligned.absolutePath, aligned.absolutePath)
-
-        val outFile = outApkProvider.get().asFile
-        outFile.parentFile.mkdirs()
-        val signArgs = resolveSigningArgs()
-        runCmd(
-            "java", "-jar", File(btDir, "lib/apksigner.jar").absolutePath, "sign",
-            *signArgs.toTypedArray(),
-            "--v1-signing-enabled", "false",
-            "--v3-signing-enabled", "false",
-            "--out", outFile.absolutePath, aligned.absolutePath
-        )
-        logger.lifecycle("Dual-format APK (debug): $outFile")
-    }
-}
-
-// 兼容旧名：buildDualApk = release 变体
-val buildDualApk = tasks.register("buildDualApk") {
-    group = "zygisk"
-    description = "构建双格式 APK（release，兼容旧名）"
+    description = "Copy the dual-format release APK byte-for-byte to a flashable ZIP"
     dependsOn("buildDualApkRelease")
+    from(layout.buildDirectory.file("outputs/apk/release/TCQT-$appVersionName-release.apk"))
+    into(layout.buildDirectory.dir("outputs/zygisk"))
+    rename(".*[.]apk", "TCQT-zygisk-$appVersionName.zip")
 }
-
-tasks.configureEach {
-    if (name == "assembleRelease") {
-        dependsOn(buildDualApkRelease)
-    }
-    if (name == "assembleDebug") {
-        dependsOn(buildDualApkDebug)
-    }
-    if (name == "installRelease") {
-        dependsOn(buildDualApkRelease)
-    }
-    if (name == "installDebug") {
-        dependsOn(buildDualApkDebug)
-    }
-    if (name == "redirectIdeApkOutputsRelease") {
-        dependsOn(buildDualApkRelease)
-    }
-    if (name == "redirectIdeApkOutputsDebug") {
-        dependsOn(buildDualApkDebug)
-    }
-}
+tasks.named("assemble") { dependsOn(packageZygiskModule) }

@@ -27,12 +27,11 @@ import org.luckypray.dexkit.query.base.BaseMatcher
  * 由于 QQ 只在"未展开"时才把折叠条插进列表，展开后折叠条会消失且没有任何入口能收回，
  * 因此额外在加号菜单里提供一个主动折叠入口（方案 A：不跟状态机对抗）。
  */
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object ChatFoldEnabler : Feature(
     key = "chat_fold_enabler",
     name = "首页折叠旧会话",
     desc = "强制开启首页消息列表「折叠 N 天前的会话」灰度，并可自定义折叠天数与最少保留条数。",
-    priority = ActionPriority.EARLY,
     requires = Requires(host = Requires.Host.QQOnly, minQQVersion = QQVersion.QQ_9_3_70),
 ), DexKitTask {
 
@@ -72,13 +71,13 @@ object ChatFoldEnabler : Feature(
             List::class.java,
             Int::class.javaPrimitiveType
         ) { param ->
-            useCaseInstance = param.thisObject
+            useCaseInstance = requireNotNull(param.thisObject)
             if (foldingEnabled) return@hookMethodBefore
             if (!reportedForcing) {
                 reportedForcing = true
                 // Log.i("$TAG 强制开启折叠，天数=${days()}，保留=${keep()}")
             }
-            forceFoldFields(param.thisObject)
+            forceFoldFields(requireNotNull(param.thisObject))
         }
 
         if (foldItemClz != null) {

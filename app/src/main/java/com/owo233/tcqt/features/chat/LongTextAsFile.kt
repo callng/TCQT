@@ -32,12 +32,11 @@ import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object LongTextAsFile : Feature(
     key = "long_text_as_file",
     name = "超长文本转文件",
     desc = "解除输入字数限制，消息超过 QQ 字数上限时自动发送为 TXT 文件。",
-    priority = ActionPriority.EARLY,
     requires = Requires(host = Requires.Host.QQOnly, ntOnly = true),
 ), DexKitTask {
 

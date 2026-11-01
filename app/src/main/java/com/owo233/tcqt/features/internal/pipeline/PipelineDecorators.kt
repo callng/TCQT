@@ -24,7 +24,9 @@ internal object PipelineDecorators {
     @Suppress("UNCHECKED_CAST")
     fun <T : PipelineDecorator> all(type: Class<T>): List<T> {
         val fromRegistry = ActionRegistry.allActionClasses()
+            .filter { type.isAssignableFrom(it) }
             .mapNotNull(ActionRegistry::instanceOf)
+            .onEach(com.owo233.tcqt.core.config.TCQTSetting::registerAction)
 
         return (fromRegistry + registered)
             .filterIsInstance<PipelineDecorator>()

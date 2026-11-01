@@ -6,12 +6,11 @@ import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.reflect.setValue
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object OpenQLog : Feature(
     key = "open_q_log",
     name = "日志输出到Logcat",
     desc = "没事别瞎打开(可能会影响性能)，只是为了方便调试。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
     override fun install() {

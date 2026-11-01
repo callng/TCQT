@@ -11,4 +11,5 @@ java {
 dependencies {
     implementation(projects.libs.annotations)
     implementation(libs.ksp.api)
+    testImplementation(libs.kotlin.test.junit)
 }

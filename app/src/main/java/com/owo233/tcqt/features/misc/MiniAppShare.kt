@@ -16,12 +16,11 @@ import com.owo233.tcqt.core.log.ActionErrorStore
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findField
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object MiniAppShare : Feature(
     key = "mini_app_share",
     name = "修改小程序分享行为",
     desc = "取消小程序分享时仍返回成功。可选择跳过好友、群分享页面；无法区分奖励分享与普通分享，跳过会同时影响两者。",
-    processes = setOf(ActionProcess.ALL),
     requires = Requires(host = Requires.Host.QQOnly, ntOnly = true),
 ) {
 
@@ -111,7 +110,7 @@ object MiniAppShare : Feature(
             ),
         ).forEach { method ->
             method.hookBefore { param ->
-                if (skip(param.thisObject)) param.result = null
+                if (skip(requireNotNull(param.thisObject))) param.result = null
             }
         }
 

@@ -3,36 +3,23 @@ package com.owo233.tcqt.loader.modern
 import com.owo233.tcqt.core.hook.Chain
 import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.Invoker
+import com.owo233.tcqt.core.hook.HookCallState
+import com.owo233.tcqt.core.hook.HookContract
 import io.github.libxposed.api.XposedInterface
 import java.lang.reflect.Constructor
 import java.lang.reflect.Member
 import java.lang.reflect.Method
 
-class ModernHookParam(val chain: XposedInterface.Chain) : HookParam {
+internal class ModernHookParam(val chain: XposedInterface.Chain) : HookCallState(
+    chain.executable, chain.thisObject, chain.args.toTypedArray(),
+)
 
-    override val method: Member get() = chain.executable
-    override val thisObject: Any get() = chain.thisObject
-
-    override var args: Array<Any?> = chain.args.toTypedArray()
-
-    var isReturnEarly = false
-        private set
-
-    override var result: Any? = null
-        set(value) {
-            field = value
-            isReturnEarly = true
-        }
-
-    override var throwable: Throwable? = null
-}
-
-class ModernChain(private val modernParam: ModernHookParam) : Chain, HookParam by modernParam {
+internal class ModernChain(private val modernParam: ModernHookParam) : Chain, HookParam by modernParam {
 
     constructor(chain: XposedInterface.Chain) : this(ModernHookParam(chain))
 
     override fun proceed(args: Array<Any?>): Any? {
-        return modernParam.chain.proceed(args)
+        return HookContract.original { modernParam.chain.proceed(args) }
     }
 }
 
@@ -44,11 +31,11 @@ class ModernInvoker(
     override fun invokeOrigin(thisObject: Any?, vararg args: Any?): Any? {
         val invokeType = XposedInterface.Invoker.Type.ORIGIN
 
-        return when (val m = method) {
+        return HookContract.original { when (val m = method) {
             is Method -> base.getInvoker(m).setType(invokeType).invoke(thisObject, *args)
             is Constructor<*> -> base.getInvoker(m).setType(invokeType).newInstance(*args)
             else -> throw IllegalArgumentException("Unsupported member type: ${m.javaClass}")
-        }
+        } }
     }
 
     override fun invokeWithMaxPriority(
@@ -58,10 +45,10 @@ class ModernInvoker(
     ): Any? {
         val invokeType = XposedInterface.Invoker.Type.Chain(maxPriority)
 
-        return when (val m = method) {
+        return HookContract.original { when (val m = method) {
             is Method -> base.getInvoker(m).setType(invokeType).invoke(thisObject, *args)
             is Constructor<*> -> base.getInvoker(m).setType(invokeType).newInstance(*args)
             else -> throw IllegalArgumentException("Unsupported member type: ${m.javaClass}")
-        }
+        } }
     }
 }

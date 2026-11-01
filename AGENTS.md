@@ -2,19 +2,25 @@
 
 ## Project Overview
 
-TCQT is an Xposed module for QQ/TIM Android (NT architecture) providing message anti-recall and other features. Targets LSPosed framework on Android 8.1-16.
+TCQT provides message anti-recall and other features for QQ/TIM Android (NT architecture), through LSPosed or Zygisk. minSdk is Android 8.1; Android 17 arm64 has device regression coverage, while ART compatibility still depends on the runtime/OEM. See [ARCHITECTURE.md](ARCHITECTURE.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Build Commands
 
 ```bash
-# Build debug APK (no signing required)
+# Build debug APK (automatic debug certificate)
 ./gradlew :app:assembleDebug
 
-# Build release APK (requires signing config)
+# Build release APK (configure release credentials for distribution)
 ./gradlew :app:assembleRelease
 
 # Build both
 ./gradlew :app:assembleDebug :app:assembleRelease
+
+# JVM tests, architecture checks, lint and the compiled Debug example
+./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache
+
+# Compile real KSP positive/negative, multi-round and incremental fixtures
+python tools/test-action-processor.py
 
 # Build Zygisk module ZIP (Magisk/KernelSU; a copy of the dual-format release APK)
 ./gradlew :app:packageZygiskModule
@@ -29,6 +35,14 @@ TCQT is an Xposed module for QQ/TIM Android (NT architecture) providing message 
 
 Output APKs: `app/build/outputs/apk/{debug,release}/TCQT-*.apk` (dual-format: installable APK + flashable Zygisk module in one file, no nested payload APK)
 Output Zygisk module: `app/build/outputs/zygisk/TCQT-zygisk-*.zip` (byte-identical copy of the dual-format release APK)
+
+Raw AGP APKs remain in `app/build/intermediates/apk/<variant>/package<Variant>/` and must not be distributed as dual packages.
+`SingleArtifact.APK` is transformed by `TransformDualApkTask`; install and IDE consumers use the transformed artifact.
+Shared packaging implementation lives in `buildSrc/`. Signing precedence is Android Studio injected settings,
+environment settings, then the local debug keystore. Without release credentials the dual release package uses
+the debug certificate, so it is suitable for local validation only. Tool versions come from the configured AGP SDK/NDK.
+Package content checks: `python tools/verify-dual-apk.py <dual.apk> --raw <raw.apk> --zip <module.zip>`;
+also run the configured SDK's `apksigner verify` and `zipalign -c -p 4`.
 
 ## Requirements
 
@@ -46,42 +60,53 @@ app/                    # Main module (com.owo233.tcqt)
 │   │   └── zygisk/    # Injector/bootstrap, ART, PLT, logging, framework API
 │   ├── java/
 │   │   ├── com/owo233/tcqt/
-│   │   │   ├── hooks/      # Hook implementations
-│   │   │   ├── ext/        # Core interfaces (IAction, Setting)
+│   │   │   ├── api/        # Feature / InfraTask / declarative options
+│   │   │   ├── core/       # Android adapters, configuration, runtime services
+│   │   │   ├── features/   # Hook implementations, categorized by package
+│   │   │   ├── host/       # QQ/TIM capabilities and type adapters
 │   │   │   ├── loader/     # Xposed entry points (legacy + modern + zygisk)
-│   │   │   ├── ui/         # Compose settings UI
-│   │   │   └── utils/      # DexKit, reflection, logging
+│   │   │   └── ui/         # Compose settings UI and parasitic Activity
 │   │   └── top/artmoe/inao/# QQ protobuf message models
 │   ├── proto/         # Protobuf definitions
 │   └── zygisk-template/ # Magisk/KernelSU module template for Zygisk mode
 libs/
 ├── annotations/        # @RegisterAction annotation
+├── core/               # Pure JVM protocol, DEX policies, Hook/startup state
 ├── processor/          # KSP code generator
 └── qqinterface/        # QQ class stubs (compileOnly)
+webui/                 # Offline WebUI validation/staging
+buildSrc/              # Typed dual-format package tasks
+examples/              # Compiled Debug-only examples; registration disabled
 ```
 
 ## Key Architecture Patterns
 
 ### Action Registration (KSP)
 
-1. Create hook class implementing `IAction` in `app/src/main/java/com/owo233/tcqt/hooks/`
+1. Create a `Feature` subclass in `app/src/main/java/com/owo233/tcqt/features/<category>/`; infrastructure tasks use `InfraTask`, not direct `ActionSpec` implementations.
 2. Annotate with `@RegisterAction` (from `libs:annotations`)
 3. KSP processor generates `GeneratedActionList` at build time
-4. `ActionManager` loads and executes registered actions per-process
+4. `ActionRegistry` filters lightweight descriptors by process and priority before instantiating selected actions. `StartupScheduler` executes the plan.
 
 Example:
 ```kotlin
-@RegisterAction
-object MyHook : IAction {
-    override val key = "my_feature"
-    override val name = "My Feature"
-    override val processes = setOf(ActionProcess.MAIN) // which QQ processes
+import com.owo233.tcqt.annotations.ActionProcess
+import com.owo233.tcqt.annotations.RegisterAction
+import com.owo233.tcqt.api.Feature
 
-    override fun onRun(app: Application, process: ActionProcess) {
+@RegisterAction(processes = [ActionProcess.MAIN])
+object MyHook : Feature(key = "my_feature", name = "My Feature") {
+    override fun install() {
         // Hook logic here
     }
 }
 ```
+
+The complete [SampleFeature.kt](examples/SampleFeature.kt) is compiled by Debug builds, excluded from Release, and uses `enabled=false` to keep it out of the runtime registry. Process/priority metadata belongs only in the annotation; category comes from the feature package. Option delegates return values directly (for example, `mode`, not `mode.value`). Never rename published configuration keys.
+
+KSP accepts public/internal objects or concrete classes with a JVM no-argument constructor. It rejects inaccessible, abstract, inner, generic and companion declarations, normalizes process metadata, and emits one stable sorted table across rounds.
+
+Only CRITICAL hooks run in the original Application.onCreate Before callback. `StartupAfterCreate` submits the remaining plan after the original call succeeds. MAIN Deferred hooks wait for an actual Android frame signal; do not initialize QQ's static Activity helpers to detect a frame. `:libs:core` must remain independent of Android/QQ/Xposed/UI types; app `core` consumes injected host capabilities rather than concrete host types.
 
 ### Process Model
 
@@ -159,7 +184,11 @@ Architecture:
   and passed to
   `com.owo233.tcqt.loader.zygisk.ZygiskEntry.init(processName, dataDir, apkPath)`.
   See `docs/zygisk-companion.md` for protocol and regression checks.
-- `app/src/main/cpp/zygisk/art/art_hook.cpp` — self-made ArtMethod hook engine:
+- `app/src/main/cpp/zygisk/art/` — self-made ArtMethod hook engine. `art_hook.cpp`
+  serializes initialization and publishes probed state once; `art_layout.cpp`,
+  `art_symbols.cpp`, `art_memory.cpp`, `art_method_patch.cpp`, `art_dex_trust.cpp`
+  and `art_invoke.cpp` own layout, symbols, memory protection, mutation,
+  DEX trust and JNI original invocation respectively:
   JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
   `ScopedSuspendAll` + `WritableArtMethod` for safe mutation, ELF-symbol-resolved
   libart.so helpers, memfd dual-mapped trampoline pool (arm64).
@@ -191,13 +220,13 @@ Do NOT enable the TCQT module in LSPosed and Zygisk mode simultaneously
 
 ### Generated Code
 
-- `GeneratedActionList` - Auto-generated by KSP, lists all `@RegisterAction` classes
+- `GeneratedActionList` - Auto-generated by KSP, lists enabled registrations and lightweight descriptors; do not edit generated output
 - `BuildTime.kt` - Generated at build time with timestamp
 - Proto classes - Generated from `.proto` files via protobuf plugin
 
 ## Build Configuration
 
-- **Version**: Derived from git (`3.6.5.r<commit-count>.<short-hash>`)
+- **Version**: Base version in root `build.gradle.kts` + git (`4.0.2.r<commit-count>.<short-hash>`); uncommitted changes do not change this identifier
 - **ABI**: arm64-v8a only
 - **Signing**: CI uses env vars (`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`)
 - **R8**: Full mode enabled

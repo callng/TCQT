@@ -31,12 +31,11 @@ import kotlinx.serialization.Serializable
 import mqq.app.Foreground
 import java.util.concurrent.ConcurrentHashMap
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object DisableDialog : Feature(
     key = "disable_dialog",
     name = "屏蔽烦人弹窗",
     desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
     private val options by multiIntOption(
@@ -68,7 +67,7 @@ object DisableDialog : Feature(
         }.hookReplace { param ->
             val runnable = param.args.getOrNull(2) as? Runnable
                 ?: return@hookReplace param.invokeOriginal()
-            param.thisObject.callMethod("run", runnable)
+            requireNotNull(param.thisObject).callMethod("run", runnable)
         }
     }
 
@@ -81,14 +80,14 @@ object DisableDialog : Feature(
             name = "doOnCreate"
             paramTypes = arrayOf(bundle)
         }.hookReplace { param ->
-            (param.thisObject as Activity).finish()
+            (requireNotNull(param.thisObject) as Activity).finish()
             true
         }
 
         "com.tencent.biz.qui.noticebar.view.VQUINoticeBarLayout".toClass
             .getDeclaredConstructor(Context::class.java, AttributeSet::class.java)
             .hookAfter { param ->
-                val view = param.thisObject as FrameLayout
+                val view = requireNotNull(param.thisObject) as FrameLayout
                 view.visibility = View.GONE
                 view.layoutParams = FrameLayout.LayoutParams(0, 0)
             }

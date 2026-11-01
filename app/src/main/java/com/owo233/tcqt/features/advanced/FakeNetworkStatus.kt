@@ -17,17 +17,11 @@ import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.callOriginal
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL, ActionProcess.QZONE])
 object FakeNetworkStatus : Feature(
     key = "fake_network_status",
     name = "伪装网络状态",
     desc = "将网络类型伪装为指定的 WIFI / 5G / 4G。",
-    processes = setOf(
-        ActionProcess.MAIN,
-        ActionProcess.MSF,
-        ActionProcess.TOOL,
-        ActionProcess.QZONE,
-    ),
 ) {
 
     private val networkMode by intOption(

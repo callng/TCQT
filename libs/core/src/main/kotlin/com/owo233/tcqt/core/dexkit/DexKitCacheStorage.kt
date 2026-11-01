@@ -5,15 +5,15 @@ import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 
 /** Short-lived handles only: FastKV instances cache data and are not a multi-process store. */
-internal interface DexKitCacheBackend : AutoCloseable {
+interface DexKitCacheBackend : AutoCloseable {
     fun read(): Map<String, String>
     fun replace(values: Map<String, String>)
 }
 
-internal data class DexKitStoredCache(val generation: Long, val values: Map<String, String>)
+data class DexKitStoredCache(val generation: Long, val values: Map<String, String>)
 
 /** Serializes complete snapshots across processes and invalidates scans started before a clear. */
-internal class DexKitCacheStorage(
+class DexKitCacheStorage(
     private val directory: File,
     private val open: (String) -> DexKitCacheBackend,
 ) {

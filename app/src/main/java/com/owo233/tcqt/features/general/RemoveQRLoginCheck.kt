@@ -7,12 +7,11 @@ import com.owo233.tcqt.core.env.load
 import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.hook.paramCount
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object RemoveQRLoginCheck : Feature(
     key = "remove_qr_login_check",
     name = "移除扫码登录检查",
     desc = "扫描相册里的二维码时不再拦截登录。",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
 

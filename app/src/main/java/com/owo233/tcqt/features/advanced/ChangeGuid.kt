@@ -20,14 +20,12 @@ import com.owo233.tcqt.host.QQInterfaces
 /**
  * GUID 在登录 / 设备注册流程早期被读取（不会在 onCreate 内），故放在 EARLY。
  */
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF], priority = ActionPriority.EARLY)
 object ChangeGuid : Feature(
     key = "change_guid",
     name = "自定义GUID",
     desc = "在登录页面长按登录按钮即可调出设置窗口，如果你不知道GUID是什么，请勿使用此功能（此处开关仅作为全局开关）。",
     defaultEnabled = true,
-    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
-    priority = ActionPriority.EARLY,
 ) {
 
     // isHide = true 必须保留，否则这两个输入框会出现在「高级」分类里。

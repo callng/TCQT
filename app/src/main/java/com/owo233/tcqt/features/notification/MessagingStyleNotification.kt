@@ -15,12 +15,11 @@ import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.log.LogUtils
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF])
 object MessagingStyleNotification : Feature(
     key = "messaging_style_notification",
     name = "MessagingStyle 通知",
     desc = "更加优雅的通知样式，致敬 QQ Helper。",
-    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
 ) {
 
     /** 派生 key = `messaging_style_notification.options`。 */

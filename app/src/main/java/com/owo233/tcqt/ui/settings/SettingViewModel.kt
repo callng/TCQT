@@ -30,9 +30,7 @@ import com.owo233.tcqt.ui.settings.model.FeatureSliderUiState
 import com.owo233.tcqt.ui.settings.model.SettingFeature
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
 import com.owo233.tcqt.ui.settings.model.normalizeSliderValue
-import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,16 +52,7 @@ class SettingViewModel : ViewModel() {
 
     private val definitions = TCQTSetting.settingMap
 
-    private val persistedBooleans = mutableStateMapOf<String, Boolean>()
-    private val persistedInts = mutableStateMapOf<String, Int>()
-    private val persistedStrings = mutableStateMapOf<String, String>()
-
-    private val pendingBooleans = mutableStateMapOf<String, Boolean>()
-    private val pendingInts = mutableStateMapOf<String, Int>()
-    private val pendingStrings = mutableStateMapOf<String, String>()
-
-    private var pickingPngIconKey: String? = null
-    private var pngIconImportJob: Job? = null
+    private val editSession = SettingsEditSession(mutableStateMapOf(), mutableStateMapOf())
 
     var isImportingPngIcon by mutableStateOf(false)
         private set
@@ -115,18 +104,30 @@ class SettingViewModel : ViewModel() {
 
     // ───── Search ─────
 
-    var searchQuery by mutableStateOf("")
-        private set
-
-    var isSearchActive by mutableStateOf(false)
-        private set
+    private val search = SettingsSearchState(
+        readHistory = { TCQTSetting.getRawString("search_history") },
+        writeHistory = { TCQTSetting.putRawString("search_history", it) },
+        failure = { Log.e("Failed to persist search history", it) },
+    )
+    val searchQuery: String get() = search.query
+    val isSearchActive: Boolean get() = search.active
+    val searchHistory get() = search.history
 
     var isErrorOverviewActive by mutableStateOf(false)
         private set
 
-    val searchHistory = mutableStateListOf<String>()
-
-    private val pendingKeywordsToSave = mutableSetOf<String>()
+    private val pngImport = PngImportCoordinator<Pair<ContentResolver, Uri>>(
+        scope = viewModelScope,
+        validKey = { key -> allFeatures.any { feature -> feature.textAreas.any { it.key == key && it.isPngIcon } } },
+        read = { (resolver, uri) ->
+            withContext(Dispatchers.IO) {
+                requireNotNull(resolver.openInputStream(uri)) { "无法打开 PNG 图片" }.use(PngIconCodec::importPng)
+            }
+        },
+        apply = ::setTextValue,
+        busy = { isImportingPngIcon = it },
+        failure = { Log.w("Failed to import custom PNG icon", it); Toasts.error(it.message ?: "PNG 图片读取失败") },
+    )
 
     // ───── Stats (computed dynamically using derivedStateOf) ─────
 
@@ -144,12 +145,8 @@ class SettingViewModel : ViewModel() {
 
     // ───── Pending ─────
 
-    val hasPendingChanges: Boolean
-        get() =
-            pendingBooleans.isNotEmpty() || pendingInts.isNotEmpty() || pendingStrings.isNotEmpty()
-
-    val pendingChangeCount: Int
-        get() = pendingBooleans.size + pendingInts.size + pendingStrings.size
+    val hasPendingChanges: Boolean get() = editSession.changeCount > 0
+    val pendingChangeCount: Int get() = editSession.changeCount
 
     // ───── Derived state ─────
 
@@ -183,7 +180,7 @@ class SettingViewModel : ViewModel() {
         AntiRecallConfig.migrateLegacyOptions()
         reloadPersistedSettings()
         reloadActionErrors()
-        loadSearchHistory()
+        search.load()
     }
 
     // ───── Navigation ─────
@@ -219,8 +216,7 @@ class SettingViewModel : ViewModel() {
 
     fun openErrorOverview() {
         if (errorCount == 0) return
-        isSearchActive = false
-        searchQuery = ""
+        search.exit()
         isErrorOverviewActive = true
     }
 
@@ -228,60 +224,12 @@ class SettingViewModel : ViewModel() {
 
     // ───── Search ─────
 
-    fun enterSearch() {
-        isSearchActive = true
-    }
-
-    fun exitSearch() {
-        isSearchActive = false
-        searchQuery = ""
-    }
-
-    fun updateSearchQuery(value: String) {
-        searchQuery = value
-    }
-
-    fun clearSearchQuery() {
-        searchQuery = ""
-    }
-
-    private fun loadSearchHistory() {
-        try {
-            val jsonStr = TCQTSetting.getRawString("search_history")
-            if (jsonStr.isNotBlank()) {
-                val history = Json.decodeFromString<List<String>>(jsonStr)
-                searchHistory.clear()
-                searchHistory.addAll(history)
-            }
-        } catch (e: Exception) {
-            com.owo233.tcqt.core.log.Log.e("Failed to load search history", e)
-        }
-    }
-
-    private fun saveSearchHistory() {
-        try {
-            val jsonStr = Json.encodeToString(searchHistory.toList())
-            TCQTSetting.putRawString("search_history", jsonStr)
-        } catch (e: Exception) {
-            com.owo233.tcqt.core.log.Log.e("Failed to save search history", e)
-        }
-    }
-
-    fun addSearchHistory(query: String) {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) return
-        searchHistory.remove(trimmed)
-        searchHistory.add(0, trimmed)
-        while (searchHistory.size > 10) {
-            searchHistory.removeAt(searchHistory.lastIndex)
-        }
-        saveSearchHistory()
-    }
-
-    fun clearSearchHistory() {
-        searchHistory.clear()
-        saveSearchHistory()
-    }
+    fun enterSearch() = search.enter()
+    fun exitSearch() = search.exit()
+    fun updateSearchQuery(value: String) = search.update(value)
+    fun clearSearchQuery() = search.update("")
+    fun addSearchHistory(query: String) = search.add(query)
+    fun clearSearchHistory() = search.clear()
 
     // ───── Feature interaction ─────
 
@@ -327,113 +275,45 @@ class SettingViewModel : ViewModel() {
         if (feature?.uiType == ActionUiType.ENTRY) return
         if (!FeatureCatalog.isInitReady(key)) return
 
-        val persisted = persistedBooleans[key] ?: false
-
-        if (value == persisted) {
-            pendingBooleans.remove(key)
-        } else {
-            pendingBooleans[key] = value
-        }
-
-        if (isSearchActive && searchQuery.isNotBlank()) {
-            pendingKeywordsToSave.add(searchQuery.trim())
-        }
+        editSession.update(key, value)
+        search.rememberEdit()
     }
 
     fun setOptionValue(key: String, value: Int) {
-        val normalizedValue = optionGroupByKey[key]?.normalizeValue(value) ?: value
-        val persisted = persistedInts[key] ?: 0
-        if (normalizedValue == persisted) {
-            pendingInts.remove(key)
-        } else {
-            pendingInts[key] = normalizedValue
-        }
-
-        if (isSearchActive && searchQuery.isNotBlank()) {
-            pendingKeywordsToSave.add(searchQuery.trim())
-        }
+        editSession.update(key, optionGroupByKey[key]?.normalizeValue(value) ?: value)
+        search.rememberEdit()
     }
 
     /** Slider 值按自身 min/max 收敛后进入待保存状态。 */
     fun setSliderValue(key: String, value: Int) {
         val slider = sliderByKey[key]
         val clamped = slider?.let { normalizeSliderValue(value, it.min, it.max, it.step) } ?: value
-        val persisted = persistedInts[key] ?: 0
-        if (clamped == persisted) pendingInts.remove(key) else pendingInts[key] = clamped
-
-        if (isSearchActive && searchQuery.isNotBlank()) {
-            pendingKeywordsToSave.add(searchQuery.trim())
-        }
+        editSession.update(key, clamped)
+        search.rememberEdit()
     }
 
     fun setTextValue(key: String, value: String) {
-        val persisted = persistedStrings[key].orEmpty()
-        if (value == persisted) {
-            pendingStrings.remove(key)
-        } else {
-            pendingStrings[key] = value
-        }
-
-        if (isSearchActive && searchQuery.isNotBlank()) {
-            pendingKeywordsToSave.add(searchQuery.trim())
-        }
+        editSession.update(key, value)
+        search.rememberEdit()
     }
 
-    fun beginPngIconSelection(key: String): Boolean {
-        if (isImportingPngIcon || pickingPngIconKey != null) return false
-        if (allFeatures.none { feature -> feature.textAreas.any { it.key == key && it.isPngIcon } }) return false
-        pickingPngIconKey = key
-        return true
+    fun beginPngIconSelection(key: String): Boolean = pngImport.select(key)
+
+    fun importPngIcon(resolver: ContentResolver, uri: Uri?) = pngImport.receive(uri?.let { resolver to it })
+
+    fun saveChanges(): Boolean = runCatching {
+        editSession.save(TCQTSetting::applyEdits)
+        search.commitQueries()
+        true
+    }.getOrElse {
+        Log.e("Failed to save settings", it)
+        Toasts.error("配置保存失败，请重试")
+        false
     }
 
-    fun importPngIcon(resolver: ContentResolver, uri: Uri?) {
-        val key = pickingPngIconKey ?: return
-        pickingPngIconKey = null
-        if (uri == null) return
-        isImportingPngIcon = true
-        pngIconImportJob = viewModelScope.launch {
-            try {
-                val value = withContext(Dispatchers.IO) {
-                    requireNotNull(resolver.openInputStream(uri)) { "无法打开 PNG 图片" }
-                        .use(PngIconCodec::importPng)
-                }
-                setTextValue(key, value)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w("Failed to import custom PNG icon", e)
-                Toasts.error(e.message ?: "PNG 图片读取失败")
-            } finally {
-                if (pngIconImportJob == coroutineContext[Job]) {
-                    pngIconImportJob = null
-                    isImportingPngIcon = false
-                }
-            }
-        }
-    }
-
-    fun saveChanges() {
-        pendingBooleans.forEach { (key, value) ->
-            TCQTSetting.setValue(key, value)
-            persistedBooleans[key] = value
-        }
-        pendingInts.forEach { (key, value) ->
-            TCQTSetting.setValue(key, value)
-            persistedInts[key] = value
-        }
-        pendingStrings.forEach { (key, value) ->
-            TCQTSetting.setValue(key, value)
-            persistedStrings[key] = value
-        }
-
-        if (pendingKeywordsToSave.isNotEmpty()) {
-            pendingKeywordsToSave.forEach { addSearchHistory(it) }
-            pendingKeywordsToSave.clear()
-        }
-
-        pendingBooleans.clear()
-        pendingInts.clear()
-        pendingStrings.clear()
+    override fun onCleared() {
+        pngImport.cancel()
+        super.onCleared()
     }
 
     fun clearAllSettings() {
@@ -441,42 +321,23 @@ class SettingViewModel : ViewModel() {
         AntiRecallConfig.migrateLegacyOptions()
         DexKitCache.clearCache()
 
-        pendingBooleans.clear()
-        pendingInts.clear()
-        pendingStrings.clear()
         topBarStates.clear()
         scrollStates.clear()
-        searchHistory.clear()
-        pendingKeywordsToSave.clear()
+        search.reset()
 
         reloadPersistedSettings()
     }
 
     fun reloadPersistedSettings() {
-        pngIconImportJob?.cancel()
-        pngIconImportJob = null
-        pickingPngIconKey = null
-        isImportingPngIcon = false
-        persistedBooleans.clear()
-        persistedInts.clear()
-        persistedStrings.clear()
-
-        definitions.forEach { (key, setting) ->
+        pngImport.cancel()
+        val values = definitions.mapValues { (key, setting) ->
             when (setting.type) {
-                TCQTSetting.SettingType.BOOLEAN -> {
-                    persistedBooleans[key] = TCQTSetting.getValue<Boolean>(key) ?: false
-                }
-
-                TCQTSetting.SettingType.INT,
-                TCQTSetting.SettingType.INT_MULTI -> {
-                    persistedInts[key] = TCQTSetting.getValue<Int>(key) ?: 0
-                }
-
-                TCQTSetting.SettingType.STRING -> {
-                    persistedStrings[key] = TCQTSetting.getValue<String>(key).orEmpty()
-                }
+                TCQTSetting.SettingType.BOOLEAN -> TCQTSetting.getValue<Boolean>(key) ?: false
+                TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> TCQTSetting.getValue<Int>(key) ?: 0
+                TCQTSetting.SettingType.STRING -> TCQTSetting.getValue<String>(key).orEmpty()
             }
         }
+        editSession.reload(values)
     }
 
     fun recalculateStats() {
@@ -577,27 +438,10 @@ class SettingViewModel : ViewModel() {
         if (isSearchActive && keyword.isBlank()) return emptyList()
 
         if (keyword.isNotBlank()) {
-            // Search mode: flat across all features
-            val ranked =
-                allFeatures
-                    .mapNotNull { feature ->
-                        val priority =
-                            when {
-                                feature.label.equals(keyword, ignoreCase = true) ||
-                                    feature.desc.equals(keyword, ignoreCase = true) -> 3
-                                feature.label.contains(keyword, ignoreCase = true) -> 2
-                                feature.desc.contains(keyword, ignoreCase = true) -> 1
-                                else -> 0
-                            }
-                        if (priority == 0) null else priority to feature
-                    }
-                    .sortedWith(
-                        compareByDescending<Pair<Int, SettingFeature>> { it.first }
-                            .thenBy { it.second.order }
-                    )
-                    .map { it.second }
-
-            return ranked.map { feature -> toFeatureItemUiState(feature) }
+            val ranked = FeatureSearch.rank(allFeatures.map {
+                FeatureSearch.Entry(it.key, it.label, it.desc, it.order)
+            }, keyword)
+            return ranked.mapNotNull(featureByKey::get).map(::toFeatureItemUiState)
         }
 
         // Normal mode: features whose categoryPath matches the current path,
@@ -661,12 +505,11 @@ class SettingViewModel : ViewModel() {
 
     // ───── Internal: value helpers ─────
 
-    private fun hasPendingFor(feature: SettingFeature): Boolean {
-        if (pendingBooleans.containsKey(feature.key)) return true
-        if (feature.optionGroups.any { pendingInts.containsKey(it.key) }) return true
-        if (feature.sliders.any { pendingInts.containsKey(it.key) }) return true
-        return feature.textAreas.any { pendingStrings.containsKey(it.key) }
-    }
+    private fun hasPendingFor(feature: SettingFeature): Boolean =
+        editSession.hasChange(feature.key) ||
+            feature.optionGroups.any { editSession.hasChange(it.key) } ||
+            feature.sliders.any { editSession.hasChange(it.key) } ||
+            feature.textAreas.any { editSession.hasChange(it.key) }
 
     private fun isFeatureUiEnabled(key: String): Boolean {
         return FeatureCatalog.isInitReady(key) && effectiveBoolean(key)
@@ -674,15 +517,15 @@ class SettingViewModel : ViewModel() {
 
     private fun effectiveBoolean(key: String): Boolean {
         if (featureByKey[key]?.uiType == ActionUiType.ENTRY) return false
-        return pendingBooleans[key] ?: persistedBooleans[key] ?: false
+        return editSession.boolean(key)
     }
 
     private fun effectiveInt(key: String, fallback: Int = 0): Int {
-        return pendingInts[key] ?: persistedInts[key] ?: fallback
+        return editSession.int(key, fallback)
     }
 
     private fun effectiveString(key: String): String {
-        return pendingStrings[key] ?: persistedStrings[key].orEmpty()
+        return editSession.string(key)
     }
 
     private fun currentOptionValue(group: FeatureOptionGroup): Int {

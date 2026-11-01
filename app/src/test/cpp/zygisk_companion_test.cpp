@@ -1,4 +1,7 @@
 #include "zygisk/zygisk_companion.h"
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -73,9 +76,13 @@ struct Result {
 };
 
 Result exchange(const CompanionPaths &paths, InjectionTarget target = InjectionTarget::QQ,
-                uid_t uid = 10348) {
+                uid_t uid = 10348, bool credentials = false) {
     int sockets[2];
     CHECK(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets) == 0);
+    if (credentials) {
+        const int enabled = 1;
+        CHECK(setsockopt(sockets[0], SOL_SOCKET, SO_PASSCRED, &enabled, sizeof(enabled)) == 0);
+    }
     bool served = false;
     std::thread server([&] {
         served = handle_companion_request(sockets[1], HOOKS, paths);
@@ -107,6 +114,12 @@ int fd_count() {
 }
 
 void test_config(Fixture &f) {
+    {
+        auto result = exchange(f.paths, InjectionTarget::QQ, 10348, true);
+        CHECK(result.ok && result.state.apk_fd >= 0);
+        check_payload(result.state.apk_fd);
+    }
+    pass("framework credential ancillary data alongside payload FD");
     {
         auto result = exchange(f.paths);
         CHECK(result.ok && result.state.apk_fd >= 0);
@@ -248,7 +261,7 @@ void test_bad_responses(Fixture &f) {
             if (kind == 5) {
                 std::array<char, 67> body{};
                 body.fill('x');  // Missing hash terminator and invalid hook flags.
-                CHECK(send(sockets[1], body.data(), body.size(), MSG_NOSIGNAL) == body.size());
+                CHECK(send(sockets[1], body.data(), body.size(), MSG_NOSIGNAL) == static_cast<ssize_t>(body.size()));
             }
             close(fd);
             close(sockets[1]);
@@ -330,6 +343,11 @@ void test_privilege_boundary(Fixture &f) {
 }
 
 int main(int argc, char **argv) {
+    // Android logging opens one process-wide socket; exclude its lazy startup
+    // from the descriptor leak checks for deliberately malformed replies.
+#if defined(__ANDROID__)
+    __android_log_print(ANDROID_LOG_INFO, "TCQT-Companion-Test", "begin");
+#endif
     Fixture fixture(argc > 1 ? argv[1] : "/data/local/tmp");
     test_config(fixture);
     test_files(fixture);

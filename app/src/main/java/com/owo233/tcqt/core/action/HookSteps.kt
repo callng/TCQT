@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.Process
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.core.env.HookEnv
+import com.owo233.tcqt.core.env.HostServicesProvider
 import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.HybridClassLoader
 import com.owo233.tcqt.core.env.PlatformTools
@@ -16,16 +17,9 @@ import com.owo233.tcqt.core.env.ResourcesUtils
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.env.resolveDeviceName
 import com.owo233.tcqt.core.log.Log
-import cooperation.qzone.QUA
-import de.robv.android.xposed.callbacks.XC_LoadPackage
 import java.io.File
 
 internal object HookSteps {
-
-    fun initHandleLoadPackage(loadPackageParam: XC_LoadPackage.LoadPackageParam) {
-        HookEnv.setProcessName(loadPackageParam.processName)
-        HookEnv.setHostAppPackageName(loadPackageParam.packageName)
-    }
 
     fun initHandleLoadPackage(processName: String, packageName: String) {
         HookEnv.setProcessName(processName)
@@ -133,7 +127,7 @@ internal object HookSteps {
 
     private fun getRealVersionCode(packageInfo: PackageInfo): Long {
         val quaVersion = runCatching {
-            QUA.getQUA3().split("_").getOrNull(4)?.toLongOrNull() ?: 0L
+            HostServicesProvider.requireServices().alternateVersionCode()
         }.getOrDefault(0L)
 
         val contextVersion = PackageInfoCompat.getLongVersionCode(packageInfo)

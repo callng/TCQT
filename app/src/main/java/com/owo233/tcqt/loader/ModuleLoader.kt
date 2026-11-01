@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.Process
 import com.owo233.tcqt.core.action.HookSteps
 import com.owo233.tcqt.core.action.StartupScheduler
+import com.owo233.tcqt.core.config.SettingsStore
 import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.dexkit.DexKitFinder
 import com.owo233.tcqt.core.env.HookEnv
@@ -26,14 +27,16 @@ import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.core.sync.SyncUtils
 import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
+import com.owo233.tcqt.core.env.HostServicesProvider
+import com.owo233.tcqt.host.QQHostServices
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.loader.modern.ModernHookEngine
+import com.owo233.tcqt.loader.validation.RuntimeValidation
 import com.owo233.tcqt.ui.component.DexKitScanDialogHost
 import com.owo233.tcqt.ui.parasitic.ActivityProxyManager
 import com.owo233.tcqt.ui.settings.SettingsEntryWarmup
 import com.tencent.common.app.BaseApplicationImpl
 import dalvik.system.BaseDexClassLoader
-import io.fastkv.FastKV
 import java.io.File
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
@@ -164,19 +167,12 @@ internal object ModuleLoader {
             .absolutePath
 
         // 将在后续的几个版本更新中移除迁移逻辑
-        val settingPath = if (File(oldPath).exists()) {
-            val kvOld = FastKV.Builder("$oldPath/global/setting", appName).build()
-            val kvNew = FastKV.Builder("$newPath/global/setting", appName).build()
-            kvNew.putBoolean("disable_hot_patch", kvOld.getBoolean("disable_hot_patch", false))
-            oldPath
-        } else newPath
+        val settingPath = if (File(oldPath).exists()) oldPath else newPath
 
-        if (!FastKV.Builder("$settingPath/global/setting", appName).build()
-                .getBoolean("disable_hot_patch", false)
-        ) return
+        if (SettingsStore(File("$settingPath/global/setting"), appName)["disable_hot_patch"] != true) return
 
         try {
-            val classLoader = param.thisObject.javaClass.classLoader!!
+            val classLoader = requireNotNull(param.thisObject).javaClass.classLoader!!
             val tryLoadMethod = classLoader
                 .loadClass(TINKER_LOADER_CLASS)
                 .getDeclaredMethod(
@@ -206,7 +202,9 @@ internal object ModuleLoader {
         HookSteps.injectClassLoader(reClassLoader)
 
         try {
-            BaseApplicationImpl::class.java.getDeclaredMethod("onCreate").hookBefore { param ->
+            val startupAfterCreate = com.owo233.tcqt.core.action.StartupAfterCreate<Application>()
+            val onCreate = BaseApplicationImpl::class.java.getDeclaredMethod("onCreate")
+            onCreate.hookBefore { param ->
                 if (isInit.compareAndSet(false, true)) {
                     installMainDispatcher()
                     val app = param.thisObject as Application
@@ -216,6 +214,7 @@ internal object ModuleLoader {
                     HookSteps.injectClassLoader(activeClassLoader)
                     installHostBridge()
                     HookSteps.initContext(app)
+                    RuntimeValidation.install(app)
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
                     val cacheValid = DexKitCache.initCache(HostCodeMode.identify(activeClassLoader))
@@ -228,11 +227,16 @@ internal object ModuleLoader {
 
                     // 只同步安装 CRITICAL，其余由 StartupScheduler 在 onCreate 返回后分批后台安装
                     val plan = HookSteps.initStartup(app, proc, missingKeys)
-                    StartupScheduler.schedule(
-                        app, proc, plan, needDexKitFind,
-                        dexKitClassLoader = activeClassLoader,
-                    )
+                    startupAfterCreate.prepare(app) {
+                        StartupScheduler.schedule(
+                            app, proc, plan, needDexKitFind,
+                            dexKitClassLoader = activeClassLoader,
+                        )
+                    }
                 }
+            }
+            onCreate.hookAfter { param ->
+                startupAfterCreate.complete(param.thisObject as Application, param.throwable)
             }
         } catch (th: Throwable) {
             Log.e("doRealStartup Failure", th)
@@ -261,6 +265,7 @@ internal object ModuleLoader {
      * `ActivityProxyManager` 就不会被初始化，寄生 Activity 直接失效。
      */
     private fun installHostBridge() {
+        HostServicesProvider.services = QQHostServices
         HostBridge.topActivityProvider = { QQInterfaces.topActivity }
         HostBridge.prepareSettings = SettingsEntryWarmup::schedule
         HostBridge.showDexKitScan = { state, onClosed ->
@@ -284,6 +289,7 @@ internal object ModuleLoader {
         HookSteps.injectClassLoader(state["hostClassLoader"] as ClassLoader)
         installHostBridge()
         HookSteps.initContext(state["hostApplication"] as Application)
+        RuntimeValidation.install(state["hostApplication"] as Application)
 
         System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 

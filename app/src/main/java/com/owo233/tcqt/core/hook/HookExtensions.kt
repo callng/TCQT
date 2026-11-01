@@ -20,6 +20,7 @@ fun Member.hookBefore(
         }.onFailure {
             actionKey?.let { key -> ActionErrorStore.report(key, "Hook Before 回调", it) }
             Log.e("HookBeforeError", it)
+            throw it
         }
     }
 }
@@ -35,6 +36,7 @@ fun Member.hookAfter(
         }.onFailure {
             actionKey?.let { key -> ActionErrorStore.report(key, "Hook After 回调", it) }
             Log.e("HookAfterError", it)
+            throw it
         }
     }
 }
@@ -50,7 +52,7 @@ fun Member.hookReplace(
         } catch (t: Throwable) {
             actionKey?.let { key -> ActionErrorStore.report(key, "Hook Replace 回调", t) }
             Log.e("HookReplaceError", t)
-            chain.proceed()
+            throw t
         }
     }
 }

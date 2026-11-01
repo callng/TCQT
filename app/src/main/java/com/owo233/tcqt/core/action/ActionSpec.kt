@@ -11,11 +11,7 @@ enum class ActionUiType {
     SWITCH, ENTRY
 }
 
-enum class ActionProcess {
-
-    MSF, MAIN, TOOL, OPENSDK, QZONE, QQFAV,
-    OTHER, ALL
-}
+typealias ActionProcess = com.owo233.tcqt.annotations.ActionProcess
 
 /**
  * 功能启动优先级，由 [StartupScheduler] 据此分批安装。
@@ -23,32 +19,7 @@ enum class ActionProcess {
  * 宿主 `BaseApplicationImpl.onCreate` 的 Before 回调只**同步**安装 [CRITICAL]，
  * 其余优先级都在 onCreate 返回后转后台线程安装。
  */
-enum class ActionPriority {
-
-    /**
-     * 必须在宿主 `Application.onCreate` 返回前同步安装。
-     *
-     * 仅限「目标方法在 onCreate 执行期间就会被调用、且第一次调用不能漏」的功能
-     * （如 [com.owo233.tcqt.features.advanced.FileRecvRedirect]）。
-     * 数量必须严格控制，否则白屏时间会随 CRITICAL 数量线性增长。
-     */
-    CRITICAL,
-
-    /**
-     * onCreate 返回后立刻安装（主线程 Handler post 后转入后台线程）。
-     * 目标方法在 Activity / 登录流程早期被调用，但不会在 onCreate 内被调用。
-     */
-    EARLY,
-
-    /**
-     * 默认值。MAIN 进程等首帧后、后台进程立刻，分批在后台线程安装。
-     * 目标方法在用户与界面交互之后才会被调用（聊天、设置、WebView 等）。
-     */
-    DEFERRED,
-
-    /** 最后一批安装，允许与其他初始化错峰。 */
-    BACKGROUND,
-}
+typealias ActionPriority = com.owo233.tcqt.annotations.ActionPriority
 
 /**
  * 注册表与设置界面的内部功能模型 —— **功能作者不要实现它**。
@@ -77,7 +48,7 @@ interface ActionSpec {
 
     val settings: List<Setting<*>> get() = emptyList()
 
-    val processes: Set<ActionProcess> get() = DEFAULT_PROCESSES
+    val processes: Set<ActionProcess> get() = ActionRegistry.metadataFor(javaClass)?.processes ?: DEFAULT_PROCESSES
 
     /**
      * 启动优先级，默认 [ActionPriority.DEFERRED]。
@@ -85,7 +56,7 @@ interface ActionSpec {
      * 仅当目标方法在宿主 [android.app.Application.onCreate] 执行期间就会被调用、
      * 且第一次调用不能漏时才提升为 [ActionPriority.CRITICAL]。
      */
-    val priority: ActionPriority get() = ActionPriority.DEFERRED
+    val priority: ActionPriority get() = ActionRegistry.metadataFor(javaClass)?.priority ?: ActionPriority.DEFERRED
 
     /**
      * 配置项的动态描述；返回 null 时回退到静态描述。

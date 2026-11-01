@@ -16,12 +16,11 @@ import com.tencent.qqnt.kernel.nativeinterface.SysEmojiGroup
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.BACKGROUND)
 object ShowHideEmoticon : Feature(
     key = "show_hide_emoticon",
     name = "显示隐藏表情",
     desc = "让隐藏或处于灰度中的表情强制显示到表情列表中。",
-    priority = ActionPriority.BACKGROUND,
 ), DexKitTask {
 
 

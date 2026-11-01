@@ -62,11 +62,11 @@ internal object RepeatMessageSwipe {
         intercept.hookBefore { param ->
             val event = param.args[0] as MotionEvent
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                sessions.remove(param.thisObject)?.reset()
+                sessions.remove(requireNotNull(param.thisObject))?.reset()
             }
         }
         intercept.hookAfter { param ->
-            val instance = param.thisObject
+            val instance = requireNotNull(param.thisObject)
             val event = param.args[0] as MotionEvent
             val session = sessions[instance]
             if (event.actionMasked == MotionEvent.ACTION_DOWN && param.result == false) {
@@ -96,7 +96,7 @@ internal object RepeatMessageSwipe {
             }
         }
         holder.getDeclaredMethod("onTouchEvent", MotionEvent::class.java).hookBefore { param ->
-            val session = sessions[param.thisObject] ?: return@hookBefore
+            val session = sessions[requireNotNull(param.thisObject)] ?: return@hookBefore
             if (!session.captured) return@hookBefore
             val event = param.args[0] as MotionEvent
             // 一旦接管就消费到 UP/CANCEL 防止宿主把松手当作点击或回复
@@ -108,7 +108,7 @@ internal object RepeatMessageSwipe {
                     session.cancelDrag()
                 event.actionMasked == MotionEvent.ACTION_UP -> {
                     session.move(event)
-                    val msg = currentMessage(param.thisObject)
+                    val msg = currentMessage(requireNotNull(param.thisObject))
                     val send = msg != null && session.matches(msg) && canRepeat(msg)
                     if (session.finish(send) && msg != null) repeat(msg)
                 }
@@ -120,7 +120,7 @@ internal object RepeatMessageSwipe {
             Modifier.isPublic(it.modifiers) && !Modifier.isStatic(it.modifiers) &&
                 it.returnType == Void.TYPE && it.parameterTypes.contentEquals(arrayOf(msgItem))
         }.forEach { method ->
-            method.hookBefore { param -> sessions.remove(param.thisObject)?.reset() }
+            method.hookBefore { param -> sessions.remove(requireNotNull(param.thisObject))?.reset() }
         }
     }
 

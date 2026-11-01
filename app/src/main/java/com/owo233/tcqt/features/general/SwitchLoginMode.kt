@@ -9,13 +9,12 @@ import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.hook.paramCount
 import com.tencent.common.config.pad.DeviceType
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MSF])
 object SwitchLoginMode : Feature(
     key = "switch_login_mode",
     name = "切换登录模式",
     desc = "在不改变UI的情况下以手机或平板模式登录账号，一个账号可以两处登录互不干扰。",
     uiOrder = 2,
-    processes = setOf(ActionProcess.MSF),
 ) {
 
     private val loginType by intOption(

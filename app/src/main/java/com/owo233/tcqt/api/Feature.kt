@@ -1,7 +1,6 @@
 package com.owo233.tcqt.api
 
 import android.app.Application
-import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.action.ActionSpec
 import com.owo233.tcqt.core.action.ActionUiType
@@ -10,27 +9,30 @@ import com.owo233.tcqt.core.config.Setting
 /**
  * 功能的**唯一入口**。
  *
- * 一个功能 = 一个文件、一行框架 import（`import com.owo233.tcqt.api.*`）。
  * 元数据、配置项声明与 hook 安装都在同一个类里，且配置 key 由
  * [Option.key] 从构造参数派生，不需要任何字符串重复。
  *
  * ```kotlin
+ * import com.owo233.tcqt.annotations.RegisterAction
+ * import com.owo233.tcqt.api.Feature
+ *
  * @RegisterAction
  * object FakePicSize : Feature(
  *     key = "fake_pic_size",
  *     name = "篡改图片显示大小",
  *     desc = "将发送的消息图片以指定的比例显示。",
- *     uiTab = "界面",
  * ) {
  *     private val type by intOption("type", "图片比例", defaultValue = 1,
  *         options = listOf("默认", "最小", "略小", "略大", "最大", "自定义"))
  *
  *     override fun install() {
- *         val mode = type.value
+ *         val mode = type // 委托直接返回 Int，不是 Option 对象
  *         // …hook 安装…
  *     }
  * }
  * ```
+ * 分类取自 features/<分类>/ 包路径，进程和优先级取自 @RegisterAction。
+ * 可编译的完整示例见仓库 examples/SampleFeature.kt；只加入 Debug 编译且默认不注册。
  *
  * [ActionSpec] 是 `core` / `ui` 够得着的内部模型，本类实现它；功能作者只继承本类，
  * `features/` 下直接实现 `ActionSpec` 会被 `SingleAuthoringContractTest` 检出。
@@ -42,8 +44,6 @@ import com.owo233.tcqt.core.config.Setting
  * @param name 设置界面显示名。
  * @param desc 设置界面说明。
  * @param uiOrder 分类内排序，越小越靠前。
- * @param processes 要执行该功能的宿主进程。
- * @param priority 启动优先级。
  * @param defaultEnabled 新装用户的默认开关状态。
  * @param uiType 设置界面呈现类型。
  * @param requires 声明式可用性条件。
@@ -53,8 +53,6 @@ abstract class Feature(
     final override val name: String,
     final override val desc: String = "",
     final override val uiOrder: Int = 1000,
-    final override val processes: Set<ActionProcess> = ActionSpec.DEFAULT_PROCESSES,
-    final override val priority: ActionPriority = ActionPriority.DEFERRED,
     defaultEnabled: Boolean = false,
     final override val uiType: ActionUiType = ActionUiType.SWITCH,
     val requires: Requires = Requires.None,

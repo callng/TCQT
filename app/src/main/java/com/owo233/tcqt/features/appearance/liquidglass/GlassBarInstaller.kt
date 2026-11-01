@@ -23,6 +23,12 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import androidx.core.view.isVisible
 
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.hugContentWidth
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.contentBarHeight
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.dropNavigationReserve
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.isIconOnlyRow
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.alignIconOnlyRow
+
 /**
  * 玻璃栏的安装与生命周期协调。
  *
@@ -33,6 +39,7 @@ import androidx.core.view.isVisible
  * 安装触发有两条通路：底栏切换方法的一次调用（首次选中初始 Tab 时底栏必然已存在），
  * 以及主界面恢复后的限时轮询兜底（冷启动时底栏可能数秒后才出现）。
  */
+
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal object GlassBarInstaller {
 
@@ -43,32 +50,17 @@ internal object GlassBarInstaller {
     /** 原生底栏的隐藏窗口期上限，超时后交还，避免闪烁变永久不可见。 */
     private const val REVEAL_TIMEOUT_MS = 8000L
 
-    /** 内容定宽后每个 Tab 两侧的呼吸空间（dp）。 */
-    private const val TAB_BREATHING_DP = 32f
 
     /** KernelSU FloatingBottomBar geometry baseline. */
     private const val BAR_HEIGHT_DP = 64f
-    private const val TAB_MIN_WIDTH_DP = 76f
 
-    /** 浮动药丸距屏幕左右边缘的最小留白（dp）。 */
-    private const val SCREEN_MARGIN_DP = 28f
 
-    /** 纯图标模式（标签被外置开关隐藏）下的内容基准宽度（dp）。 */
-    private const val ICON_ONLY_BASIS_DP = 24f
 
-    /** 列表末行越过药丸后的额外余量（dp）。 */
-    private const val LAST_ROW_GAP_DP = 8f
 
-    /** 逐帧维持的滚动容器数量上限，避免长时间运行后无界增长。 */
-    private const val MAX_TRACKED_SCROLLERS = 16
 
-    /** 页面拉伸的重跑间隔（帧）；宿主静默重施页面尺寸时的修复周期。 */
-    private const val PAGE_EXTENT_TICK_FRAMES = 30
 
     /** 绑定行不可用时的容忍帧数；超过即认为旧绑定已死。 */
     private const val TAB_ROW_EMPTY_FRAME_LIMIT = 120
-    private val PAGE_EXTEND_RETRY_TAG = R.id.tcqt_tag_page_extend_retry
-    private const val PAGE_EXTEND_RETRY_DELAY_MS = 100L
 
     /** 逐帧复用坐标缓冲；全部调用位于 UI 线程。 */
     private val tmpLoc = IntArray(2)
@@ -76,9 +68,6 @@ internal object GlassBarInstaller {
     /** 逐帧复用的宿主坐标系缓冲；全部调用位于 UI 线程。 */
     private val tmpPos = IntArray(2)
 
-    /** 可逆几何修改的视图 tag 键。 */
-    private val EXTEND_TAG = R.id.tcqt_tag_extend
-    private val ICON_TRANSLATION_TAG = R.id.tcqt_tag_icon_translation
 
     // ---- 安装状态：以弱引用持有宿主视图，Activity 重建后自动失效并重装 ----
 
@@ -116,15 +105,17 @@ internal object GlassBarInstaller {
      * 视图状态，而一个悄悄变回 `clipToPadding = true` 的滚动容器会把留白带画成一条
      * 不透明色块——就是滚动到一半时糊在内容上的那块白斑。
      */
-    private val paddedScrollers = ArrayList<WeakReference<ViewGroup>>()
-    private var scrollerPad = 0
 
     /** 页面拉伸的慢速重跑节拍；见 [maintainPageExtent]。 */
-    private var extentTick = 0
 
     /** 最近一次非零的导航栏内边距，跨 Activity 重建保持。 */
     private var navigationInset = 0
 
+    private val pageLayout = GlassPageLayoutController({ hostRef.get() }, { pagerRef.get() }, { barHeight })
+    private val listeners = ViewListenerScope()
+    private var tabSnapshot: TabViewSnapshot? = null
+    private val hiddenChrome = java.util.WeakHashMap<View, Int>()
+    private val stockAlpha = java.util.WeakHashMap<View, Float>()
     private var keepFailedReported = false
 
     /** 玻璃当前折射的页面容器。 */
@@ -157,7 +148,7 @@ internal object GlassBarInstaller {
                     installed || expired -> {
                         val current = bar
                         if (current != null && !installed) {
-                            current.alpha = 1f
+                            current.alpha = stockAlpha.remove(current) ?: 1f
                             (current.parent as? ViewGroup)?.let { showOwnBlurLayers(it) }
                             Log.w("玻璃药丸迟迟未接管，原生底栏已交还")
                         }
@@ -165,7 +156,7 @@ internal object GlassBarInstaller {
                     }
 
                     else -> if (bar?.alpha != 0f) {
-                        bar?.alpha = 0f
+                        bar?.let { stockAlpha.putIfAbsent(it, it.alpha); it.alpha = 0f }
                         (bar?.parent as? ViewGroup)?.let { hideOwnBlurLayers(it) }
                     }
                 }
@@ -176,7 +167,7 @@ internal object GlassBarInstaller {
 
     private fun tryInstall(activity: Activity, decor: View, attempt: Int) {
         runCatching {
-            if (activity.isFinishing || activity.isDestroyed) return
+            if (activity.isFinishing || activity.isDestroyed || FloatingBottomBarConfigStore.read().implementation != BottomBarImplementation.CLASSIC) return
 
             // 仅当药丸存活于「当前窗口」时才跳过：进程可能比被划走的界面活得久，
             // 残留引用若被视作已安装，重启的主界面将停留在原生底栏上。
@@ -198,8 +189,18 @@ internal object GlassBarInstaller {
     }
 
     /** 丢弃上一个界面的残留引用，保证重建后重新安装。 */
+    fun restore() = resetState()
+
     private fun resetState() {
+        val oldHost = hostRef.get()
         hostRef = WeakReference(null)
+        listeners.clear()
+        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
+        hiddenChrome.clear()
+        pageLayout.reset()
+        tabSnapshot?.restore()
+        tabSnapshot = null
+        (oldHost?.parent as? ViewGroup)?.removeView(oldHost)
         tabViewRef = WeakReference(null)
         tabRowRef = WeakReference(null)
         pagerRef = WeakReference(null)
@@ -216,9 +217,6 @@ internal object GlassBarInstaller {
         dropletBaseY = 0f
         dropletGeometryKey = 0
         dropletLogged = false
-        paddedScrollers.clear()
-        scrollerPad = 0
-        extentTick = 0
         Log.i("检测到上个界面的残留状态，已重置并重新安装")
     }
 
@@ -228,7 +226,7 @@ internal object GlassBarInstaller {
         val parent = tabView.parent as? ViewGroup ?: return
         if (parent is GlassBarHostLayout) return
 
-        val backdrop = findBackdrop(parent, tabView) ?: run {
+        val backdrop = TabViewOperations.findBackdrop(parent, tabView) ?: run {
             Log.w("未找到可折射的背景兄弟容器，放弃安装")
             return
         }
@@ -254,7 +252,7 @@ internal object GlassBarInstaller {
         host.setupShadow(host.isDarkTheme)
         val shadowPad = host.shadowPad
 
-        val geometry = TabGeometrySnapshot(tabView, tabRow)
+        val geometry = TabViewSnapshot(tabView, stockAlpha.remove(tabView) ?: tabView.alpha)
         val hostParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
         ).apply {
@@ -274,6 +272,7 @@ internal object GlassBarInstaller {
             parent.addView(host, index, hostParams)
             host.addView(tabView, tabParams)
         }.onFailure {
+            geometry.restore()
             restoreFailedReparent(parent, tabView, host, index, originalParams)
             Log.e("底栏重新父级化失败", it)
             return
@@ -286,7 +285,7 @@ internal object GlassBarInstaller {
                 host.layoutParams = hostParams
             }
         }.onFailure {
-            runCatching { geometry.restore(density) }
+            runCatching { geometry.restore() }
             restoreFailedReparent(parent, tabView, host, index, originalParams)
             Log.e("浮动底栏尺寸调整失败", it)
             return
@@ -295,7 +294,9 @@ internal object GlassBarInstaller {
         // 玻璃层在本轮内即加入其下，两者同时出现，可以安全恢复可见。
         tabView.alpha = 1f
 
+        tabSnapshot = geometry
         hostRef = WeakReference(host)
+        listeners.onDetached(host) { if (hostRef.get() === host) restore() }
         tabViewRef = WeakReference(tabView)
         tabRowRef = WeakReference(tabRow)
         structureSignature = tabStructureSignature(tabRow)
@@ -310,7 +311,7 @@ internal object GlassBarInstaller {
             hideOwnBlurLayers(parent)
             hideBarHairline(parent, tabView)
             stripSolidBackgrounds(tabView)
-            disableTabWidgetStrips(tabView)
+            TabViewOperations.disableTabWidgetStrips(tabView)
         }.onFailure { Log.e("清理原生底栏装饰失败", it) }
 
         // 宿主自身已按边到边布局，导航栏内边距无条件计入锚点。
@@ -319,12 +320,12 @@ internal object GlassBarInstaller {
         host.layoutParams = hostParams
         host.post { syncHostBottomInset(host, navigationInset) }
 
-        unclipAncestors(parent)
+        TabViewOperations.unclipAncestors(parent)
         attachRenderer(host, backdrop, density)
         installSelectionWatcher(host)
 
         // 页面重建时重新拉伸内容，令列表持续延伸到药丸之下。
-        backdrop.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> extendPagesToBottom(backdrop) }
+        pageLayout.observeBackdrop(backdrop)
 
         host.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             var done = false
@@ -335,9 +336,9 @@ internal object GlassBarInstaller {
                 host.viewTreeObserver.removeOnGlobalLayoutListener(this)
                 host.attachThemeProbe()
                 syncDropletSize(QQTabLocator.currentIndex(tabView))
-                extendPagesToBottom(backdrop)
+                pageLayout.extendPagesToBottom(backdrop)
                 // 窗口尺寸变化略滞后于布局，补一次延迟拉伸。
-                host.postDelayed({ extendPagesToBottom(backdrop) }, 500L)
+                host.postDelayed({ pageLayout.extendPagesToBottom(backdrop) }, 500L)
                 // Log.i("液态玻璃已安装: hostW=${host.width} hostH=${host.height} barH=${tabView.height}")
             }
         })
@@ -411,35 +412,8 @@ internal object GlassBarInstaller {
             }
 
             // 背景逐帧重采样，玻璃随之呈现页面内容。
-            host.viewTreeObserver.addOnPreDrawListener { glass.invalidate(); true }
+            listeners.preDraw(host) { glass.invalidate(); true }
         }.onFailure { Log.e("渲染层挂载失败", it) }
-    }
-
-    /** 迁移前记录可逆的几何状态，失败时恢复。 */
-    private class TabGeometrySnapshot(tabView: View, private val row: ViewGroup?) {
-        private val target = tabView
-        private val tabPadding = intArrayOf(
-            tabView.paddingLeft, tabView.paddingTop, tabView.paddingRight, tabView.paddingBottom,
-        )
-        private val rowPadding = row?.let {
-            intArrayOf(it.paddingLeft, it.paddingTop, it.paddingRight, it.paddingBottom)
-        }
-        private val tabs: List<View> = row?.children?.toList() ?: emptyList()
-        private val widths = tabs.map { it.layoutParams?.width ?: 0 }
-        private val weights = tabs.map { (it.layoutParams as? LinearLayout.LayoutParams)?.weight ?: 0f }
-
-        fun restore(density: Float) {
-            target.setPadding(tabPadding[0], tabPadding[1], tabPadding[2], tabPadding[3])
-            val currentRow = row ?: return
-            alignIconOnlyRow(currentRow, false, density)
-            rowPadding?.let { currentRow.setPadding(it[0], it[1], it[2], it[3]) }
-            tabs.forEachIndexed { i, tab ->
-                val lp = tab.layoutParams ?: return@forEachIndexed
-                lp.width = widths[i]
-                (lp as? LinearLayout.LayoutParams)?.weight = weights[i]
-                tab.layoutParams = lp
-            }
-        }
     }
 
     // ---- 选中观察 ----
@@ -451,8 +425,12 @@ internal object GlassBarInstaller {
      * 唯一可靠的信号是子项的 selected 状态，只能轮询读取。
      */
     private fun installSelectionWatcher(host: GlassBarHostLayout) {
-        host.viewTreeObserver.addOnPreDrawListener {
-            if (host !== hostRef.get() || !host.isAttachedToWindow) return@addOnPreDrawListener true
+        listeners.preDraw(host) {
+            if (host !== hostRef.get() || !host.isAttachedToWindow) return@preDraw true
+            if (FloatingBottomBarConfigStore.read().implementation != BottomBarImplementation.CLASSIC) {
+                restore()
+                return@preDraw true
+            }
             runCatching { holdOwnBarChromeHidden(host) }.onFailure {
                 if (!keepFailedReported) {
                     keepFailedReported = true
@@ -460,13 +438,13 @@ internal object GlassBarInstaller {
                 }
             }
             runCatching {
-                if (restoreBarContentHeight(host)) return@addOnPreDrawListener true
+                if (restoreBarContentHeight(host)) return@preDraw true
                 followBarOffset(host)
-                if (scheduleStructureRefreshIfNeeded(host)) return@addOnPreDrawListener true
+                if (scheduleStructureRefreshIfNeeded(host)) return@preDraw true
                 // 逐帧保持诚实：宿主会在自己的布局回合里撤销一部分页面手术——滚动容器的
                 // 裁剪内边距、页面的延伸高度——且都不以布局变化的形式通知出来。
-                maintainScrollerPadding()
-                maintainPageExtent()
+                pageLayout.maintainScrollerPadding()
+                pageLayout.maintainPageExtent()
                 maintainDropletGeometry()
                 val tabRow = tabRowRef.get()
                 val selected = QQTabLocator.selectedIndex(tabRow)
@@ -475,7 +453,7 @@ internal object GlassBarInstaller {
                     lastIndex = selected
                     syncDropletSize(selected)
                     dragDriver?.animateToIndex(selected, first)
-                    pagerRef.get()?.let { pager -> pager.post { extendPagesToBottom(pager) } }
+                    pagerRef.get()?.let { pager -> pager.post { pageLayout.extendPagesToBottom(pager) } }
                 }
             }
             true
@@ -604,47 +582,6 @@ internal object GlassBarInstaller {
      * 宿主在自己的布局回合里会把两者恢复回原样，且不会有任何我们监听到的布局变化。
      * 常态下只花几次属性比较。
      */
-    private fun maintainScrollerPadding() {
-        val pad = scrollerPad
-        if (pad <= 0) return
-        for (i in paddedScrollers.indices) {
-            val scroller = paddedScrollers[i].get() ?: continue
-            if (scroller.clipToPadding) scroller.clipToPadding = false
-            if (scroller.paddingBottom != pad) {
-                scroller.setPadding(
-                    scroller.paddingLeft, scroller.paddingTop,
-                    scroller.paddingRight, pad,
-                )
-            }
-        }
-    }
-
-    /** 记录需要逐帧维持留白的滚动容器；重复登记被忽略。 */
-    private fun trackPaddedScroller(scroller: ViewGroup) {
-        for (i in paddedScrollers.indices) {
-            if (paddedScrollers[i].get() === scroller) return
-        }
-        if (paddedScrollers.size >= MAX_TRACKED_SCROLLERS) paddedScrollers.removeAt(0)
-        paddedScrollers.add(WeakReference(scroller))
-    }
-
-    /**
-     * 按慢速节拍重跑页面拉伸。
-     *
-     * 宿主每次重新布局都会悄悄重施自己的页面尺寸，且不会在任何我们监听的视图上产生布局
-     * 变化。此时页面重新缩回原高，底栏让出的那条带子便露出窗口自身的底色：药丸下方那条
-     * 白边，以及列表滑到底部时那块灰白斑块。
-     *
-     * 本身极廉价：[extendPagesToBottom] 内部每一步都会在自己的缺口已闭合时提前返回，
-     * 所以常态下这里只花一次比较；真被改动了也能在半秒内修好，而不必等下一次切页。
-     */
-    private fun maintainPageExtent() {
-        val pager = pagerRef.get() ?: return
-        if (!pager.isAttachedToWindow) return
-        if (++extentTick % PAGE_EXTENT_TICK_FRAMES != 0) return
-        pager.post { if (pagerRef.get() === pager) extendPagesToBottom(pager) }
-    }
-
     // ---- 逐帧维持 ----
 
     /**
@@ -800,7 +737,7 @@ internal object GlassBarInstaller {
             // 新建的 Tab 会带回宿主的底色、等分宽度与停靠高度，
             // 复用初始安装的同套处理。
             stripSolidBackgrounds(tabView)
-            disableTabWidgetStrips(tabView)
+            TabViewOperations.disableTabWidgetStrips(tabView)
             dropNavigationReserve(tabView)
             val tabLp = tabView.layoutParams
             if (tabLp != null && barHeight > 0 && tabLp.height != barHeight) {
@@ -834,426 +771,11 @@ internal object GlassBarInstaller {
         }
     }
 
-    // ---- 尺寸与几何 ----
-
-    /**
-     * 把宿主的等分 Tab 列替换为按内容定宽的列。
-     *
-     * 无界的 UNSPECIFIED 测量可能返回大于已布局槽位的无意义值（MATCH_PARENT 子项在
-     * 无界规格下行为未定义），此时弃用该值，改以叶子视图的实际宽度为准；两者取宽者。
-     */
-    private fun hugContentWidth(tabRow: ViewGroup?, density: Float): Int? {
-        if (tabRow == null || tabRow.isEmpty()) return null
-        val iconOnly = isIconOnlyRow(tabRow)
-        alignIconOnlyRow(tabRow, iconOnly, density)
-
-        var count = 0
-        var measured = 0
-        var leaf = 0
-        var slot = 0
-        for (tab in tabRow.children) {
-            if (tab.isGone) continue
-            count++
-            tab.measure(unspecifiedSpec, unspecifiedSpec)
-            measured = max(measured, tab.measuredWidth)
-            leaf = max(leaf, leafContentWidth(tab))
-            slot = max(slot, tab.width)
-        }
-        if (count == 0) return null
-        if (slot in 1..<measured) measured = 0 // 无界测量失效，弃用
-
-        // 纯图标模式下 MATCH_PARENT 的图标是唯一真实内容，其视图宽度
-        // 是旧的整屏槽位而非图标本身；采用稳定基准值，避免药丸随未读数伸缩。
-        val widest = if (iconOnly) {
-            (density * ICON_ONLY_BASIS_DP).roundToInt()
-        } else {
-            max(measured, leaf)
-        }
-        if (widest <= 0) return null
-
-        val horizontalPad = (density * 4f).roundToInt()
-        var tabWidth = max(
-            (density * TAB_MIN_WIDTH_DP).roundToInt(),
-            widest + (density * TAB_BREATHING_DP).roundToInt(),
-        )
-        val screen = tabRow.resources.displayMetrics.widthPixels
-        val maxTotal = screen - (density * SCREEN_MARGIN_DP).roundToInt() * 2
-        if (tabWidth * count + horizontalPad * 2 > maxTotal) {
-            tabWidth = max(1, (maxTotal - horizontalPad * 2) / count)
-        }
-
-        for (tab in tabRow.children) {
-            if (tab.isGone) continue
-            val lp = tab.layoutParams ?: continue
-            lp.width = tabWidth
-            (lp as? LinearLayout.LayoutParams)?.weight = 0f
-            tab.layoutParams = lp
-        }
-        // 仅水平内边距：纵向内边距会把 Tab 顶出药丸底部。
-        tabRow.setPadding(horizontalPad, 0, horizontalPad, 0)
-        return tabWidth * count + horizontalPad * 2
-    }
-
-    private val unspecifiedSpec: Int
-        get() = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-
-    /**
-     * Tab 列内最宽可见叶子的宽度。
-     * MATCH_PARENT 的叶子只与所在列同宽，说明不了内容宽度，直接不计入。
-     */
-    private fun leafContentWidth(view: View): Int {
-        if (view.visibility != View.VISIBLE) return 0
-        if (view is ViewGroup) {
-            var widest = 0
-            for (child in view.children) widest = max(widest, leafContentWidth(child))
-            return widest
-        }
-        if (view.layoutParams?.width == ViewGroup.LayoutParams.MATCH_PARENT) return 0
-        return view.width
-    }
-
-    /**
-     * 内容对称的底栏高度。
-     * 边到边布局下底栏自身高度不可信（导航预留可能以不同途径混入），以图标到列顶的
-     * 间距为基准上下对称推算，且只缩小不放大。
-     */
-    private fun contentBarHeight(tabRow: ViewGroup?, fallback: Int): Int {
-        if (tabRow == null || fallback <= 0) return fallback
-        var top = Int.MAX_VALUE
-        var bottom = 0
-        for (tab in tabRow.children) {
-            if (tab.visibility != View.VISIBLE) continue
-            val bounds = intArrayOf(Int.MAX_VALUE, 0)
-            collectLeafBounds(tab, 0, bounds)
-            if (bounds[0] < bounds[1]) {
-                val base = tabRow.top + tab.top
-                top = min(top, base + bounds[0])
-                bottom = max(bottom, base + bounds[1])
-            }
-        }
-        if (top == Int.MAX_VALUE || bottom <= top) return fallback
-        val symmetric = bottom + top
-        return if (symmetric > 0 && symmetric < fallback) symmetric else fallback
-    }
-
-    /** Tab 列内可见叶子（按累积偏移）的纵向范围。 */
-    private fun collectLeafBounds(view: View, offset: Int, out: IntArray) {
-        if (view.visibility != View.VISIBLE) return
-        if (view is ViewGroup) {
-            for (child in view.children) collectLeafBounds(child, offset + child.top, out)
-            return
-        }
-        if (view.width <= 0 || view.height <= 0) return
-        out[0] = min(out[0], offset)
-        out[1] = max(out[1], offset + view.height)
-    }
-
-    /** 丢弃停靠底栏为避开手势区预留的底部内边距，返回被丢弃的量。 */
-    private fun dropNavigationReserve(tabView: View): Int {
-        val reserve = tabView.paddingBottom
-        if (reserve <= 0) return 0
-        tabView.setPadding(tabView.paddingLeft, tabView.paddingTop, tabView.paddingRight, 0)
-        return reserve
-    }
-
-    // ---- 纯图标布局 ----
-
-    /** 查找 Tab 的真实标题文字，排除未读角标。 */
-    private fun findTabTitle(view: View): TextView? {
-        if (view is TextView) {
-            val name = view.javaClass.name
-            val nonEmpty = !view.text?.toString()?.trim().isNullOrEmpty()
-            val isBadge = name.contains("Badge") || name.contains("RedTouch")
-            val tagged = view.tag is CharSequence
-            if (nonEmpty && !isBadge && (tagged || name.contains("BlendTextView") || view.background == null)) {
-                return view
-            }
-        }
-        if (view is ViewGroup) {
-            for (child in view.children) findTabTitle(child)?.let { return it }
-        }
-        return null
-    }
-
-    /** 标题是否仍占据实际布局槽位（被外置开关置零尺寸视为已隐藏）。 */
-    private fun hasUsableTabTitle(tab: View): Boolean {
-        val title = findTabTitle(tab) ?: return false
-        if (title.visibility != View.VISIBLE) return false
-        val lp = title.layoutParams ?: return true
-        return lp.width != 0 && lp.height != 0
-    }
-
-    /** 图标俱在而所有 Tab 均无可用标题时，视为纯图标布局。 */
-    private fun isIconOnlyRow(tabRow: ViewGroup?): Boolean {
-        if (tabRow == null) return false
-        var icons = 0
-        var titles = 0
-        for (tab in tabRow.children) {
-            if (tab.isGone || findTabIcon(tab) == null) continue
-            icons++
-            if (hasUsableTabTitle(tab)) titles++
-        }
-        return icons > 0 && titles == 0
-    }
-
-    private fun findTabIcon(view: View): View? {
-        if (QQTabLocator.isTabIcon(view)) return view
-        if (view is ViewGroup) {
-            for (child in view.children) findTabIcon(child)?.let { return it }
-        }
-        return null
-    }
-
-    /** 记录/恢复视图的原始纵偏移，实现可逆的居中补偿。 */
-    private fun setIconOnlyTranslation(view: View, iconOnly: Boolean, offset: Float) {
-        val saved = view.getTag(ICON_TRANSLATION_TAG)
-        if (iconOnly) {
-            val base =
-                saved as? Float ?: view.translationY.also { view.setTag(ICON_TRANSLATION_TAG, it) }
-            val desired = base + offset
-            if (abs(view.translationY - desired) > 0.5f) view.translationY = desired
-        } else if (saved is Float) {
-            view.translationY = saved
-            view.setTag(ICON_TRANSLATION_TAG, null)
-        }
-    }
-
-    /**
-     * 标题被隐藏后，把图标与角标一并下移到腾出的标题槽位。
-     *
-     * 仅移动图标与角标本体：若整块容器也随之下移，偏移会被应用两次，
-     * 造成各 Tab 高低不齐。
-     */
-    private fun alignIconOnlyContent(view: View, iconOnly: Boolean, offset: Float) {
-        val name = view.javaClass.name
-        if (QQTabLocator.isTabIcon(view) || name.contains("Badge")) {
-            setIconOnlyTranslation(view, iconOnly, offset)
-        }
-        if (view is ViewGroup) {
-            for (child in view.children) alignIconOnlyContent(child, iconOnly, offset)
-        }
-    }
-
-    private fun alignIconOnlyRow(tabRow: ViewGroup, iconOnly: Boolean, density: Float) {
-        // 29dp 图标在 5dp 顶边距的 54dp Tab 内，图标中心到 Tab 中心的
-        // 精确纵向偏移为 7.5dp。
-        val offset = density * 7.5f
-        for (tab in tabRow.children) {
-            if (tab.visibility != View.GONE) alignIconOnlyContent(tab, iconOnly, offset)
-        }
-    }
-
-    // ---- 页面延伸 ----
-
-    /** 把每个页面拉伸至屏幕底部并给滚动容器补充底部留白，使列表末行能滚过药丸下方。 */
-    private fun extendPagesToBottom(pager: ViewGroup?) {
-        if (pager == null) return
-        if (isPagerMoving(pager)) {
-            if (pager.getTag(PAGE_EXTEND_RETRY_TAG) != true) {
-                pager.setTag(PAGE_EXTEND_RETRY_TAG, true)
-                pager.postDelayed({
-                    pager.setTag(PAGE_EXTEND_RETRY_TAG, false)
-                    extendPagesToBottom(pager)
-                }, PAGE_EXTEND_RETRY_DELAY_MS)
-            }
-            return
-        }
-        pager.setTag(PAGE_EXTEND_RETRY_TAG, false)
-        val pagerParent = pager.parent as? ViewGroup
-        if (pagerParent != null) stretchToBottom(pager, pagerParent.height)
-        val target = pager.height
-        for (page in pager.children) {
-            if (page is ViewGroup) {
-                stretchToBottom(page, target)
-                extendOnePage(page, target)
-            }
-        }
-    }
-
-    /** 页面滚动期间不改子页尺寸，避免与 ViewPager2 的 attach/measure 竞态。 */
-    private fun isPagerMoving(pager: ViewGroup): Boolean = runCatching {
-        val state = pager.javaClass.methods.firstOrNull {
-            it.name == "getScrollState" && it.parameterTypes.isEmpty()
-        }?.invoke(pager) as? Int ?: return@runCatching false
-        state != 0
-    }.getOrDefault(false)
-
-    private fun extendOnePage(page: ViewGroup, targetHeight: Int) {
-        val pageHeight = max(page.height, targetHeight)
-        if (pageHeight <= 0) return
-        // 以页面自身 padding 形式预留的底栏高度会封顶内容，
-        // 丢弃并交给滚动容器的留白接管。
-        if (page.paddingBottom > 0) {
-            page.clipToPadding = false
-            page.setPadding(page.paddingLeft, page.paddingTop, page.paddingRight, 0)
-        }
-        for (child in page.children) {
-            if (child.visibility != View.VISIBLE || child.height < pageHeight / 2) continue
-            stretchToBottom(child, pageHeight)
-            keepStretchedToBottom(child)
-        }
-        padScrollersBottom(page, bottomReserve(page), 0)
-    }
-
-    /** 浮动药丸在屏幕底部占据的纵向空间（含末行余量）。 */
-    private fun bottomReserve(anchor: View): Int {
-        val host = hostRef.get() ?: return 0
-        if (host.height <= 0) return 0
-        host.getLocationOnScreen(tmpLoc)
-        val pillTop = tmpLoc[1] - host.translationY + host.paddingTop
-        val root = host.rootView ?: return 0
-        if (root.height <= 0) return 0
-        root.getLocationOnScreen(tmpLoc)
-        val density = anchor.resources.displayMetrics.density
-        val reserve = tmpLoc[1] + root.height - pillTop + LAST_ROW_GAP_DP * density
-        return if (reserve > 0f) reserve.roundToInt() else 0
-    }
-
-    private fun stretchToBottom(view: View, pageHeight: Int) {
-        if (pageHeight <= 0) return
-        if (pageHeight - view.bottom <= 8) return // 已触及底部
-        val lp = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return
-        var changed = false
-        if (lp.bottomMargin != 0) {
-            lp.bottomMargin = 0
-            changed = true
-        }
-        if (lp.height >= 0) {
-            lp.height = ViewGroup.LayoutParams.MATCH_PARENT
-            changed = true
-        }
-        if (changed) view.layoutParams = lp
-    }
-
-    /** 页面恢复停靠尺寸时按布局变化重新拉伸。 */
-    private fun keepStretchedToBottom(view: View) {
-        if (view.getTag(EXTEND_TAG) == true) return
-        view.setTag(EXTEND_TAG, true)
-        view.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            val parent = v.parent as? ViewGroup ?: return@addOnLayoutChangeListener
-            dropParentBottomReserve(parent, v)
-            val grand = parent.parent as? ViewGroup
-            if (grand != null) stretchToBottom(parent, grand.height)
-            stretchToBottom(v, max(parent.height, grand?.height ?: 0))
-        }
-    }
-
-    /**
-     * 丢弃以滚动容器父级 padding 形式存在的底栏预留。
-     * 动态页的整高容器带大额底部 padding，MATCH_PARENT 的信息流会停在页内高处；
-     * 信息流自身另有滚动留白，该外层预留须与页面级预留一同丢弃。
-     */
-    private fun dropParentBottomReserve(parent: ViewGroup, child: View) {
-        val gap = parent.height - child.bottom
-        val reserve = parent.paddingBottom
-        val pager = pagerRef.get()
-        val pageHeight = pager?.height ?: parent.height
-        if (child.top > 8 || gap <= 8 || reserve <= 0 ||
-            abs(parent.height - pageHeight) > 8 ||
-            (barHeight > 0 && abs(gap - barHeight) > 8) ||
-            abs(reserve - gap) > 8
-        ) return
-        parent.clipToPadding = false
-        parent.setPadding(
-            parent.paddingLeft, parent.paddingTop, parent.paddingRight,
-            max(0, reserve - gap),
-        )
-    }
-
-    /** 为子树内所有滚动容器补充底部留白并关闭 padding 裁剪，使内容行透过留白带（药丸后方与下方）持续渲染。 */
-    private fun padScrollersBottom(root: ViewGroup, pad: Int, depth: Int) {
-        if (depth > 12) return
-        for (child in root.children) {
-            when {
-                // 页容器的 RecyclerView 只承载横向翻页，继续下钻，
-                // 为页面内真正的滚动容器补充留白。
-                isViewPagerRecycler(child) ->
-                    padScrollersBottom(child as ViewGroup, pad, depth + 1)
-
-                isScroller(child) -> {
-                    val scroller = child as ViewGroup
-                    val parentHeight = root.height
-                    if (child.top <= 8 && parentHeight - child.bottom > 8) {
-                        dropParentBottomReserve(root, child)
-                        stretchToBottom(child, parentHeight)
-                        keepStretchedToBottom(child)
-                    }
-                    // 宿主会反复恢复该开关，逐帧路径上持续维持。
-                    if (scroller.clipToPadding) scroller.clipToPadding = false
-                    if (scroller.paddingBottom != pad) {
-                        scroller.setPadding(
-                            scroller.paddingLeft, scroller.paddingTop,
-                            scroller.paddingRight, pad,
-                        )
-                    }
-                    if (pad > 0) {
-                        scrollerPad = pad
-                        trackPaddedScroller(scroller)
-                    }
-                }
-
-                child is ViewGroup -> padScrollersBottom(child, pad, depth + 1)
-            }
-        }
-    }
-
-    /** 页容器内部承载横向翻页的 RecyclerView。 */
-    private fun isViewPagerRecycler(view: View): Boolean {
-        if (view !is ViewGroup) return false
-        var cls: Class<*>? = view.javaClass
-        while (cls != null) {
-            if (cls.name == "androidx.viewpager2.widget.ViewPager2\$RecyclerViewImpl") return true
-            cls = cls.superclass
-        }
-        return false
-    }
-
-    /** 以类名链识别滚动容器，兼容宿主的自定义子类。 */
-    private fun isScroller(view: View): Boolean {
-        if (view !is ViewGroup) return false
-        if (view is android.widget.ScrollView || view is android.widget.AbsListView) return true
-        var cls: Class<*>? = view.javaClass
-        while (cls != null) {
-            val name = cls.name
-            if (name == "androidx.recyclerview.widget.RecyclerView" ||
-                name == "androidx.core.widget.NestedScrollView"
-            ) return true
-            cls = cls.superclass
-        }
-        return false
-    }
-
     /** 沿祖先向上解除裁剪，为液滴按住时的越界放大留出通道。 */
-    private fun unclipAncestors(from: ViewGroup) {
-        var current: ViewGroup? = from
-        var steps = 0
-        while (current != null && steps < 12) {
-            current.clipChildren = false
-            current.clipToPadding = false
-            if (current.id == android.R.id.content) return
-            current = current.parent as? ViewGroup
-            steps++
-        }
-    }
 
     // ---- 背景与装饰清理 ----
 
     /** 玻璃折射的背景兄弟容器：底栏与页面容器同处一个 FrameLayout，取面积最大的可见兄弟。 */
-    private fun findBackdrop(parent: ViewGroup, tabView: View): ViewGroup? {
-        var best: ViewGroup? = null
-        var bestArea = 0
-        for (child in parent.children) {
-            if (child === tabView || child !is ViewGroup || child.visibility != View.VISIBLE ||
-                QQTabLocator.isBlurWrapper(child)
-            ) continue
-            val area = child.width * child.height
-            if (area > bestArea) {
-                bestArea = area
-                best = child
-            }
-        }
-        return best
-    }
 
     /** 清空底栏自身的底色；底栏与其行、各 Tab 列的背景一并清除。 */
     private fun stripSolidBackgrounds(view: View) {
@@ -1272,6 +794,7 @@ internal object GlassBarInstaller {
     private fun hideOwnBlurLayers(parent: ViewGroup) {
         for (child in parent.children) {
             if (QQTabLocator.isBlurWrapper(child) && child.visibility != View.GONE) {
+                hiddenChrome.putIfAbsent(child, child.visibility)
                 child.visibility = View.GONE
                 blurLayerRef = WeakReference(child)
                 // Log.i("已隐藏宿主自绘毛玻璃层: ${child.javaClass.name}")
@@ -1282,7 +805,7 @@ internal object GlassBarInstaller {
     private fun showOwnBlurLayers(parent: ViewGroup) {
         for (child in parent.children) {
             if (child.isGone && QQTabLocator.isBlurWrapper(child)) {
-                child.visibility = View.VISIBLE
+                child.visibility = hiddenChrome.remove(child) ?: View.VISIBLE
             }
         }
     }
@@ -1301,6 +824,7 @@ internal object GlassBarInstaller {
             if (child.height in 1..maxThickness && child.width >= parent.width * 0.9f &&
                 child.background != null
             ) {
+                hiddenChrome.putIfAbsent(child, child.visibility)
                 child.visibility = View.GONE
                 hairlineRef = WeakReference(child)
                 // Log.i("已隐藏底栏 ${child.height}px 发丝线")
@@ -1309,12 +833,6 @@ internal object GlassBarInstaller {
     }
 
     /** 关闭 TabWidget 自绘的分隔条：它们绘制于 dispatchDraw，清背景无法触及。 */
-    private fun disableTabWidgetStrips(tabView: View) {
-        if (tabView is TabWidget) {
-            tabView.setStripEnabled(false)
-            tabView.dividerDrawable = null
-        }
-    }
 
     // ---- 导航栏锚点 ----
 

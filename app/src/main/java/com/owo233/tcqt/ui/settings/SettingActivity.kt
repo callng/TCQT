@@ -511,8 +511,7 @@ class SettingActivity : BaseComposeActivity() {
                                 return@SettingScreen
                             }
 
-                            viewModel.saveChanges()
-                            restartPrompt = RestartPrompt.Save
+                            if (viewModel.saveChanges()) restartPrompt = RestartPrompt.Save
                         },
                         onBackupRestoreClick = {
                             showBackupDialog = true

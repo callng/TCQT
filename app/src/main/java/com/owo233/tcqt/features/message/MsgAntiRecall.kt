@@ -15,13 +15,12 @@ import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import mqq.app.MobileQQ
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF])
 object MsgAntiRecall : Feature(
     key = "msg_anti_recall",
     name = "消息防撤回",
     desc = "阻止消息被撤回后删除，需要保活进程。",
     uiOrder = 1,
-    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
 ), OnAIOViewUpdate {
 
     override val decoratorOrder: Int = 50

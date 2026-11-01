@@ -1,6 +1,5 @@
 package com.owo233.tcqt.core.env
 
-import com.tencent.util.QQToastUtil
 
 internal object Toasts {
 
@@ -16,11 +15,11 @@ internal object Toasts {
     const val LENGTH_SHORT: Int = 0
 
     @JvmStatic
-    fun info(message: String) = QQToastUtil.showQQToastInUiThread(ICON_DEFAULT, message)
+    fun info(message: String) = HostServicesProvider.requireServices().showToast(ICON_DEFAULT, message)
 
     @JvmStatic
-    fun success(message: String) = QQToastUtil.showQQToastInUiThread(ICON_SUCCESS, message)
+    fun success(message: String) = HostServicesProvider.requireServices().showToast(ICON_SUCCESS, message)
 
     @JvmStatic
-    fun error(message: String) = QQToastUtil.showQQToastInUiThread(ICON_ERROR, message)
+    fun error(message: String) = HostServicesProvider.requireServices().showToast(ICON_ERROR, message)
 }

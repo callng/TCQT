@@ -16,12 +16,11 @@ import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.reflect.findMethod
 import java.util.regex.Pattern
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object FxxkQQBrowser : Feature(
     key = "fxxk_qq_browser",
     name = "去你大爷的QQ浏览器",
     desc = "在宿主内访问网页时，强制使用系统默认浏览器打开，而非使用内置浏览器。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
 

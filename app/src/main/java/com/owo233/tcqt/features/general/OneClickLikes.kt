@@ -20,12 +20,11 @@ import com.tencent.mobileqq.profile.vote.VoteHelper
 import com.tencent.mobileqq.profilecard.base.component.AbsProfileHeaderComponent
 import com.tencent.mobileqq.vas.api.IVasSingedApi
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object OneClickLikes : Feature(
     key = "one_click_likes",
     name = "一键20赞",
     desc = "开启后点赞时将自动点赞20个（非SVIP为10个）。",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
 

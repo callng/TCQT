@@ -9,12 +9,11 @@ import com.owo233.tcqt.host.service.ExtraMenuItem
 import com.owo233.tcqt.host.service.PlusMenuManager
 import org.luckypray.dexkit.query.base.BaseMatcher
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object AddPlusMenu : Feature(
     key = "add_plus_menu",
     name = "添加额外选项",
     desc = "给主页右上角菜单添加额外功能选项(结束/重启进程)。",
-    priority = ActionPriority.EARLY,
 ), DexKitTask {
 
     override fun install() {

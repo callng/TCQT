@@ -8,12 +8,11 @@ import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.reflect.allConstructors
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object LoginCheckBoxDefault : Feature(
     key = "login_check_box_default",
     name = "默认勾选登录协议",
     desc = "登录界面自动勾选复选框（用户协议，有人看了吗）。",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
 

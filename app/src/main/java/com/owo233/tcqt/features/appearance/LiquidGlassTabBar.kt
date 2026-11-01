@@ -22,12 +22,11 @@ import com.owo233.tcqt.features.appearance.liquidglass.GlassBarInstaller
 import com.owo233.tcqt.features.appearance.liquidglass.NewViewBarInstaller
 import com.owo233.tcqt.features.appearance.liquidglass.QQTabLocator
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.CRITICAL)
 object LiquidGlassTabBar : Feature(
     key = "liquid_glass_tab_bar",
     name = "悬浮底栏",
     desc = "使用悬浮底栏替换 QQ 原生底部导航栏。",
-    priority = ActionPriority.CRITICAL,
     /**
      * 复合条件无法拆成独立字段，故用 `extraCondition`：
      * `HookEnv.isNT() && (新视图实现 || SDK >= TIRAMISU)`。

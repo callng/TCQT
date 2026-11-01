@@ -16,19 +16,18 @@ import com.owo233.tcqt.core.hook.hookMethodAfter
  * 小程序点分享时 QQ 只是打开 JumpActivity 处理一个 mqqapi scheme，卡片内容全靠
  * scheme 里的 base64 参数。在这里把 scheme 换成纯文本分享，发出去的就是链接本身。
  */
-@RegisterAction
+@RegisterAction(priority = ActionPriority.EARLY)
 object MiniAppSendToLink : Feature(
     key = "mini_app_send_to_link",
     name = "小程序分享转链接（发送）",
     desc = "在小程序里分享到 QQ 时，把分享卡片换成标题加原始链接的文字消息。",
     // 分享冷启动时 JumpActivity 的 onCreate 紧跟着 Application.onCreate，装晚了就漏
-    priority = ActionPriority.EARLY,
 ) {
 
     override fun install() {
         Activity::class.java.hookMethodAfter("getIntent") { param ->
             // 所有 Activity 的 getIntent 都会走到这里，先按类名挡掉绝大部分
-            if (param.thisObject.javaClass.simpleName != JUMP_ACTIVITY) return@hookMethodAfter
+            if (requireNotNull(param.thisObject).javaClass.simpleName != JUMP_ACTIVITY) return@hookMethodAfter
             val origin = param.result as? Intent ?: return@hookMethodAfter
             val data = origin.data ?: return@hookMethodAfter
 

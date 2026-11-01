@@ -14,10 +14,9 @@ import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.sync.ReceiverRegistry
 import mqq.app.MobileQQ
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object ModuleCommand : InfraTask(
     key = "ModuleCommand",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
     override fun install() {

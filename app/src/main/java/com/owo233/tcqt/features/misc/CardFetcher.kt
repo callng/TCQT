@@ -11,12 +11,11 @@ import com.tencent.smtt.sdk.WebView
 import com.tencent.smtt.sdk.WebViewClient
 import java.util.WeakHashMap
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.TOOL])
 object CardFetcher : Feature(
     key = "card_fetcher",
     name = "自动领取达人补登卡",
     desc = "在进入QQ达人页时自动领取当天的补登卡，不用再玩**的**小程序游戏！",
-    processes = setOf(ActionProcess.TOOL),
 ) {
 
     override fun install() {

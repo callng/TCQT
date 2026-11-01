@@ -371,7 +371,7 @@ internal object QQTabLocator {
                     if (arm != null) armedSmoothTarget = null
                     return@hookReplace chain.proceed()
                 }
-                if (chain.thisObject !== arm.pager || !isCurrentPager(chain.thisObject) ||
+                if (requireNotNull(chain.thisObject) !== arm.pager || !isCurrentPager(requireNotNull(chain.thisObject)) ||
                     requested != arm.target
                 ) return@hookReplace chain.proceed()
 

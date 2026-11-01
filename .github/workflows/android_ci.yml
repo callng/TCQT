@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
     if: >-
-      ${{ 
+      ${{
         github.event_name == 'workflow_dispatch' ||
         (
           github.event_name == 'push' &&
@@ -149,7 +149,7 @@ jobs:
     needs:
       - build
     if: >-
-      ${{ 
+      ${{
         success() &&
         github.repository == 'callng/TCQT'
       }}
@@ -330,4 +330,4 @@ jobs:
           done
 
           echo "::error::All $MAX_RETRIES attempts failed"
-          exit 1
+          exit 1

@@ -15,13 +15,11 @@ import com.owo233.tcqt.core.reflect.FieldUtils
 import com.owo233.tcqt.core.reflect.invoke
 import java.lang.reflect.Modifier
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN], priority = ActionPriority.CRITICAL)
 object HideMiniAppPullEntry : Feature(
     key = "hide_mini_app_pull_entry",
     name = "隐藏下拉小程序",
     desc = "生成屏蔽下拉小程序解决方案。",
-    priority = ActionPriority.CRITICAL,
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
 
@@ -121,8 +119,8 @@ object HideMiniAppPullEntry : Feature(
         clazz.declaredConstructors.forEach { ctor ->
             ctor.isAccessible = true
             ctor.hookAfter { param ->
-                disableTwoLevelHeader(param.thisObject, rule)
-                replaceMiniAppContainerWithRefreshHeader(param.thisObject)
+                disableTwoLevelHeader(requireNotNull(param.thisObject), rule)
+                replaceMiniAppContainerWithRefreshHeader(requireNotNull(param.thisObject))
             }
         }
     }
@@ -144,7 +142,7 @@ object HideMiniAppPullEntry : Feature(
             .forEach { method ->
                 method.isAccessible = true
                 method.hookAfter { param ->
-                    val header = param.thisObject
+                    val header = requireNotNull(param.thisObject)
                     if (header.isMiniAppHeaderInstance()) {
                         replaceMiniAppContainerWithRefreshHeader(header)
                         (header as? View)?.post {

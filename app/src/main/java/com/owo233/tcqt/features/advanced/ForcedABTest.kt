@@ -11,12 +11,11 @@ import com.owo233.tcqt.core.reflect.getObjectOrNull
 import com.owo233.tcqt.core.reflect.invoke
 import com.owo233.tcqt.core.reflect.setObject
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object ForcedABTest : Feature(
     key = "forced_to_ab",
     name = "AB测试强制转组",
     desc = "调整已下发的 A/B 实验分组。独立 JSON 灰度配置和服务端权限不属于 AB 分组，不能通过转组开启。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
     private val mode by intOption(
@@ -52,9 +51,9 @@ object ForcedABTest : Feature(
         // 不能按 mode 直接返回 true，否则 A、B、C 甚至空参数会同时命中。
         expEntityClz.hookMethodAfter("getAssignment") { param ->
             if (param.throwable != null) return@hookMethodAfter
-            val assignment = forcedAssignment(param.thisObject, param.result as? String, names)
+            val assignment = forcedAssignment(requireNotNull(param.thisObject), param.result as? String, names)
                 ?: return@hookMethodAfter
-            param.thisObject.setObject("mAssignment", assignment)
+            requireNotNull(param.thisObject).setObject("mAssignment", assignment)
             param.result = assignment
         }
 

@@ -39,7 +39,7 @@ object HideGrayTipText : Feature(
         }
 
         initMethod.hookAfter { param ->
-            val textView = param.thisObject.callMethod(textViewMethod.name) as TextView
+            val textView = requireNotNull(param.thisObject).callMethod(textViewMethod.name) as TextView
             val container = textView.parent.parent as ViewGroup
             val shouldHide = configList.any { textView.text.toString().contains(it) }
             if (shouldHide) container.layoutParams = ViewGroup.LayoutParams(0, 0)

@@ -96,9 +96,9 @@ object RenameBaseApk : Feature(
 
     private fun hookFile() {
         FileElement::class.java.hookMethodBefore("getFileName") { param ->
-            val fileName = param.thisObject.getObject("fileName") as String
+            val fileName = requireNotNull(param.thisObject).getObject("fileName") as String
             if (fileName.endsWith(".1")) {
-                param.thisObject.setObject(
+                requireNotNull(param.thisObject).setObject(
                     "fileName",
                     fileName.substring(0, fileName.length - 2)
                 )

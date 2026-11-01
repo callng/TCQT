@@ -35,7 +35,7 @@ object AIOViewUpdate : InfraTask(
             val mviUIState = param.args[0] as? IMsgItemMviUIState ?: return@hookAfter
 
             if (mviUIState is AIOMsgItemUIState.AIOMsgItemState) {
-                val view = (param.thisObject.getObjectByTypeOrNull(View::class.java) as? ViewGroup) ?: return@hookAfter
+                val view = (requireNotNull(param.thisObject).getObjectByTypeOrNull(View::class.java) as? ViewGroup) ?: return@hookAfter
                 val aIOMsgItem = mviUIState.getObjectByTypeOrNull(
                     AIOMsgItem::class.java.superclass as Class<*>
                 ) as? AIOMsgItem ?: return@hookAfter

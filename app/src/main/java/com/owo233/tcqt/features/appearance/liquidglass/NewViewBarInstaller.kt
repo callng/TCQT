@@ -29,12 +29,8 @@ import kotlin.math.roundToInt
 internal object NewViewBarInstaller {
     private const val MAX_INSTALL_ATTEMPTS = 40
     private const val RETRY_DELAY_MS = 250L
-    private const val SCREEN_MARGIN_DP = 28f
-    private const val TAB_MIN_WIDTH_DP = 76f
-    private const val ICON_ONLY_BASIS_DP = 24f
     private const val BASE_SHADOW_DP = 14f
     private const val BAR_HEIGHT_DP = 64f
-    private val CONTENT_TRANSLATION_TAG = R.id.tcqt_tag_content_translation
 
     private var hostRef = WeakReference<FloatingBarHostLayout?>(null)
     private var tabViewRef = WeakReference<ViewGroup?>(null)
@@ -48,21 +44,14 @@ internal object NewViewBarInstaller {
     private var driver: DropletGestureDriver? = null
     private var refreshListener: ViewTreeObserver.OnPreDrawListener? = null
 
-    private var originalIndex = -1
-    private var originalTabParams: ViewGroup.LayoutParams? = null
-    private var originalTabPadding = intArrayOf(0, 0, 0, 0)
-    private var originalTabBackground: Drawable? = null
-    private var originalStripEnabled = true
-    private var originalDividerDrawable: Drawable? = null
-    private var originalTabAlpha = 1f
-    private var originalRowPadding = intArrayOf(0, 0, 0, 0)
-    private var originalChildren = emptyList<OriginalChildLayout>()
-    private val originalBackgrounds = IdentityHashMap<View, Drawable?>()
-    private val hiddenChrome = IdentityHashMap<View, Int>()
+    private var tabSnapshot: TabViewSnapshot? = null
+    private val hiddenChrome = java.util.WeakHashMap<View, Int>()
+    private val lifecycleListeners = ViewListenerScope()
 
     private var baseBarHeight = 0
     private var baseTabWidth = 0
     private var appliedScale = 0f
+    private var appliedWidthBudget = 0
     private var appliedDark: Boolean? = null
     private var installedMode: FloatingBottomBarMode? = null
     private var installedPosition: FloatingBottomBarPosition? = null
@@ -157,7 +146,7 @@ internal object NewViewBarInstaller {
         val parent = tabView.parent as? ViewGroup ?: return false
         if (parent is FloatingBarHostLayout || parent is GlassBarHostLayout) return false
         val row = QQTabLocator.findTabRow(tabView) ?: return false
-        val backdrop = findBackdrop(parent, tabView) ?: return false
+        val backdrop = TabViewOperations.findBackdrop(parent, tabView) ?: return false
         val visibleTabs = row.children.filter { !it.isGone }.toList()
         if (visibleTabs.isEmpty()) return false
 
@@ -166,29 +155,17 @@ internal object NewViewBarInstaller {
         val targetHeight = (BAR_HEIGHT_DP * density).roundToInt()
         val navigationReserve = tabView.paddingBottom
         navigationInset = max(currentNavigationInset(tabView), navigationReserve)
-        val contentHeight = contentBarHeight(row, tabView.height - navigationReserve)
+        val contentHeight = NewViewTabContentLayout.contentBarHeight(row, tabView.height - navigationReserve)
         val resolvedHeight = max(targetHeight, contentHeight)
 
-        originalIndex = parent.indexOfChild(tabView)
-        if (originalIndex < 0) return false
-        originalTabParams = tabView.layoutParams
-        originalTabPadding = intArrayOf(tabView.paddingLeft, tabView.paddingTop, tabView.paddingRight, tabView.paddingBottom)
-        originalTabBackground = tabView.background
-        (tabView as? TabWidget)?.let {
-            originalStripEnabled = it.isStripEnabled
-            originalDividerDrawable = it.dividerDrawable
-        }
-        originalTabAlpha = tabView.alpha
-        originalRowPadding = intArrayOf(row.paddingLeft, row.paddingTop, row.paddingRight, row.paddingBottom)
-        originalChildren = row.children.map { child ->
-            val lp = child.layoutParams
-            OriginalChildLayout(child, lp?.width ?: 0, lp?.height ?: 0, (lp as? LinearLayout.LayoutParams)?.weight ?: 0f)
-        }.toList()
-        originalBackgrounds.clear()
-        captureBackgrounds(tabView)
+        val snapshot = TabViewSnapshot(tabView)
+        if (snapshot.originalIndex < 0) return false
+        tabSnapshot = snapshot
         hiddenChrome.clear()
 
-        val barWidth = hugContentWidth(row, density) ?: return false
+        val barWidth = NewViewTabContentLayout.hugContentWidth(row, density) ?: run {
+            snapshot.restore(); tabSnapshot = null; return false
+        }
 
         baseBarHeight = resolvedHeight
         val horizontalPad = (4f * density).roundToInt().coerceAtLeast(1)
@@ -236,7 +213,7 @@ internal object NewViewBarInstaller {
 
         try {
             parent.removeView(tabView)
-            parent.addView(host, originalIndex, hostParams)
+            parent.addView(host, snapshot.originalIndex, hostParams)
             host.addView(surface, 0, FrameLayout.LayoutParams(-1, -1))
             if (liquid) {
                 host.addView(tabView, 1, tabParams)
@@ -257,7 +234,7 @@ internal object NewViewBarInstaller {
                 tabView.setPadding(0, 0, 0, 0)
             }
             stripSolidBackgrounds(tabView)
-            disableTabWidgetStrips(tabView)
+            TabViewOperations.disableTabWidgetStrips(tabView)
             hideOwnBarChrome(parent, tabView)
         } catch (t: Throwable) {
             restoreFailed(parent, tabView, host)
@@ -265,8 +242,9 @@ internal object NewViewBarInstaller {
             return false
         }
 
-        unclipAncestors(parent)
+        TabViewOperations.unclipAncestors(parent)
         hostRef = WeakReference(host)
+        lifecycleListeners.onDetached(host) { if (hostRef.get() === host) restore() }
         tabViewRef = WeakReference(tabView)
         tabRowRef = WeakReference(row)
         backdropRef = WeakReference(backdrop)
@@ -308,7 +286,7 @@ internal object NewViewBarInstaller {
                 else -> {
                     val scaleChanged = applyScale(current.scale, current.position)
                     applyPosition(current.position)
-                    centerTabContent(row)
+                    NewViewTabContentLayout.centerTabContent(row)
                     keepOwnBarChromeHidden(parent, tabView)
                     val dark =
                         runCatching { com.owo233.tcqt.core.env.HookEnv.isNightMode() }.getOrDefault(
@@ -361,62 +339,28 @@ internal object NewViewBarInstaller {
         }
     }
 
-    private fun restore() {
-        val host = hostRef.get() ?: return
-        val tabView = tabViewRef.get() ?: return
-        val parent = parentRef.get() ?: (host.parent as? ViewGroup) ?: return
-        refreshListener?.let { runCatching { host.viewTreeObserver.removeOnPreDrawListener(it) } }
-        driver = null
-        (tabView.parent as? ViewGroup)?.removeView(tabView)
-        (host.parent as? ViewGroup)?.removeView(host)
-        restoreViews(tabView, parent)
-
+    fun restore() {
+        val host = hostRef.get()
         hostRef = WeakReference(null)
-        tabViewRef = WeakReference(null)
-        tabRowRef = WeakReference(null)
-        backdropRef = WeakReference(null)
-        indicatorRef = WeakReference(null)
-        surfaceRef = WeakReference(null)
-        parentRef = WeakReference(null)
-        activityRef.clear()
+        lifecycleListeners.clear()
+        refreshListener?.let { listener -> host?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(listener) }
+        driver = null
+        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
+        tabSnapshot?.restore()
+        tabSnapshot = null
+        (host?.parent as? ViewGroup)?.removeView(host)
+        tabViewRef.clear(); tabRowRef.clear(); backdropRef.clear()
+        indicatorRef.clear(); surfaceRef.clear(); parentRef.clear(); activityRef.clear()
         refreshListener = null
-        originalBackgrounds.clear()
         hiddenChrome.clear()
-        appliedScale = 0f
-        appliedDark = null
-        installedMode = null
-        installedPosition = null
-        layoutSyncPending = false
-        navigationInset = 0
-        reinstallPosted = false
-        // Log.i("NewView 悬浮底栏已恢复原生父级")
+        appliedScale = 0f; appliedWidthBudget = 0; appliedDark = null; installedMode = null; installedPosition = null
+        layoutSyncPending = false; navigationInset = 0; reinstallPosted = false
     }
 
     private fun restoreViews(tabView: ViewGroup, parent: ViewGroup) {
-        originalChildren.forEach { saved ->
-            val lp = saved.view.layoutParams ?: return@forEach
-            lp.width = saved.width
-            lp.height = saved.height
-            (lp as? LinearLayout.LayoutParams)?.weight = saved.weight
-            saved.view.layoutParams = lp
-        }
-        restoreTabContentTranslations()
-        restoreBackgrounds()
-        tabView.setPadding(originalTabPadding[0], originalTabPadding[1], originalTabPadding[2], originalTabPadding[3])
-        tabView.alpha = originalTabAlpha
-        tabView.background = originalTabBackground
-        if (tabView is TabWidget) {
-            tabView.setStripEnabled(originalStripEnabled)
-            tabView.dividerDrawable = originalDividerDrawable
-        }
-        QQTabLocator.findTabRow(tabView)?.setPadding(
-            originalRowPadding[0], originalRowPadding[1], originalRowPadding[2], originalRowPadding[3],
-        )
         hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
-        if (tabView.parent == null) {
-            val index = originalIndex.coerceIn(0, parent.childCount)
-            originalTabParams?.let { parent.addView(tabView, index, it) } ?: parent.addView(tabView, index)
-        }
+        tabSnapshot?.restore()
+        tabSnapshot = null
     }
 
     private fun applyScale(scale: Float, position: FloatingBottomBarPosition): Boolean {
@@ -424,8 +368,10 @@ internal object NewViewBarInstaller {
         val tabView = tabViewRef.get() ?: return false
         val row = tabRowRef.get() ?: return false
         val normalized = scale.coerceIn(0.8f, 1.2f)
-        if (abs(appliedScale - normalized) < 0.001f) return false
         val density = host.resources.displayMetrics.density
+        val windowWidth = host.rootView.width.takeIf { it > 0 } ?: host.resources.displayMetrics.widthPixels
+        val widthBudget = (windowWidth - (24f * density).roundToInt()).coerceAtLeast(1)
+        if (abs(appliedScale - normalized) < 0.001f && appliedWidthBudget == widthBudget) return false
         val geometry = FloatingBarGeometry.fromBase(
             baseBarHeight = baseBarHeight,
             baseTabWidth = baseTabWidth,
@@ -433,6 +379,7 @@ internal object NewViewBarInstaller {
             baseShadowPadding = (BASE_SHADOW_DP * density).roundToInt(),
             tabCount = QQTabLocator.tabCount(row),
             scale = normalized,
+            maximumWidth = widthBudget,
         )
         host.setGeometryScale(normalized)
         val hostLp = host.layoutParams as? FrameLayout.LayoutParams ?: return false
@@ -447,15 +394,15 @@ internal object NewViewBarInstaller {
         tabView.layoutParams = tabLp
 
         row.setPadding(geometry.horizontalPadding, 0, geometry.horizontalPadding, 0)
-        centerTabContent(row)
+        NewViewTabContentLayout.centerTabContent(row)
         row.children.filter { !it.isGone }.forEach { child ->
             val lp = child.layoutParams ?: return@forEach
             lp.width = geometry.tabWidth
-            val original = originalChildren.firstOrNull { it.view === child }
-            if (original != null && original.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            val originalHeight = tabSnapshot?.originalHeight(child)
+            if (originalHeight != null && originalHeight != ViewGroup.LayoutParams.MATCH_PARENT) {
                 // Keep the icon/title gap at its native size; the enclosing cell
                 // grows with the bar and the pair is re-centered below.
-                lp.height = original.height
+                lp.height = originalHeight
             }
             (lp as? LinearLayout.LayoutParams)?.weight = 0f
             child.layoutParams = lp
@@ -468,6 +415,7 @@ internal object NewViewBarInstaller {
             lp.topMargin = geometry.horizontalPadding
             indicator.layoutParams = lp
         }
+        appliedWidthBudget = widthBudget
         appliedScale = normalized
         layoutSyncPending = true
         host.requestLayout()
@@ -486,208 +434,6 @@ internal object NewViewBarInstaller {
         host.layoutParams = lp
         installedPosition = position
         host.requestLayout()
-    }
-
-    /** Keep the native icon/title group centered after the host's height changes. */
-    private fun centerTabContent(row: ViewGroup) {
-        if (row is LinearLayout) row.gravity = Gravity.CENTER_VERTICAL
-        row.children.filter { !it.isGone }.forEach { tab ->
-            if (tab is LinearLayout) {
-                tab.gravity = Gravity.CENTER
-                tab.clipChildren = false
-                tab.clipToPadding = false
-            }
-            if (findIconTitlePair(tab) != null) {
-                centerIconTitlePair(tab)
-                return@forEach
-            }
-            val bounds = intArrayOf(Int.MAX_VALUE, 0)
-            collectContentBounds(tab, 0, tab.height, bounds)
-            if (bounds[0] >= bounds[1] || tab.height <= 0) return@forEach
-            val offset = (tab.height - bounds[0] - bounds[1]) * 0.5f
-            if (abs(offset) < 0.5f) return@forEach
-            if (tab is ViewGroup) {
-                tab.children.forEach { child ->
-                    val base = child.getTag(CONTENT_TRANSLATION_TAG) as? Float
-                        ?: child.translationY.also { child.setTag(CONTENT_TRANSLATION_TAG, it) }
-                    child.translationY = base + offset
-                }
-            }
-        }
-    }
-
-    private fun restoreTabContentTranslations() {
-        val row = tabRowRef.get() ?: return
-        row.children.forEach(::restoreTranslations)
-    }
-
-    private fun restoreTranslations(view: View) {
-        (view.getTag(CONTENT_TRANSLATION_TAG) as? Float)?.let {
-            view.translationY = it
-            view.setTag(CONTENT_TRANSLATION_TAG, null)
-        }
-        if (view is ViewGroup) view.children.forEach(::restoreTranslations)
-    }
-
-    /** Re-layout QQ's independently anchored icon and title as one centered group. */
-    private fun centerIconTitlePair(tab: View) {
-        val pair = findIconTitlePair(tab) ?: return
-        val icon = pair.first
-        val title = pair.second
-        val common = icon.parent as? ViewGroup ?: return
-        if (title.parent !== common || icon.height <= 0 || title.height <= 0) return
-        val gap = (4f * tab.resources.displayMetrics.density).roundToInt()
-        val groupHeight = icon.height + gap + title.height
-        if (groupHeight > tab.height) return
-        val groupTop = (tab.height - groupHeight) * 0.5f
-        val commonTop = relativeTop(common, tab)
-        val iconBase = icon.getTag(CONTENT_TRANSLATION_TAG) as? Float
-            ?: icon.translationY.also { icon.setTag(CONTENT_TRANSLATION_TAG, it) }
-        val titleBase = title.getTag(CONTENT_TRANSLATION_TAG) as? Float
-            ?: title.translationY.also { title.setTag(CONTENT_TRANSLATION_TAG, it) }
-        icon.translationY = iconBase + groupTop - commonTop - icon.top
-        title.translationY = titleBase + groupTop + icon.height + gap - commonTop - title.top
-    }
-
-    private fun relativeTop(view: View, ancestor: View): Int {
-        var result = 0
-        var current: View? = view
-        while (current != null && current !== ancestor) {
-            result += current.top
-            if (current !== view) result += current.translationY.roundToInt()
-            current = current.parent as? View
-        }
-        return result
-    }
-
-    private fun findIconTitlePair(view: View): Pair<View, View>? {
-        if (view !is ViewGroup) return null
-        val icon = view.children.firstOrNull { QQTabLocator.isTabIcon(it) }
-            ?: view.children.firstOrNull { it is android.widget.ImageView }
-            ?: view.children.firstNotNullOfOrNull(::findIconCandidate)
-        val title = view.children.firstOrNull { isTitleCandidate(it) }
-            ?: view.children.firstNotNullOfOrNull(::findTitleCandidate)
-        if (icon != null && title != null) {
-            val iconParent = icon.parent as? ViewGroup
-            val titleParent = title.parent as? ViewGroup
-            if (iconParent === titleParent) return icon to title
-        }
-        return view.children.firstNotNullOfOrNull(::findIconTitlePair)
-    }
-
-    private fun findIconCandidate(view: View): View? =
-        if (QQTabLocator.isTabIcon(view)) view
-        else if (view is android.widget.ImageView) view
-        else (view as? ViewGroup)?.children?.firstNotNullOfOrNull(::findIconCandidate)
-
-    private fun findTitleCandidate(view: View): View? =
-        if (isTitleCandidate(view)) view else (view as? ViewGroup)?.children?.firstNotNullOfOrNull(::findTitleCandidate)
-
-    private fun isTitleCandidate(view: View): Boolean =
-        view is android.widget.TextView && !view.text.isNullOrBlank() &&
-            // A skin can attach a transparent drawable to the label. Its background
-            // is not a reliable distinction from QQ's separate badge widget.
-            !view.javaClass.name.contains("Badge", ignoreCase = true)
-
-    private fun collectContentBounds(view: View, offset: Int, tabHeight: Int, out: IntArray) {
-        if (view.visibility != View.VISIBLE || view.width <= 0 || view.height <= 0) return
-        if (view is ViewGroup) {
-            view.children.forEach { child -> collectContentBounds(child, offset + child.top, tabHeight, out) }
-            return
-        }
-        // Ignore full-cell filler layers; they do not describe the icon/title group.
-        if (view.height >= tabHeight * 0.9f && view.width >= view.rootView.width * 0.25f) return
-        out[0] = min(out[0], offset)
-        out[1] = max(out[1], offset + view.height)
-    }
-
-    private fun findBackdrop(parent: ViewGroup, tabView: View): ViewGroup? {
-        var best: ViewGroup? = null
-        var area = 0
-        parent.children.forEach { child ->
-            if (child === tabView || child !is ViewGroup || child.visibility != View.VISIBLE || QQTabLocator.isBlurWrapper(child)) return@forEach
-            val candidate = child.width * child.height
-            if (candidate > area) {
-                area = candidate
-                best = child
-            }
-        }
-        return best
-    }
-
-    private fun hugContentWidth(tabRow: ViewGroup, density: Float): Int? {
-        val visible = tabRow.children.filter { !it.isGone }.toList()
-        if (visible.isEmpty()) return null
-        val unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        val iconOnly = visible.all { findTabTitle(it) == null }
-        var widest = 0
-        visible.forEach { tab ->
-            tab.measure(unspecified, unspecified)
-            widest = max(widest, if (iconOnly) (ICON_ONLY_BASIS_DP * density).roundToInt() else max(tab.measuredWidth, leafContentWidth(tab)))
-        }
-        val pad = (4f * density).roundToInt()
-        val minimumTabWidth = (TAB_MIN_WIDTH_DP * density).roundToInt()
-        var tabWidth = max(minimumTabWidth, widest)
-        val maxTotal = tabRow.resources.displayMetrics.widthPixels - (SCREEN_MARGIN_DP * density).roundToInt() * 2
-        tabWidth = min(tabWidth, max(1, (maxTotal - pad * 2) / visible.size))
-        visible.forEach { tab ->
-            val lp = tab.layoutParams ?: return@forEach
-            lp.width = tabWidth
-            (lp as? LinearLayout.LayoutParams)?.weight = 0f
-            tab.layoutParams = lp
-        }
-        tabRow.setPadding(pad, 0, pad, 0)
-        return tabWidth * visible.size + pad * 2
-    }
-
-    private fun leafContentWidth(view: View): Int {
-        if (view.visibility != View.VISIBLE) return 0
-        if (view is ViewGroup) return view.children.maxOfOrNull { child -> leafContentWidth(child) } ?: 0
-        if (view.layoutParams?.width == ViewGroup.LayoutParams.MATCH_PARENT) return 0
-        return view.width
-    }
-
-    private fun findTabTitle(view: View): View? {
-        if (isTitleCandidate(view)) return view
-        if (view is ViewGroup) view.children.forEach { findTabTitle(it)?.let { found -> return found } }
-        return null
-    }
-
-    private fun contentBarHeight(tabRow: ViewGroup, fallback: Int): Int {
-        if (fallback <= 0) return 0
-        var top = Int.MAX_VALUE
-        var bottom = 0
-        tabRow.children.filter { !it.isGone }.forEach { tab ->
-            val bounds = intArrayOf(Int.MAX_VALUE, 0)
-            collectLeafBounds(tab, 0, bounds)
-            if (bounds[0] < bounds[1]) {
-                top = min(top, tab.top + bounds[0])
-                bottom = max(bottom, tab.top + bounds[1])
-            }
-        }
-        val symmetric = if (top == Int.MAX_VALUE) fallback else bottom + top
-        return if (symmetric in 1 until fallback) symmetric else fallback
-    }
-
-    private fun collectLeafBounds(view: View, offset: Int, out: IntArray) {
-        if (view.visibility != View.VISIBLE) return
-        if (view is ViewGroup) {
-            view.children.forEach { collectLeafBounds(it, offset + it.top, out) }
-            return
-        }
-        if (view.width > 0 && view.height > 0) {
-            out[0] = min(out[0], offset)
-            out[1] = max(out[1], offset + view.height)
-        }
-    }
-
-    private fun captureBackgrounds(view: View) {
-        originalBackgrounds[view] = view.background
-        if (view is ViewGroup) view.children.forEach { captureBackgrounds(it) }
-    }
-
-    private fun restoreBackgrounds() {
-        originalBackgrounds.forEach { (view, background) -> view.background = background }
     }
 
     private fun stripSolidBackgrounds(view: View) {
@@ -714,23 +460,6 @@ internal object NewViewBarInstaller {
         hiddenChrome.keys.forEach { if (it.visibility != View.GONE) it.visibility = View.GONE }
     }
 
-    private fun disableTabWidgetStrips(tabView: View) {
-        if (tabView is TabWidget) {
-            tabView.setStripEnabled(false)
-            tabView.dividerDrawable = null
-        }
-    }
-
-    private fun unclipAncestors(from: ViewGroup) {
-        var current: ViewGroup? = from
-        var steps = 0
-        while (current != null && steps++ < 12) {
-            current.clipChildren = false
-            current.clipToPadding = false
-            if (current.id == android.R.id.content) return
-            current = current.parent as? ViewGroup
-        }
-    }
 
     private fun currentNavigationInset(anchor: View): Int = runCatching {
         androidx.core.view.ViewCompat.getRootWindowInsets(anchor)
@@ -746,5 +475,4 @@ internal object NewViewBarInstaller {
     private fun floatingOffset(position: FloatingBottomBarPosition, inset: Int, density: Float): Int =
         (position.offsetDp(inset != 0) * density).roundToInt()
 
-    private data class OriginalChildLayout(val view: View, val width: Int, val height: Int, val weight: Float)
 }

@@ -11,12 +11,11 @@ import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.hook.hookBefore
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF])
 object SpecialCareNewChannel : Feature(
     key = "special_care_new_channel",
     name = "特别关心通知单独分组",
     desc = "将特别关心发送的消息通知移动到单独的通知渠道",
-    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
 ) {
 
     override fun install() {

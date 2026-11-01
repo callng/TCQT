@@ -46,7 +46,7 @@ sealed class Setting<T : Any> {
      */
     @Suppress("UNCHECKED_CAST")
     fun getValue(): T {
-        val s = TCQTSetting.settingMap[key] as? TCQTSetting.Setting<T>
+        val s = TCQTSetting.registeredSetting(key) as? TCQTSetting.Setting<T>
         return s?.getValue() ?: defaultValue
     }
 
@@ -57,7 +57,7 @@ sealed class Setting<T : Any> {
      */
     @Suppress("UNCHECKED_CAST")
     fun setValue(value: T) {
-        val s = TCQTSetting.settingMap[key] as? TCQTSetting.Setting<T>
+        val s = TCQTSetting.registeredSetting(key) as? TCQTSetting.Setting<T>
         s?.setValue(value)
     }
 }

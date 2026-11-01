@@ -13,13 +13,11 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * MMKV 配置在宿主启动早期就可能被读取（不一定在 onCreate 内），故放在 EARLY。
  */
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL], priority = ActionPriority.EARLY)
 object MMKVConfigHook : Feature(
     key = "mmkv_config_hook",
     name = "MMKV配置Hook",
     desc = $$"仅高级用户使用，针对'common_mmkv_configurations'处理，可以使用$uin或$uid表示当前登录的账号，暂时只支持处理Boolean类型的配置。",
-    processes = setOf(ActionProcess.ALL),
-    priority = ActionPriority.EARLY,
 ) {
 
     private val saveConfig by stringOption(

@@ -1,7 +1,6 @@
 package com.owo233.tcqt.core.action
 
 import android.app.Application
-import android.view.Choreographer
 import com.owo233.tcqt.core.dexkit.DexKitFinder
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.ProcUtil
@@ -25,6 +24,11 @@ import com.owo233.tcqt.core.sync.SyncUtils
  * ```
  */
 internal object StartupScheduler {
+
+    @Volatile internal var lastFirstFrame: FirstFrameGate.Completion? = null
+        private set
+    @Volatile internal var deferredStartedNanos: Long = 0
+        private set
 
     fun schedule(
         app: Application,
@@ -50,6 +54,7 @@ internal object StartupScheduler {
         if (plan.deferred.isNotEmpty() || plan.background.isNotEmpty()) {
             val runDeferred = {
                 ModuleScope.launchIO("TCQT-Deferred") {
+                    deferredStartedNanos = System.nanoTime()
                     ActionRegistry.runDeferred(app, proc, plan)
                     ActionRegistry.runBackground(app, proc, plan)
                 }
@@ -57,9 +62,13 @@ internal object StartupScheduler {
             if (ProcUtil.isMain) {
                 SyncUtils.runOnUiThread {
                     runCatching {
-                        Choreographer.getInstance().postFrameCallback { runDeferred() }
+                        FirstFrameAwaiter(app) { completion ->
+                            lastFirstFrame = completion
+                            runDeferred()
+                        }.start()
                     }.onFailure {
-                        Log.w("StartupScheduler: 首帧回调不可用，改为立即执行 Deferred", it)
+                        Log.w("StartupScheduler: 绘制监听不可用，改为立即执行 Deferred", it)
+                        lastFirstFrame = FirstFrameGate.Completion(FirstFrameGate.Reason.UNAVAILABLE, System.nanoTime())
                         runDeferred()
                     }
                 }

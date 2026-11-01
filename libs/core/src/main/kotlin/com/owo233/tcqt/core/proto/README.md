@@ -17,14 +17,14 @@ val root = ProtoUtils.decodeFromByteArray(
 
 严格模式下主要会得到以下类型：
 
-| Wire type | 解码结果                                       |
-|-----------|--------------------------------------------|
-| 0         | `ProtoNumber(ProtoNumberType.RAW_VARINT)`  |
-| 1         | `ProtoNumber(ProtoNumberType.RAW_FIXED64)` |
-| 2         | `ProtoByteString`                          |
-| 3 / 4     | `ProtoGroup`                               |
-| 5         | `ProtoNumber(ProtoNumberType.RAW_FIXED32)` |
-| 同字段重复出现   | `ProtoList`                                |
+| Wire type      | 解码结果                                   |
+|----------------|--------------------------------------------|
+| 0              | `ProtoNumber(ProtoNumberType.RAW_VARINT)`  |
+| 1              | `ProtoNumber(ProtoNumberType.RAW_FIXED64)` |
+| 2              | `ProtoByteString`                          |
+| 3 / 4          | `ProtoGroup`                               |
+| 5              | `ProtoNumber(ProtoNumberType.RAW_FIXED32)` |
+| 同字段重复出现 | `ProtoList`                                |
 
 其中最需要手动解释的是 wire type 2，因为它可能代表：
 

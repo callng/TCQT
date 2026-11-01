@@ -10,12 +10,11 @@ import com.owo233.tcqt.core.hook.hookMethodReplace
 import com.owo233.tcqt.core.hook.invokeOriginal
 import com.owo233.tcqt.core.reflect.getMethods
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object CustomDevice : Feature(
     key = "custom_device",
     name = "自定义设备信息",
     desc = "自定义宿主获取的[device, model, manufacturer]，如果本功能未启用且某个值未填写，则使用当前设备信息填充。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
     private var device by stringOption(

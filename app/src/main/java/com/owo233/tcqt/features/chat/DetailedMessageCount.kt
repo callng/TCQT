@@ -29,12 +29,11 @@ import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 import kotlin.math.ceil
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object DetailedMessageCount : Feature(
     key = "detailed_message_count",
     name = "详细消息数量",
     desc = "显示完整未读消息数量，不再将超过上限的数量折叠为 99+。",
-    processes = setOf(ActionProcess.MAIN),
 ), DexKitTask {
 
     override fun install() {
@@ -64,13 +63,13 @@ object DetailedMessageCount : Feature(
             // TIM's setters call updateNum before requesting layout. Set the full
             // text here so both measurement and drawing use the same number.
             clz.getDeclaredMethod("updateNum", Int::class.java).hookAfter { param ->
-                val num = mNum.getInt(param.thisObject)
-                if (num > 99) mText.set(param.thisObject, num.toString())
+                val num = mNum.getInt(requireNotNull(param.thisObject))
+                if (num > 99) mText.set(requireNotNull(param.thisObject), num.toString())
             }
             val mViewType = clz.getDeclaredField("mViewType").apply { isAccessible = true }
             val mTextPaint = clz.getDeclaredField("mTextPaint").apply { isAccessible = true }
             clz.getDeclaredMethod("getMinWidth").hookAfter { param ->
-                val badge = param.thisObject
+                val badge = requireNotNull(param.thisObject)
                 val num = mNum.getInt(badge)
                 val type = mViewType.getInt(badge)
                 // Red/gray numeric badges have a fixed 31dp width above 99.
@@ -85,7 +84,7 @@ object DetailedMessageCount : Feature(
             return
         }
         clz.getDeclaredMethod("onDraw", Canvas::class.java).hookBefore { param ->
-            val badge = param.thisObject
+            val badge = requireNotNull(param.thisObject)
             val num = mNum.get(badge) as? Int ?: return@hookBefore
             if (num > 99) {
                 mText.set(badge, num.toString())
@@ -129,7 +128,7 @@ object DetailedMessageCount : Feature(
                 HookEnv.requireMinQQVersion(QQVersion.QQ_8_9_70) -> Pair("e", "t")
                 else -> Pair("e", "s")
             }
-            val binding = param.thisObject.getObjectOrNull(mTitleBinding) ?: return@hookAfter
+            val binding = requireNotNull(param.thisObject).getObjectOrNull(mTitleBinding) ?: return@hookAfter
             val tv = binding.getObjectOrNull(unreadTv) as? TextView ?: return@hookAfter
             tv.text = "$count"
         }
@@ -252,8 +251,8 @@ object DetailedMessageCount : Feature(
         floatViewManagerClass.clazz?.declaredMethods
             ?.firstOrNull { it.name == "updateUnreadCount" && it.parameterTypes.size == 2 }
             ?.hookAfter { param ->
-                val rootView = param.thisObject.javaClass.findFieldOrNull { type = View::class.java }
-                    ?.get(param.thisObject) as? ViewGroup ?: return@hookAfter
+                val rootView = requireNotNull(param.thisObject).javaClass.findFieldOrNull { type = View::class.java }
+                    ?.get(requireNotNull(param.thisObject)) as? ViewGroup ?: return@hookAfter
                 (rootView.findViewByType(TextView::class.java) as? TextView)?.text =
                     "${param.args[0] as Int}"
             }
@@ -261,8 +260,8 @@ object DetailedMessageCount : Feature(
         msgUnreadCallbackClass.clazz?.declaredMethods
             ?.firstOrNull { it.name == "updateUnreadCount" && it.parameterTypes.size == 2 }
             ?.hookAfter { param ->
-                val tv = param.thisObject.javaClass.findFieldOrNull { type = TextView::class.java }
-                    ?.get(param.thisObject) as? TextView ?: return@hookAfter
+                val tv = requireNotNull(param.thisObject).javaClass.findFieldOrNull { type = TextView::class.java }
+                    ?.get(requireNotNull(param.thisObject)) as? TextView ?: return@hookAfter
                 tv.text = "${param.args[0] as Int}"
             }
     }

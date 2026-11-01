@@ -22,13 +22,11 @@ import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.core.reflect.findMethods
 import java.util.WeakHashMap
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL], priority = ActionPriority.EARLY)
 object SkipMiniAppRewardAd : Feature(
     key = "skip_mini_app_reward_ad",
     name = "跳过小程序激励广告",
     desc = "点击领取奖励时跳过小程序、小游戏的 GDT 激励广告，并返回观看完成结果。",
-    processes = setOf(ActionProcess.ALL),
-    priority = ActionPriority.EARLY,
     requires = Requires(host = Requires.Host.QQOnly, ntOnly = true),
 ) {
 

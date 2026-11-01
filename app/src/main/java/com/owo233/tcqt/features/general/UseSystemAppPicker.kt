@@ -10,12 +10,11 @@ import com.owo233.tcqt.core.hook.hookReplace
 import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.core.reflect.invoke
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN])
 object UseSystemAppPicker : Feature(
     key = "use_system_app_picker",
     name = "使用系统应用选择器",
     desc = "将文件的“其他应用打开”交给 Android 系统处理。",
-    processes = setOf(ActionProcess.MAIN),
 ) {
 
     override fun install() {
@@ -31,7 +30,7 @@ object UseSystemAppPicker : Feature(
             paramTypes(Activity::class.java, String::class.java)
             returnType = void
         }.hookReplace { param ->
-            param.thisObject.invoke(systemOpenMethod, *param.args)
+            requireNotNull(param.thisObject).invoke(systemOpenMethod, *param.args)
         }
     }
 

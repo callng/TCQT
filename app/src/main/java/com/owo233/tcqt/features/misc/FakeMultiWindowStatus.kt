@@ -6,12 +6,11 @@ import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.hook.hookBefore
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object FakeMultiWindowStatus : Feature(
     key = "fake_multi_window_status",
     name = "伪装多窗口状态",
     desc = "不知道有什么用。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
 

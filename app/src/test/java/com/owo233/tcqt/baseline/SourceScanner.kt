@@ -60,10 +60,10 @@ internal object SourceScanner {
     /** 整个 app/src/main/java 源根（含 top 等本模块之外的包）。 */
     val javaSourceRoot: File by lazy { File(repoRoot, "app/src/main/java") }
 
-    /** 递归列出整个 main java 源根的 .kt 文件，用于包名/目录一致性检查。 */
+    /** Kotlin 和 Java 类型引用都参与宿主边界与包名检查。 */
     fun allJavaKotlinFiles(): List<File> =
         javaSourceRoot.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
+            .filter { it.isFile && it.extension in setOf("kt", "java") }
             .toList()
             .sortedBy { it.path }
 }

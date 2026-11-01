@@ -1,0 +1,65 @@
+name: Regression checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android tests, lint and debug build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6.3.0
+      - name: Install pinned Android tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake_version=$(sed -nE 's/^val androidCmakeVersion = "([^"]+)".*/\1/p' build.gradle.kts)
+          ndk_version=$(sed -nE 's/^val androidNdkVersion = "([^"]+)".*/\1/p' build.gradle.kts)
+          test -n "$cmake_version" && test -n "$ndk_version"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-37" "cmake;$cmake_version" "ndk;$ndk_version"
+          "$ANDROID_HOME/cmake/$cmake_version/bin/cmake" --version
+          "$ANDROID_HOME/cmake/$cmake_version/bin/ninja" --version
+      - name: Run regression gates
+        run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache
+      - name: Compile KSP registration fixtures
+        run: python3 tools/test-action-processor.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: android-check-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-debug.*
+            libs/processor/build/reports/tests/
+            libs/processor/build/test-results/
+            libs/core/build/reports/tests/
+            libs/core/build/test-results/
+            app/build/refactor-validation/processor-fixture/*.log
+          if-no-files-found: ignore
+  native:
+    name: Linux native IPC regressions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compile and test native IPC
+        run: bash tools/test-native-host.sh

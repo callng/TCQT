@@ -39,7 +39,7 @@ object ChangePreviewTextSize : Feature(
             name = "onCreate"
             paramTypes = arrayOf(bundle)
         }.hookAfter { param ->
-            val containerView = FieldUtils.create(param.thisObject)
+            val containerView = FieldUtils.create(requireNotNull(param.thisObject))
                 .typed(containerViewClass)
                 .getValue()
                 ?: error("修改预览字体大小: 未找到 PreviewTextContainerView 字段")

@@ -6,5 +6,7 @@ annotation class RegisterAction(
     /**
      * 是否启用，默认为true
      */
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val processes: Array<ActionProcess> = [ActionProcess.MAIN],
+    val priority: ActionPriority = ActionPriority.DEFERRED,
 )

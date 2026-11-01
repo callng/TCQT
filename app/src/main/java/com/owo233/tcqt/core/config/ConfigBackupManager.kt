@@ -149,47 +149,15 @@ object ConfigBackupManager {
     fun restoreConfig(context: Context, uri: Uri): RestoreResult {
         return try {
             val jsonStr = context.contentResolver.openInputStream(uri)?.use { input ->
-                input.readBytes().toString(Charsets.UTF_8)
+                ConfigRestorePlan.read(input)
             } ?: return RestoreResult.InvalidFile
-
-            val backupData = json.decodeFromString<BackupData>(jsonStr)
-
-            if (backupData.marker != BACKUP_MARKER) {
-                return RestoreResult.InvalidFile
-            }
-
-            if (backupData.version > BACKUP_VERSION) {
-                return RestoreResult.VersionMismatch
-            }
-
-            val settingMap = TCQTSetting.settingMap
-
-            TCQTSetting.clearAll()
-
-            var restoredCount = 0
-
-            for (item in backupData.settings) {
-                val setting = settingMap[item.key] ?: continue
-                val type = try {
-                    TCQTSetting.SettingType.valueOf(item.type)
-                } catch (_: IllegalArgumentException) {
-                    continue
-                }
-
-                if (type != setting.type &&
-                    !(type == TCQTSetting.SettingType.INT && setting.type == TCQTSetting.SettingType.INT_MULTI) &&
-                    !(type == TCQTSetting.SettingType.INT_MULTI && setting.type == TCQTSetting.SettingType.INT)
-                ) {
-                    continue
-                }
-
-                if (setValueFromString(setting, item.value)) {
-                    restoredCount++
-                }
-            }
-
-            Log.d("Restore successful: $restoredCount settings restored")
-            RestoreResult.Success(restoredCount)
+            val plan = ConfigRestorePlan.decode(jsonStr, TCQTSetting.settingMap.mapValues { it.value.type.name })
+            TCQTSetting.restore(plan)
+            RestoreResult.Success(plan.values.size)
+        } catch (_: ConfigRestorePlan.VersionMismatch) {
+            RestoreResult.VersionMismatch
+        } catch (_: IllegalArgumentException) {
+            RestoreResult.InvalidFile
         } catch (e: Exception) {
             Log.e("Restore failed", e)
             RestoreResult.Error(e)
@@ -206,33 +174,4 @@ object ConfigBackupManager {
         }
     }
 
-    private fun setValueFromString(
-        setting: TCQTSetting.Setting<out Any>,
-        value: String
-    ): Boolean {
-        return try {
-            when (setting.type) {
-                TCQTSetting.SettingType.BOOLEAN -> {
-                    val boolValue = value.toBooleanStrict()
-                    @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<Boolean>).setValue(boolValue)
-                }
-
-                TCQTSetting.SettingType.INT, TCQTSetting.SettingType.INT_MULTI -> {
-                    val intValue = value.toInt()
-                    @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<Int>).setValue(intValue)
-                }
-
-                TCQTSetting.SettingType.STRING -> {
-                    @Suppress("UNCHECKED_CAST")
-                    (setting as TCQTSetting.Setting<String>).setValue(value)
-                }
-            }
-            true
-        } catch (e: Exception) {
-            Log.e("Failed to set value for key: ${setting.key}", e)
-            false
-        }
-    }
 }

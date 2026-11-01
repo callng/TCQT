@@ -11,10 +11,9 @@ import com.owo233.tcqt.core.action.ActionSpec
  * [Requires] 可用性、[install] 的写法与 [Feature] 完全一致。
  *
  * ```kotlin
- * @RegisterAction
+ * @RegisterAction(priority = ActionPriority.BACKGROUND)
  * object MenuBuilder : InfraTask(
  *     key = "MenuBuilder",
- *     priority = ActionPriority.BACKGROUND,
  *     requires = Requires(ntOnly = true),
  * ) {
  *     override fun install() { … }
@@ -25,15 +24,11 @@ abstract class InfraTask(
     key: String,
     name: String = "",
     desc: String = "",
-    processes: Set<ActionProcess> = ActionSpec.DEFAULT_PROCESSES,
-    priority: ActionPriority = ActionPriority.DEFERRED,
     requires: Requires = Requires.None,
 ) : Feature(
     key = key,
     name = name,
     desc = desc,
-    processes = processes,
-    priority = priority,
     requires = requires,
 ) {
 

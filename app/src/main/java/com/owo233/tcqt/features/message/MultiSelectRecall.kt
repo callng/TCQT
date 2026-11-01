@@ -84,7 +84,7 @@ object MultiSelectRecall : Feature(
                     types == listOf(java.lang.Boolean.TYPE) || types == listOf(Integer.TYPE)
             }.forEach { method ->
                 method.hookAfter { param ->
-                    val layout = param.thisObject as LinearLayout
+                    val layout = requireNotNull(param.thisObject) as LinearLayout
                     (layout.getTag(R.drawable.ic_action_recall) as? Runnable)?.run()
                 }
             }
@@ -92,7 +92,7 @@ object MultiSelectRecall : Feature(
 
         operationInvoke.hookAfter { param ->
             val layout = param.result as? LinearLayout ?: return@hookAfter
-            val vb = param.thisObject.getObject($$"this$0")
+            val vb = requireNotNull(param.thisObject).getObject($$"this$0")
             val updateButton = Runnable {
                 MultiSelectRecallUi.ensureButton(layout) {
                     makeView.invoke(

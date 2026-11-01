@@ -6,6 +6,7 @@ import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.IHookEngine
 import com.owo233.tcqt.core.hook.Invoker
 import com.owo233.tcqt.core.hook.Unhook
+import com.owo233.tcqt.core.hook.HookContract
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge
@@ -40,7 +41,7 @@ class LegacyHookEngine : IHookEngine {
     override fun hookReplace(method: Member, priority: Int, callback: (Chain) -> Any?): Unhook {
         val unhook = XposedBridge.hookMethod(method, object : XC_MethodReplacement(priority) {
             override fun replaceHookedMethod(param: MethodHookParam): Any? {
-                return callback(LegacyChain(param))
+                return HookContract.result(method, callback(LegacyChain(param)))
             }
         })
         return Unhook { unhook.unhook() }

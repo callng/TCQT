@@ -48,6 +48,11 @@ printf '%s' "$APK_HASH" > "$DATAPATH/main.apk.sha256.tmp" ||
   abort "! Failed to store TCQT package hash"
 set_perm "$DATAPATH/main.apk.tmp" 0 0 0644
 set_perm "$DATAPATH/main.apk.sha256.tmp" 0 0 0644
+# SCM_RIGHTS still checks the receiving Zygote's permission to read the file.
+# A fresh file under /data/adb otherwise inherits adb_data_file and its FD is
+# discarded by SELinux at recvmsg. Label only the read-only public APK payload.
+chcon u:object_r:system_file:s0 "$DATAPATH/main.apk.tmp" ||
+  abort "! Failed to label TCQT package for Zygote FD transfer"
 mv -f "$DATAPATH/main.apk.tmp" "$DATAPATH/main.apk" ||
   abort "! Failed to publish TCQT package"
 mv -f "$DATAPATH/main.apk.sha256.tmp" "$DATAPATH/main.apk.sha256" ||

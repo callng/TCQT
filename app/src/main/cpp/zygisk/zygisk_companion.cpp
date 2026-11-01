@@ -1,4 +1,9 @@
 #include "zygisk/zygisk_companion.h"
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
+#include <cstdarg>
+#include <cstdio>
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -15,6 +20,17 @@
 namespace tcqt::zygisk {
 namespace {
 
+void companion_error(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+#if defined(__ANDROID__)
+    __android_log_vprint(ANDROID_LOG_ERROR, "TCQT-Zygisk", format, args);
+#else
+    vfprintf(stderr, format, args);
+    fputc('\n', stderr);
+#endif
+    va_end(args);
+}
 constexpr uint32_t MAGIC = 0x54435154;
 constexpr uint32_t VERSION = 1;
 constexpr size_t MAX_HOOKS = 256;
@@ -94,7 +110,9 @@ bool send_response(int socket, Response &response, int fd = -1) {
 
 bool receive_response(int socket, Response &response, int &fd) {
     iovec io{&response, sizeof(response)};
-    alignas(cmsghdr) char control[CMSG_SPACE(4 * sizeof(int))]{};
+    // Framework sockets may retain SO_PASSCRED after authenticating a client.
+    // Linux then adds SCM_CREDENTIALS to the same message as our SCM_RIGHTS.
+    alignas(cmsghdr) char control[CMSG_SPACE(4 * sizeof(int)) + CMSG_SPACE(sizeof(ucred))]{};
     msghdr message{};
     message.msg_iov = &io;
     message.msg_iovlen = 1;
@@ -109,10 +127,20 @@ bool receive_response(int socket, Response &response, int &fd) {
         return false;
     }
     bool invalid = (message.msg_flags & (MSG_CTRUNC | MSG_TRUNC)) != 0;
+    if (invalid) companion_error(
+            "companion response truncated: bytes=%zd flags=%x control=%zu", n,
+            message.msg_flags, message.msg_controllen);
     for (auto *header = CMSG_FIRSTHDR(&message); header != nullptr;
          header = CMSG_NXTHDR(&message, header)) {
+        if (header->cmsg_level == SOL_SOCKET && header->cmsg_type == SCM_CREDENTIALS &&
+            header->cmsg_len == CMSG_LEN(sizeof(ucred))) {
+            continue;  // Transport metadata, authenticated by the framework.
+        }
         if (header->cmsg_level != SOL_SOCKET || header->cmsg_type != SCM_RIGHTS ||
             header->cmsg_len < CMSG_LEN(0)) {
+            companion_error(
+                    "companion unexpected ancillary: level=%d type=%d length=%zu",
+                    header->cmsg_level, header->cmsg_type, header->cmsg_len);
             invalid = true;
             continue;
         }
@@ -123,6 +151,7 @@ bool receive_response(int socket, Response &response, int &fd) {
             memcpy(&received, CMSG_DATA(header) + i, sizeof(received));
             if (fd < 0) fd = received;
             else {
+                companion_error( "companion surplus FD: first=%d extra=%d", fd, received);
                 close(received);
                 invalid = true;
             }
@@ -279,7 +308,12 @@ bool request_injection_state(int socket, InjectionTarget target, uid_t uid,
     };
     if (!receive_response(socket, response, fd)) return fail(errno);
     if (response.magic != MAGIC || response.version != VERSION ||
-        response.stage > HASH || (response.flags & ~15u) != 0) return fail(EPROTO);
+        response.stage > HASH || (response.flags & ~15u) != 0) {
+        companion_error(
+                "companion invalid header: magic=%x version=%u stage=%u flags=%x",
+                response.magic, response.version, response.stage, response.flags);
+        return fail(EPROTO);
+    }
     out.error_stage = response.stage;
     if (response.error != 0) return fail(response.error > 0 ? response.error : EPROTO);
     out.module_disabled = (response.flags & MODULE_DISABLED) != 0;
@@ -288,14 +322,25 @@ bool request_injection_state(int socket, InjectionTarget target, uid_t uid,
         if (fd >= 0 || response.hook_count != 0) return fail(EPROTO);
         return true;
     }
-    if (fd < 0 || response.hook_count != hook_count) return fail(EPROTO);
+    if (fd < 0 || response.hook_count != hook_count) {
+        companion_error(
+                "companion invalid descriptor: fd=%d hooks=%u expected=%zu",
+                fd, response.hook_count, hook_count);
+        return fail(EPROTO);
+    }
     std::array<char, 65> hash{};
     out.disabled_hooks.resize(hook_count);
     if (!read_exact(socket, hash.data(), hash.size()) ||
         !read_exact(socket, out.disabled_hooks.data(), hook_count)) return fail(errno);
-    if (hash.back() != '\0') return fail(EPROTO);
+    if (hash.back() != '\0') {
+        companion_error( "companion invalid hash terminator: %u", static_cast<unsigned char>(hash.back()));
+        return fail(EPROTO);
+    }
     size_t hash_size = strlen(hash.data());
-    if (hash_size != 0 && hash_size != 64) return fail(EPROTO);
+    if (hash_size != 0 && hash_size != 64) {
+        companion_error( "companion invalid hash length: %zu", hash_size);
+        return fail(EPROTO);
+    }
     for (size_t i = 0; i < hash_size; ++i)
         if (!std::isxdigit(static_cast<unsigned char>(hash[i]))) return fail(EPROTO);
     for (uint8_t disabled : out.disabled_hooks)

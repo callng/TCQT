@@ -12,10 +12,9 @@ import com.owo233.tcqt.core.hook.isAbstract
 import com.owo233.tcqt.core.hook.paramCount
 import com.owo233.tcqt.core.log.Log
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.BACKGROUND)
 object MenuBuilder : InfraTask(
     key = "MenuBuilder",
-    priority = ActionPriority.BACKGROUND,
     requires = Requires(ntOnly = true),
 ) {
 

@@ -13,15 +13,11 @@ import com.owo233.tcqt.core.reflect.allConstructors
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.OPENSDK])
 object SkipQRLoginWait : Feature(
     key = "skip_qr_login_wait",
     name = "跳过扫码登录等待",
     desc = "扫码登录时跳过倒计时。",
-    processes = setOf(
-        ActionProcess.MAIN,
-        ActionProcess.OPENSDK,
-    ),
 ), DexKitTask {
 
     override fun install() {

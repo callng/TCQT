@@ -7,12 +7,11 @@ import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.doNothing
 import com.owo233.tcqt.core.reflect.findMethod
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.ALL])
 object DisableCrashReport : Feature(
     key = "disable_qq_crash_report_manager",
     name = "禁用崩溃上报",
     desc = "禁止BuglySDK初始化，用途意义不明。",
-    processes = setOf(ActionProcess.ALL),
 ) {
 
     override fun install() {

@@ -3,7 +3,6 @@
 package com.owo233.tcqt.core.env
 
 import com.owo233.tcqt.core.reflect.field
-import com.tencent.mobileqq.pluginsdk.PluginStatic
 
 private fun getSimpleName(className: String): String {
     var name = className
@@ -50,12 +49,12 @@ fun loadOrThrow(
 }
 
 fun loadFromPlugin(pluginName: String, className: String): Class<*> {
-    val pluginClassLoader = PluginStatic.getOrCreateClassLoader(HookEnv.hostAppContext, pluginName)
+    val pluginClassLoader = HostServicesProvider.requireServices().pluginClassLoader(HookEnv.hostAppContext, pluginName)
     return pluginClassLoader.loadClass(className)
 }
 
 fun loadClassLoaderFromPlugin(pluginName: String): ClassLoader {
-    return PluginStatic.getOrCreateClassLoader(HookEnv.hostAppContext, pluginName)
+    return HostServicesProvider.requireServices().pluginClassLoader(HookEnv.hostAppContext, pluginName)
 }
 
 val String.clazz: Class<*>?

@@ -11,12 +11,11 @@ import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findMethod
 import java.io.File
 
-@RegisterAction
+@RegisterAction(priority = ActionPriority.CRITICAL)
 object FileRecvRedirect : Feature(
     key = "file_recv_redirect",
     name = "文件接收重定向",
     desc = "目前只能重定向到/sdcard/Download/{HostAppName}/",
-    priority = ActionPriority.CRITICAL,
 ) {
 
 

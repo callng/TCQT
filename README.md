@@ -9,7 +9,7 @@
 
 </div>
 
-> 一个基于 **Xposed 框架** 的 **QQ / TIM 消息防撤回多功能模块**  
+> 支持 **LSPosed / Zygisk** 的 **QQ / TIM 消息防撤回多功能模块**
 
 ---
 
@@ -30,11 +30,11 @@
 
 ### 环境要求
 
-| 项目      | 说明                                                    |
-|-----------|---------------------------------------------------------|
-| Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext） |
-| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                    |
-| 系统版本  | Android 8.1 ~ 16（高版本依赖 ART 布局探测，适配中）     |
+| 项目      | 说明                                                                         |
+|-----------|------------------------------------------------------------------------------|
+| Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext）                      |
+| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                                         |
+| 系统版本  | minSdk Android 8.1；Android 17 arm64 已完成设备回归，其他 ART/OEM 组合需验证 |
 
 ### 安装
 
@@ -42,8 +42,8 @@
 2. 该文件是**双格式包**：直接安装即为 Xposed 模块 ；
    如需 Zygisk 模式，把它改名为 `.zip`，
    在 Magisk / KernelSU / APatch 应用中选择「从本地安装」刷入，然后重启。
-3. 安装并打开 TCQT App 进行功能配置（配置与 LSPosed 模式完全相同，
-   存储在宿主 QQ/TIM 的数据目录中）。
+3. 在宿主 QQ/TIM 的设置中进入 **TCQT** 页面进行功能配置。
+   Zygisk 模式不要求安装 TCQT App；配置与 LSPosed 模式相同，存储在宿主数据目录。
 4. 完全结束后台 QQ / TIM 进程并重新启动，功能即生效。
 
 ### 更新与热安装
@@ -71,7 +71,7 @@ KernelSU 也可能因安全模式或模块目录替换失败等原因回退为�
 
 - **不要同时启用 LSPosed 中的 TCQT 模块**：两种模式共用同一份配置，
   同时 hook 会造成冲突。使用 Zygisk 模式时请在 LSPosed 中停用 TCQT。
-- 当前以 arm64-v8a 为主，Android 15/16 为实验性支持。
+- 当前只构建 arm64-v8a；Android 17 的设备回归不代表所有 ART/OEM 组合都已验证。
 - 功能范围与 LSPosed 模式一致（包括 DexKit 方法查找、设置页联动等）。
 
 ### 注入控制（WebUI）
@@ -128,7 +128,7 @@ DexKit 缓存分区、扫描及清空规则见 [DexKit 缓存说明](DEXKIT.md)�
 
 ### 编译调试版本
 
-调试版本无需签名，可直接编译：
+调试版本自动使用调试证书，可直接编译：
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -158,7 +158,7 @@ KEY_PASSWORD=your_key_password \
 ./gradlew :app:assembleRelease
 ```
 
-> 未配置签名信息时，发布版本无法编译；CI 环境已自动注入以上变量。
+> 未配置发布签名时，双格式 Release 使用本机调试证书，仅供本地验证；正式发布需提供签名配置。CI 环境通过以上变量注入证书。
 
 ### 编译 Zygisk 模块（可选）
 
@@ -201,6 +201,8 @@ app/build/outputs/apk/release/  # 发布版本（TCQT-<版本>-release.apk，双
 ### 清理构建
 
 设置页、宿主弹窗和 WebUI 的开发约定见 [界面设计规范](docs/ui-guidelines.md)。
+
+模块边界与运行时序见 [架构文档](ARCHITECTURE.md)；新增功能、自动化检查、双格式包校验和互斥设备测试见 [开发指南](DEVELOPMENT.md)。[功能示例](examples/SampleFeature.kt) 会随 Debug 构建实际编译，默认不注册。逐项优化与验证记录见 [TODO](TODO.md)。
 
 ```bash
 ./gradlew clean :app:assembleDebug

@@ -36,13 +36,11 @@ import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.FindMethod
 import java.lang.ref.WeakReference
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF], priority = ActionPriority.EARLY)
 object GetSign : Feature(
     key = "get_sign",
     name = "获取测试签名",
     desc = "本功能仅用于测试，正常情况下无需启用!!! 用法: 在聊天框随便打个字符然后长按发送按钮即可获取。",
-    processes = setOf(ActionProcess.MAIN, ActionProcess.MSF),
-    priority = ActionPriority.EARLY,
 ), DexKitTask {
 
     private var pendingEditText: WeakReference<EditText>? = null
@@ -78,15 +76,15 @@ object GetSign : Feature(
 
         method.hookAfter { param ->
             val sendBtn = runCatching {
-                param.thisObject::class.java
+                requireNotNull(param.thisObject)::class.java
                     .findField { type = Button::class.java }
-                    .get(param.thisObject) as? Button
+                    .get(requireNotNull(param.thisObject)) as? Button
             }.getOrNull() ?: return@hookAfter
 
             val editText = runCatching {
-                param.thisObject::class.java
+                requireNotNull(param.thisObject)::class.java
                     .findField { type = EditText::class.java }
-                    .get(param.thisObject) as? EditText
+                    .get(requireNotNull(param.thisObject)) as? EditText
             }.getOrNull() ?: return@hookAfter
 
             sendBtn.setOnLongClickListener {

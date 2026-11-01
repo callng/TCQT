@@ -9,12 +9,11 @@ import com.tencent.mobileqq.msfcore.MSFConfig
 import com.tencent.mobileqq.msfcore.MSFKernel
 import com.tencent.mobileqq.msfcore.MSFNetworkConfig
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MSF])
 object DisableLightQuic : Feature(
     key = "disable_light_quic",
     name = "禁用QUIC",
     desc = "不允许MSF使用QUIC，强制它使用TCP。",
-    processes = setOf(ActionProcess.MSF),
 ) {
 
 

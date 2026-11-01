@@ -16,12 +16,11 @@ import com.owo233.tcqt.core.reflect.findMethod
 import com.qzone.proxy.feedcomponent.model.BusinessFeedData
 import com.tencent.mobileqq.vas.adv.common.data.AlumBasicData
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.QZONE])
 object HideQzoneAD : Feature(
     key = "hide_qzone_ad",
     name = "隐藏空间广告",
     desc = "隐藏好友动态里那无时无刻不在显示的广告。",
-    processes = setOf(ActionProcess.MAIN, ActionProcess.QZONE),
 ) {
 
     override fun install() {

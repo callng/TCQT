@@ -5,6 +5,7 @@ import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.IHookEngine
 import com.owo233.tcqt.core.hook.Invoker
 import com.owo233.tcqt.core.hook.Unhook
+import com.owo233.tcqt.core.hook.HookContract
 import io.github.libxposed.api.XposedInterface
 import java.lang.reflect.Executable
 import java.lang.reflect.Member
@@ -20,8 +21,12 @@ class ModernHookEngine(private val base: XposedInterface) : IHookEngine {
     override fun hookBefore(method: Member, priority: Int, callback: (HookParam) -> Unit): Unhook {
         val handle = base.hook(method as Executable).setPriority(priority).intercept { chain ->
             val param = ModernHookParam(chain)
-            callback(param)
-            if (param.isReturnEarly) return@intercept param.result
+            val outcome = param.snapshot()
+            try { callback(param) } catch (error: Throwable) {
+                log(6, "TCQT", "Before callback failed: $method", error)
+                param.restore(outcome)
+            }
+            if (param.isReturnEarly) return@intercept param.finish()
             return@intercept chain.proceed(param.args)
         }
         return Unhook { handle.unhook() }
@@ -35,9 +40,12 @@ class ModernHookEngine(private val base: XposedInterface) : IHookEngine {
             } catch (t: Throwable) {
                 param.throwable = t
             }
-            callback(param)
-            if (param.throwable != null) throw param.throwable!!
-            return@intercept param.result
+            val outcome = param.snapshot()
+            try { callback(param) } catch (error: Throwable) {
+                log(6, "TCQT", "After callback failed: $method", error)
+                param.restore(outcome)
+            }
+            return@intercept param.finish()
         }
         return Unhook { handle.unhook() }
     }
@@ -45,7 +53,7 @@ class ModernHookEngine(private val base: XposedInterface) : IHookEngine {
     override fun hookReplace(method: Member, priority: Int, callback: (Chain) -> Any?): Unhook {
         val handle = base.hook(method as Executable).setPriority(priority).intercept { chain ->
             val modernChain = ModernChain(chain)
-            return@intercept callback(modernChain)
+            return@intercept HookContract.result(method, callback(modernChain))
         }
         return Unhook { handle.unhook() }
     }

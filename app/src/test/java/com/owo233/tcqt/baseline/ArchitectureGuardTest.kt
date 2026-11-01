@@ -204,4 +204,17 @@ class ArchitectureGuardTest {
             assertTrue(offenders.isEmpty(), "core 层不得依赖 Compose/Miuix：$offenders")
         }
     }
+
+    @Test
+    fun `core 不得静态绑定 QQ 或 Hook 框架类型`() {
+        val forbidden = Regex("\\b(?:com\\.tencent\\.|mqq\\.|cooperation\\.|de\\.robv\\.android\\.xposed\\.|io\\.github\\.libxposed\\.)")
+        // Runtime class-name strings belong to the generic class-loader policy; type references do not.
+        val strings = Regex("\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\])*\"")
+        val offenders = SourceScanner.allJavaKotlinFiles().filter { relativePath(it).startsWith("core/") }
+            .mapNotNull { file ->
+                val code = SourceScanner.stripComments(SourceScanner.read(file)).replace(strings, "\"\"")
+                forbidden.find(code)?.let { "${relativePath(file)}: ${it.value}" }
+            }
+        assertTrue(offenders.isEmpty(), "core 静态绑定宿主/框架：$offenders")
+    }
 }

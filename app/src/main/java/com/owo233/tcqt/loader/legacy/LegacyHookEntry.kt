@@ -29,7 +29,7 @@ class LegacyHookEntry : IXposedHookLoadPackage, IXposedHookZygoteInit {
             if (HookEngineManager.isInitialized) return
             HookEngineManager.engine = LegacyHookEngine()
 
-            HookSteps.initHandleLoadPackage(lpparam)
+            HookSteps.initHandleLoadPackage(lpparam.processName, lpparam.packageName)
             ModuleLoader.initialize(
                 lpparam.classLoader,
                 modulePath,

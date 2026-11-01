@@ -3,8 +3,10 @@ package com.owo233.tcqt.core.config
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.log.Log
-import io.fastkv.FastKV
+import java.io.File
 import kotlin.reflect.KProperty
+import java.util.concurrent.ConcurrentHashMap
+import com.owo233.tcqt.core.action.ActionSpec
 
 /**
  * 模块设置中心：所有配置项的 FastKV 持久化与读写。
@@ -16,9 +18,9 @@ import kotlin.reflect.KProperty
  */
 internal object TCQTSetting {
 
-    private val config: FastKV by lazy {
+    private val config: SettingsStore by lazy {
         val path = "${HookEnv.moduleDataPath}/global/setting"
-        FastKV.Builder(path, TCQTBuild.APP_NAME).build()
+        SettingsStore(File(path), TCQTBuild.APP_NAME)
     }
 
     /**
@@ -27,17 +29,48 @@ internal object TCQTSetting {
      * lazy 首次访问时由 [ThemeSettings.registerSettings] 与
      * [SettingsRegistry.registerAllInto] 填充，覆盖主题配置和所有 ActionSpec 的 `settings` 声明。
      */
-    val settingMap: HashMap<String, Setting<out Any>> by lazy {
+    private val registered: ConcurrentHashMap<String, Setting<out Any>> by lazy {
         val map = hashMapOf<String, Setting<out Any>>()
         ThemeSettings.registerSettings(map)
-        SettingsRegistry.registerAllInto(map)
-        map
+        ConcurrentHashMap(map)
+    }
+
+    private val allRegistered by lazy {
+        SettingsRegistry.registerAllInto(registered)
+        true
+    }
+
+    /** A complete stable snapshot for settings UI and backup; startup uses registeredSetting. */
+    val settingMap: Map<String, Setting<out Any>>
+        get() {
+            check(allRegistered)
+            return registered.toMap()
+        }
+
+    fun registerAction(action: ActionSpec) = SettingsRegistry.registerInto(action, registered)
+
+    fun registeredSetting(key: String): Setting<out Any>? = registered[key]
+
+    /** Validate the complete edit set before one cross-process commit. */
+    fun applyEdits(values: Map<String, Any>) {
+        values.forEach { (key, value) ->
+            val setting = requireNotNull(registeredSetting(key)) { "Unknown setting: $key" }
+            val valid = when (setting.type) {
+                SettingType.BOOLEAN -> value is Boolean
+                SettingType.INT, SettingType.INT_MULTI -> value is Int
+                SettingType.STRING -> value is String
+            }
+            require(valid) { "Wrong setting type: $key" }
+        }
+        config.update { it.putAll(values) }
     }
 
     /** 清空全部已保存的配置。 */
     fun clearAll() {
         config.clear()
     }
+
+    internal fun restore(plan: ConfigRestorePlan) = plan.applyTo(config)
 
     /** 指定 key 是否已有持久化值。 */
     fun containsKey(key: String): Boolean {
@@ -46,19 +79,19 @@ internal object TCQTSetting {
 
     /** 全部已持久化的 key。 */
     fun getAllKeys(): MutableSet<String> {
-        return config.all.keys
+        return config.all().keys.toMutableSet()
     }
 
     /**
      * 按原始字符串读取（不做类型检查与 trim），key 不存在时返回 [def]。
      */
     fun getRawString(key: String, def: String = ""): String {
-        return config.getString(key, def) ?: ""
+        return config[key] as? String ?: def
     }
 
     /** 以原始字符串形式写入，跳过类型检查。 */
     fun putRawString(key: String, value: String) {
-        config.putString(key, value)
+        config.put(key, value)
     }
 
     /** 删除指定 key 的持久化值。 */
@@ -73,7 +106,7 @@ internal object TCQTSetting {
      */
     inline fun <reified T : Any> getValue(key: String): T? {
         return runCatching {
-            val setting = settingMap[key]
+            val setting = registeredSetting(key)
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
                 val isCompatible = setting.type == requestedType ||
@@ -97,7 +130,8 @@ internal object TCQTSetting {
                 return readFromStorageByType<T>(key, storedType)
             }
 
-            null
+            // Old FastKV values need not have a __type__ marker.
+            config[key] as? T
         }.onFailure {
             Log.e("Failed to get value for key: $key", it)
         }.getOrNull()
@@ -110,7 +144,7 @@ internal object TCQTSetting {
      */
     inline fun <reified T : Any> setValue(key: String, value: T) {
         runCatching {
-            val setting = settingMap[key]
+            val setting = registeredSetting(key)
             if (setting != null) {
                 val requestedType = inferSettingType<T>()
                 val isCompatible = setting.type == requestedType ||
@@ -135,7 +169,7 @@ internal object TCQTSetting {
 
     private fun getStoredType(key: String): SettingType? {
         val typeKey = "__type__$key"
-        val typeString = config.getString(typeKey, null) ?: return null
+        val typeString = config[typeKey] as? String ?: return null
         return when (typeString) {
             "BOOLEAN" -> SettingType.BOOLEAN
             "INT" -> SettingType.INT
@@ -147,23 +181,23 @@ internal object TCQTSetting {
 
     private fun saveStoredType(key: String, type: SettingType) {
         val typeKey = "__type__$key"
-        config.putString(typeKey, type.name)
+        config.put(typeKey, type.name)
     }
 
     @Suppress("UNCHECKED_CAST")
     private inline fun <reified T : Any> readFromStorageByType(key: String, type: SettingType): T? {
         return when (type) {
-            SettingType.BOOLEAN -> config.getBoolean(key, false) as T
-            SettingType.INT, SettingType.INT_MULTI -> config.getInt(key, 0) as T
-            SettingType.STRING -> (config.getString(key, null) ?: "") as T
+            SettingType.BOOLEAN -> (config[key] as? Boolean ?: false) as T
+            SettingType.INT, SettingType.INT_MULTI -> (config[key] as? Int ?: 0) as T
+            SettingType.STRING -> (config[key] as? String ?: "") as T
         }
     }
 
     private inline fun <reified T : Any> writeToStorage(key: String, value: T) {
         when (T::class) {
-            Boolean::class -> config.putBoolean(key, value as Boolean)
-            Int::class -> config.putInt(key, value as Int)
-            String::class -> config.putString(key, value.toString())
+            Boolean::class -> config.put(key, value as Boolean)
+            Int::class -> config.put(key, value as Int)
+            String::class -> config.put(key, value.toString())
             else -> Log.e("Unsupported type for key: $key, type: ${T::class}")
         }
     }
@@ -205,28 +239,28 @@ internal object TCQTSetting {
         @Suppress("UNCHECKED_CAST")
         fun getValue(): T {
             return when (type) {
-                SettingType.BOOLEAN -> config.getBoolean(key, default as? Boolean ?: false)
-                SettingType.INT, SettingType.INT_MULTI -> config.getInt(key, default as? Int ?: 0)
-                SettingType.STRING -> config.getString(key, default as? String ?: "") ?: ""
+                SettingType.BOOLEAN -> config[key] as? Boolean ?: default as? Boolean ?: false
+                SettingType.INT, SettingType.INT_MULTI -> config[key] as? Int ?: default as? Int ?: 0
+                SettingType.STRING -> config[key] as? String ?: default as? String ?: ""
             } as T
         }
 
         @Suppress("UNCHECKED_CAST")
         fun setValue(value: T) {
             when (type) {
-                SettingType.BOOLEAN -> config.putBoolean(
+                SettingType.BOOLEAN -> config.put(
                     key,
                     value as? Boolean ?: runCatching { value.toString().toBooleanStrict() }
                         .getOrDefault(false)
                 )
 
-                SettingType.INT, SettingType.INT_MULTI -> config.putInt(
+                SettingType.INT, SettingType.INT_MULTI -> config.put(
                     key,
                     value as? Int ?: runCatching { value.toString().toInt() }
                         .getOrDefault(0)
                 )
 
-                SettingType.STRING -> config.putString(key, value.toString())
+                SettingType.STRING -> config.put(key, value.toString())
             }
         }
 

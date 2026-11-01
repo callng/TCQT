@@ -8,12 +8,11 @@ import com.owo233.tcqt.core.hook.hookReplace
 import com.owo233.tcqt.core.hook.invokeOriginal
 import com.owo233.tcqt.core.reflect.findMethod
 
-@RegisterAction
+@RegisterAction(processes = [ActionProcess.TOOL])
 object BrowserRestrictMitigation : Feature(
     key = "browser_restrict_mitigation",
     name = "禁用内置浏览器网页拦截",
     desc = "允许在内置浏览器中访问非官方认可的网页。",
-    processes = setOf(ActionProcess.TOOL),
 ) {
 
     private var targetUrl: String? = null
