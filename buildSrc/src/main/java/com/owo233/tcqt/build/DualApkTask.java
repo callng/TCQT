@@ -2,6 +2,7 @@ package com.owo233.tcqt.build;
 
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.zip.*;
 import javax.inject.Inject;
@@ -47,7 +48,7 @@ public abstract class DualApkTask extends DefaultTask {
             Path merged = getTemporaryDir().toPath().resolve(apk.getFileName() + ".merged");
             Path aligned = getTemporaryDir().toPath().resolve(apk.getFileName() + ".aligned");
             merge(apk, merged);
-            getExec().exec(spec -> spec.commandLine(getZipalign().get().getAsFile(), "-f", "-p", "4", merged, aligned))
+            getExec().exec(spec -> spec.commandLine(getZipalign().get().getAsFile(), "-f", "-P", "16", "4", merged, aligned))
                 .assertNormalExitValue();
             getExec().exec(spec -> {
                 spec.environment("TCQT_STORE_PASSWORD", getStorePassword().get());
@@ -59,6 +60,11 @@ public abstract class DualApkTask extends DefaultTask {
                     "--v3-signing-enabled", "false", "--v4-signing-enabled", "false",
                     "--out", output.resolve(apk.getFileName()), aligned);
             }).assertNormalExitValue();
+            getExec().exec(spec -> spec.commandLine(getJavaExecutable().get().getAsFile(), "-jar",
+                getApksignerJar().get().getAsFile(), "verify", output.resolve(apk.getFileName())))
+                .assertNormalExitValue();
+            getExec().exec(spec -> spec.commandLine(getZipalign().get().getAsFile(), "-c", "-P", "16", "4",
+                output.resolve(apk.getFileName()))).assertNormalExitValue();
             return output.resolve(apk.getFileName()).toFile();
 
     }
@@ -88,7 +94,8 @@ public abstract class DualApkTask extends DefaultTask {
                 if (additions.containsKey(name)) data = Files.readAllBytes(additions.get(name));
                 else try (InputStream stream = zip.getInputStream(originals.get(name))) { data = stream.readAllBytes(); }
                 ZipEntry entry = new ZipEntry(name);
-                entry.setTime(0);
+                // A mid-range DOS date avoids the JDK's 1980 boundary and extended timestamp fields.
+                entry.setTimeLocal(LocalDateTime.of(2000, 1, 1, 0, 0));
                 if ((name.startsWith("lib/") && name.endsWith(".so")) || name.equals("resources.arsc")) {
                     CRC32 crc = new CRC32(); crc.update(data);
                     entry.setMethod(ZipEntry.STORED); entry.setSize(data.length); entry.setCompressedSize(data.length); entry.setCrc(crc.getValue());

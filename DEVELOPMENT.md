@@ -8,6 +8,8 @@
 
 Linux CI 使用 `bash tools/prepare-android-sdk.sh` 准备 SDK。脚本读取主/次 API 版本，安装对应平台包（当前为 `platforms;android-37.0`）、QQ stubs 平台以及固定的 CMake/NDK；重用完整的已安装工具，下载失败最多重试三次。两条 Android 工作流共用此脚本。
 
+Kotlin 测试库和 `protoc` 优先从 Google 的 Maven Central 镜像解析，版本仍由版本目录控制。CI 回归刷新依赖缓存，并实际下载对应系统的 `protoc`，不能仅用 Windows 缓存判断 Linux 依赖是否可用。
+
 以下是 PowerShell 命令；Linux/macOS 将 `.\gradlew.bat` 换为 `./gradlew`。
 
 ```powershell
@@ -68,7 +70,7 @@ Linux/WSL 原生 IPC 检查：`bash tools/test-native-host.sh`。原生脚本从
 python tools/verify-dual-apk.py <双格式.apk> --raw <原始AGP.apk> --zip <Zygisk.zip>
 ```
 
-把占位符换为真实路径，Debug 不提供 Release ZIP 参数。脚本检查 APK 条目与原包一致、双格式模块条目和 ZIP 等同性。另使用当前 SDK build-tools 的 `apksigner verify --verbose <APK>` 和 `zipalign -c -p 4 <APK>` 检查 V2 签名与对齐。签名和对齐通过不代表宿主运行通过。
+把占位符换为真实路径，Debug 不提供 Release ZIP 参数。脚本检查 APK 条目与原包一致、双格式模块条目、ZIP 等同性、local extra field 长度和原生库 16 KiB 对齐。打包任务使用固定的 DOS 时间、`zipalign -P 16`，并在签名后验证 V2 签名和对齐。Linux CI 在上传前另运行 `unzip -t`，发布任务下载后再验证一次；失败时保留原始解析错误。签名和对齐通过不代表宿主运行通过。
 
 ## 设备测试与模式互斥
 

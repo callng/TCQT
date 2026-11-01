@@ -31,7 +31,13 @@ jobs:
         shell: bash
         run: bash tools/prepare-android-sdk.sh
       - name: Run regression gates
-        run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache
+        run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache --refresh-dependencies
+      - name: Verify debug package
+        run: |
+          apk_file=$(find app/build/outputs/apk/debug -name '*.apk' -type f -print -quit)
+          raw_file=$(find app/build/intermediates/apk/debug/packageDebug -name '*.apk' -type f -print -quit)
+          python3 tools/verify-dual-apk.py "$apk_file" --raw "$raw_file"
+          unzip -tq "$apk_file"
       - name: Compile KSP registration fixtures
         run: python3 tools/test-action-processor.py
       - uses: actions/upload-artifact@v7

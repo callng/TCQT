@@ -1,8 +1,22 @@
 """Verify dual APK contents and optional raw APK/flash ZIP identity (no SDK needed)."""
 import argparse
 import hashlib
+import struct
 from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile
+
+
+def verify_local_extra(extra: bytes, name: str):
+    offset = 0
+    while offset < len(extra):
+        # zipalign may leave a zero-filled padding tail without a field header.
+        if not any(extra[offset:]):
+            return
+        assert offset + 4 <= len(extra), f"Truncated local ZIP extra field: {name}"
+        _, length = struct.unpack_from('<HH', extra, offset)
+        offset += 4
+        assert offset + length <= len(extra), f"Invalid local ZIP extra field length: {name}"
+        offset += length
 
 
 def verify(apk: Path, raw: Path | None = None, flash_zip: Path | None = None):
@@ -17,11 +31,23 @@ def verify(apk: Path, raw: Path | None = None, flash_zip: Path | None = None):
         assert not any(n.startswith("payload/") or n.endswith("libtcqtzygisk.so") for n in names)
         assert not any(n.endswith(".apk") for n in names), "Nested APK"
         assert b"@VERSION" not in package.read("module.prop"), "Unresolved version"
-        for entry in package.infolist():
-            if entry.filename == "resources.arsc" or entry.filename.startswith("lib/") and entry.filename.endswith(".so"):
-                assert entry.compress_type == ZIP_STORED, entry.filename
-            if entry.filename.endswith(".sh"):
-                assert b"\r\n" not in package.read(entry), entry.filename
+        with apk.open('rb') as source:
+            for entry in package.infolist():
+                source.seek(entry.header_offset)
+                header = source.read(30)
+                assert header[:4] == b'PK\x03\x04', f"Invalid local ZIP header: {entry.filename}"
+                name_length, extra_length = struct.unpack_from('<HH', header, 26)
+                source.seek(name_length, 1)
+                extra = source.read(extra_length)
+                assert len(extra) == extra_length, f"Truncated local ZIP extra data: {entry.filename}"
+                verify_local_extra(extra, entry.filename)
+                native_library = entry.filename.startswith("lib/") and entry.filename.endswith(".so")
+                if entry.filename == "resources.arsc" or native_library:
+                    assert entry.compress_type == ZIP_STORED, entry.filename
+                if native_library:
+                    assert source.tell() % 16384 == 0, f"Native library is not 16 KiB aligned: {entry.filename}"
+                if entry.filename.endswith(".sh"):
+                    assert b"\r\n" not in package.read(entry), entry.filename
         if raw:
             with ZipFile(raw) as original:
                 for name in original.namelist():

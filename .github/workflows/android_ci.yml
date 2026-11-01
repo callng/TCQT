@@ -90,6 +90,11 @@ jobs:
             exit 1
           fi
 
+          APK_FILE=$(find app/build/outputs/apk/release -name '*.apk' -type f -print -quit)
+          RAW_APK_FILE=$(find app/build/intermediates/apk/release/packageRelease -name '*.apk' -type f -print -quit)
+          python3 tools/verify-dual-apk.py "$APK_FILE" --raw "$RAW_APK_FILE" --zip "$ZIP_FILE"
+          unzip -tq "$ZIP_FILE"
+
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
           echo "Zygisk 模块 ZIP: $ZIP_FILE"
 
@@ -116,7 +121,7 @@ jobs:
 
   upload-telegram:
     name: Upload Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build
     if: >-
@@ -125,6 +130,8 @@ jobs:
         github.repository == 'callng/TCQT'
       }}
     steps:
+      - name: Checkout package validator
+        uses: actions/checkout@v7
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
@@ -168,8 +175,9 @@ jobs:
             exit 1
           fi
 
-          # 验证 APK 实际上仍然是合法 ZIP
-          if ! unzip -t "$apk_file" >/dev/null 2>&1; then
+          # Keep parser errors visible if a downloaded package fails validation.
+          python3 tools/verify-dual-apk.py "$apk_file"
+          if ! unzip -tq "$apk_file"; then
             echo "::error::重命名后的 APK 不是有效 ZIP/APK"
             exit 1
           fi

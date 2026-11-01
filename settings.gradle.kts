@@ -27,6 +27,16 @@ dependencyResolutionManagement {
                 includeGroupAndSubgroups("com.google")
             }
         }
+        // Resolve these CI tools from Google's Central mirror before repository identity is cached.
+        maven {
+            name = "CentralCiToolsMirror"
+            url = uri("https://maven-central.storage-download.googleapis.com/maven2")
+            content {
+                includeModule("org.jetbrains.kotlin", "kotlin-test")
+                includeModule("org.jetbrains.kotlin", "kotlin-test-junit")
+                includeModule("com.google.protobuf", "protoc")
+            }
+        }
         mavenCentral()
         maven("https://api.xposed.info")
         maven("https://jitpack.io")

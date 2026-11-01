@@ -42,7 +42,7 @@ Shared packaging implementation lives in `buildSrc/`. Signing precedence is Andr
 environment settings, then the local debug keystore. Without release credentials the dual release package uses
 the debug certificate, so it is suitable for local validation only. Tool versions come from the configured AGP SDK/NDK.
 Package content checks: `python tools/verify-dual-apk.py <dual.apk> --raw <raw.apk> --zip <module.zip>`;
-also run the configured SDK's `apksigner verify` and `zipalign -c -p 4`.
+also run the configured SDK's `apksigner verify`, `zipalign -c -P 16 4`, and Linux `unzip -t`.
 
 ## Requirements
 
