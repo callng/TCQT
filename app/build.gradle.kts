@@ -27,6 +27,8 @@ val androidTargetSdkVersion =
     rootProject.extra["androidTargetSdkVersion"] as Int
 val androidCompileSdkVersion =
     rootProject.extra["androidCompileSdkVersion"] as Int
+val androidCompileSdkMinorVersion =
+    rootProject.extra["androidCompileSdkMinorVersion"] as Int
 val androidSourceCompatibility =
     rootProject.extra["androidSourceCompatibility"] as JavaVersion
 val androidTargetCompatibility =
@@ -94,7 +96,7 @@ extensions.configure<ApplicationExtension> {
 
     compileSdk {
         version = release(androidCompileSdkVersion) {
-            minorApiLevel = 0
+            minorApiLevel = androidCompileSdkMinorVersion
         }
     }
 

@@ -29,15 +29,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6.3.0
       - name: Install pinned Android tools
         shell: bash
-        run: |
-          set -euo pipefail
-          cmake_version=$(sed -nE 's/^val androidCmakeVersion = "([^"]+)".*/\1/p' build.gradle.kts)
-          ndk_version=$(sed -nE 's/^val androidNdkVersion = "([^"]+)".*/\1/p' build.gradle.kts)
-          test -n "$cmake_version" && test -n "$ndk_version"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
-            "platforms;android-37" "cmake;$cmake_version" "ndk;$ndk_version"
-          "$ANDROID_HOME/cmake/$cmake_version/bin/cmake" --version
-          "$ANDROID_HOME/cmake/$cmake_version/bin/ninja" --version
+        run: bash tools/prepare-android-sdk.sh
       - name: Run regression gates
         run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache
       - name: Compile KSP registration fixtures

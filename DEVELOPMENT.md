@@ -6,6 +6,8 @@
 
 使用 JDK 21、Git、Android SDK，并在 `local.properties` 设置 `sdk.dir`。compile/target SDK、NDK、CMake 版本以根 [build.gradle.kts](build.gradle.kts) 为准；依赖版本由 [版本目录](gradle/libs.versions.toml) 管理。当前 ABI 为 arm64-v8a，minSdk 27。
 
+Linux CI 使用 `bash tools/prepare-android-sdk.sh` 准备 SDK。脚本读取主/次 API 版本，安装对应平台包（当前为 `platforms;android-37.0`）、QQ stubs 平台以及固定的 CMake/NDK；重用完整的已安装工具，下载失败最多重试三次。两条 Android 工作流共用此脚本。
+
 以下是 PowerShell 命令；Linux/macOS 将 `.\gradlew.bat` 换为 `./gradlew`。
 
 ```powershell

@@ -16,6 +16,8 @@ captures/
 .gradle/
 build/
 **/build/
+# Gradle task sources use a package named "build", not an output directory.
+!buildSrc/src/main/java/com/owo233/tcqt/build/
 bin/
 gen/
 out/

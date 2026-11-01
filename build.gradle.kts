@@ -79,6 +79,7 @@ val gitInfo: GitInfo = gitInfoProvider.get()
 val androidMinSdkVersion = 27
 val androidTargetSdkVersion = 37
 val androidCompileSdkVersion = 37
+val androidCompileSdkMinorVersion = 0
 val androidSourceCompatibility = JavaVersion.VERSION_21
 val androidTargetCompatibility = JavaVersion.VERSION_21
 val androidNdkVersion = "30.0.16248370"
@@ -93,6 +94,7 @@ extra.set("appBaseVersionName", appBaseVersionName)
 extra.set("androidMinSdkVersion", androidMinSdkVersion)
 extra.set("androidTargetSdkVersion", androidTargetSdkVersion)
 extra.set("androidCompileSdkVersion", androidCompileSdkVersion)
+extra.set("androidCompileSdkMinorVersion", androidCompileSdkMinorVersion)
 extra.set("androidSourceCompatibility", androidSourceCompatibility)
 extra.set("androidTargetCompatibility", androidTargetCompatibility)
 extra.set("androidNdkVersion", androidNdkVersion)
