@@ -24,6 +24,7 @@ import org.json.JSONObject
 
 /** Explicit, debug-only host regression entry; reports contain no account or message data. */
 internal object RuntimeValidation {
+
     private var installed = false
     private var settingsActivity: WeakReference<Activity>? = null
 
@@ -189,6 +190,7 @@ internal object RuntimeValidation {
                                 report.put("searchActive", model.isSearchActive)
                             }
                         }
+                        "16" -> report.put("stickySearch", StickySearchRegression.run(intent))
                         else -> error("Unimplemented validation step: $step")
                     }
                     report.put("passed", true)

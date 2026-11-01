@@ -13,4 +13,5 @@
     <item name="tcqt_tag_icon_translation" type="id" />
     <item name="tcqt_tag_content_translation" type="id" />
     <item name="tcqt_tag_page_extend_retry" type="id" />
+    <item name="tcqt_tag_pinned_search" type="id" />
 </resources>
