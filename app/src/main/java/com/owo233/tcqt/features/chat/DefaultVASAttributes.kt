@@ -37,23 +37,26 @@ object DefaultVASAttributes : Feature(
         }.hookAfter { param ->
             val msgRecord = param.result as MsgRecord
             if (msgRecord.senderUin.toString() != QQInterfaces.currentUin) {
-                snapshotVasAttributes(msgRecord.msgAttrs).forEach { u ->
+                val attributes = snapshotVasAttributes(msgRecord.msgAttrs)
+                if (attributes.isEmpty()) return@hookAfter
+                val retainedOptions = options
+                attributes.forEach { u ->
                     u?.vasMsgInfo?.let { vasInfo ->
 
                         // 隐藏头像挂件
-                        if (options.isFlagEnabled(2).not()) {
+                        if (retainedOptions.isFlagEnabled(2).not()) {
                             vasInfo.avatarPendantInfo?.pendantId = 0L
                             vasInfo.avatarPendantInfo?.pendantDiyInfoId = 0
                         }
 
                         // 强制默认气泡
-                        if (options.isFlagEnabled(0).not()) {
+                        if (retainedOptions.isFlagEnabled(0).not()) {
                             vasInfo.bubbleInfo?.bubbleId = 0
                             vasInfo.bubbleInfo?.subBubbleId = 0
                         }
 
                         // 强制默认字体
-                        if (options.isFlagEnabled(1).not()) {
+                        if (retainedOptions.isFlagEnabled(1).not()) {
                             vasInfo.vasFont?.fontId = 0
                             vasInfo.vasFont?.subFontId = 0L
                             vasInfo.vasFont?.magicFontType = 0

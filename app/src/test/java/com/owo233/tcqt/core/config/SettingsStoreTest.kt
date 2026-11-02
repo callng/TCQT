@@ -3,6 +3,7 @@ package com.owo233.tcqt.core.config
 import java.io.File
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.Executors
@@ -13,6 +14,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 class SettingsStoreTest {
+
     private class Backend(private val directory: File) {
         var opens = 0
         var failNextWrite = false
@@ -61,6 +63,35 @@ class SettingsStoreTest {
         val opens = backend.opens
         repeat(100) { assertEquals(7, store["value"]) }
         assertEquals(opens, backend.opens)
+    }
+
+    @Test fun unchangedReadsDoNotAcquireFileLock() = withStore { dir, backend, store ->
+        store.put("value", 7)
+        val opens = backend.opens
+        // The former implementation throws OverlappingFileLockException here.
+        // A warmed Hook read must neither touch the file nor wait for a writer.
+        RandomAccessFile(File(dir, ".TCQT.settings.lock"), "rw").use { file ->
+            file.channel.lock().use {
+                repeat(1_000) {
+                    assertEquals(7, store["value"])
+                    assertEquals(null, store["absent"])
+                    assertFalse(store.contains("absent"))
+                    assertEquals(mapOf("value" to 7), store.all())
+                }
+            }
+        }
+        assertEquals(opens, backend.opens)
+    }
+
+    @Test fun emptyLegacyLockFileIsInitializedWithoutLosingSettings() = withStore { dir, backend, _ ->
+        backend.open().use { it.replace(mapOf("legacy" to 17)) }
+        File(dir, ".TCQT.settings.lock").createNewFile()
+        val reader = SettingsStore(dir, "TCQT", backend::open)
+        assertEquals(17, reader["legacy"])
+        assertEquals(8L, File(dir, ".TCQT.settings.lock").length())
+        val writer = SettingsStore(dir, "TCQT", backend::open)
+        writer.put("legacy", 18)
+        assertEquals(18, reader["legacy"])
     }
 
     @Test fun failedCommitKeepsPreviousDataAndInvalidatesOtherOwners() = withStore { dir, backend, first ->

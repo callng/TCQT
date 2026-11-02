@@ -61,7 +61,7 @@ app `core` 通过 `HostServices`、`HostBridge` 接收宿主能力。`host/QQHos
 
 ## 配置与设置 UI
 
-`SettingsStore` 独占打开既有 FastKV 文件，通过进程内同步、文件锁和持久化 generation 管理快照。写入先读取最新值，提交后刷新本地快照，其他进程下一次读取会重新加载。原有文件格式和已发布配置 key 保持兼容。
+`SettingsStore` 独占打开既有 FastKV 文件，通过进程内同步、文件锁和持久化 generation 管理快照。稳定锁文件中的 8 字节 generation 只读映射一次；未变化的读取只访问映射与内存快照，不打开文件或获取文件锁。首次读取、generation 变化和写入才进入文件锁。写入先读取最新值，在提交数据前发布失效 generation，提交后原子发布本地快照；其他进程发现变化后持锁重新加载，避免读到未完成的提交。锁文件不得删除或替换，清空配置与导入备份只更新 FastKV 数据。原有文件格式和已发布配置 key 保持兼容。
 
 配置路径由 `HookEnv.moduleDataPath/global/setting` 派生，位于宿主 QQ/TIM 的数据目录；卸载 TCQT APP 不删除它。不要通过清空宿主数据来切换注入模式。
 
