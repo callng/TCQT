@@ -20,7 +20,8 @@ uintptr_t art_get_method(JNIEnv *env, jobject executable);
 // contents are snapshotted into backup. Returns 0 on success.
 int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t bridge);
 
-// Restore the target ArtMethod from backup. Returns 0 on success.
+// Restore the fields changed by this hook. Returns 0 when removed, 1 when a
+// later framework owns the entry (retain an empty Java passthrough), <0 on error.
 int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup);
 
 // Mark a DexFile as trusted (bypass hidden API checks on generated dex).

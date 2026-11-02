@@ -62,11 +62,12 @@ internal object ZygiskHookBridge {
             entry.pair.setHookId(slot.id)
             val rc = nativeHookMethod(entry.targetArt, entry.backupArt, entry.bridgeArt)
             if (rc != 0) ZygiskEntry.log(Log.ERROR, TAG, "native hook failed ($rc): ${slot.key}")
+            else ZygiskEntry.log(Log.DEBUG, TAG, "native hook installed target=${entry.targetArt.toString(16)}: ${slot.key}")
             rc == 0
         },
         uninstall = { slot ->
             val rc = nativeUnhookMethod(slot.value.targetArt, slot.value.backupArt)
-            if (rc != 0) ZygiskEntry.log(Log.ERROR, TAG, "native unhook failed ($rc): ${slot.key}")
+            if (rc < 0) ZygiskEntry.log(Log.ERROR, TAG, "native unhook failed ($rc): ${slot.key}")
             rc == 0
         },
         order = compareByDescending { it.priority },

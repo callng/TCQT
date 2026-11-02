@@ -12,18 +12,6 @@
 namespace tcqt::zygisk {
 
 namespace {
-bool s_compat_mode = false;
-}  // namespace
-
-void set_compat_mode(bool enabled) {
-    s_compat_mode = enabled;
-}
-
-bool is_compat_mode() {
-    return s_compat_mode;
-}
-
-namespace {
 
 // ── ZygiskEntry natives ──────────────────────────────────────────────────────
 
@@ -35,10 +23,6 @@ void jni_native_log(JNIEnv *env, jclass, jint priority, jstring j_tag, jstring j
     }
     if (tag != nullptr) env->ReleaseStringUTFChars(j_tag, tag);
     if (msg != nullptr) env->ReleaseStringUTFChars(j_msg, msg);
-}
-
-jboolean jni_native_is_compat_mode(JNIEnv *, jclass) {
-    return s_compat_mode ? JNI_TRUE : JNI_FALSE;
 }
 
 jboolean jni_native_is_debug_logging(JNIEnv *, jclass) {
@@ -127,10 +111,6 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeLog"),
              const_cast<char *>("(ILjava/lang/String;Ljava/lang/String;)V"),
              reinterpret_cast<void *>(jni_native_log)},
-            {const_cast<char *>("isCompatMode"), const_cast<char *>("()Z"),
-             reinterpret_cast<void *>(jni_native_is_compat_mode)},
-            {const_cast<char *>("nativeIsCompatMode"), const_cast<char *>("()Z"),
-             reinterpret_cast<void *>(jni_native_is_compat_mode)},
     };
     jint rc = env->RegisterNatives(clazz, methods, sizeof(methods) / sizeof(methods[0]));
     env->DeleteLocalRef(clazz);

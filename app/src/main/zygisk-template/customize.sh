@@ -58,6 +58,8 @@ mv -f "$DATAPATH/main.apk.tmp" "$DATAPATH/main.apk" ||
 mv -f "$DATAPATH/main.apk.sha256.tmp" "$DATAPATH/main.apk.sha256" ||
   abort "! Failed to publish TCQT package hash"
 set_perm "$DATAPATH/main.apk.sha256" 0 0 0644
+# The ART hook chain no longer needs a separate bootstrap mode.
+rm -f "$DATAPATH/compat.enable" "$DATAPATH/compat"
 
 # 清理旧布局（payload/tcqt.apk + classes*.dex + dex.list）残留
 rm -rf "$MODPATH/payload"
@@ -99,5 +101,5 @@ if [ "${#NEW_SO_HASH}" -eq 64 ] && [ "$OLD_SO_HASH" = "$NEW_SO_HASH" ] &&
 else
   ui_print "! 首次安装、注入库变化或模块已停用/待卸载，需要重启设备后生效"
 fi
-ui_print "! 提示: 当 TCQT 使用 Zygisk 工作时， 请勿在其他框架如 LSPosed 中对 QQ/ TIM 启用任何模块，否则可能导致意想不到的问题发生。"
+ui_print "! 请勿同时在 LSPosed 和 Zygisk 中启用 TCQT。"
 ui_print "- TCQT Zygisk installed"

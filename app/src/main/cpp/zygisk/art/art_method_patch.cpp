@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include "zygisk/art/art_hook.h"
 #include "zygisk/art/art_runtime.h"
+#include "zygisk/art/art_quick_redirect.h"
+#include <array>
 #include <cstring>
 #include <vector>
 #include "zygisk/logging/log.h"
@@ -14,9 +16,41 @@ namespace {
 struct HookRecord {
     uintptr_t backup_art;
     uint32_t original_access_flags;
+    void *restore_entry_point;
+    const uint8_t *trampoline;
 };
 std::mutex g_hook_records_mutex;
 std::unordered_map<uintptr_t, HookRecord> g_hook_records;
+
+bool readable_range(uintptr_t address, size_t length) {
+    if (address == 0 || length == 0 || length - 1 > UINTPTR_MAX - address) return false;
+    const int first = get_prot_for_addr(address);
+    const int last = get_prot_for_addr(address + length - 1);
+    return first >= 0 && last >= 0 && (first & PROT_READ) && (last & PROT_READ);
+}
+
+bool is_quick_redirect(uintptr_t entry, size_t entry_offset, size_t method_size) {
+    entry = strip_pac(entry);
+    // Read instructions first, then the exact literal span. A 20-byte LSPlant
+    // stub can sit at the end of a mapping; do not read a whole 32-byte slot.
+    std::array<uint8_t, 32> code{};
+    if (!readable_range(entry, 16)) return false;
+    memcpy(code.data(), reinterpret_cast<const void *>(entry), 16);
+    if (code[0] == 0x5f || code[0] == 0x9f || code[0] == 0xdf) {
+        if (!readable_range(entry, 20)) return false;
+        memcpy(code.data(), reinterpret_cast<const void *>(entry), 20);
+    }
+    const size_t literal = quick_redirect_literal(code, entry_offset);
+    if (literal == 0 || !readable_range(entry + literal, sizeof(uintptr_t))) return false;
+    uintptr_t redirected_method = 0;
+    memcpy(&redirected_method, reinterpret_cast<const void *>(entry + literal), sizeof(uintptr_t));
+    if ((redirected_method & (sizeof(void *) - 1)) != 0 ||
+        !readable_range(redirected_method, method_size)) return false;
+    uintptr_t redirected_entry = 0;
+    memcpy(&redirected_entry, reinterpret_cast<const void *>(redirected_method + entry_offset),
+           sizeof(redirected_entry));
+    return is_executable_address(redirected_entry);
+}
 
 void call_set_not_intrinsic(uintptr_t art_method) {
     if (state().symbols.set_not_intrinsic != nullptr) {
@@ -227,14 +261,18 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     __atomic_store_n(backup_af, backup_flags_new, __ATOMIC_RELAXED);
     if (__atomic_load_n(backup_af, __ATOMIC_RELAXED) != backup_flags_new) fail("backup flags");
 
-    // Backup always runs through the interpreter: point it at the bridge's
-    // entry point (the bridge is never JIT-compiled, so its entry point is the
-    // interpreter bridge). The memcpy above carried over the target's original
-    // entry point, which may be JIT-compiled code compiled for the target's
-    // ArtMethod identity — executing it as `backup` would run with mismatched
-    // method context.
-    __atomic_store_n(backup_ep_ptr, original_bridge_ep, __ATOMIC_RELAXED);
-    if (__atomic_load_n(backup_ep_ptr, __ATOMIC_RELAXED) != original_bridge_ep)
+    // Managed method bodies use the interpreter because this engine does not
+    // track JIT code movement. Preserve an already non-compilable method's
+    // entry as well as recognized quick redirects: newer hook engines install
+    // compiled dispatch code which cannot be identified by a short stub pattern.
+    // The preexisting flag is checked before TCQT adds its own. Interpreting
+    // the copied DEX body would bypass that engine's callbacks.
+    // Native methods also need their JNI entry and data_ from the copied method.
+    const bool preserve_entry = (original_target_flags & (ACC_NATIVE | ACC_COMPILE_DONT_BOTHER)) != 0 ||
+            is_quick_redirect(reinterpret_cast<uintptr_t>(original_target_ep), ep_off, method_size);
+    void *backup_entry = preserve_entry ? original_target_ep : original_bridge_ep;
+    __atomic_store_n(backup_ep_ptr, backup_entry, __ATOMIC_RELAXED);
+    if (__atomic_load_n(backup_ep_ptr, __ATOMIC_RELAXED) != backup_entry)
         fail("backup entry point");
 
     // ── Redirect the target's entry point to the trampoline ─────────────────
@@ -251,8 +289,14 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
 
     {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
-        g_hook_records[target] = HookRecord{backup, original_target_flags};
+        // A managed target's old JIT entry can be reclaimed after deoptimization.
+        // Use its safe interpreter backup when unhooking; retained framework
+        // and native entries must instead be restored exactly.
+        g_hook_records[target] = HookRecord{backup, original_target_flags, backup_entry, trampoline};
     }
+    if (preserve_entry)
+        LOGI("art_hook_method: preserved existing entry target=%#lx backup=%#lx entry=%p flags=%#x",
+             target, backup, original_target_ep, original_target_flags);
     LOGD("art_hook_method: hooked target=%#lx backup=%#lx bridge=%#lx ep=%#lx "
          "size=%zu flags_off=%zu ep_off=%zu",
          target, backup, bridge, reinterpret_cast<uintptr_t>(trampoline),
@@ -264,7 +308,7 @@ int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup) {
     (void)env;
     if (!art_hook_initialized() || target == 0 || backup == 0) return -1;
 
-    uint32_t original_access_flags;
+    HookRecord record{};
     {
         std::lock_guard<std::mutex> lock(g_hook_records_mutex);
         auto it = g_hook_records.find(target);
@@ -272,7 +316,7 @@ int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup) {
             LOGE("art_unhook_method: no matching hook for target=%#lx", target);
             return -2;
         }
-        original_access_flags = it->second.original_access_flags;
+        record = it->second;
     }
 
     ScopedSuspend suspend("TCQT Unhooking");
@@ -280,12 +324,22 @@ int art_unhook_method(JNIEnv *env, uintptr_t target, uintptr_t backup) {
 
     size_t method_size = state().layout.method_size;
     size_t af_off = state().layout.access_flags_offset;
+    auto *target_entry = reinterpret_cast<void **>(target + state().layout.entry_point_offset);
+    if (strip_pac(reinterpret_cast<uintptr_t>(__atomic_load_n(target_entry, __ATOMIC_RELAXED))) !=
+        reinterpret_cast<uintptr_t>(record.trampoline)) {
+        // Another framework now owns the outer entry and may have copied our
+        // trampoline into its backup. Keep the empty Java dispatch slot alive
+        // as a passthrough; restoring here would erase that framework's hook.
+        LOGI("art_unhook_method: retaining chained passthrough for target=%#lx", target);
+        return 1;
+    }
 
     WritableArtMethod tw;
     if (!tw.acquire(target, method_size)) return -4;
-    memcpy(reinterpret_cast<void *>(target), reinterpret_cast<const void *>(backup),
-           method_size);
-    __atomic_store_n(reinterpret_cast<uint32_t *>(target + af_off), original_access_flags,
+    // Only these two fields were changed on the target. In particular, never
+    // restore the backup's interpreter entry over the original hook trampoline.
+    __atomic_store_n(target_entry, record.restore_entry_point, __ATOMIC_RELAXED);
+    __atomic_store_n(reinterpret_cast<uint32_t *>(target + af_off), record.original_access_flags,
                      __ATOMIC_RELAXED);
 
     // Verify the restore actually landed in the target slot. Compare only the

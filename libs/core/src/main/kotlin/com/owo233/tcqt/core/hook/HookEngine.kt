@@ -43,9 +43,6 @@ interface IHookEngine {
     val frameworkVersionCode: Long
     val bridgeClass: Class<*>?
 
-    /** 当前引擎是否运行在兼容模式（仅 Zygisk 引擎返回 true），默认 false。 */
-    val isCompatMode: Boolean get() = false
-
     fun hookBefore(method: Member, priority: Int = 50, callback: (HookParam) -> Unit): Unhook
     fun hookAfter(method: Member, priority: Int = 50, callback: (HookParam) -> Unit): Unhook
     fun hookReplace(method: Member, priority: Int = 50, callback: (Chain) -> Any?): Unhook

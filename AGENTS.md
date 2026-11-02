@@ -172,7 +172,7 @@ Architecture:
   Zygisk injector with a root companion. `preAppSpecialize` runs in the
   Zygote SELinux domain, which may not traverse `/data/adb` even at UID 0.
   It calls `connectCompanion()`; the companion checks the live module's
-  disable/remove markers, host/user scope, compatibility/debug and PLT switches,
+  disable/remove markers, host/user scope, debug and PLT switches,
   opens `/data/adb/tcqt/main.apk`, and reads its SHA-256 fingerprint. The
   read-only APK fd is transferred with `SCM_RIGHTS` and exempted from fd
   sanitation. Configuration access errors abort injection instead of being

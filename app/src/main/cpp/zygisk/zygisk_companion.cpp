@@ -34,7 +34,8 @@ void companion_error(const char *format, ...) {
 constexpr uint32_t MAGIC = 0x54435154;
 constexpr uint32_t VERSION = 1;
 constexpr size_t MAX_HOOKS = 256;
-constexpr uint32_t MODULE_DISABLED = 1, SCOPE_DISABLED = 2, COMPAT = 4, DEBUG = 8;
+// Bit 4 was the removed compatibility switch. Keep the v1 wire layout stable.
+constexpr uint32_t MODULE_DISABLED = 1, SCOPE_DISABLED = 2, DEBUG = 8;
 enum Stage : uint32_t { TRANSPORT, REQUEST, CONFIG, PAYLOAD_OPEN, PAYLOAD_STAT, HASH };
 
 struct Request {
@@ -256,11 +257,9 @@ bool handle_companion_request(int socket, std::span<const char *const> hook_ids,
         response.flags = SCOPE_DISABLED;
         return send_response(socket, response);
     }
-    bool compat = false, legacy_compat = false, debug = false;
-    if (!marker_exists(paths.data_dir + "/compat.enable", compat) ||
-        !marker_exists(paths.data_dir + "/compat", legacy_compat) ||
-        !marker_exists(paths.data_dir + "/debug.enable", debug)) return fail(CONFIG, errno);
-    response.flags = (compat || legacy_compat ? COMPAT : 0) | (debug ? DEBUG : 0);
+    bool debug = false;
+    if (!marker_exists(paths.data_dir + "/debug.enable", debug)) return fail(CONFIG, errno);
+    response.flags = debug ? DEBUG : 0;
     std::vector<uint8_t> disabled_hooks(hook_ids.size());
     for (size_t i = 0; i < hook_ids.size(); ++i) {
         if (!marker_exists(scope + "/" + host + "." + hook_ids[i] + ".disable", disabled))
@@ -348,7 +347,6 @@ bool request_injection_state(int socket, InjectionTarget target, uid_t uid,
     struct stat st{};
     if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 ||
         static_cast<uint64_t>(st.st_size) > APK_MAX_BYTES) return fail(EINVAL);
-    out.compat_mode = (response.flags & COMPAT) != 0;
     out.debug_logs = (response.flags & DEBUG) != 0;
     out.payload_hash.assign(hash.data(), hash_size);
     out.apk_fd = fd;

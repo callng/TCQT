@@ -123,7 +123,7 @@ void test_config(Fixture &f) {
     {
         auto result = exchange(f.paths);
         CHECK(result.ok && result.state.apk_fd >= 0);
-        CHECK(!result.state.compat_mode && !result.state.debug_logs);
+        CHECK(!result.state.debug_logs);
         CHECK(result.state.payload_hash == HASH);
         CHECK(result.state.disabled_hooks == std::vector<uint8_t>({0, 0}));
         check_payload(result.state.apk_fd);
@@ -139,20 +139,20 @@ void test_config(Fixture &f) {
     put(f.paths.data_dir + "/qq.key1.disable");
     {
         auto result = exchange(f.paths);
-        CHECK(result.ok && result.state.compat_mode && result.state.debug_logs);
+        CHECK(result.ok && result.state.debug_logs);
         CHECK(result.state.disabled_hooks == std::vector<uint8_t>({1, 0}));
     }
     {
         auto result = exchange(f.paths, InjectionTarget::TIM);
         CHECK(result.ok && result.state.disabled_hooks == std::vector<uint8_t>({0, 0}));
     }
-    pass("global compatibility/debug and QQ/TIM hook isolation");
+    pass("global debug and QQ/TIM hook isolation with obsolete compatibility marker");
     fs::remove(f.paths.data_dir + "/compat.enable");
     put(f.paths.data_dir + "/compat");
-    { auto r = exchange(f.paths); CHECK(r.ok && r.state.compat_mode); }
+    { auto r = exchange(f.paths); CHECK(r.ok && r.state.debug_logs); }
     fs::remove(f.paths.data_dir + "/compat");
     fs::remove(f.paths.data_dir + "/debug.enable");
-    pass("legacy compatibility marker");
+    pass("obsolete compatibility markers do not affect injection");
     fs::create_directory(f.paths.data_dir + "/user_10");
     put(f.paths.data_dir + "/user_10/qq.future_hook.disable");
     {

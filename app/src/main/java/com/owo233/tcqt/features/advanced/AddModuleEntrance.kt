@@ -23,8 +23,6 @@ import com.owo233.tcqt.core.env.copyToClipboard
 import com.owo233.tcqt.core.env.load
 import com.owo233.tcqt.core.env.loadOrThrow
 import com.owo233.tcqt.core.env.toHexString
-import com.owo233.tcqt.core.hook.HookEngineManager
-import com.owo233.tcqt.core.hook.HookFramework
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.isNotStatic
 import com.owo233.tcqt.core.hook.paramCount
@@ -100,10 +98,7 @@ object AddModuleEntrance : Feature(
      * **不看用户开关**：只要当前 Hook 框架支持就直接运行。
      * 开关只用来控制「附加工具入口」是否显示（见 [hookSettingEntries]）。
      */
-    override fun canRun(): Boolean {
-        return HookEngineManager.engine.frameworkName != HookFramework.ZYGISK ||
-                !HookEngineManager.engine.isCompatMode
-    }
+    override fun canRun(): Boolean = true
 
     override fun install() {
         runCatching { hookSettingEntries() }

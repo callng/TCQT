@@ -17,7 +17,6 @@ enum class InjectionTarget : uint32_t { QQ = 1, TIM = 2 };
 struct InjectionState {
     bool module_disabled = false;
     bool scope_disabled = false;
-    bool compat_mode = false;
     bool debug_logs = false;
     std::vector<uint8_t> disabled_hooks;
     std::string payload_hash;

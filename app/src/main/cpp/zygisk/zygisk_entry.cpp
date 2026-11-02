@@ -144,9 +144,7 @@ public:
             api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }
-        set_compat_mode(state.compat_mode);
         debug_logs_ = state.debug_logs;
-        if (state.compat_mode) LOGI("preAppSpecialize: compatibility mode enabled via WebUI");
         const PltHookSpec *hook_specs = default_plt_hooks();
         disabled_hook_ids_.clear();
         for (size_t i = 0; i < hook_count; ++i) {
@@ -164,8 +162,8 @@ public:
             return;
         }
         payload_hash_ = std::move(state.payload_hash);
-        LOGI("preAppSpecialize: companion ready for %s (uid=%d compat=%d debug=%d payload=%s)",
-             nice_name.c_str(), args->uid, state.compat_mode, debug_logs_, payload_hash_.c_str());
+        LOGI("preAppSpecialize: companion ready for %s (uid=%d debug=%d payload=%s)",
+             nice_name.c_str(), args->uid, debug_logs_, payload_hash_.c_str());
         if (payload_hash_.empty()) {
             LOGW("preAppSpecialize: payload hash missing, cache will be refreshed");
         }
@@ -206,8 +204,8 @@ public:
 
         // 本地文件日志：目录就绪后初始化
         log_file_init(target_dir + "/logs", process_name_, debug_logs_);
-        LOGI("session start: process=%s pid=%d compat=%d debug=%d payload=%s",
-             process_name_.c_str(), getpid(), is_compat_mode(), debug_logs_, payload_hash_.c_str());
+        LOGI("session start: process=%s pid=%d debug=%d payload=%s",
+             process_name_.c_str(), getpid(), debug_logs_, payload_hash_.c_str());
 
         // install hooks
         if (process_name_.size() >= 4 &&

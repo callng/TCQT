@@ -5,7 +5,7 @@ const PACKAGES = { qq: "com.tencent.mobileqq", tim: "com.tencent.tim" };
 const state = {
     users: [{ id: 0, name: "主用户" }], userId: 0, busy: true, ready: false,
     installed: [], qq: false, tim: false, qqHook: false, timHook: false,
-    compat: false, debug: false, error: "", message: "", sharing: false, openingLink: false,
+    debug: false, error: "", message: "", sharing: false, openingLink: false,
 };
 const listeners = new Set();
 const emit = () => listeners.forEach((listener) => listener());
@@ -34,12 +34,11 @@ async function reload() {
         if (!state.users.some((user) => user.id === state.userId)) state.userId = state.users[0].id;
         const packages = await run(`pm list packages --user ${state.userId}`);
         state.installed = Object.keys(PACKAGES).filter((app) => packages.split(/\r?\n/).includes(`package:${PACKAGES[app]}`));
-        const paths = [marker("qq.disable"), marker("tim.disable"), marker("qq.key1.disable"), marker("tim.key1.disable"), `${DATA}/compat.enable`, `${DATA}/debug.enable`];
+        const paths = [marker("qq.disable"), marker("tim.disable"), marker("qq.key1.disable"), marker("tim.key1.disable"), `${DATA}/debug.enable`];
         const flags = (await run(paths.map((path) => `if [ -f ${quote(path)} ]; then echo 1; else echo 0; fi`).join("\n"))).trim().split(/\s+/);
-        if (flags.length !== 6 || flags.some((flag) => !/^[01]$/.test(flag))) throw new Error("状态数据不完整，请重试");
+        if (flags.length !== 5 || flags.some((flag) => !/^[01]$/.test(flag))) throw new Error("状态数据不完整，请重试");
         [state.qq, state.tim, state.qqHook, state.timHook] = flags.slice(0, 4).map((flag) => flag === "0");
-        state.compat = flags[4] === "1";
-        state.debug = flags[5] === "1";
+        state.debug = flags[4] === "1";
         state.ready = true;
     } catch (error) {
         state.error = error.message || "读取失败，请重试";
@@ -48,10 +47,10 @@ async function reload() {
 
 async function toggle(key, enabled) {
     if (state.busy || !state.ready || state.sharing) return;
-    const paths = { qq: marker("qq.disable"), tim: marker("tim.disable"), qqHook: marker("qq.key1.disable"), timHook: marker("tim.key1.disable"), compat: `${DATA}/compat.enable`, debug: `${DATA}/debug.enable` };
+    const paths = { qq: marker("qq.disable"), tim: marker("tim.disable"), qqHook: marker("qq.key1.disable"), timHook: marker("tim.key1.disable"), debug: `${DATA}/debug.enable` };
     if (!(key in paths) || typeof enabled !== "boolean") return;
     const path = paths[key];
-    const create = ["compat", "debug"].includes(key) ? enabled : !enabled;
+    const create = key === "debug" ? enabled : !enabled;
     state.busy = true;
     state.error = "";
     emit();

@@ -1,9 +1,5 @@
 package com.owo233.tcqt.api
 
-import com.owo233.tcqt.core.action.ActionPriority
-import com.owo233.tcqt.core.action.ActionProcess
-import com.owo233.tcqt.core.action.ActionSpec
-
 /**
  * 基础设施任务：模块自身的骨架，**不面向用户、不进设置界面、无视开关、永远运行**。
  *

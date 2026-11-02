@@ -10,7 +10,7 @@ REGISTER_ZYGISK_COMPANION and Api::connectCompanion():
 - The request contains only a QQ/TIM identifier and Android UID. Paths are fixed
   by the module, and user scope is derived from uid / 100000.
 - Every request reads the live module disable/remove markers, host scope,
-  compatibility/debug markers, per-host/user PLT switches, and payload hash.
+  debug markers, per-host/user PLT switches, and payload hash.
   Only ENOENT counts as an absent marker; other I/O failures abort injection.
 - Each request opens a fresh, read-only, non-symlink main.apk, validates its
   type/size, and transfers one FD with SCM_RIGHTS. There is no persistent payload

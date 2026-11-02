@@ -1,6 +1,5 @@
 package com.owo233.tcqt.loader.zygisk
 
-import android.util.Log
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.Chain
 import com.owo233.tcqt.core.hook.HookFramework
@@ -17,9 +16,6 @@ class ZygiskHookEngine : IHookEngine {
     override val frameworkVersion: String = TCQTBuild.VER_NAME
     override val frameworkVersionCode: Long = TCQTBuild.VER_CODE.toLong()
     override val bridgeClass: Class<*>? = null
-
-    override val isCompatMode: Boolean
-        get() = runCatching { ZygiskEntry.isCompatMode() }.getOrDefault(false)
 
     override fun hookBefore(method: Member, priority: Int, callback: (HookParam) -> Unit): Unhook =
         ZygiskHookBridge.hookBefore(method, priority, callback)

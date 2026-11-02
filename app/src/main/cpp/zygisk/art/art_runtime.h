@@ -10,6 +10,7 @@ inline constexpr uint32_t ACC_PUBLIC = 0x0001;
 inline constexpr uint32_t ACC_PRIVATE = 0x0002;
 inline constexpr uint32_t ACC_PROTECTED = 0x0004;
 inline constexpr uint32_t ACC_STATIC = 0x0008;
+inline constexpr uint32_t ACC_NATIVE = 0x0100;
 inline constexpr uint32_t ACC_COMPILE_DONT_BOTHER = 0x02000000;
 inline constexpr uint32_t ACC_FAST_INTERPRETER = 0x40000000;
 inline constexpr uint32_t ACC_INTRINSIC = 0x80000000;

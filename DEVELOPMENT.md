@@ -58,6 +58,7 @@ python tools/test-action-processor.py
 # Windows + 明确指定的 Android 设备，独立原生可执行文件
 .\tools\test-zygisk-companion.ps1 -Serial 7ef9cfd2
 .\tools\test-art-memory.ps1 -Serial 7ef9cfd2
+.\tools\test-art-method-patch.ps1 -Serial 7ef9cfd2
 ```
 
 Linux/WSL 原生 IPC 检查：`bash tools/test-native-host.sh`。原生脚本从项目读取已固定的 NDK 版本；可用 `-SdkPath` 显式指定 SDK。ART 内存脚本要求 arm64 设备。
@@ -76,12 +77,18 @@ python tools/verify-dual-apk.py <双格式.apk> --raw <原始AGP.apk> --zip <Zyg
 
 先记录 QQ/TIM 配置、TCQT 与其他模块作用域、KernelSU 模块状态及 WebUI 范围。配置属于宿主，切换模式不要清空 QQ/TIM 数据。发布包与 Debug 签名不同时，可以卸载 TCQT 模块 APP 再安装；宿主配置保留。
 
-| 目标模式 | 启动宿主前必须完成 |
-| --- | --- |
-| XP | 在 KernelSU/Magisk/APatch 停用 TCQT Zygisk 模块；完全停止 QQ/TIM；安装目标 TCQT APK，在 LSPosed 启用相应宿主作用域 |
-| Zygisk | 在 LSPosed 取消 TCQT 对应作用域或卸载 TCQT APP；完全停止 QQ/TIM；安装/更新并启用 TCQT Zygisk 模块和相应宿主范围 |
+| 目标模式 | 启动宿主前必须完成                                                                                                 |
+|----------|--------------------------------------------------------------------------------------------------------------------|
+| XP       | 在 KernelSU/Magisk/APatch 停用 TCQT Zygisk 模块；完全停止 QQ/TIM；安装目标 TCQT APK，在 LSPosed 启用相应宿主作用域 |
+| Zygisk   | 在 LSPosed 取消 TCQT 对应作用域或卸载 TCQT APP；完全停止 QQ/TIM；安装/更新并启用 TCQT Zygisk 模块和相应宿主范围    |
 
 KernelSU 停用模块后，重新启动宿主即可阻止下一次注入，无需为停用操作重启设备；正在运行的进程仍需要完全停止。若更改注入器原生库，必须完成管理器的真正模块安装，并按安装器要求重启；仅替换 payload APK 不足以验证新原生库。不要修改 `/data/adb` 的目录权限来规避 SELinux，载荷应保持安装器设置的 `system_file` 标签。
+
+TCQT 的 Zygisk 注入可与其他 LSPosed 模块共存，TCQT 自身仍须保持两种注入方式互斥。ART 备份保留安装前已不可编译的方法入口、已识别的 ARM64 quick 跳板和 JNI 原生入口；普通托管方法使用解释器备份。新版框架的分发器可能是完整编译代码，不能只靠短跳板指令识别。若另一框架后来接管方法入口，卸载 TCQT 回调时保留空的透传桥，避免覆盖该框架的外层 hook。旧 `compat.enable` / `compat` 标记已不参与注入，安装器会清理它们；WebUI 不再提供兼容模式。
+
+`test-art-method-patch.ps1` 使用映射内存中的 ArtMethod 测试对象验证实际补丁代码；它不代替宿主中的双框架验收。共存回归需确认 TCQT 仍以 Zygisk 注入、其他模块仍以 XP 注入，并检查双方设置入口能同时显示、分别打开、返回后再次打开，以及宿主冷启动后入口仍在。
+
+2026-11-02 在设备 `7ef9cfd2`（一加 13T，Android 17/API 37）完成共存回归：QQ 9.3.70 (16410)、LSPosed v2.2.1 (7933)、QWish v3.0.3。TCQT Release 以 Zygisk 注入、QWish 以 XP 注入；三轮缓存命中的冷启动均显示 TCQT、QWish 和 Java脚本入口，双方设置页可打开并返回，主进程与 MSF 存活。Release 载荷与安装的注入器 SHA-256 均匹配构建产物。原生补丁 5 组、companion 18 组及 Debug 宿主 Hook/生命周期/JNI/设置回归通过；该结果仅覆盖此设备和版本组合。
 
 每轮检查实际引擎、加载版本/哈希、主进程和 MSF 存活；观察退出原因与 crash buffer，区分宿主主动重启、force-stop 和新崩溃。进入 QQ/TIM 设置中的 **TCQT** 页面验证设置入口、开关、搜索和返回。性能测试分开冷启动与重复进入，并记录是否存在 DexKit 扫描、浮窗或预热；这些条件不能混作普通全屏启动基线。
 
