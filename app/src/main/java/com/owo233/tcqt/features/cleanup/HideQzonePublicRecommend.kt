@@ -8,11 +8,15 @@ import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.QQVersion
 import com.owo233.tcqt.core.env.isFlagEnabled
-import com.owo233.tcqt.core.env.loadOrThrow
 import com.owo233.tcqt.core.hook.hookBefore
+import com.owo233.tcqt.core.hook.returnConstant
+import com.owo233.tcqt.core.reflect.findField
+import com.owo233.tcqt.core.reflect.findMethodOrNull
+import com.owo233.tcqt.core.reflect.invoke
+import com.owo233.tcqt.core.reflect.new
+import com.qzone.reborn.feedpro.itemview.QzoneFeedProType
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
-import java.lang.reflect.Modifier
 
 @RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.QZONE])
 object HideQzonePublicRecommend : Feature(
@@ -30,54 +34,84 @@ object HideQzonePublicRecommend : Feature(
     )
 
     override fun install() {
-        val onFriendFeedsChanged = requireMethod(FRIEND_FEEDS).apply { isAccessible = true }
-        val feedViewType = requireMethod(FEED_VIEW_TYPE).apply { isAccessible = true }
-        val factoryClass = feedViewType.declaringClass
-        val factory = factoryClass.declaredMethods.single {
-            Modifier.isStatic(it.modifiers) && !it.isSynthetic &&
-                it.parameterCount == 0 && it.returnType == factoryClass
-        }.apply { isAccessible = true }.invoke(null)
-        val commonFeed = feedViewType.parameterTypes[1]
-        val types = loadOrThrow("com.qzone.reborn.feedpro.itemview.QzoneFeedProType")
-        val getViewType = types.getMethod("getMViewType")
-        val insertedTypes = listOf("UNIQUE_TYPE_DOMAIN_RECO", "UNIQUE_TYPE_DOMAIN_RECO_V2")
-            .map { getViewType.invoke(types.getField(it).get(null)) as Int }
-            .toSet()
+        val displayUpdate = requireMethod(DISPLAY_UPDATE)
+        val feedViewType = requireMethod(FEED_VIEW_TYPE)
+        val factory = getFeedFactory(feedViewType.declaringClass)
+        val listIndex = displayUpdate.parameterTypes.indexOf(List::class.java)
+        require(listIndex >= 0) { "Display update method has no List parameter: $displayUpdate" }
+        val commonFeed = feedViewType.parameterTypes.single { it != Int::class.javaPrimitiveType }
+        val feedFirst = feedViewType.parameterTypes[0] == commonFeed
+        val insertedTypes = setOf(
+            QzoneFeedProType.UNIQUE_TYPE_DOMAIN_RECO.mViewType,
+            QzoneFeedProType.UNIQUE_TYPE_DOMAIN_RECO_V2.mViewType,
+        )
 
-        onFriendFeedsChanged.hookBefore { param ->
-            val feeds = param.args[2] as? List<*> ?: return@hookBefore
-            // 使用宿主自己的顶层类型判定，不检查转发内嵌的原帖，也不改写原列表/缓存。
+        displayUpdate.hookBefore { param ->
+            val feeds = param.args[listIndex] as? List<*> ?: return@hookBefore
+            // 只判定顶层卡片，保留转发内嵌的原帖及宿主原列表/缓存。
             val filtered = feeds.filterIndexed { index, feed ->
-                !commonFeed.isInstance(feed) ||
-                    feedViewType.invoke(factory, index, feed) !in insertedTypes
+                !commonFeed.isInstance(feed) || run {
+                    val viewType = if (feedFirst) {
+                        factory.invoke(feedViewType, feed, index)
+                    } else {
+                        factory.invoke(feedViewType, index, feed)
+                    }
+                    viewType !in insertedTypes
+                }
             }
             if (filtered.size != feeds.size) {
-                // 原回调按显示副本计算刷新与加载更多的通知条数。
-                param.args[2] = filtered
+                // 在宿主计算刷新、加载更多的通知条数之前替换展示副本。
+                param.args[listIndex] = filtered
             }
         }
 
-        if (shouldHideEntrance()) {
-            // 专属入口分支同时负责引导气泡；保留推荐页路由及详情查看流程。
-            requireMethod(CONSTANT_ENTRANCE).apply { isAccessible = true }.hookBefore { param ->
-                param.result = false
-            }
+        if (options.isFlagEnabled(FLAG_HIDE_ENTRANCE)) {
+            requireMethod(CONSTANT_ENTRANCE).returnConstant(false)
         }
     }
 
-    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
-        FRIEND_FEEDS to FindMethod().apply {
+    private fun getFeedFactory(factoryClass: Class<*>): Any {
+        // 旧版 getter 会初始化单例；9.3.10 起工厂类只保留 synthetic 字段访问器。
+        val getter = factoryClass.findMethodOrNull {
+            scope = declared
+            isStatic = true
+            includeSynthetic = false
+            paramCount = 0
+            returnType = factoryClass
+            requireUnique = true
+        }
+        if (getter != null) return requireNotNull(factoryClass.invoke(getter))
+
+        return factoryClass.findField {
+            scope = declared
+            isStatic = true
+            type = factoryClass
+            requireUnique = true
+        }.get(null) ?: factoryClass.new()
+    }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = buildMap {
+        put(DISPLAY_UPDATE, FindMethod().apply {
             searchPackages("com.qzone.reborn.feedpro.viewmodel")
             matcher {
-                paramTypes("int", "java.lang.String", "java.util.List")
+                paramCount(4)
                 returnType("void")
-                usingEqStrings("REFRESH", "LOAD_MORE", "MEMORY_CACHE", "DISK_CACHE", "INSERT_FAKE")
+                usingEqStrings("onFeedDataChange, feedList: ", "lastModifyRecord, startPosition: ", ", pageCount: ")
+                declaredClass {
+                    methods {
+                        add {
+                            paramCount(0)
+                            returnType("java.lang.String")
+                            usingEqStrings("QzoneFriendFeedProViewModel")
+                        }
+                    }
+                }
             }
-        },
-        FEED_VIEW_TYPE to FindMethod().apply {
+        })
+        put(FEED_VIEW_TYPE, FindMethod().apply {
             searchPackages("com.qzone.reborn.feedpro.itemview")
             matcher {
-                paramTypes("int", null)
+                paramCount(2)
                 returnType("int")
                 declaredClass {
                     methods {
@@ -89,44 +123,34 @@ object HideQzonePublicRecommend : Feature(
                     }
                 }
             }
-        },
-        CONSTANT_ENTRANCE to FindMethod().apply {
-            matcher {
-                paramCount(0)
-                returnType("boolean")
-                declaredClass {
-                    methods {
+        })
+        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_35)) {
+            put(CONSTANT_ENTRANCE, FindMethod().apply {
+                matcher {
+                    paramCount(0)
+                    returnType("boolean")
+                    declaredClass {
+                        methods {
+                            add {
+                                paramCount(0)
+                                returnType("void")
+                                usingEqStrings("QzonePublicRecommendService", "loadEntranceCtrl")
+                            }
+                        }
+                    }
+                    callerMethods {
                         add {
-                            paramCount(0)
                             returnType("void")
-                            usingEqStrings("QzonePublicRecommendService", "loadEntranceCtrl")
+                            usingEqStrings("isConstantEntranceEnabled: ", "em_qz_public_recommend_en")
                         }
                     }
                 }
-                callerMethods {
-                    add {
-                        paramTypes("android.view.View")
-                        returnType("void")
-                        usingEqStrings("isConstantEntranceEnabled: ", "em_qz_public_recommend_en")
-                    }
-                }
-            }
-        },
-    )
-
-    override fun getCacheKeys(): Set<String> = buildSet {
-        add(FRIEND_FEEDS)
-        add(FEED_VIEW_TYPE)
-        if (shouldHideEntrance()) {
-            add(CONSTANT_ENTRANCE)
+            })
         }
     }
 
-    private fun shouldHideEntrance(): Boolean =
-        HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_35) && options.isFlagEnabled(FLAG_HIDE_ENTRANCE)
-
     private const val FLAG_HIDE_ENTRANCE = 0
-    private const val FRIEND_FEEDS = "qzone_public_recommend_friend_feeds"
-    private const val FEED_VIEW_TYPE = "qzone_public_recommend_feed_view_type"
-    private const val CONSTANT_ENTRANCE = "qzone_public_recommend_constant_entrance"
+    private const val DISPLAY_UPDATE = "qzone_friend_feed_display_update"
+    private const val FEED_VIEW_TYPE = "qzone_feed_view_type"
+    private const val CONSTANT_ENTRANCE = "qzone_constant_entrance"
 }
