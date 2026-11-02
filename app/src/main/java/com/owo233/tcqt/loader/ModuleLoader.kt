@@ -13,6 +13,7 @@ import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.dexkit.DexKitFinder
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostBridge
+import com.owo233.tcqt.core.env.HostServicesProvider
 import com.owo233.tcqt.core.env.ProcUtil
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
@@ -27,7 +28,6 @@ import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.core.sync.SyncUtils
 import com.owo233.tcqt.features.internal.pipeline.PipelineDecorators
 import com.owo233.tcqt.features.message.RecallHeaderTip
-import com.owo233.tcqt.core.env.HostServicesProvider
 import com.owo233.tcqt.host.QQHostServices
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.loader.modern.ModernHookEngine

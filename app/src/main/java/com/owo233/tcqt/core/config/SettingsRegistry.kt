@@ -1,8 +1,8 @@
 package com.owo233.tcqt.core.config
 
 import com.owo233.tcqt.core.action.ActionRegistry
-import com.owo233.tcqt.core.action.ActionUiType
 import com.owo233.tcqt.core.action.ActionSpec
+import com.owo233.tcqt.core.action.ActionUiType
 
 /**
  * 配置注册：把每个 [com.owo233.tcqt.core.action.ActionSpec] 声明的配置项

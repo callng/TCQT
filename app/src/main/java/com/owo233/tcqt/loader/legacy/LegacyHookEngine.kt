@@ -2,11 +2,11 @@ package com.owo233.tcqt.loader.legacy
 
 import android.util.Log
 import com.owo233.tcqt.core.hook.Chain
+import com.owo233.tcqt.core.hook.HookContract
 import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.IHookEngine
 import com.owo233.tcqt.core.hook.Invoker
 import com.owo233.tcqt.core.hook.Unhook
-import com.owo233.tcqt.core.hook.HookContract
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge

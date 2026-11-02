@@ -2,13 +2,12 @@ package com.owo233.tcqt.loader.validation
 
 import android.app.Application
 import android.graphics.Bitmap
-import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import com.owo233.tcqt.core.config.PngIconCodec
 import com.owo233.tcqt.core.config.SettingsStore
-import com.owo233.tcqt.core.config.TCQTSetting
-import com.owo233.tcqt.ui.settings.SettingsEditSession
 import com.owo233.tcqt.ui.settings.SettingViewModel
+import com.owo233.tcqt.ui.settings.SettingsEditSession
 import java.io.ByteArrayOutputStream
 import java.io.File
 

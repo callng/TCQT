@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import androidx.core.view.isEmpty
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
@@ -28,7 +29,6 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.view.isEmpty
 
 @RegisterAction
 object MultiSelectRecall : Feature(

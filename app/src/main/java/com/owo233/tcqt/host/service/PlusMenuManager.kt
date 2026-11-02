@@ -6,9 +6,8 @@ import android.widget.PopupWindow
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.ResourcesUtils
 import com.owo233.tcqt.core.env.loadOrThrow
-import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.hook.hookAfter
-import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.core.reflect.getObject
 import com.owo233.tcqt.core.reflect.setObject

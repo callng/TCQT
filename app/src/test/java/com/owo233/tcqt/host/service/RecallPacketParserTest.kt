@@ -5,6 +5,8 @@ import com.google.protobuf.UnknownFieldSet
 import org.junit.Assume.assumeTrue
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+import top.artmoe.inao.entries.InfoSyncPushOuterClass
+import top.artmoe.inao.entries.QQMessageOuterClass
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -13,8 +15,6 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import top.artmoe.inao.entries.InfoSyncPushOuterClass
-import top.artmoe.inao.entries.QQMessageOuterClass
 
 @RunWith(Parameterized::class)
 class RecallPacketParserTest(private val useKotlinx: Boolean) {

@@ -1,11 +1,11 @@
 package com.owo233.tcqt.loader.modern
 
 import com.owo233.tcqt.core.hook.Chain
+import com.owo233.tcqt.core.hook.HookContract
 import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.IHookEngine
 import com.owo233.tcqt.core.hook.Invoker
 import com.owo233.tcqt.core.hook.Unhook
-import com.owo233.tcqt.core.hook.HookContract
 import io.github.libxposed.api.XposedInterface
 import java.lang.reflect.Executable
 import java.lang.reflect.Member

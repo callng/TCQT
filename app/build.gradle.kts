@@ -1,11 +1,11 @@
 import com.android.build.api.artifact.ArtifactTransformationRequest
 import com.android.build.api.artifact.SingleArtifact
-import com.owo233.tcqt.build.DualApkTask
-import com.owo233.tcqt.build.PrepareZygiskModule
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.SigningConfig
 import com.android.build.api.variant.impl.VariantOutputImpl
 import com.google.protobuf.gradle.proto
+import com.owo233.tcqt.build.DualApkTask
+import com.owo233.tcqt.build.PrepareZygiskModule
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import java.text.SimpleDateFormat

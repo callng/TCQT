@@ -1,6 +1,8 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class FloatingBarGeometryTest {
     @Test fun largeScaleFitsViewportIncludingShadow() {

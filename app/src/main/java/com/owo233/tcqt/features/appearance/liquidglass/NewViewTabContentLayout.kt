@@ -1,21 +1,12 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
-import android.app.Activity
-import android.graphics.drawable.Drawable
-import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
-import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.TabWidget
 import androidx.core.view.children
 import androidx.core.view.isGone
 import com.owo233.tcqt.R
-import com.owo233.tcqt.core.log.Log
-import java.lang.ref.WeakReference
-import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min

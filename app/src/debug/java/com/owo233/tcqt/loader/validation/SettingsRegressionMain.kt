@@ -1,7 +1,7 @@
 package com.owo233.tcqt.loader.validation
 
-import com.owo233.tcqt.core.config.SettingsStore
 import android.os.Looper
+import com.owo233.tcqt.core.config.SettingsStore
 import io.fastkv.FastKV
 import java.io.File
 

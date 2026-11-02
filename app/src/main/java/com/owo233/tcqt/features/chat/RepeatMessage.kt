@@ -1,8 +1,8 @@
 package com.owo233.tcqt.features.chat
 
-import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.ImageView
+import androidx.core.graphics.drawable.toDrawable
 import com.owo233.tcqt.R
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
@@ -30,7 +30,6 @@ import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import com.tencent.qqnt.msg.api.IMsgService
 import java.lang.reflect.Field
 import java.lang.reflect.Method
-import androidx.core.graphics.drawable.toDrawable
 
 @RegisterAction
 object RepeatMessage : Feature(

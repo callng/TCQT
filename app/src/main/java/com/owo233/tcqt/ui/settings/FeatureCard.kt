@@ -33,22 +33,22 @@ import com.owo233.tcqt.ui.settings.model.FeatureItemUiState
 import com.owo233.tcqt.ui.settings.model.FeatureOptionGroup
 import com.owo233.tcqt.ui.settings.model.FeatureSliderUiState
 import com.owo233.tcqt.ui.settings.model.TextAreaUiState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.math.roundToInt
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Report
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
+import top.yukonga.miuix.kmp.basic.TextField as OutlinedTextField
 
 @Composable
 internal fun FeatureCard(

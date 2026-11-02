@@ -1,6 +1,7 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
-import kotlin.math.*
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Logical dimensions shared by the runtime bar and the settings preview. */
 internal data class FloatingBarGeometry(

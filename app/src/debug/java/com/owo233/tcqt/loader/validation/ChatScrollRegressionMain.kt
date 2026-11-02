@@ -3,9 +3,9 @@ package com.owo233.tcqt.loader.validation
 import android.os.Looper
 import com.owo233.tcqt.core.config.ConfigRestorePlan
 import com.owo233.tcqt.core.config.SettingsStore
-import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 /** ADB-only storage diagnostics; does not send messages or change injection modes. */
 object ChatScrollRegressionMain {

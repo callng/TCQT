@@ -4,8 +4,8 @@ import com.owo233.tcqt.core.config.IntSetting
 import com.owo233.tcqt.ui.settings.FeatureCatalog
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue

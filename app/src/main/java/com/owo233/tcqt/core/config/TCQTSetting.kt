@@ -1,12 +1,12 @@
 package com.owo233.tcqt.core.config
 
+import com.owo233.tcqt.core.action.ActionSpec
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.log.Log
 import java.io.File
-import kotlin.reflect.KProperty
 import java.util.concurrent.ConcurrentHashMap
-import com.owo233.tcqt.core.action.ActionSpec
+import kotlin.reflect.KProperty
 
 /**
  * 模块设置中心：所有配置项的 FastKV 持久化与读写。

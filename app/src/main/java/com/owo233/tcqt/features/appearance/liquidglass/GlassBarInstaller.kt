@@ -1,33 +1,26 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
-import androidx.annotation.RequiresApi
-import android.os.Build
 import android.app.Activity
+import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.TabWidget
-import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.core.view.children
-import androidx.core.view.isEmpty
 import androidx.core.view.isGone
-import com.owo233.tcqt.R
+import androidx.core.view.isVisible
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.contentBarHeight
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.dropNavigationReserve
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.hugContentWidth
+import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.isIconOnlyRow
 import java.lang.ref.WeakReference
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import androidx.core.view.isVisible
-
-import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.hugContentWidth
-import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.contentBarHeight
-import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.dropNavigationReserve
-import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.isIconOnlyRow
-import com.owo233.tcqt.features.appearance.liquidglass.ClassicTabContentLayout.alignIconOnlyRow
 
 /**
  * 玻璃栏的安装与生命周期协调。

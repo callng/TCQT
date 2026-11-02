@@ -1,7 +1,6 @@
 package com.owo233.tcqt.ui.component
 
 import android.content.Context
-import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -30,6 +29,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.owo233.tcqt.core.env.CommonContextWrapper.Companion.toCompatibleContext
 import com.owo233.tcqt.ui.theme.SettingTheme
 import top.yukonga.miuix.kmp.basic.Scaffold
+import android.graphics.Color as AndroidColor
 
 class TCQTDialogLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
 

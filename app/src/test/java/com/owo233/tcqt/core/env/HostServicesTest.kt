@@ -1,7 +1,10 @@
 package com.owo233.tcqt.core.env
 
 import android.content.Context
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class HostServicesTest {
     @Test fun missingAdapterFailsClearly() {

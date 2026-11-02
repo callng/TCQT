@@ -8,8 +8,8 @@ import android.os.Environment
 import android.os.Process
 import androidx.core.content.pm.PackageInfoCompat
 import com.owo233.tcqt.core.env.HookEnv
-import com.owo233.tcqt.core.env.HostServicesProvider
 import com.owo233.tcqt.core.env.HostBridge
+import com.owo233.tcqt.core.env.HostServicesProvider
 import com.owo233.tcqt.core.env.HybridClassLoader
 import com.owo233.tcqt.core.env.PlatformTools
 import com.owo233.tcqt.core.env.ProcUtil

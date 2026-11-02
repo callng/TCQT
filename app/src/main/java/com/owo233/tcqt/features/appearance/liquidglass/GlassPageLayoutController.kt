@@ -1,27 +1,13 @@
 package com.owo233.tcqt.features.appearance.liquidglass
 
-import androidx.annotation.RequiresApi
-import android.os.Build
-import android.app.Activity
-import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.TabWidget
-import android.widget.TextView
 import androidx.core.view.children
-import androidx.core.view.isEmpty
-import androidx.core.view.isGone
 import com.owo233.tcqt.R
-import com.owo233.tcqt.core.log.Log
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
-import androidx.core.view.isVisible
 
 internal class GlassPageLayoutController(
     private val hostProvider: () -> GlassBarHostLayout?,

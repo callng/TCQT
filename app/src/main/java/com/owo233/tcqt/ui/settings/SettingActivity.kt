@@ -32,8 +32,8 @@ import com.owo233.tcqt.core.command.ModuleCommandBus
 import com.owo233.tcqt.core.config.ConfigBackupManager
 import com.owo233.tcqt.core.config.ThemeSettings
 import com.owo233.tcqt.core.dexkit.DexKitCache
-import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.env.ModuleComponents
+import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.core.env.copyToClipboard
 import com.owo233.tcqt.core.log.BugReportExporter

@@ -1,26 +1,26 @@
 package com.owo233.tcqt.loader.validation
 
-import android.app.Application
 import android.app.Activity
-import android.os.Bundle
-import java.lang.ref.WeakReference
+import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import com.owo233.tcqt.core.config.SettingsStore
+import android.os.Bundle
+import com.owo233.tcqt.core.action.ActionProcess
+import com.owo233.tcqt.core.action.ActionRegistry
+import com.owo233.tcqt.core.action.FirstFrameGate
+import com.owo233.tcqt.core.action.StartupScheduler
 import com.owo233.tcqt.core.config.ConfigRestorePlan
+import com.owo233.tcqt.core.config.SettingsStore
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
-import com.owo233.tcqt.core.action.ActionRegistry
-import com.owo233.tcqt.core.action.ActionProcess
-import com.owo233.tcqt.core.action.StartupScheduler
-import com.owo233.tcqt.core.action.FirstFrameGate
 import com.owo233.tcqt.generated.GeneratedActionList
-import java.io.File
 import org.json.JSONObject
+import java.io.File
+import java.lang.ref.WeakReference
 
 /** Explicit, debug-only host regression entry; reports contain no account or message data. */
 internal object RuntimeValidation {
