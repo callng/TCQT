@@ -100,5 +100,3 @@ adb -s 7ef9cfd2 shell su -c 'cat /data/user/0/com.tencent.mobileqq/files/.tcqt/v
 ```
 
 步骤 14 覆盖协议/缓存、8 项 Hook、4 项生命周期、22 项 JNI 类型/异常和 6 项设置检查，使用独立临时存储。将宿主包名换为 `com.tencent.tim` 可验证 TIM；步骤 07 检查首帧信号及 Deferred 时序。必须确认 JSON 的 `passed=true`、mode 正确、报告来自本轮且进程继续存活。Release 不提供这个广播入口，需实际检查启动、设置和功能。
-
-本轮逐项记录在 [TODO.md](TODO.md)，设备证据在本地忽略的 `app/build/refactor-validation/`。不要运行 `clean` 删除尚需保留的证据，也不要提交用户聊天、截图、配置或签名文件。远程 CI 只有推送并实际运行完成后才能声明通过。

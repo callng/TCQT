@@ -85,6 +85,9 @@
 -obfuscationdictionary obf-dict.txt
 
 -repackageclasses ''
+# Background settings verification selects UI types from the loaded DEX, including
+# obfuscated class names. Retain only their packages, without keeping unused classes.
+-keeppackagenames androidx.compose.**,androidx.activity.**,androidx.lifecycle.**,androidx.savedstate.**,top.yukonga.miuix.**
 -allowaccessmodification
 -dontoptimize
 -dontpreverify
