@@ -1,15 +1,20 @@
 package com.owo233.tcqt.host.service
 
 import android.app.Activity
+import android.view.View
+import android.widget.PopupWindow
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.ResourcesUtils
 import com.owo233.tcqt.core.env.loadOrThrow
 import com.owo233.tcqt.core.hook.hookBefore
-import com.owo233.tcqt.core.hook.hookMethodBefore
+import com.owo233.tcqt.core.hook.hookAfter
+import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.reflect.findMethod
 import com.owo233.tcqt.core.reflect.getObject
-import java.util.concurrent.CopyOnWriteArrayList
+import com.owo233.tcqt.core.reflect.setObject
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * 消息列表右上角加号菜单的注册表。
@@ -70,18 +75,47 @@ object PlusMenuManager {
     }
 
     private fun hookBuild() {
-        loadOrThrow("com.tencent.widget.PopupMenuDialog")
-            .hookMethodBefore(
-                "conversationPlusBuild",
+        val buildMethod = loadOrThrow("com.tencent.widget.PopupMenuDialog").findMethod {
+            name = "conversationPlusBuild"
+            paramTypes(
                 Activity::class.java,
                 List::class.java,
                 loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnClickActionListener"),
                 loadOrThrow($$"com.tencent.widget.PopupMenuDialog$OnDismissListener")
-            ) { param ->
-                val activity = param.args[0] as Activity
-                ResourcesUtils.injectResourcesToContext(activity.resources)
-                param.args[1] = (param.args[1] as List<*>) + buildMenuItems()
-            }
+            )
+        }
+        buildMethod.hookBefore { param ->
+            val activity = param.args[0] as Activity
+            ResourcesUtils.injectResourcesToContext(activity.resources)
+            param.args[1] = (param.args[1] as List<*>) + buildMenuItems()
+        }
+        buildMethod.hookAfter { param ->
+            val popup = param.result as? PopupWindow ?: return@hookAfter
+            updateContentHeight(popup)
+        }
+    }
+
+    private fun updateContentHeight(popup: PopupWindow) {
+        val content = popup.contentView ?: return
+        val width = popup.width
+        val widthSpec = if (width > 0) {
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
+        } else {
+            View.MeasureSpec.makeMeasureSpec(
+                content.resources.displayMetrics.widthPixels,
+                View.MeasureSpec.AT_MOST
+            )
+        }
+        // QQ calculates its height before prepareConversationPlusContent. Other
+        // modules can add rows in that method, leaving the cached height too short.
+        // Measure the completed view so every module's rows contribute to the height.
+        content.measure(widthSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        val height = content.measuredHeight
+        if (height <= 0) return
+        // showAsDropDown uses this field again to constrain the popup to available
+        // screen space. Keep QQ's scroll/clamping behavior with the corrected total.
+        popup.setObject("mTotalPopHeight", height)
+        popup.height = height
     }
 
     private fun hookClick(dexKitTask: DexKitTask) {
