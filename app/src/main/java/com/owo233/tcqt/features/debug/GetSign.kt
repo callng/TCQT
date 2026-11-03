@@ -21,6 +21,7 @@ import com.owo233.tcqt.core.env.hex2ByteArray
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.env.toHexString
 import com.owo233.tcqt.core.hook.hookAfter
+import com.owo233.tcqt.core.hook.isNative
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findField
 import com.owo233.tcqt.core.reflect.findMethod
@@ -46,8 +47,10 @@ object GetSign : Feature(
     private var pendingEditText: WeakReference<EditText>? = null
     private var pendingSendBtn: WeakReference<Button>? = null
 
+    @Volatile
     private var cachedSource32: String? = null
-    private var backupString: String? = null
+
+    private val source32Capture = Source32Capture(::scanSource32)
 
     private val signer by lazy {
         val method = requireMethod("getSign")
@@ -131,7 +134,7 @@ object GetSign : Feature(
                                 if (withSource32) {
                                     "$base $source32"
                                 } else {
-                                    backupString
+                                    "$base\nsource32 获取失败，请重试"
                                 }
                             )
                         } else {
@@ -160,9 +163,7 @@ object GetSign : Feature(
     ) {
         pendingEditText = WeakReference(editText)
 
-        val userInput = (editText.text?.toString() ?: "").also {
-            backupString = it
-        }
+        val userInput = editText.text?.toString() ?: ""
 
         val cmd = if (userInput.trim().isNotEmpty()) {
             userInput
@@ -209,6 +210,22 @@ object GetSign : Feature(
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun initMsfProcess(app: Application) {
+        if (shouldScanSource32()) {
+            // Loading a library after signing can reuse the freed Scudo allocation
+            // containing source32. Prepare it before observing the native signer.
+            NativeLibs.load("tcqtmem")
+            QQSecuritySign::class.java.findMethod {
+                name = "getSign"
+                paramCount = 6
+                returnType = QQSecuritySign.SignResult::class.java
+            }.takeIf { it.isNative }?.hookAfter { param ->
+                val result = param.result as? QQSecuritySign.SignResult
+                if (result?.sign?.isNotEmpty() == true) source32Capture.begin()
+            }?.let { hook ->
+                source32Capture.onCaptured { hook.unhook() }
+            }
+        }
+
         val requestReceiver = object : BroadcastReceiver() {
             override fun onReceive(
                 context: Context,
@@ -237,7 +254,7 @@ object GetSign : Feature(
                             .invokeAs<QQSecuritySign.SignResult>(
                                 method,
                                 toServiceMsg,
-                                cmd,
+                                cmd
                             )
                             .sign
                             .toHexString()
@@ -249,48 +266,30 @@ object GetSign : Feature(
                     }
 
                     if (intent.getBooleanExtra("needSource32", false)) {
-                        val cached = cachedSource32
-
-                        if (cached != null) {
-                            sendResult(
-                                context = context,
-                                sign = sign,
-                                source32 = cached,
-                            )
-                        } else {
-                            Thread {
-                                var source32 = cachedSource32
-
-                                if (source32 == null) {
-                                    source32 = scanSource32()
-
-                                    if (source32.length == SOURCE32_LENGTH * 2) {
-                                        cachedSource32 = source32
-                                    }
-                                }
-
+                        val pendingResult = goAsync()
+                        source32Capture.begin().whenComplete { source32, error ->
+                            try {
+                                if (error != null) Log.e("GetSign: source32 capture failed", error)
                                 sendResult(
                                     context = context,
                                     sign = sign,
-                                    source32 = source32.takeIf { it.isNotEmpty() },
+                                    source32 = source32
                                 )
-                            }.start()
+                            } finally {
+                                pendingResult.finish()
+                            }
                         }
                     } else {
                         sendResult(
                             context = context,
                             sign = sign,
-                            source32 = null,
+                            source32 = null
                         )
                     }
                 }.onFailure { e ->
                     Log.e("", e)
-
                     Intent(ACTION_SIGN_RESULT).apply {
-                        putExtra(
-                            "error",
-                            e.message ?: "unknown error",
-                        )
+                        putExtra("error", e.message ?: "unknown error")
                         setPackage(context.packageName)
                     }.also {
                         context.sendBroadcast(it)
@@ -310,11 +309,7 @@ object GetSign : Feature(
     ) {
         Intent(ACTION_SIGN_RESULT).apply {
             putExtra("sign", sign)
-
-            if (source32 != null) {
-                putExtra("source32", source32)
-            }
-
+            if (source32 != null) putExtra("source32", source32)
             setPackage(context.packageName)
         }.also {
             context.sendBroadcast(it)
@@ -325,7 +320,6 @@ object GetSign : Feature(
         pendingSendBtn?.get()?.let {
             it.isEnabled = true
         }
-
         getTargetEditText()?.isEnabled = true
     }
 
@@ -335,14 +329,8 @@ object GetSign : Feature(
     }
 
     override fun getCacheKeys(): Set<String> {
-        if (HookEnv.isTIM()) {
-            return emptySet()
-        }
-
-        return setOf(
-            TASK_INPUT_ROOT_INIT,
-            TASK_GET_SIGN,
-        )
+        if (HookEnv.isTIM()) return emptySet()
+        return setOf(TASK_INPUT_ROOT_INIT, TASK_GET_SIGN)
     }
 
     override fun execute(
@@ -350,55 +338,44 @@ object GetSign : Feature(
         cache: MutableMap<String, String>,
         tracker: DexKitLookupTracker
     ) {
-        if (HookEnv.isTIM()) {
-            return
-        }
+        if (HookEnv.isTIM()) return
 
         lookup(TASK_GET_SIGN, bridge, cache, tracker) {
             findMethod(
                 FindMethod().apply {
                     searchPackages("com.tencent.mobileqq.msf.core")
-
                     matcher {
                         usingEqStrings(
                             "invoke getSign start",
-                            "invoke getSign end",
+                            "invoke getSign end"
                         )
                     }
-                },
+                }
             ).singleOrNull()?.descriptor
         }
 
         lookup(TASK_INPUT_ROOT_INIT, bridge, cache, tracker) {
             findMethod(
                 FindMethod().apply {
-                    searchPackages(
-                        "com.tencent.mobileqq.aio.input.simpleui",
-                    )
-
+                    searchPackages("com.tencent.mobileqq.aio.input.simpleui")
                     matcher {
                         usingEqStrings(
                             "binding",
                             "inputRoot",
                             "findViewById(...)",
                             "getContext(...)",
-                            "sendBtn",
+                            "sendBtn"
                         )
                     }
-                },
+                }
             ).singleOrNull()?.descriptor
                 ?: findMethod(
                     FindMethod().apply {
-                        searchPackages(
-                            "com.tencent.mobileqq.aio.input.simpleui",
-                        )
-
+                        searchPackages("com.tencent.mobileqq.aio.input.simpleui")
                         matcher {
-                            usingEqStrings(
-                                "inputRoot.findViewById(R.id.send_btn)",
-                            )
+                            usingEqStrings("inputRoot.findViewById(R.id.send_btn)")
                         }
-                    },
+                    }
                 ).singleOrNull()?.descriptor
         }
     }
@@ -410,7 +387,7 @@ object GetSign : Feature(
             val resId = activity.resources.getIdentifier(
                 "input",
                 "id",
-                activity.packageName,
+                activity.packageName
             )
 
             if (resId != 0) {
@@ -423,59 +400,37 @@ object GetSign : Feature(
 
     private fun createToServiceMsg(
         cmd: String = "MessageSvc.PbSendMsg",
-        uin: String,
+        uin: String
     ): ToServiceMsg {
-        return ToServiceMsg(
-            "mobileqq.service",
-            uin,
-            cmd,
-        )
+        return ToServiceMsg("mobileqq.service", uin, cmd)
     }
 
     private fun shouldScanSource32(): Boolean {
         return HookEnv.isQQ() &&
-                HookEnv.requireMinQQVersion(
-                    QQVersion.QQ_9_3_50_BETA_40120,
-                )
+                HookEnv.requireMinQQVersion(QQVersion.QQ_9_3_50_BETA_40120)
     }
 
     private external fun nativeScanSource32(): String
 
     @Synchronized
     private fun scanSource32(): String {
-        if (!nativeReady) {
-            Log.e(
-                "GetSign: libtcqtmem not loaded, source32 unavailable",
-            )
+        if (!NativeLibs.load("tcqtmem")) {
+            Log.e("GetSign: libtcqtmem not loaded, source32 unavailable")
             return ""
         }
 
         return try {
             nativeScanSource32()
-        } catch (e: Throwable) {
-            Log.e(
-                "GetSign: native scan error",
-                e,
-            )
+        } catch (th: Throwable) {
+            Log.e("GetSign: native scan error", th)
             ""
         }
     }
 
     private const val ACTION_REQUEST_SIGN = "com.owo233.tcqt.GET_SIGN_REQUEST"
-
     private const val ACTION_SIGN_RESULT = "com.owo233.tcqt.GET_SIGN_RESULT"
-
     private const val TASK_INPUT_ROOT_INIT = "InputRootInit"
-
     private const val TASK_GET_SIGN = "getSign"
-
     private const val SOURCE32_LENGTH = 32
-
     private const val REQUEST_TIMEOUT_MS = 30_000L
-
-    private val nativeReady: Boolean by lazy {
-        val ok = NativeLibs.load("tcqtmem")
-        if (!ok) Log.e("GetSign: load libtcqtmem failed")
-        ok
-    }
 }
