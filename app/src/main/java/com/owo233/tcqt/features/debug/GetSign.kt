@@ -21,7 +21,6 @@ import com.owo233.tcqt.core.env.hex2ByteArray
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.env.toHexString
 import com.owo233.tcqt.core.hook.hookAfter
-import com.owo233.tcqt.core.hook.isNative
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.findField
 import com.owo233.tcqt.core.reflect.findMethod
@@ -214,14 +213,10 @@ object GetSign : Feature(
             // Loading a library after signing can reuse the freed Scudo allocation
             // containing source32. Prepare it before observing the native signer.
             NativeLibs.load("tcqtmem")
-            QQSecuritySign::class.java.findMethod {
-                name = "getSign"
-                paramCount = 6
-                returnType = QQSecuritySign.SignResult::class.java
-            }.takeIf { it.isNative }?.hookAfter { param ->
+            signer.second.hookAfter { param ->
                 val result = param.result as? QQSecuritySign.SignResult
                 if (result?.sign?.isNotEmpty() == true) source32Capture.begin()
-            }?.let { hook ->
+            }.let { hook ->
                 source32Capture.onCaptured { hook.unhook() }
             }
         }
