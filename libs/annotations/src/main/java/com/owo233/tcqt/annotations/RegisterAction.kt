@@ -8,5 +8,6 @@ annotation class RegisterAction(
      */
     val enabled: Boolean = true,
     val processes: Array<ActionProcess> = [ActionProcess.MAIN],
+    /** 安装阶段及线程，见 [ActionPriority]；普通功能保留默认 DEFERRED。 */
     val priority: ActionPriority = ActionPriority.DEFERRED,
 )
