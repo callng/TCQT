@@ -10,6 +10,7 @@ import android.net.NetworkInfo
 import android.os.Build
 import android.telephony.TelephonyManager
 import androidx.annotation.RequiresApi
+import com.owo233.tcqt.annotations.ActionPriority
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
@@ -17,7 +18,16 @@ import com.owo233.tcqt.core.hook.hookBefore
 import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.reflect.callOriginal
 
-@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF, ActionProcess.TOOL, ActionProcess.QZONE])
+@RegisterAction(
+    processes = [
+        ActionProcess.MAIN,
+        ActionProcess.MSF,
+        ActionProcess.TOOL,
+        ActionProcess.QZONE,
+        ActionProcess.OPENSDK
+    ],
+    priority = ActionPriority.CRITICAL
+)
 object FakeNetworkStatus : Feature(
     key = "fake_network_status",
     name = "伪装网络状态",
