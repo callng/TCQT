@@ -4,6 +4,7 @@ import com.owo233.tcqt.annotations.ActionProcess
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.api.Requires
+import com.owo233.tcqt.core.dexkit.DexKitLookupTracker
 import com.owo233.tcqt.core.dexkit.DexKitTask
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.QQVersion
@@ -15,8 +16,7 @@ import com.owo233.tcqt.core.reflect.findMethodOrNull
 import com.owo233.tcqt.core.reflect.invoke
 import com.owo233.tcqt.core.reflect.new
 import com.qzone.reborn.feedpro.itemview.QzoneFeedProType
-import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.DexKitBridge
 
 @RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.QZONE])
 object HideQzonePublicRecommend : Feature(
@@ -90,62 +90,73 @@ object HideQzonePublicRecommend : Feature(
         }.get(null) ?: factoryClass.new()
     }
 
-    override fun getQueryMap(): Map<String, BaseMatcher> = buildMap {
-        put(DISPLAY_UPDATE, FindMethod().apply {
-            searchPackages("com.qzone.reborn.feedpro.viewmodel")
-            matcher {
-                paramCount(4)
-                returnType("void")
-                usingEqStrings("onFeedDataChange, feedList: ", "lastModifyRecord, startPosition: ", ", pageCount: ")
-                declaredClass {
-                    methods {
-                        add {
-                            paramCount(0)
-                            returnType("java.lang.String")
-                            usingEqStrings("QzoneFriendFeedProViewModel")
-                        }
-                    }
-                }
-            }
-        })
-        put(FEED_VIEW_TYPE, FindMethod().apply {
-            searchPackages("com.qzone.reborn.feedpro.itemview")
-            matcher {
-                paramCount(2)
-                returnType("int")
-                declaredClass {
-                    methods {
-                        add {
-                            paramTypes("int", "android.content.Context")
-                            returnType("com.qzone.reborn.feedpro.itemview.QzoneBaseFeedProItemView")
-                            usingEqStrings("item_view_construct", "#newInstance")
-                        }
-                    }
-                }
-            }
-        })
+    override fun getCacheKeys(): Set<String> = buildSet {
+        add(DISPLAY_UPDATE)
+        add(FEED_VIEW_TYPE)
         if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_35)) {
-            put(CONSTANT_ENTRANCE, FindMethod().apply {
+            add(CONSTANT_ENTRANCE)
+        }
+    }
+
+    override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>, tracker: DexKitLookupTracker) {
+        lookup(DISPLAY_UPDATE, bridge, cache, tracker) {
+            // Resolve the class anchor once; nested declaredClass.methods repeats it
+            // for every candidate method in the package.
+            val owners = findMethod {
+                searchPackages("com.qzone.reborn.feedpro.viewmodel")
                 matcher {
                     paramCount(0)
-                    returnType("boolean")
-                    declaredClass {
-                        methods {
-                            add {
-                                paramCount(0)
-                                returnType("void")
-                                usingEqStrings("QzonePublicRecommendService", "loadEntranceCtrl")
-                            }
-                        }
-                    }
-                    callerMethods {
-                        add {
-                            returnType("void")
-                            usingEqStrings("isConstantEntranceEnabled: ", "em_qz_public_recommend_en")
-                        }
-                    }
+                    returnType("java.lang.String")
+                    usingEqStrings("QzoneFriendFeedProViewModel")
                 }
-            })
+            }.mapNotNull { it.declaredClass }.distinctBy { it.descriptor }
+            require(owners.isNotEmpty()) { "Friend feed ViewModel anchor not found" }
+            findMethod {
+                searchInClass(owners)
+                matcher {
+                    paramCount(4)
+                    returnType("void")
+                    usingEqStrings("onFeedDataChange, feedList: ", "lastModifyRecord, startPosition: ", ", pageCount: ")
+                }
+            }.single().descriptor
+        }
+        lookup(FEED_VIEW_TYPE, bridge, cache, tracker) {
+            val factories = findMethod {
+                searchPackages("com.qzone.reborn.feedpro.itemview")
+                matcher {
+                    paramTypes("int", "android.content.Context")
+                    returnType("com.qzone.reborn.feedpro.itemview.QzoneBaseFeedProItemView")
+                    usingEqStrings("item_view_construct", "#newInstance")
+                }
+            }.mapNotNull { it.declaredClass }.distinctBy { it.descriptor }
+            require(factories.isNotEmpty()) { "Feed item factory anchor not found" }
+            findMethod {
+                searchInClass(factories)
+                matcher { paramCount(2); returnType("int") }
+            }.single().descriptor
+        }
+        if (CONSTANT_ENTRANCE in getCacheKeys()) {
+            lookup(CONSTANT_ENTRANCE, bridge, cache, tracker) {
+                val serviceClasses = findMethod {
+                    matcher {
+                        paramCount(0)
+                        returnType("void")
+                        usingEqStrings("QzonePublicRecommendService", "loadEntranceCtrl")
+                    }
+                }.map { it.className }.toSet()
+                require(serviceClasses.isNotEmpty()) { "Public recommend service anchor not found" }
+                // Read calls from the string-anchored caller, avoiding repeated caller
+                // and class-method matching for all no-argument boolean candidates.
+                findMethod {
+                    matcher {
+                        returnType("void")
+                        usingEqStrings("isConstantEntranceEnabled: ", "em_qz_public_recommend_en")
+                    }
+                }.flatMap { it.invokes }
+                    .filter { it.className in serviceClasses && it.paramCount == 0 && it.returnTypeName == "boolean" }
+                    .distinctBy { it.descriptor }
+                    .single().descriptor
+            }
         }
     }
 

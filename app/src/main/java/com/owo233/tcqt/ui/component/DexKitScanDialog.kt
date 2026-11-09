@@ -4,27 +4,43 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.owo233.tcqt.core.command.ModuleCommandBus
 import com.owo233.tcqt.core.dexkit.DexKitScanState
+import com.owo233.tcqt.core.dexkit.DexKitScanPhase
+import com.owo233.tcqt.core.dexkit.dexKitScanClockMillis
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.log.Log
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Main-thread owner. The scan outlives any individual host Activity or dialog window. */
 internal class DexKitScanDialogHost(
@@ -159,21 +175,7 @@ private class DexKitScanDialog(
                 } },
             ) {
                 if (!state.finished) {
-                    Text(
-                        text = "${state.completed} / ${state.total}",
-                        style = MiuixTheme.textStyles.title4,
-                        color = MiuixTheme.colorScheme.primary,
-                    )
-                    LinearProgressIndicator(
-                        progress =
-                            if (state.total == 0) 0f else state.completed.toFloat() / state.total
-                    )
-                    Text(
-                        text =
-                            if (state.completed == state.total) "正在保存扫描结果…" else "正在查找混淆类和方法，请稍候…",
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                    )
+                    DexKitScanProgressContent(state)
                 } else {
                     Text(
                         text =
@@ -202,6 +204,7 @@ private class DexKitScanDialog(
                             },
                         style = MiuixTheme.textStyles.body2,
                     )
+                    DexKitScanTimingSummary(state)
                     Text(
                         text =
                             "宿主：${HookEnv.appName} ${HookEnv.versionName} (${HookEnv.versionCode})\n" +
@@ -234,4 +237,111 @@ private class DexKitScanDialog(
             }
         }
     }
+}
+
+@Composable
+internal fun DexKitScanProgressContent(state: DexKitScanState) {
+    var nowMillis by remember { mutableLongStateOf(dexKitScanClockMillis()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, state.startedAtMillis, state.finished) {
+        if (state.finished) return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            // The worker can be inside one blocking DexKit query for several seconds.
+            // Refresh the visible clock independently of descriptor completion events.
+            while (isActive) {
+                nowMillis = dexKitScanClockMillis()
+                delay(100.milliseconds)
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "总进度 ${state.completed} / ${state.total}",
+            style = MiuixTheme.textStyles.title4,
+            color = MiuixTheme.colorScheme.primary,
+        )
+        LinearProgressIndicator(
+            progress = if (state.total == 0) 0f else state.completed.toFloat() / state.total,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = "总耗时 ${formatDexKitScanDuration(state.elapsedMillisAt(nowMillis))}",
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+        )
+    }
+
+    val feature = state.currentFeature
+    if (feature != null) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = buildAnnotatedString {
+                    append("正在查找 ")
+                    withStyle(SpanStyle(color = MiuixTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+                        append(feature.name)
+                    }
+                },
+                style = MiuixTheme.textStyles.body2,
+            )
+            // A new feature starts its own bar instead of animating down from the last one.
+            key(feature.name, feature.startedAtMillis) {
+                LinearProgressIndicator(
+                    progress = if (feature.total == 0) 0f else feature.completed.toFloat() / feature.total,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                text = "功能进度 ${feature.completed} / ${feature.total} · 已耗时 " +
+                    formatDexKitScanDuration((nowMillis - feature.startedAtMillis).coerceAtLeast(feature.elapsedMillis)),
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
+        }
+    } else {
+        Text(
+            text = when (state.phase) {
+                DexKitScanPhase.PREPARING -> "正在准备功能查找…"
+                DexKitScanPhase.SCANNING -> "正在切换查找功能…"
+                DexKitScanPhase.SAVING -> "正在保存扫描结果…"
+            },
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+        )
+    }
+}
+
+@Composable
+internal fun DexKitScanTimingSummary(state: DexKitScanState) {
+    Text(
+        text = "总耗时 ${formatDexKitScanDuration(state.elapsedMillis)}",
+        style = MiuixTheme.textStyles.body2,
+    )
+    val slowFeatures = state.slowFeatures
+    if (slowFeatures.isNotEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "耗时较长的功能",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
+            slowFeatures.forEach { feature ->
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = MiuixTheme.colorScheme.primary)) {
+                            append(feature.name)
+                        }
+                        append(" · ${formatDexKitScanDuration(feature.elapsedMillis)}")
+                    },
+                    style = MiuixTheme.textStyles.body2,
+                )
+            }
+        }
+    }
+}
+
+private fun formatDexKitScanDuration(millis: Long): String {
+    val tenths = millis.coerceAtLeast(0) / 100
+    val seconds = "${tenths / 10 % 60}.${tenths % 10} 秒"
+    return if (tenths < 600) seconds else "${tenths / 600} 分 $seconds"
 }

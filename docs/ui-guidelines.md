@@ -95,6 +95,9 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
 - `dismiss()` 仅请求关闭；Miuix 的 `onDismissFinished` 调用 `dismissImmediately()` 释放窗口。
   不使用固定毫秒数猜测动画长度。Activity 销毁/扫描窗口切换时直接释放；组合随生命周期销毁。
 - 进度 Flow 使用 `collectAsStateWithLifecycle()`。扫描期间遵守 `canDismiss`，结束后提供关闭或重启操作。
+- DexKit 扫描显示总进度和当前功能进度，功能名称用 `primary` 高亮；进度按查找项计数，
+  共用项只计入一次总进度。总耗时和当前功能耗时独立于查询完成事件刷新，结束后保留总耗时
+  和超过 1 秒的最慢五个功能，没有符合项时隐藏整个耗时列表；准备、查找、保存阶段由扫描流程明确切换。
 
 ## 维护与验收
 

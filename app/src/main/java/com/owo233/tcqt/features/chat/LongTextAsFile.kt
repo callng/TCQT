@@ -173,6 +173,7 @@ object LongTextAsFile : Feature(
             matcher {
                 returnType("void")
                 usingEqStrings("mEditText")
+                usingFields { add { type("android.widget.EditText") } }
                 invokeMethods {
                     add { name = "setFilters"; paramTypes("android.text.InputFilter[]") }
                     add { name = "getInputQQTextBuilder" }
@@ -264,7 +265,9 @@ object LongTextAsFile : Feature(
         },
     )
 
-    override fun getCacheKeys(): Set<String> = getQueryMap().keys + setOf(
+    override fun getCacheKeys(): Set<String> = setOf(
+        FILTER_INSTALLER, CHECK_LENGTH, SEND_CLICK, SEND_ELEMENTS, INPUT_CONVERTER,
+        INPUT_TEXT, CLEAR_INPUT, RUNTIME_PARAM, PARAM_SESSION, SESSION_CONTACT, FILE_ELEMENT,
         TEXT_FILTER, SPAN_FILTER, MAX_LENGTH, INPUT_ELEMENTS, INPUT_TEXT_TO_ELEMENTS,
         ELEMENT_KIND, ELEMENT_TEXT, TEXT_CONTENT,
     )
@@ -272,8 +275,15 @@ object LongTextAsFile : Feature(
     override fun execute(bridge: DexKitBridge, cache: MutableMap<String, String>, tracker: DexKitLookupTracker) {
         super.execute(bridge, cache, tracker)
 
-        fun anchor(key: String): MethodData = checkNotNull(bridge.getMethodData(cache.getValue(key)))
-        fun calls(key: String): List<MethodData> = anchor(key).invokes.distinctBy { it.descriptor }
+        // Keep MethodData and its lazy native results within this bridge session.
+        val anchors = mutableMapOf<String, MethodData>()
+        val invocationLists = mutableMapOf<String, List<MethodData>>()
+        fun anchor(key: String): MethodData = anchors.getOrPut(key) {
+            checkNotNull(bridge.getMethodData(cache.getValue(key)))
+        }
+        fun calls(key: String): List<MethodData> = invocationLists.getOrPut(key) {
+            anchor(key).invokes.distinctBy { it.descriptor }
+        }
         fun resolve(key: String, query: () -> MethodData) {
             lookup(key, bridge, cache, tracker) { query().descriptor }
         }

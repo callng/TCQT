@@ -140,10 +140,12 @@ internal object DexKitFinder {
                     LogUtils.xposedNoFilter.i(
                         "DexKit 扫描结束: ${snapshot.name}, 共 ${update.total} 项, " +
                             "成功 ${update.succeeded} 项, 失败 ${update.failed} 项" +
+                            ", 总耗时 ${update.elapsedMillis} ms" +
                             (update.errorMessage?.let { ", $it" } ?: ""),
                     )
                 }
             }
+            progress.start()
             ModuleScope.onMain {
                 HostBridge.showDexKitScan?.invoke(state) {
                     findStarted.set(false)
@@ -160,6 +162,10 @@ internal object DexKitFinder {
                     DexKitBridge.create(classLoader, true).use { bridge ->
                         tasks.forEach { task ->
                             coroutineContext.ensureActive()
+                            progress.beginFeature(
+                                (task as? ActionSpec)?.name ?: task.javaClass.simpleName,
+                                task.getCacheKeys(),
+                            )
                             runCatching { task.execute(bridge, newCache, tracker) }
                                 .onFailure {
                                     LogUtils.xposedNoFilter.e(
@@ -170,6 +176,13 @@ internal object DexKitFinder {
                                 }
                             // Include keys skipped by an early return or a task-level exception.
                             task.getCacheKeys().forEach(tracker::markCompleted)
+                            progress.endFeature()?.let { feature ->
+                                LogUtils.xposedNoFilter.i(
+                                    "DexKit 功能扫描结束: ${task.scanOwner}, " +
+                                        "${feature.completed} / ${feature.total} 项, " +
+                                        "耗时 ${feature.elapsedMillis} ms",
+                                )
+                            }
                         }
                     }
                 }
@@ -182,6 +195,7 @@ internal object DexKitFinder {
 
             // Modern 热重载会取消旧模块的作用域；旧扫描不能在取消后覆盖新模块缓存。
             coroutineContext.ensureActive()
+            progress.savingResults()
             // 自定义任务同样不能把本宿主未声明的 key 写进最终缓存。
             newCache.keys.retainAll(allKeys)
             runCatching {
@@ -243,6 +257,7 @@ interface DexKitTask {
     ) {
         if (tracker.isSucceeded(name)) return
 
+        val startedAtMillis = dexKitScanClockMillis()
         val result = runCatching { bridge.query() }
             .onFailure {
                 LogUtils.xposedNoFilter.e(
@@ -250,6 +265,12 @@ interface DexKitTask {
                     it,
                 )
             }
+        val elapsedMillis = dexKitScanClockMillis() - startedAtMillis
+        if (elapsedMillis > 1_000) {
+            LogUtils.xposedNoFilter.i(
+                "DexKit 慢查询: key=$name, 关联功能=$scanOwner, 耗时 $elapsedMillis ms",
+            )
+        }
         val descriptor = result.getOrNull()
         if (descriptor.isNullOrEmpty()) {
             if (result.isSuccess) {
