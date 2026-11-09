@@ -9,12 +9,12 @@ import kotlin.test.assertTrue
 
 class DexKitScanProgressTest {
     @Test
-    fun slowFeaturesOnlyIncludesStrictlyMoreThanOneSecondAndKeepsTopFive() {
+    fun slowFeaturesOnlyIncludesStrictlyMoreThanOneAndAHalfSecondsAndKeepsTopFive() {
         fun feature(millis: Long) = DexKitFeatureScanState("$millis", 1, 1, 0, millis)
-        assertTrue(DexKitScanState(0, featureTimings = listOf(feature(999), feature(1_000))).slowFeatures.isEmpty())
-        assertEquals(listOf(feature(1_001)), DexKitScanState(0, featureTimings = listOf(feature(1_001))).slowFeatures)
+        assertTrue(DexKitScanState(0, featureTimings = listOf(feature(1_499), feature(1_500))).slowFeatures.isEmpty())
+        assertEquals(listOf(feature(1_501)), DexKitScanState(0, featureTimings = listOf(feature(1_501))).slowFeatures)
         val state = DexKitScanState(0, featureTimings = listOf(
-            feature(1_001), feature(1_000), feature(7_000), feature(5_000),
+            feature(1_501), feature(1_500), feature(7_000), feature(5_000),
             feature(6_000), feature(4_000), feature(8_000),
         ))
         assertEquals(listOf(8_000L, 7_000L, 6_000L, 5_000L, 4_000L), state.slowFeatures.map { it.elapsedMillis })
