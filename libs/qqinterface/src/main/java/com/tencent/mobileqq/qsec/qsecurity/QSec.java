@@ -12,7 +12,11 @@ public class QSec {
         throw new RuntimeException("Stub!");
     }
 
-    public byte[] getFeKitAttach(Context context, String str, String str2, String str3) {
+    public byte[] getFeKitAttach(Context context, String str, String cmd, String subcmd) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public byte[] getLiteSign(String data, byte[] salt) {
         throw new RuntimeException("Stub!");
     }
 }

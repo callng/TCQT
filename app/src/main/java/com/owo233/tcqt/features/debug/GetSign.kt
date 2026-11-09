@@ -30,6 +30,7 @@ import com.owo233.tcqt.core.sync.ReceiverRegistry
 import com.owo233.tcqt.core.sync.SyncUtils
 import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.mobileqq.msf.service.MsfService
+import com.tencent.mobileqq.qsec.qsecurity.QSec
 import com.tencent.mobileqq.sign.QQSecuritySign
 import com.tencent.qphone.base.remote.ToServiceMsg
 import org.luckypray.dexkit.DexKitBridge
@@ -230,34 +231,38 @@ object GetSign : Feature(
                     val uin = intent.getStringExtra("uin") ?: "0"
                     val cmd = intent.getStringExtra("cmd")
 
-                    val buffer =
-                        "000000160A08120608D48BCAE5031206080110001800"
-                            .hex2ByteArray()
-
-                    val seq = MsfService.getCore().nextSeq
-
-                    val toServiceMsg: ToServiceMsg =
-                        createToServiceMsg(uin = uin).apply {
-                            putWupBuffer(buffer)
-                            requestSsoSeq = seq
-                        }
-
-                    val sign = if (HookEnv.isQQ()) {
-                        val (instance, method) = signer
-
-                        instance
-                            .invokeAs<QQSecuritySign.SignResult>(
-                                method,
-                                toServiceMsg,
-                                cmd
-                            )
-                            .sign
-                            .toHexString()
+                    val sign = if (cmd == "544" && shouldScanSource32()) {
+                        getLiteSign()
                     } else {
-                        com.tencent.mobileqq.msf.core.d0.a.e()
-                            .a(toServiceMsg, cmd)
-                            .sign
-                            .toHexString()
+                        val buffer =
+                            "000000160A08120608D48BCAE5031206080110001800"
+                                .hex2ByteArray()
+
+                        val seq = MsfService.getCore().nextSeq
+
+                        val toServiceMsg: ToServiceMsg =
+                            createToServiceMsg(uin = uin).apply {
+                                putWupBuffer(buffer)
+                                requestSsoSeq = seq
+                            }
+
+                        if (HookEnv.isQQ()) {
+                            val (instance, method) = signer
+
+                            instance
+                                .invokeAs<QQSecuritySign.SignResult>(
+                                    method,
+                                    toServiceMsg,
+                                    cmd
+                                )
+                                .sign
+                                .toHexString()
+                        } else {
+                            com.tencent.mobileqq.msf.core.d0.a.e()
+                                .a(toServiceMsg, cmd)
+                                .sign
+                                .toHexString()
+                        }
                     }
 
                     if (intent.getBooleanExtra("needSource32", false)) {
@@ -295,6 +300,18 @@ object GetSign : Feature(
 
         val filter = IntentFilter(ACTION_REQUEST_SIGN)
         ReceiverRegistry.register(app, requestReceiver, filter)
+    }
+
+    private fun getLiteSign(): String {
+        val guid = QQInterfaces.guid.uppercase()
+        require(guid.length == 32 && guid.all { it in '0'..'9' || it in 'A'..'F' }) {
+            "GUID 必须是 32 位十六进制字符串"
+        }
+        val salt = "000000000010${guid}000A362E302E302E323539310000000F00000000"
+            .hex2ByteArray()
+        return QSec.getInstance()
+            .getLiteSign("810_f", salt)
+            .toHexString(uppercase = false)
     }
 
     private fun sendResult(
