@@ -115,7 +115,15 @@ bool register_entry_natives(JNIEnv *env, jobject class_loader) {
     jint rc = env->RegisterNatives(clazz, methods, sizeof(methods) / sizeof(methods[0]));
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
-        LOGE("register_entry_natives: RegisterNatives failed (%d)", rc);
+        // RegisterNatives leaves NoSuchMethodError pending on an ABI mismatch.
+        // Do not pass it to the next Zygisk module: a subsequent FindClass can
+        // abort ART before the host has even entered Application.onCreate.
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+        LOGE("register_entry_natives: RegisterNatives failed (%d); "
+             "injector/payload mismatch, reinstall the module and reboot", rc);
         return false;
     }
     return true;
@@ -146,6 +154,10 @@ bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader) {
     jint rc = env->RegisterNatives(clazz, methods, 5);
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
         LOGE("register_hook_bridge_natives: RegisterNatives failed (%d)", rc);
         return false;
     }

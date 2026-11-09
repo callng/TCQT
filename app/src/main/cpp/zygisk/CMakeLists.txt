@@ -5,6 +5,7 @@ add_library(tcqtzygisk SHARED
         bootstrap.cpp
         payload.cpp
         jni_bridge.cpp
+        injector_identity.cpp
         art/art_hook.cpp
         art/art_layout.cpp
         art/art_symbols.cpp
@@ -19,3 +20,5 @@ add_library(tcqtzygisk SHARED
         logging/log_file.cpp)
 
 tcqt_configure_native_target(tcqtzygisk)
+include("${PROJECT_SOURCE_DIR}/cmake/InjectorIdentity.cmake")
+tcqt_embed_injector_identity(tcqtzygisk)

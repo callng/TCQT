@@ -1,6 +1,7 @@
 """Verify dual APK contents and optional raw APK/flash ZIP identity (no SDK needed)."""
 import argparse
 import hashlib
+import re
 import struct
 from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile
@@ -25,12 +26,16 @@ def verify(apk: Path, raw: Path | None = None, flash_zip: Path | None = None):
         names = package.namelist()
         assert len(names) == len(set(names)), "Duplicate ZIP entries"
         required = {"AndroidManifest.xml", "classes.dex", "resources.arsc", "module.prop",
-                    "customize.sh", "zygisk/arm64-v8a.so", "webroot/index.html",
+                    "customize.sh", "payload.sh", "post-fs-data.sh",
+                    "zygisk/arm64-v8a.so", "webroot/index.html",
                     "META-INF/com/google/android/update-binary"}
         assert required <= set(names), f"Missing entries: {required - set(names)}"
         assert not any(n.startswith("payload/") or n.endswith("libtcqtzygisk.so") for n in names)
         assert not any(n.endswith(".apk") for n in names), "Nested APK"
         assert b"@VERSION" not in package.read("module.prop"), "Unresolved version"
+        injector_ids = re.findall(rb"TCQT_INJECTOR_ID_V1=[0-9a-f]{64}",
+                                  package.read("zygisk/arm64-v8a.so"))
+        assert len(injector_ids) == 1, "Missing or duplicate injector implementation identity"
         with apk.open('rb') as source:
             for entry in package.infolist():
                 source.seek(entry.header_offset)

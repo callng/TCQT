@@ -48,6 +48,46 @@ from another variant or an older CMake hash directory cannot be selected.
 
 ## Regression checks
 
+`cpp/cmake/InjectorIdentity.cmake` embeds a stable implementation identity in
+the built injector. The hash covers the Zygisk source/header contents, CMake
+rules, complete NDK revision, compiler, ABI/API target, build type and effective
+compiler/linker settings. Paths and line endings are normalized. Application
+versions, commit counts, Java/resources and the separate source32 library are
+not inputs. Native edits also regenerate the ID on incremental Ninja builds.
+
+The installer reads the marker from the actual `.so`, never a sidecar made from
+the current source tree. Compatible ELF outputs may have different file hashes.
+The boot record uses this implementation ID, so replacing both files on disk
+cannot authorize a new native implementation while the old one remains mapped.
+Package integrity and boot activation still use full SHA-256 hashes. Missing,
+duplicate or old-format identities/boot records require a full reboot.
+
+Build-input regression checks use the configured SDK/NDK and Python:
+
+~~~bash
+python tools/test-injector-identity.py
+~~~
+
+This builds real stripped arm64 injectors in separate temporary checkouts and
+checks path/line-ending independence, Java/version isolation, incremental native
+header/dependency invalidation and native configuration changes. It keeps results
+in `build/native-identity-tests/results.json`.
+
+Without an Android device, Linux/WSL can exercise update publication and JNI
+registration failure handling (Bash, zip/unzip, JDK 21 and g++):
+
+~~~bash
+bash tools/test-zygisk-install.sh
+bash tools/test-jni-registration.sh
+~~~
+
+The installer test covers deferred native updates, repeat installs, boot-ID
+validation, replaced live libraries, compatible hot updates, and rejecting
+corrupt or unrelated staged packages. The JNI test uses the production native
+registration tables on a real JVM, including mismatched method signatures; no
+pending exception may escape to another Zygisk module. This does not exercise
+Android ART hooks or a root manager's actual boot ordering.
+
 On Windows, with the project's pinned NDK and an explicitly selected Android
 test device or emulator:
 

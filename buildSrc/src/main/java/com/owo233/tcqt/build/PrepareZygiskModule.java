@@ -2,6 +2,8 @@ package com.owo233.tcqt.build;
 
 import java.io.*;
 import java.nio.file.*;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.*;
@@ -52,5 +54,11 @@ public abstract class PrepareZygiskModule extends DefaultTask {
         Files.createDirectories(target.toPath().getParent());
         getExec().exec(spec -> spec.commandLine(getStripExecutable().get().getAsFile(), "-o",
             target, getNativeLibrary().get().getAsFile())).assertNormalExitValue();
+        var identity = Pattern.compile("TCQT_INJECTOR_ID_V1=[0-9a-f]{64}").matcher(
+            Files.readString(target.toPath(), StandardCharsets.ISO_8859_1));
+        if (!identity.find()) throw new IOException("Injector has no embedded implementation identity");
+        String value = identity.group();
+        if (identity.find()) throw new IOException("Injector has multiple implementation identities");
+        getLogger().lifecycle("Zygisk injector: {}", value);
     }
 }

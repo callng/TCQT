@@ -50,14 +50,22 @@
 
 在支持 [Hot install](https://kernelsu.org/guide/module.html#hot-install) 的
 KernelSU 中（安装器通过 `KSU_HAS_HOT_INSTALL=true` 声明支持，不能仅凭版本号判断），
-若已启用的 TCQT 模块与新包的 Zygisk 注入库一致，安装脚本会请求
+若本次开机记录、已启用模块和新包的“原生实现标识”一致，安装脚本会请求
 热安装：模块目录、版本信息和 WebUI 立即更新；完全结束 QQ / TIM 的所有后台
 进程后重新打开，即可加载新版载荷，无需重启设备。安装不会自动关闭 QQ / TIM。
 
-首次安装、注入库变化、模块已停用或待卸载时，仍需重启设备。
+该标识由 CMake 自动计算并嵌入注入库，包含 Zygisk 原生源码、头文件、构建规则、
+NDK/编译器版本与有效编译配置。Java/Kotlin、资源、应用版本号、提交数、
+工作目录及 CRLF/LF 换行差异不参与标识；同一实现重新编译产生不同的 `.so` 哈希，
+也可以热更新。SHA-256 仍用于校验包内容，不能代替原生实现标识。
+
+首次安装、原生实现或工具链变化、缺少本次开机的标识记录、模块已停用或待卸载时，
+新版载荷只会暂存，完整重启设备后才与新版注入库一起生效。
+从旧版升级后需要先完整重启一次；强制停止 QQ / TIM 或清缓存不能替代重启。
+这避免了旧注入库读取新版载荷，因 JNI 方法签名不一致导致宿主启动崩溃。
 KernelSU 也可能因安全模式或模块目录替换失败等原因回退为重启安装，
 以安装器最终输出和管理器提示为准；旧版 KernelSU、Magisk 和 APatch
-不通过此接口热替换模块目录。注入库不变时载荷仍可在重启 QQ / TIM 后加载，
+不通过此接口热替换模块目录。通过上述标识检查时载荷仍可在重启 QQ / TIM 后加载，
 模块目录和 WebUI 的更新则按管理器提示重启设备后生效。
 若脚本提示安装器不支持，应更新 KernelSU 管理器及其配套的 `ksud`；仅导出
 `MODULE_HOT_INSTALL_REQUEST=true` 无法让旧安装器支持热安装，也不应手动删除
@@ -202,7 +210,7 @@ app/build/outputs/apk/release/  # 发布版本（TCQT-<版本>-release.apk，双
 
 设置页、宿主弹窗和 WebUI 的开发约定见 [界面设计规范](docs/ui-guidelines.md)。
 
-模块边界与运行时序见 [架构文档](ARCHITECTURE.md)；新增功能、自动化检查、双格式包校验和互斥设备测试见 [开发指南](DEVELOPMENT.md)。[功能示例](examples/SampleFeature.kt) 会随 Debug 构建实际编译，默认不注册。逐项优化与验证记录见 [TODO](TODO.md)。
+模块边界与运行时序见 [架构文档](ARCHITECTURE.md)；新增功能、自动化检查、双格式包校验和互斥设备测试见 [开发指南](DEVELOPMENT.md)。[功能示例](examples/SampleFeature.kt) 会随 Debug 构建实际编译，默认不注册。
 
 ```bash
 ./gradlew clean :app:assembleDebug

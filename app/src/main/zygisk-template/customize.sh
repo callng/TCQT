@@ -21,7 +21,7 @@ if [ "$ARCH" != "arm64" ]; then
 fi
 
 ui_print "- Extracting module files"
-unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'open-link.sh' -d "$MODPATH" >&2 ||
+unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'open-link.sh' 'payload.sh' 'post-fs-data.sh' -d "$MODPATH" >&2 ||
   abort "! Missing module scripts or metadata"
 
 mkdir -p "$MODPATH/zygisk"
@@ -34,33 +34,16 @@ ui_print "- Extracting WebUI"
 unzip -o "$ZIPFILE" 'webroot/*' -d "$MODPATH" >&2 ||
   abort "! Missing webroot"
 
-ui_print "- Storing TCQT package"
-DATAPATH="/data/adb/tcqt"
-mkdir -p "$DATAPATH" || abort "! Failed to create $DATAPATH"
-cp "$ZIPFILE" "$DATAPATH/main.apk.tmp" || abort "! Failed to store TCQT package"
-
-ui_print "- Calculating TCQT package hash"
-APK_HASH="$(sha256sum "$DATAPATH/main.apk.tmp" 2>/dev/null | cut -d ' ' -f1)"
-if [ "${#APK_HASH}" -ne 64 ]; then
-  abort "! Failed to calculate TCQT package hash"
-fi
-printf '%s' "$APK_HASH" > "$DATAPATH/main.apk.sha256.tmp" ||
-  abort "! Failed to store TCQT package hash"
-set_perm "$DATAPATH/main.apk.tmp" 0 0 0644
-set_perm "$DATAPATH/main.apk.sha256.tmp" 0 0 0644
-# SCM_RIGHTS still checks the receiving Zygote's permission to read the file.
-# A fresh file under /data/adb otherwise inherits adb_data_file and its FD is
-# discarded by SELinux at recvmsg. Label only the read-only public APK payload.
-chcon u:object_r:system_file:s0 "$DATAPATH/main.apk.tmp" ||
-  abort "! Failed to label TCQT package for Zygote FD transfer"
-mv -f "$DATAPATH/main.apk.tmp" "$DATAPATH/main.apk" ||
-  abort "! Failed to publish TCQT package"
-mv -f "$DATAPATH/main.apk.sha256.tmp" "$DATAPATH/main.apk.sha256" ||
-  abort "! Failed to publish TCQT package hash"
-set_perm "$DATAPATH/main.apk.sha256" 0 0 0644
-# The ART hook chain no longer needs a separate bootstrap mode.
-rm -f "$DATAPATH/compat.enable" "$DATAPATH/compat"
-
+. "$MODPATH/payload.sh"
+ui_print "- Staging TCQT package"
+mkdir -p "$DATAPATH/pending" || abort "! Failed to create payload staging directory"
+APK_HASH="$(tcqt_hash "$ZIPFILE")"
+tcqt_valid_hash "$APK_HASH" || abort "! Failed to calculate TCQT package hash"
+PENDING_APK="$DATAPATH/pending/$APK_HASH.apk"
+cp "$ZIPFILE" "$PENDING_APK.tmp" || abort "! Failed to stage TCQT package"
+set_perm "$PENDING_APK.tmp" 0 0 0644
+mv -f "$PENDING_APK.tmp" "$PENDING_APK" || abort "! Failed to stage TCQT package"
+printf '%s' "$APK_HASH" > "$MODPATH/payload.sha256" || abort "! Failed to store payload selection"
 # 清理旧布局（payload/tcqt.apk + classes*.dex + dex.list）残留
 rm -rf "$MODPATH/payload"
 
@@ -70,6 +53,9 @@ set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm "$MODPATH/hotinstall.sh" 0 0 0755
+set_perm "$MODPATH/payload.sh" 0 0 0644
+set_perm "$MODPATH/payload.sha256" 0 0 0644
+set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/share-logs.sh" 0 0 0755
 set_perm "$MODPATH/open-link.sh" 0 0 0755
 
@@ -77,13 +63,14 @@ ui_print "- Fixing SELinux contexts"
 chcon -R u:object_r:system_file:s0 "$MODPATH" 2>/dev/null || true
 chcon u:object_r:system_lib_file:s0 "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null || true
 
-# Compare with the live module, NOT the previous install attempt: an update in
-# modules_update (or the old so.sha1 file) may never have been loaded by Zygisk.
+# Compare implementation identities, not ELF hashes: build paths/metadata can
+# change the binary without changing the injector. Old versions without an
+# identity/boot record require one full reboot before hot updates work.
 LIVE_MODPATH="/data/adb/modules/zygisk_tcqt"
-NEW_SO_HASH="$(sha256sum "$MODPATH/zygisk/arm64-v8a.so" 2>/dev/null | cut -d ' ' -f1)"
-OLD_SO_HASH="$(sha256sum "$LIVE_MODPATH/zygisk/arm64-v8a.so" 2>/dev/null | cut -d ' ' -f1)"
-if [ "${#NEW_SO_HASH}" -eq 64 ] && [ "$OLD_SO_HASH" = "$NEW_SO_HASH" ] &&
-   [ ! -e "$LIVE_MODPATH/disable" ] && [ ! -e "$LIVE_MODPATH/remove" ]; then
+NEW_INJECTOR_ID="$(tcqt_injector_id "$MODPATH/zygisk/arm64-v8a.so")"
+if tcqt_can_update_live "$NEW_INJECTOR_ID" "$LIVE_MODPATH"; then
+  tcqt_publish_payload "$PENDING_APK" "$APK_HASH" || abort "! Failed to publish TCQT package"
+  rm -f "$PENDING_APK"
   if [ "${KSU:-}" = "true" ] && [ "${KSU_HAS_HOT_INSTALL:-}" = "true" ]; then
     export MODULE_HOT_INSTALL_REQUEST=true
     export MODULE_HOT_RUN_SCRIPT=hotinstall.sh
@@ -99,7 +86,8 @@ if [ "${#NEW_SO_HASH}" -eq 64 ] && [ "$OLD_SO_HASH" = "$NEW_SO_HASH" ] &&
     ui_print "- 模块目录和 WebUI 更新仍需按管理器提示重启设备"
   fi
 else
-  ui_print "! 首次安装、注入库变化或模块已停用/待卸载，需要重启设备后生效"
+  ui_print "! 无法确认本次开机的注入库兼容；新版载荷已暂存，需要完整重启设备后生效"
+  ui_print "! 重启前保留当前载荷；强制停止宿主或清缓存不能替代重启设备"
 fi
 ui_print "! 请勿同时在 LSPosed 和 Zygisk 中启用 TCQT。"
 ui_print "- TCQT Zygisk installed"

@@ -128,9 +128,18 @@ No payload APK is nested inside, keeping the package ≈ the plain APK size.
 Architecture:
 
 - `app/src/main/zygisk-template/customize.sh` — `SKIPUNZIP=1`; extracts only the
-  module files (incl. `webroot/*`) and copies the whole `$ZIPFILE` (which is
-  the APK itself) to `/data/adb/tcqt/main.apk` (atomic tmp+mv), then writes the
-  payload's SHA-256 fingerprint to `/data/adb/tcqt/main.apk.sha256`. The
+  module files (incl. `webroot/*`) and stages the whole `$ZIPFILE` (which is
+  the APK itself) under `/data/adb/tcqt/pending/<sha256>.apk`. `payload.sha256`
+  in the module selects the exact package. `post-fs-data.sh` publishes it as
+  `/data/adb/tcqt/main.apk` and records the boot ID plus embedded injector identity.
+  `cpp/cmake/InjectorIdentity.cmake` hashes normalized Zygisk native sources,
+  headers, CMake rules and effective toolchain/configuration, excluding Java,
+  app versions, checkout paths and line endings. It embeds `TCQT_INJECTOR_ID_V1`
+  in the actual library; packaging rejects missing/duplicate IDs. Whole-file
+  SHA-256 remains for integrity, not native compatibility. Only updates
+  matching the boot identity record and live injector identity may publish during
+  installation; native changes and upgrades from older installers wait for a
+  full reboot. `payload.sh` shares atomic copy and SHA-256 publication helpers. The
   installed module dir holds no payload; `zygisk/arm64-v8a.so` is the injector.
 - `app/src/main/zygisk-template/webroot/` — KernelSU/APatch WebUI: per-app
   injection toggles backed by realtime marker files

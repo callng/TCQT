@@ -14,6 +14,7 @@
 
 #include "zygisk/api/zygisk.hpp"
 #include "zygisk/bootstrap.h"
+#include "zygisk/injector_identity.h"
 #include "zygisk/jni_bridge.h"
 #include "zygisk/logging/log.h"
 #include "zygisk/payload.h"
@@ -118,6 +119,7 @@ public:
         }
 
         log_impl_ident(api);
+        LOGI("injector: %s", injector_identity);
         int socket = api->connectCompanion();
         if (socket < 0) {
             LOGE("preAppSpecialize: root companion unavailable for %s (uid=%d)",
