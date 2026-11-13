@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.app.Instrumentation
 import android.content.Intent
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -31,12 +32,13 @@ import org.json.JSONObject
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.UUID
 
 @RegisterAction(processes = [ActionProcess.ALL], priority = ActionPriority.CRITICAL)
 object FarmAccountSelector : Feature(
     key = "farm_account_selector",
     name = "农场启动时选择账号",
-    desc = "打开 QQ 经典农场时选择已登录的账号，无需切换 QQ 主账号。进入前会关闭旧农场并获取新的登录信息；账号凭据失效时需先在 QQ 中重新登录。",
+    desc = "打开 QQ 经典农场时选择已登录的账号，或使用自定义 js_code；可复制各账号的新登录码。进入前会关闭旧农场，无需切换 QQ 主账号。",
     requires = Requires(minQQVersion = QQVersion.QQ_9_3_0, host = Requires.Host.QQOnly, ntOnly = true),
 ) {
 
@@ -134,8 +136,16 @@ object FarmAccountSelector : Feature(
                 val dialog = FarmAccountDialog(activity, host) { account, service ->
                     processes.reset(target, info)
                     val extras = Bundle(args[2] as? Bundle ?: Bundle()).apply {
-                        putString(FarmAccountProtocol.EXTRA_ACCOUNT, account.uin)
-                        putString(FarmAccountProtocol.EXTRA_NICKNAME, account.nickname)
+                        putBoolean(FarmAccountProtocol.EXTRA_CUSTOM_LOGIN, account == null)
+                        if (account != null) {
+                            remove(FarmAccountProtocol.EXTRA_SESSION_ID)
+                            putString(FarmAccountProtocol.EXTRA_ACCOUNT, account.uin)
+                            putString(FarmAccountProtocol.EXTRA_NICKNAME, account.nickname)
+                        } else {
+                            putString(FarmAccountProtocol.EXTRA_SESSION_ID, UUID.randomUUID().toString())
+                            remove(FarmAccountProtocol.EXTRA_ACCOUNT)
+                            remove(FarmAccountProtocol.EXTRA_NICKNAME)
+                        }
                         putParcelable(FarmAccountProtocol.EXTRA_SERVICE, service)
                     }
                     args[2] = extras
@@ -196,9 +206,30 @@ object FarmAccountSelector : Feature(
     }
 
     private fun installMiniLogin() {
+        loadOrThrow("com.tencent.mobileqq.mini.utils.MiniGameMMKVUtils").getMethod(
+            "getString", String::class.java,
+        ).hookBefore { param ->
+            if (session == null) return@hookBefore
+            val cacheKey = param.args[0] as? String ?: return@hookBefore
+            if (!FarmAccountProtocol.isFarmPreloadKey(cacheKey)) return@hookBefore
+            // QQ injects cached qqLoginData before JS starts, bypassing fastLogin entirely.
+            // A marked launch must obtain its code from its own Binder capability instead.
+            param.result = ""
+            LogAndroid.d("[FarmAccount] Skipped foreground account's preloaded game login")
+        }
+        loadOrThrow("com.tencent.qqmini.sdk.cache.Storage").getMethod(
+            "openContainerStorage", Context::class.java, String::class.java, String::class.java, Int::class.javaPrimitiveType,
+        ).hookBefore { param ->
+            val active = session?.takeIf { it.custom } ?: return@hookBefore
+            if (param.args[2] != FarmAccountProtocol.APP_ID) return@hookBefore
+            // This argument is only a disk-cache namespace, not a QQ/MSF account identity.
+            param.args[1] = active.storageNamespace
+            LogAndroid.d("[FarmAccount] Isolated custom game storage")
+        }
         val proxy = loadOrThrow("com.tencent.qqmini.proxyimpl.MiniAppProxyImpl")
-        proxy.getMethod("getAccount").hookBefore { param -> session?.let { param.result = it.account } }
-        proxy.getMethod("getNickName").hookBefore { param -> session?.let { param.result = it.nickname } }
+        // An imported code identifies the game user, not a locally authenticated QQ account.
+        proxy.getMethod("getAccount").hookBefore { param -> session?.account?.let { param.result = it } }
+        proxy.getMethod("getNickName").hookBefore { param -> session?.takeIf { it.account != null }?.let { param.result = it.nickname } }
 
         val callbackClass = loadOrThrow("com.tencent.qqmini.sdk.launcher.core.proxy.AsyncResult")
         val reply = callbackClass.getMethod("onReceiveResult", Boolean::class.javaPrimitiveType, JSONObject::class.java)
@@ -226,15 +257,28 @@ object FarmAccountSelector : Feature(
         if (!intent.hasExtra("KEY_APPINFO")) return
         intent.setExtrasClassLoader(HookEnv.hostClassLoader)
         if (appId(intent.appInfo()) != FarmAccountProtocol.APP_ID) { session = null; return }
-        val account = intent.getStringExtra(FarmAccountProtocol.EXTRA_ACCOUNT) ?: run { session = null; return }
+        val custom = intent.getBooleanExtra(FarmAccountProtocol.EXTRA_CUSTOM_LOGIN, false)
+        val account = if (custom) null else intent.getStringExtra(FarmAccountProtocol.EXTRA_ACCOUNT)
+        if (!custom && account == null) { session = null; return }
+        LogAndroid.d("[FarmAccount] Accepted farm session, custom=$custom")
         // Keep a marked but broken session so login fails instead of using the foreground account.
         session = FarmSession(
             account, intent.getStringExtra(FarmAccountProtocol.EXTRA_NICKNAME).orEmpty(),
             runCatching { intent.extras?.receiver(FarmAccountProtocol.EXTRA_SERVICE) }.getOrNull(),
+            custom,
+            runCatching { UUID.fromString(intent.getStringExtra(FarmAccountProtocol.EXTRA_SESSION_ID)) }
+                .getOrElse { UUID.randomUUID() },
         )
     }
 
-    private class FarmSession(val account: String, val nickname: String, private val service: ResultReceiver?) {
+    private class FarmSession(
+        val account: String?,
+        val nickname: String,
+        private val service: ResultReceiver?,
+        val custom: Boolean,
+        sessionId: UUID,
+    ) {
+        val storageNamespace = "tcqt-farm-$sessionId"
         fun request(operation: Int, callback: Any, method: Method) {
             val completed = AtomicBoolean()
             lateinit var timeout: Runnable
@@ -263,7 +307,7 @@ object FarmAccountSelector : Feature(
                 }
             }
             mainHandler.postDelayed(timeout, 20_000)
-            if (service == null || !FarmAccountProtocol.isAccount(account)) receiver.send(FarmAccountProtocol.FAILURE, null)
+            if (service == null || (!custom && !FarmAccountProtocol.isAccount(account))) receiver.send(FarmAccountProtocol.FAILURE, null)
             else service.send(operation, Bundle().apply {
                 putParcelable(FarmAccountProtocol.EXTRA_REPLY, receiver.remoteReceiver())
             })

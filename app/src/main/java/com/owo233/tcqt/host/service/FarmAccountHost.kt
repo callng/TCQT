@@ -164,6 +164,29 @@ internal class FarmAccountHost(private val context: Context) {
         check(accounts().any { it.uin == account.uin }) { "该账号已退出登录，请先在 QQ 中重新登录" }
     }
 
+    suspend fun exportCode(account: FarmAccount): String {
+        requireAccount(account)
+        // Export a fresh code; do not consume a launch's preflight credential.
+        return requestCode(account.uin, FarmAccountProtocol.REQUEST_FAST_LOGIN)
+    }
+
+    fun prepareCustom(input: String): ResultReceiver {
+        val code = FarmCustomCode(input)
+        // Transfer only this private Binder, never the imported credential in an Intent.
+        return object : ResultReceiver(mainHandler) {
+            override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                val reply = resultData?.receiver(FarmAccountProtocol.EXTRA_REPLY) ?: return
+                val value = code.take(resultCode)
+                reply.send(if (value != null) FarmAccountProtocol.SUCCESS else FarmAccountProtocol.FAILURE, Bundle().apply {
+                    if (value != null) putString("code", value)
+                    else putString("errMsg", if (resultCode == FarmAccountProtocol.REQUEST_LOGIN)
+                        "自定义 js_code 仅支持农场快速登录，请重新获取登录码后进入"
+                    else "js_code 已使用或失效，请重新获取后进入")
+                })
+            }
+        }.remoteReceiver()
+    }
+
     suspend fun prepare(account: FarmAccount): ResultReceiver {
         requireAccount(account)
         val code = requestCode(account.uin, FarmAccountProtocol.REQUEST_FAST_LOGIN)
