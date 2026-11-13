@@ -51,10 +51,16 @@ object FarmAccountSelector : Feature(
         if (!main && !mini) return
         LogAndroid.d("[FarmAccount] Installing Activity-bound account selection")
         if (main) hostApp.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityCreated(a: Activity, state: Bundle?) { activities.add(a) }
+            override fun onActivityCreated(a: Activity, state: Bundle?) = Unit
             override fun onActivityDestroyed(a: Activity) { activities.remove(a) }
             override fun onActivityStarted(a: Activity) = Unit
-            override fun onActivityResumed(a: Activity) = Unit
+            override fun onActivityResumed(a: Activity) {
+                if (!a.isTemporaryLauncher()) {
+                    // Keep the last real foreground page across the short-lived mini-app loader.
+                    activities.remove(a)
+                    activities.add(a)
+                }
+            }
             override fun onActivityPaused(a: Activity) = Unit
             override fun onActivityStopped(a: Activity) = Unit
             override fun onActivitySaveInstanceState(a: Activity, state: Bundle) = Unit
@@ -108,15 +114,16 @@ object FarmAccountSelector : Feature(
             LogAndroid.d("[FarmAccount] Intercepted farm launch")
             val requested = param.args[0] as? Activity
             // QQ's PreloadingFragment finishes as soon as the SDK call returns. A deferred
-            // picker must use the surviving main Activity, rather than that temporary window.
-            val temporary = requested?.javaClass?.name == "com.tencent.mobileqq.activity.QPublicTransFragmentActivity"
-            val activity = requested?.takeUnless { temporary } ?: activities.lastOrNull {
-                it.javaClass.name == "com.tencent.mobileqq.activity.SplashActivity" && !it.isFinishing && !it.isDestroyed
-            } ?: QQInterfaces.topActivity ?: return@hookBefore
+            // picker belongs to the foreground page, including channel/fragment Activities.
+            val activity = activities.lastOrNull { it.canHostPicker() && it.hasWindowFocus() }
+                ?: activities.lastOrNull { it.canHostPicker() }
+                ?: requested?.takeIf { it.canHostPicker() }
+                ?: QQInterfaces.topActivity?.takeIf { it.canHostPicker() }
+                ?: return@hookBefore
             val receiver = param.args[3] as? ResultReceiver
             val target = param.thisObject ?: return@hookBefore
             val args = param.args.copyOf()
-            if (requested == null || temporary) args[0] = activity
+            args[0] = activity
             param.result = null
             mainHandler.post {
                 LogAndroid.d("[FarmAccount] Picker host=${activity.javaClass.name}, finishing=${activity.isFinishing}, destroyed=${activity.isDestroyed}")
@@ -170,6 +177,12 @@ object FarmAccountSelector : Feature(
             }
         }
     }
+
+    private fun Activity.isTemporaryLauncher(): Boolean =
+        javaClass.name == "com.tencent.mobileqq.activity.QPublicTransFragmentActivity"
+
+    private fun Activity.canHostPicker(): Boolean =
+        !isTemporaryLauncher() && !isFinishing && !isDestroyed && window?.decorView?.windowToken != null
 
     private fun installMiniLifecycle() {
         Instrumentation::class.java.findMethods { name = "callActivityOnCreate" }.forEach { method ->
