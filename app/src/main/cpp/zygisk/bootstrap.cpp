@@ -22,14 +22,19 @@ bool bootstrap_payload(JNIEnv *env, const std::string &apk_path,
     // (META-INF/services) is therefore unavailable; the Java side
     // compensates by hooking Dispatchers.getMain() in
     // ModuleLoader.installMainDispatcher().
-    // Note: dex_bufs is intentionally never freed — the class loader
-    // holds direct ByteBuffers referencing the underlying dex memory.
-    auto *dex_bufs = new std::vector<std::vector<uint8_t>>();
-    if (!read_dex_from_apk(env, apk_path, dex_bufs)) {
-        LOGE("postAppSpecialize: failed to read dex from %s", apk_path.c_str());
-        return false;
+    jobject loader = nullptr;
+    {
+        // ART copies direct-buffer DEX data into its own MemMap during the
+        // InMemoryDexClassLoader constructor (including Android 8.1). Only
+        // retain the source bytes until that synchronous call returns.
+        // Scope ownership also releases partially read DEX on failure.
+        std::vector<std::vector<uint8_t>> dex_bufs;
+        if (!read_dex_from_apk(env, apk_path, &dex_bufs)) {
+            LOGE("postAppSpecialize: failed to read dex from %s", apk_path.c_str());
+            return false;
+        }
+        loader = build_dex_classloader(env, dex_bufs);
     }
-    jobject loader = build_dex_classloader(env, *dex_bufs);
     if (loader == nullptr) {
         LOGE("postAppSpecialize: failed to build InMemoryDexClassLoader");
         return false;
