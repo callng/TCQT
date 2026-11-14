@@ -19,6 +19,7 @@
 
 #include "zygisk/logging/log.h"
 #include "zygisk/plt/plt_hook.h"
+#include "zygisk/plt/plt_elf.h"
 
 namespace tcqt::zygisk {
 
@@ -30,19 +31,9 @@ namespace {
 // Discover loaded libraries with the existing 50 ms poller.
 
 // ── 内存辅助（与 art_hook.cpp 中 WritableArtMethod 同一模式）──────────────────
-inline uintptr_t strip_pac(uintptr_t addr) {
-#ifdef __aarch64__
-    register uintptr_t x16 __asm__("x16") = addr;
-    __asm__ __volatile__("hint #32" : "+r"(x16));
-    return x16;
-#else
-    return addr;
-#endif
-}
-
 // 包含 `addr` 的映射的权限位，未映射返回 -1。
+// These are ELF load-bias + relocation offsets, not PAC-signed code pointers.
 int get_prot_for_addr(uintptr_t addr) {
-    addr = strip_pac(addr);
     int fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
     if (fd < 0) return -1;
     char buf[4096];
@@ -88,7 +79,7 @@ public:
         page_size_ = static_cast<size_t>(page_size_long);
         page_ = addr - addr % page_size_;
         prot_ = get_prot_for_addr(page_);
-        if (prot_ < 0) {
+        if (prot_ < 0 || !(prot_ & PROT_READ)) {
             LOGE("plt_hook: cannot read protection for %#lx", page_);
             return false;
         }
@@ -102,11 +93,17 @@ public:
         return true;
     }
 
-    ~ScopedWritablePage() {
+    bool restore() {
         if (changed_) {
-            mprotect(reinterpret_cast<void *>(page_), page_size_, prot_);
+            if (mprotect(reinterpret_cast<void *>(page_), page_size_, prot_) != 0) {
+                LOGE("plt_hook: restoring protection failed at %#lx (errno=%d)", page_, errno);
+                return false;
+            }
+            changed_ = false;
         }
+        return true;
     }
+    ~ScopedWritablePage() { restore(); }
 
 private:
     uintptr_t page_ = 0;
@@ -117,92 +114,29 @@ private:
 
 // 改写一个 GOT 槽位；已改写的槽位视为成功（幂等，可重复调用）。
 bool patch_got_slot(uintptr_t slot, const char *sym, void *replacement) {
-    if (slot == 0) return false;
-    void *current = *reinterpret_cast<void **>(slot);
-    if (current == replacement) return true;
-
+    if (slot == 0 || slot % alignof(void *) != 0 || replacement == nullptr) return false;
     ScopedWritablePage writable;
     if (!writable.acquire(slot)) return false;
-    __atomic_store_n(reinterpret_cast<void **>(slot), replacement, __ATOMIC_RELEASE);
-    if (*reinterpret_cast<void **>(slot) != replacement) {
+    auto **address = reinterpret_cast<void **>(slot);
+    if (__atomic_load_n(address, __ATOMIC_ACQUIRE) != replacement)
+        __atomic_store_n(address, replacement, __ATOMIC_RELEASE);
+    if (__atomic_load_n(address, __ATOMIC_ACQUIRE) != replacement) {
         LOGE("plt_hook: %s GOT write-back mismatch at %#lx", sym, slot);
         return false;
     }
-    return true;
+    return writable.restore();
 }
 
 // 扫描 `info` 对应库的动态重定位表，把所有指向符号 `name` 的 GOT 槽位改写为
 // `replacement`。返回改写成功的槽位数。
 int patch_got_symbol(dl_phdr_info *info, const char *name, void *replacement) {
-    const uintptr_t base = info->dlpi_addr;
-
-    const ElfW(Dyn) *dyn = nullptr;
-    for (int i = 0; i < info->dlpi_phnum; ++i) {
-        if (info->dlpi_phdr[i].p_type == PT_DYNAMIC) {
-            dyn = reinterpret_cast<const ElfW(Dyn) *>(base + info->dlpi_phdr[i].p_vaddr);
-            break;
-        }
-    }
-    if (dyn == nullptr) return false;
-
-    const ElfW(Sym) *symtab = nullptr;
-    const char *strtab = nullptr;
-    size_t syment = sizeof(ElfW(Sym));
-    const ElfW(Rela) *rela = nullptr;
-    size_t relasz = 0;
-    const ElfW(Rela) *jmp_rel = nullptr;
-    size_t jmp_relsz = 0;
-
-    for (const ElfW(Dyn) *d = dyn; d->d_tag != DT_NULL; ++d) {
-        switch (d->d_tag) {
-            case DT_SYMTAB:
-                symtab = reinterpret_cast<const ElfW(Sym) *>(base + d->d_un.d_ptr);
-                break;
-            case DT_STRTAB:
-                strtab = reinterpret_cast<const char *>(base + d->d_un.d_ptr);
-                break;
-            case DT_SYMENT:
-                syment = d->d_un.d_val;
-                break;
-            case DT_RELA:
-                rela = reinterpret_cast<const ElfW(Rela) *>(base + d->d_un.d_ptr);
-                break;
-            case DT_RELASZ:
-                relasz = d->d_un.d_val;
-                break;
-            case DT_JMPREL:
-                jmp_rel = reinterpret_cast<const ElfW(Rela) *>(base + d->d_un.d_ptr);
-                break;
-            case DT_PLTRELSZ:
-                jmp_relsz = d->d_un.d_val;
-                break;
-            default:
-                break;
-        }
-    }
-    if (symtab == nullptr || strtab == nullptr) return false;
-
-    auto patch_rela = [&](const ElfW(Rela) *rel, size_t sz) {
-        int patched = 0;
-        const size_t count = sz / sizeof(ElfW(Rela));
-        for (size_t i = 0; i < count; ++i) {
-            const uint32_t type = ELF64_R_TYPE(rel[i].r_info);
-            if (type != R_AARCH64_JUMP_SLOT && type != R_AARCH64_GLOB_DAT) continue;
-            const uint32_t sym_idx = ELF64_R_SYM(rel[i].r_info);
-            // st_name is the first field of ElfW(Sym); index by the real
-            // symbol entry size from DT_SYMENT.
-            const uint32_t st_name = *reinterpret_cast<const uint32_t *>(
-                    reinterpret_cast<const char *>(symtab) +
-                    static_cast<size_t>(sym_idx) * syment);
-            if (strcmp(strtab + st_name, name) != 0) continue;
-            if (patch_got_slot(base + rel[i].r_offset, name, replacement)) patched++;
-        }
-        return patched;
-    };
-
+    std::vector<uintptr_t> slots;
+    if (!plt_detail::find_got_slots(*info, name, &slots)) return -1;
     int patched = 0;
-    if (rela != nullptr) patched += patch_rela(rela, relasz);
-    if (jmp_rel != nullptr) patched += patch_rela(jmp_rel, jmp_relsz);
+    for (uintptr_t slot : slots) {
+        if (!patch_got_slot(slot, name, replacement)) return -1;
+        ++patched;
+    }
     return patched;
 }
 
@@ -211,16 +145,19 @@ int patch_got_symbol(dl_phdr_info *info, const char *name, void *replacement) {
 // 每个 spec 的运行时状态：真实符号解析 + 目标库出现标记
 struct InternalSpec {
     PltHookSpec spec{};
+    std::string library, symbol;  // the caller's temporary table may go away
     bool ready = false;  // 真实符号解析成功，可参与安装
-    bool seen = false;   // 目标库已出现过（日志去重 / 轮询退出）
+    bool seen = false;   // 目标库已出现过（日志去重）
+    bool patched = false;
 };
 
-// 安装时快照；安装完成后只读（扫描回调与轮询线程并发读）
+// 安装时快照；发布后只由持有 g_scan_mutex 的扫描回调更新状态。
 std::vector<InternalSpec> g_specs;
 std::atomic<bool> g_installed{false};
-// 尚未发现目标库的 spec 数；归零即全部命中，轮询线程退出
+// 尚未成功打补丁的 spec 数；仅看到库名不能计为成功。
 std::atomic<std::size_t> g_pending{0};
 
+std::mutex g_install_mutex;
 std::mutex g_scan_mutex;
 std::set<std::string> g_seen_libs;  // 已见过的库名（日志去重）
 
@@ -239,20 +176,18 @@ int scan_cb(dl_phdr_info *info, size_t /*size*/, void *data) {
     // 匹配每个已注册 spec：目标库出现即改写其 GOT 槽位
     for (InternalSpec &is : g_specs) {
         if (!is.ready) continue;  // 真实符号未解析成功，跳过（避免空指针）
-        if (strstr(name, is.spec.lib) == nullptr) continue;
+        if (strstr(name, is.library.c_str()) == nullptr) continue;
         const bool first = !is.seen;
         is.seen = true;
-        const int n = patch_got_symbol(info, is.spec.symbol, is.spec.hook_fn);
-        if (first) {
-            if (g_pending.load(std::memory_order_relaxed) > 0) {
-                g_pending.fetch_sub(1, std::memory_order_relaxed);
-            }
-            if (n > 0) {
-                LOGI("plt_hook: found %s (base=%#lx), patched %d %s GOT slot(s)", name,
-                     static_cast<uintptr_t>(info->dlpi_addr), n, is.spec.symbol);
-            } else {
-                LOGW("plt_hook: found %s but no %s GOT slot", name, is.spec.symbol);
-            }
+        const int n = patch_got_symbol(info, is.symbol.c_str(), is.spec.hook_fn);
+        if (n > 0 && !is.patched) {
+            is.patched = true;
+            g_pending.fetch_sub(1, std::memory_order_relaxed);
+            LOGI("plt_hook: found %s (base=%#lx), patched %d %s GOT slot(s)", name,
+                 static_cast<uintptr_t>(info->dlpi_addr), n, is.symbol.c_str());
+        } else if (first && n <= 0) {
+            LOGW("plt_hook: found %s but %s %s, will retry", name, is.symbol.c_str(),
+                 n == 0 ? "has no GOT slot" : "metadata/write failed");
         }
     }
 
@@ -277,7 +212,7 @@ void *poller_main(void *) {
     }
     const std::size_t pending = g_pending.load(std::memory_order_relaxed);
     if (pending > 0) {
-        LOGW("plt_hook: %zu target lib(s) never appeared within %d s, giving up",
+        LOGW("plt_hook: %zu hook spec(s) still unpatched after %d s, giving up",
              pending, kPollIntervalMs * kMaxPolls / 1000);
     }
     return nullptr;
@@ -287,25 +222,31 @@ void *poller_main(void *) {
 
 void install_plt_hooks(const PltHookSpec *specs, std::size_t count) {
     if (specs == nullptr || count == 0) return;
+    std::unique_lock<std::mutex> install_lock(g_install_mutex);
     if (g_installed.load(std::memory_order_acquire)) return;
 
-    // 解析每个 spec 的真实符号；解析失败则跳过该 spec（缺 real 会导致替换
-    // 函数调用空指针）。此时尚无并发（轮询线程在最后才创建）
+    // 初始化互斥；真实符号和名称快照全部就绪后才发布给扫描回调。
     g_specs.clear();
     g_specs.reserve(count);
     std::size_t pending = 0;
     for (std::size_t i = 0; i < count; ++i) {
+        if (specs[i].lib == nullptr || specs[i].lib[0] == '\0' ||
+            specs[i].symbol == nullptr || specs[i].symbol[0] == '\0' ||
+            specs[i].hook_fn == nullptr || specs[i].real == nullptr) {
+            LOGE("plt_hook: invalid spec at index %zu, skipped", i);
+            continue;
+        }
         InternalSpec is;
         is.spec = specs[i];
-        if (is.spec.real != nullptr && is.spec.symbol != nullptr) {
-            void *real = dlsym(RTLD_DEFAULT, is.spec.symbol);
-            if (real != nullptr) {
-                *is.spec.real = real;
-                is.ready = true;
-                ++pending;
-            } else {
-                LOGE("plt_hook: dlsym(%s) failed, spec skipped", is.spec.symbol);
-            }
+        is.library = specs[i].lib;
+        is.symbol = specs[i].symbol;
+        void *real = dlsym(RTLD_DEFAULT, is.spec.symbol);
+        if (real != nullptr && real != is.spec.hook_fn) {
+            *is.spec.real = real;
+            is.ready = true;
+            ++pending;
+        } else {
+            LOGE("plt_hook: dlsym(%s) missing or resolves to replacement, spec skipped", is.spec.symbol);
         }
         g_specs.push_back(std::move(is));
     }
@@ -316,11 +257,12 @@ void install_plt_hooks(const PltHookSpec *specs, std::size_t count) {
     }
     g_pending.store(pending, std::memory_order_relaxed);
     g_installed.store(true, std::memory_order_release);
+    install_lock.unlock();
 
     // 初始快照：目标库若已加载则直接 patch；未加载的交给轮询线程发现
     ScanContext ctx{false};
     dl_iterate_phdr(scan_cb, &ctx);
-    LOGI("plt_hook: %zu hook spec(s) armed, poller started", pending);
+    if (g_pending.load(std::memory_order_relaxed) == 0) return;
 
     pthread_t tid;
     if (pthread_create(&tid, nullptr, poller_main, nullptr) != 0) {
@@ -328,6 +270,7 @@ void install_plt_hooks(const PltHookSpec *specs, std::size_t count) {
         return;
     }
     pthread_detach(tid);
+    LOGI("plt_hook: %zu hook spec(s) armed, poller started", pending);
 }
 
 }  // namespace tcqt::zygisk

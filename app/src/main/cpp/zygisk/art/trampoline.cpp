@@ -13,7 +13,7 @@ namespace tcqt::zygisk {
 
 namespace {
 constexpr size_t POOL_SIZE = 1024 * 1024;   // 1 MB
-constexpr size_t TRAMPOLINE_STRIDE = 32;    // 20-byte stub padded to 32
+constexpr size_t TRAMPOLINE_STRIDE = 32;    // BTI + quick redirect + aligned literal
 }  // namespace
 
 TrampolinePool *TrampolinePool::instance() {
@@ -49,6 +49,7 @@ TrampolinePool::TrampolinePool() {
 
 const uint8_t *TrampolinePool::allocate(uintptr_t bridge_art, size_t ep_offset) {
 #ifdef __aarch64__
+    if (bridge_art == 0 || ep_offset > 255 || ep_offset % sizeof(void *) != 0) return nullptr;
     if (writable_ == nullptr || pool_size_ == 0) {
         LOGE("TrampolinePool: pool unavailable");
         return nullptr;
@@ -64,24 +65,31 @@ const uint8_t *TrampolinePool::allocate(uintptr_t bridge_art, size_t ep_offset) 
     uint8_t *w = writable_ + slot;
     const uint8_t *x = executable_ + slot;
 
-    // arm64 stub (24 bytes + 8-byte literal, padded to 32):
-    //   ldr x0, #16          ; x0 = bridge_art_method (8-byte literal at +16)
+    // arm64 stub (16 bytes + padding + 8-byte literal):
+    //   bti c               ; indirect-call landing pad, NOP on older CPUs
+    //   ldr x0, #20         ; x0 = bridge_art_method (8-byte literal at +24)
     //   ldur x16, [x0, #ep]  ; x16 = [bridge_art + ep_offset] (quick entry point)
-    //   xpaci x16            ; strip PAC signature from x16 (NOP on non-PAC ARM64 CPUs)
     //   br x16               ; jump into the bridge
+    //   .8byte 0             ; alignment padding
     //   .8byte bridge_art_method
-    uint32_t ep = static_cast<uint32_t>(ep_offset & 0x1ff);
+    // ART stores plain quick entry pointers. Do not mistake a BTI hint for PAC stripping.
+    uint32_t ep = static_cast<uint32_t>(ep_offset);
     uint32_t ldur_x16 = 0xF8400010u | (ep << 12);  // LDUR X16, [X0, #imm9]
     uint32_t instr[4] = {
-            0x58000080u,  // ldr x0, #16
+            0xD503245Fu,  // bti c
+            0x580000A0u,  // ldr x0, #20
             ldur_x16,
-            0xD503241Fu,  // xpaci x16
             0xD61F0200u,  // br x16
     };
     memcpy(w, instr, sizeof(instr));
-    memcpy(w + 16, &bridge_art, sizeof(bridge_art));
+    memset(w + 16, 0, 8);
+    memcpy(w + 24, &bridge_art, sizeof(bridge_art));
 
     // Flush icache so execution sees the new instructions.
+    // Clean the data cache through the writable alias before invalidating the
+    // instruction cache through the executable alias (distinct virtual addresses).
+    __builtin___clear_cache(reinterpret_cast<char *>(w),
+                            reinterpret_cast<char *>(w + TRAMPOLINE_STRIDE));
     __builtin___clear_cache(const_cast<char *>(reinterpret_cast<const char *>(x)),
                             const_cast<char *>(reinterpret_cast<const char *>(x + TRAMPOLINE_STRIDE)));
     return x;

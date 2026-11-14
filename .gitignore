@@ -24,6 +24,8 @@ out/
 docs/*
 !docs/ui-guidelines.md
 !docs/zygisk-companion.md
+!docs/zygisk-art-compatibility.md
+!docs/zygisk-plt-compatibility.md
 !docs/qq-farm-account-selection.md
 
 # --- Android / App Specific ---

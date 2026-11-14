@@ -12,21 +12,25 @@ bool is_executable_address(uintptr_t address);
 class ScopedSuspend {
 public:
     explicit ScopedSuspend(const char *reason) {
-        if (state().symbols.suspend_ctor != nullptr) {
+        if (state().symbols.suspend_ctor != nullptr && state().symbols.suspend_dtor != nullptr) {
             auto ctor = reinterpret_cast<void (*)(void *, const char *, bool)>(state().symbols.suspend_ctor);
             ctor(storage_, reason, false);
+            active_ = true;
         }
     }
     ~ScopedSuspend() {
-        if (state().symbols.suspend_dtor != nullptr) {
+        if (active_) {
             auto dtor = reinterpret_cast<void (*)(void *)>(state().symbols.suspend_dtor);
             dtor(storage_);
         }
     }
-    bool active() const { return state().symbols.suspend_ctor != nullptr && state().symbols.suspend_dtor != nullptr; }
+    ScopedSuspend(const ScopedSuspend &) = delete;
+    ScopedSuspend &operator=(const ScopedSuspend &) = delete;
+    bool active() const { return active_; }
 
 private:
     alignas(16) uint8_t storage_[256];
+    bool active_ = false;
 };
 
 inline constexpr size_t MAX_PAGES = 257;

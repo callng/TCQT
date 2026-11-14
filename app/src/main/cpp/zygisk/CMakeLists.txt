@@ -11,11 +11,11 @@ add_library(tcqtzygisk SHARED
         art/art_symbols.cpp
         art/art_memory.cpp
         art/art_method_patch.cpp
-        art/art_dex_trust.cpp
         art/art_invoke.cpp
         art/elf_util.cpp
         art/trampoline.cpp
         plt/plt_hook.cpp
+        plt/plt_elf.cpp
         plt/default_plt_hooks.cpp
         logging/log_file.cpp)
 

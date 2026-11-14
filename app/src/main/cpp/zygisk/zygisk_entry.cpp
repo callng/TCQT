@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <android/api-level.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "zygisk/api/zygisk.hpp"
+#include "zygisk/android_support.h"
 #include "zygisk/bootstrap.h"
 #include "zygisk/injector_identity.h"
 #include "zygisk/jni_bridge.h"
@@ -114,6 +116,14 @@ public:
         std::string nice_name = get_jstring(env, args->nice_name);
         TargetApp target = match_target(nice_name);
         if (target == TargetApp::NONE) {
+            api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+
+        const int sdk = android_get_device_api_level();
+        if (!supports_android_api(sdk)) {
+            LOGE("preAppSpecialize: unsupported Android API %d (requires 33..37), skipping %s",
+                 sdk, nice_name.c_str());
             api->setOption(::zygisk::DLCLOSE_MODULE_LIBRARY);
             return;
         }

@@ -40,6 +40,8 @@ setup_case() {
   MODPATH="$case_dir/modules_update/zygisk_tcqt"
   mkdir -p "$MODPATH"
   BOOTMODE=true ARCH=arm64 KSU=true KSU_HAS_HOT_INSTALL=true ZIPFILE="$SANDBOX/module.zip"
+  TCQT_TEST_API=37
+  getprop() { [ "$1" = ro.build.version.sdk ] && printf '%s' "$TCQT_TEST_API"; }
   export MODULE_HOT_INSTALL_REQUEST=true MODULE_HOT_RUN_SCRIPT=stale.sh
   ui_print() { echo "$1"; }
   abort() { echo "$1" >&2; exit 1; }
@@ -83,6 +85,24 @@ apply_at_boot() {
   grep -q TCQT_ACTIVATION_OK "$case_dir/tcqt/activation.log"
   cmp "$SANDBOX/package/logshare.dex" "$live_dir/logshare.dex"
 }
+
+for api in '' bad 27 32 38; do (
+  setup_case
+  TCQT_TEST_API="$api"
+  if (install_package); then echo "FAIL: accepted unsupported API $api"; exit 1; fi
+  [ ! -e "$MODPATH/zygisk/arm64-v8a.so" ]
+  [ ! -d "$case_dir/tcqt/pending" ]
+  [ "$(cat "$case_dir/tcqt/main.apk")" = 'old payload' ]
+  echo "PASS: reject unsupported API '$api' before extraction/publication"
+); done
+
+for api in 33 34 35 36 37; do (
+  setup_case
+  TCQT_TEST_API="$api"
+  install_package
+  assert_published
+  echo "PASS: install on supported API $api"
+); done
 
 for mode in changed missing-record stale-boot replaced-inode legacy-record missing-id duplicate-id disabled removed pending-update; do (
   setup_case

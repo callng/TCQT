@@ -16,7 +16,7 @@ bool bootstrap_payload(JNIEnv *env, const std::string &apk_path,
                        const std::string &process_name, const std::string &data_dir) {
     // Read all classes*.dex from the copied package and build an
     // InMemoryDexClassLoader. An APK-path DexClassLoader is not usable
-    // here: Android 10+ refuses to load dex from app-writable paths
+    // here: newer Android/target SDK combinations reject writable DEX paths
     // ("Attempt to load writable dex file"), so the payload is loaded
     // from memory instead. kotlinx-coroutines' Main dispatcher discovery
     // (META-INF/services) is therefore unavailable; the Java side
@@ -25,7 +25,7 @@ bool bootstrap_payload(JNIEnv *env, const std::string &apk_path,
     jobject loader = nullptr;
     {
         // ART copies direct-buffer DEX data into its own MemMap during the
-        // InMemoryDexClassLoader constructor (including Android 8.1). Only
+        // InMemoryDexClassLoader constructor on the supported Android versions. Only
         // retain the source bytes until that synchronous call returns.
         // Scope ownership also releases partially read DEX on failure.
         std::vector<std::vector<uint8_t>> dex_bufs;

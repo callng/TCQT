@@ -59,9 +59,15 @@ python tools/test-action-processor.py
 .\tools\test-zygisk-companion.ps1 -Serial 7ef9cfd2
 .\tools\test-art-memory.ps1 -Serial 7ef9cfd2
 .\tools\test-art-method-patch.ps1 -Serial 7ef9cfd2
+.\tools\test-art-runtime.ps1 -Serial <设备序列号>
+.\tools\test-art-runtime.ps1 -Serial <设备序列号> -CheckJni
 ```
 
 Linux/WSL 原生 IPC 检查：`bash tools/test-native-host.sh`。原生脚本从项目读取已固定的 NDK 版本；可用 `-SdkPath` 显式指定 SDK。ART 内存脚本要求 arm64 设备。
+
+`test-art-runtime.ps1` 在 Android 13–17 arm64 的独立 shell `app_process` 中链接实际 ART 引擎，分别强制 pointer/indices JNI ID，验证初始化、静态/实例/原生 Hook、混合参数、异常及卸载；`-CheckJni` 额外启用 ART JNI 参数检查。它只部署临时测试文件，不安装模块或操作 QQ/TIM。报告在 `app/build/native-tests/art-runtime/`。这类测试仍不等同于 Zygote 注入、DexMaker/R8 桥生成与宿主场景验收。逐版本基线与实测范围见 [ART 兼容记录](docs/zygisk-art-compatibility.md)。
+
+JNI 注册表的成功/签名不匹配检查：`bash tools/test-jni-registration.sh`（Linux/WSL + JDK + C++ 编译器）。变更 Kotlin native 签名时同步更新此测试，并重建整个注入器和载荷。
 
 Zygisk 安装/分享脚本回归：`bash tools/test-zygisk-install.sh` 和 `bash tools/test-log-share.sh`。
 分享入口由 `:app:compileLogShareDex` 独立编译，在 `main.apk` 缺失或损坏时也能导出诊断。
@@ -91,6 +97,8 @@ KernelSU 停用模块后，重新启动宿主即可阻止下一次注入，无�
 TCQT 的 Zygisk 注入可与其他 LSPosed 模块共存，TCQT 自身仍须保持两种注入方式互斥。ART 备份保留安装前已不可编译的方法入口、已识别的 ARM64 quick 跳板和 JNI 原生入口；普通托管方法使用解释器备份。新版框架的分发器可能是完整编译代码，不能只靠短跳板指令识别。若另一框架后来接管方法入口，卸载 TCQT 回调时保留空的透传桥，避免覆盖该框架的外层 hook。旧 `compat.enable` / `compat` 标记已不参与注入，安装器会清理它们；WebUI 不再提供兼容模式。
 
 `test-art-method-patch.ps1` 使用映射内存中的 ArtMethod 测试对象验证实际补丁代码；它不代替宿主中的双框架验收。共存回归需确认 TCQT 仍以 Zygisk 注入、其他模块仍以 XP 注入，并检查双方设置入口能同时显示、分别打开、返回后再次打开，以及宿主冷启动后入口仍在。
+
+`tools/test-plt-hook.ps1 -Serial <serial>` 在独立原生进程验证实际 PLT/GOT 实现，覆盖普通/APS2/RELR 重定位、延迟加载、并发安装和调用、默认 Hook 开关及 RELRO 恢复。结果按设备和时间保留在 `app/build/native-tests/plt/`；Google 链接器基线、两台 Android 17 实测与覆盖边界见 [PLT/GOT 兼容记录](docs/zygisk-plt-compatibility.md)。
 
 2026-11-02 在设备 `7ef9cfd2`（一加 13T，Android 17/API 37）完成共存回归：QQ 9.3.70 (16410)、LSPosed v2.2.1 (7933)、QWish v3.0.3。TCQT Release 以 Zygisk 注入、QWish 以 XP 注入；三轮缓存命中的冷启动均显示 TCQT、QWish 和 Java脚本入口，双方设置页可打开并返回，主进程与 MSF 存活。Release 载荷与安装的注入器 SHA-256 均匹配构建产物。原生补丁 5 组、companion 18 组及 Debug 宿主 Hook/生命周期/JNI/设置回归通过；该结果仅覆盖此设备和版本组合。
 

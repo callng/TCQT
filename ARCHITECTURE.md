@@ -77,7 +77,7 @@ core 的 `proto` 提供动态协议字段工具。宿主消息适配和防撤回
 
 `zygisk_entry` 在 specialization 前通过 root companion 检查实时范围与模块停用状态，接收只读 APK fd 和 SHA-256。权限或配置读取错误中止注入。specialization 后按内容指纹更新宿主缓存，通过 `bootstrap` 和 `InMemoryDexClassLoader` 启动 Java 入口。协议和 SELinux 约束见 [companion 文档](docs/zygisk-companion.md)。
 
-ART 引擎拆为布局探测、符号解析、内存保护、方法修改、DEX 信任和 JNI 原调用；`art_hook.cpp` 只串行初始化并一次发布结果。PLT/GOT 引擎按声明表安装替换函数，使用后台库发现，避免在 `dlopen` 回调中重入扫描。
+Zygisk 仅接受 Android 13–17（API 33–37），在安装器、specialization 前和 ART/Java 初始化时检查；APK/LSPosed 的 minSdk 独立保留。ART 引擎拆为布局探测、符号解析、内存保护、方法修改和 JNI 原调用；`art_hook.cpp` 只串行初始化并一次发布结果。生成桥和普通托管备份使用经过校验的解释器入口；在覆盖备份前保存不透明 JNI ID，并向 JNI 传入原方法的声明类。未使用的 DEX 信任接口及 Runtime 调试状态猜测已移除。源码依据及验证边界见 [ART 兼容记录](docs/zygisk-art-compatibility.md)。PLT/GOT 引擎按声明表安装替换函数，使用后台库发现，避免在 `dlopen` 回调中重入扫描。
 
 ## 产物与验证边界
 

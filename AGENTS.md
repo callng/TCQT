@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-TCQT provides message anti-recall and other features for QQ/TIM Android (NT architecture), through LSPosed or Zygisk. minSdk is Android 8.1; Android 17 arm64 has device regression coverage, while ART compatibility still depends on the runtime/OEM. See [ARCHITECTURE.md](ARCHITECTURE.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
+TCQT provides message anti-recall and other features for QQ/TIM Android (NT architecture), through LSPosed or Zygisk. APK/LSPosed minSdk is Android 8.1; Zygisk supports only Android 13–17 (API 33–37) and rejects other versions. Android 17 arm64 has device regression coverage, while ART compatibility still depends on the runtime/OEM. See [ARCHITECTURE.md](ARCHITECTURE.md), [DEVELOPMENT.md](DEVELOPMENT.md), and [ART compatibility](docs/zygisk-art-compatibility.md).
 
 ## Build Commands
 
@@ -167,6 +167,11 @@ Architecture:
   dlopen/android_dlopen_ext GOT trigger: it redirects system libs' loads into
   the module and reentrantly scans in-flight link_maps on Android 17+,
   crashing `System.load`), GOT slot patching and real symbol resolution. The
+  ELF scanner in `plt_elf.cpp` handles plain RELA and Android APS2, validates
+  readable segment bounds, and leaves symbol-free RELR relocations alone.
+  A spec finishes polling only after its slots are patched successfully;
+  merely seeing a matching library is insufficient. Device regression command:
+  `tools/test-plt-hook.ps1 -Serial <serial>`; see `docs/zygisk-plt-compatibility.md`.
   `id` doubles as the WebUI marker
   suffix (`<host>.<id>.disable`): `zygisk_entry` collects disabled ids per
   host/user in `preAppSpecialize` and `install_default_plt_hooks(disabled_ids)`
@@ -199,12 +204,17 @@ Architecture:
   See `docs/zygisk-companion.md` for protocol and regression checks.
 - `app/src/main/cpp/zygisk/art/` — self-made ArtMethod hook engine. `art_hook.cpp`
   serializes initialization and publishes probed state once; `art_layout.cpp`,
-  `art_symbols.cpp`, `art_memory.cpp`, `art_method_patch.cpp`, `art_dex_trust.cpp`
-  and `art_invoke.cpp` own layout, symbols, memory protection, mutation,
-  DEX trust and JNI original invocation respectively:
+  `art_symbols.cpp`, `art_memory.cpp`, `art_method_patch.cpp` and `art_invoke.cpp`
+  own layout, symbols, memory protection, mutation and JNI original invocation:
   JNI-probed ArtMethod layout (method_size / access_flags offset / entry point),
   `ScopedSuspendAll` + `WritableArtMethod` for safe mutation, ELF-symbol-resolved
   libart.so helpers, memfd dual-mapped trampoline pool (arm64).
+  Android 13–17 use Nterp flags `0x00100000`/`0x00200000`; `0x40000000`
+  is shared-method memory, not a fast interpreter flag. Preserve native calling
+  conventions and default-method semantics. Encode the backup JNI ID before
+  overwriting its ArtMethod; never dereference a `jmethodID`. JNI backup calls
+  use the target's declaring class, not the reflected backup's cached class.
+  No Runtime debug-state offset probing or unused DexFile.setTrusted dependency.
 - Java side (`loader/zygisk/`): `ZygiskEntry` bootstraps the host ClassLoader
   (hook `LoadedApk.createAppFactory` → `AppComponentFactory.instantiateClassLoader`
   → `ModuleLoader.initialize`); `ZygiskHookBridge` uses DexMaker to generate a

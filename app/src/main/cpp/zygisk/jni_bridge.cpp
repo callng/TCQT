@@ -73,6 +73,10 @@ jlong jni_native_get_art_method(JNIEnv *env, jclass, jobject executable) {
     return static_cast<jlong>(art_get_method(env, executable));
 }
 
+jlong jni_native_get_method_id(JNIEnv *env, jclass, jobject executable) {
+    return static_cast<jlong>(reinterpret_cast<uintptr_t>(env->FromReflectedMethod(executable)));
+}
+
 jint jni_native_hook_method(JNIEnv *env, jclass, jlong target, jlong backup,
                                        jlong bridge) {
     return art_hook_method(env, static_cast<uintptr_t>(target),
@@ -85,13 +89,11 @@ jint jni_native_unhook_method(JNIEnv *env, jclass, jlong target, jlong backup) {
                              static_cast<uintptr_t>(backup));
 }
 
-jboolean jni_native_trust_dex_file(JNIEnv *env, jclass, jobject dex_file) {
-    return art_trust_dex_file(env, dex_file) ? JNI_TRUE : JNI_FALSE;
-}
-
 jobject jni_native_invoke_backup(JNIEnv *env, jclass, jobject backup_method,
-                                            jobject this_object, jobjectArray args) {
-    return art_invoke_backup(env, backup_method, this_object, args);
+                                 jlong backup_id, jclass target_class, jobject this_object, jobjectArray args) {
+    return art_invoke_backup(env, backup_method,
+                             reinterpret_cast<jmethodID>(static_cast<uintptr_t>(backup_id)),
+                             target_class, this_object, args);
 }
 
 }  // namespace
@@ -140,18 +142,18 @@ bool register_hook_bridge_natives(JNIEnv *env, jobject class_loader) {
             {const_cast<char *>("nativeGetArtMethod"),
              const_cast<char *>("(Ljava/lang/reflect/Executable;)J"),
              reinterpret_cast<void *>(jni_native_get_art_method)},
+            {const_cast<char *>("nativeGetMethodId"),
+             const_cast<char *>("(Ljava/lang/reflect/Executable;)J"),
+             reinterpret_cast<void *>(jni_native_get_method_id)},
             {const_cast<char *>("nativeHookMethod"), const_cast<char *>("(JJJ)I"),
              reinterpret_cast<void *>(jni_native_hook_method)},
             {const_cast<char *>("nativeUnhookMethod"), const_cast<char *>("(JJ)I"),
              reinterpret_cast<void *>(jni_native_unhook_method)},
-            {const_cast<char *>("nativeTrustDexFile"),
-             const_cast<char *>("(Ldalvik/system/DexFile;)Z"),
-             reinterpret_cast<void *>(jni_native_trust_dex_file)},
             {const_cast<char *>("nativeInvokeBackup"),
-             const_cast<char *>("(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;"),
+             const_cast<char *>("(Ljava/lang/reflect/Method;JLjava/lang/Class;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;"),
              reinterpret_cast<void *>(jni_native_invoke_backup)},
     };
-    jint rc = env->RegisterNatives(clazz, methods, 5);
+    jint rc = env->RegisterNatives(clazz, methods, sizeof(methods) / sizeof(methods[0]));
     env->DeleteLocalRef(clazz);
     if (rc != 0) {
         if (env->ExceptionCheck()) {

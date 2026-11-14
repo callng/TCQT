@@ -46,6 +46,14 @@ int main() {
     assert(mprotect(region + size * 2, size, PROT_READ | PROT_EXEC) == 0);
     assert(is_executable_address(address + size * 2));
     puts("PASS executable mapping checks reject unmapped addresses");
+#ifdef __aarch64__
+    {
+        register uintptr_t signed_address __asm__("x30") = address;
+        __asm__ __volatile__("hint #25" : "+r"(signed_address)); // PACIASP, NOP without PAC
+        assert(strip_pac(signed_address) == address);
+    }
+    puts("PASS PAC stripping (backwards-compatible LR hints)");
+#endif
     {
         ScopedSuspend suspend("fixture without ART symbols");
         assert(!suspend.active());

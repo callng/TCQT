@@ -52,16 +52,18 @@ bool is_quick_redirect(uintptr_t entry, size_t entry_offset, size_t method_size)
     return is_executable_address(redirected_entry);
 }
 
-void call_set_not_intrinsic(uintptr_t art_method) {
+bool call_set_not_intrinsic(uintptr_t art_method) {
+    auto *af = reinterpret_cast<uint32_t *>(art_method + state().layout.access_flags_offset);
+    if ((__atomic_load_n(af, __ATOMIC_RELAXED) & ACC_INTRINSIC) == 0) return true;
     if (state().symbols.set_not_intrinsic != nullptr) {
         auto f = reinterpret_cast<void (*)(void *)>(state().symbols.set_not_intrinsic);
         f(reinterpret_cast<void *>(art_method));
-    } else {
-        // Fallback: manually clear ACC_INTRINSIC.
-        uint32_t *af = reinterpret_cast<uint32_t *>(art_method + state().layout.access_flags_offset);
-        __atomic_store_n(af, __atomic_load_n(af, __ATOMIC_RELAXED) & ~ACC_INTRINSIC,
-                         __ATOMIC_RELAXED);
+        return (__atomic_load_n(af, __ATOMIC_RELAXED) & ACC_INTRINSIC) == 0;
     }
+    // Clearing just the sign bit reinterprets intrinsic IDs as runtime flags.
+    // ART also restores hidden-API flags; do not guess its version-specific mask.
+    LOGE("art_hook_method: intrinsic target requires ArtMethod::SetNotIntrinsic");
+    return false;
 }
 
 } // namespace
@@ -95,9 +97,8 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
             return false;
         }
         // The declaring-class root at offset 0 is either a 4-byte compressed
-        // reference (flags sit at offset 4 — compact ArtMethod layout used by
-        // some OEM builds) or an 8-byte pointer (flags at offset 8, AOSP
-        // layout). Validate it according to the probed layout instead of
+        // reference (flags sit at offset 4 in AOSP Android 13..17) or an
+        // OEM 8-byte pointer (flags at offset 8). Validate the probed layout instead of
         // assuming 8 bytes.
         if (af_off == 4) {
             // Compressed references are heap offsets and can be large on
@@ -137,6 +138,8 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
              "delta=%zu, expected size=%zu)", bridge, backup, hi - lo, method_size);
         return -12;
     }
+    void *interpreter = state().symbols.quick_to_interpreter;
+    if (!is_executable_address(reinterpret_cast<uintptr_t>(interpreter))) return -13;
 
     // Allocate the trampoline first: it has no side effect on the ArtMethods,
     // so a pool exhaustion leaves everything untouched.
@@ -187,9 +190,8 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     uint32_t original_target_flags = __atomic_load_n(target_af, __ATOMIC_RELAXED);
     uint32_t original_bridge_flags = __atomic_load_n(bridge_af, __ATOMIC_RELAXED);
     void *original_target_ep = __atomic_load_n(target_ep_ptr, __ATOMIC_RELAXED);
-    void *original_bridge_ep = reinterpret_cast<void *>(
-            strip_pac(reinterpret_cast<uintptr_t>(
-                    __atomic_load_n(reinterpret_cast<void **>(bridge + ep_off), __ATOMIC_RELAXED))));
+    auto *bridge_ep_ptr = reinterpret_cast<void **>(bridge + ep_off);
+    void *original_bridge_ep = __atomic_load_n(bridge_ep_ptr, __ATOMIC_RELAXED);
 
     bool hook_ok = true;
     auto fail = [&](const char *what) {
@@ -200,21 +202,26 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
         __atomic_store_n(target_af, original_target_flags, __ATOMIC_RELAXED);
         __atomic_store_n(target_ep_ptr, original_target_ep, __ATOMIC_RELAXED);
         __atomic_store_n(bridge_af, original_bridge_flags, __ATOMIC_RELAXED);
+        __atomic_store_n(bridge_ep_ptr, original_bridge_ep, __ATOMIC_RELAXED);
         memcpy(reinterpret_cast<void *>(backup), backup_orig.data(), method_size);
     };
 
-    // ── Bridge: add ACC_COMPILE_DONT_BOTHER, clear precompiled ─────────────
-    uint32_t precomp = state().layout.acc_precompiled;
-    uint32_t bridge_flags_new =
-            (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) | ACC_COMPILE_DONT_BOTHER) & ~precomp;
+    // Resolve intrinsic semantics before modifying any of the three methods.
+    if (!call_set_not_intrinsic(target)) {
+        rollback();
+        return -14;
+    }
+
+    // Keep the generated bridge interpreted even if the runtime had already
+    // selected Nterp/JIT code while its class was initialized.
+    uint32_t bridge_flags_new = hooked_method_flags(original_bridge_flags);
     __atomic_store_n(bridge_af, bridge_flags_new, __ATOMIC_RELAXED);
+    __atomic_store_n(bridge_ep_ptr, interpreter, __ATOMIC_RELAXED);
     if (__atomic_load_n(bridge_af, __ATOMIC_RELAXED) != bridge_flags_new) fail("bridge flags");
 
     // ── Target: clear intrinsic (may change flags), add ACC_COMPILE_DONT_BOTHER ──
-    call_set_not_intrinsic(target);
     uint32_t after_set_not_intrinsic = __atomic_load_n(target_af, __ATOMIC_RELAXED);
-    uint32_t fast_interp = state().layout.acc_fast_interp;
-    uint32_t target_flags_new = (after_set_not_intrinsic | ACC_COMPILE_DONT_BOTHER) & ~precomp;
+    uint32_t target_flags_new = hooked_method_flags(after_set_not_intrinsic);
     __atomic_store_n(target_af, target_flags_new, __ATOMIC_RELAXED);
     if (__atomic_load_n(target_af, __ATOMIC_RELAXED) != target_flags_new) fail("target flags");
 
@@ -242,19 +249,10 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     }
     if (!backup_copy_ok) fail("backup declaring-class copy");
 
-    // Clear the target's fast-interpreter bit so it always goes through the
-    // trampoline.
-    uint32_t target_flags_final = __atomic_load_n(target_af, __ATOMIC_RELAXED) & ~fast_interp;
-    __atomic_store_n(target_af, target_flags_final, __ATOMIC_RELAXED);
-
-    // Clear fast-interpreter and precompiled flags on backup so Nterp/interpreter performs standard frame setup.
-    // ACC_PROXY_METHOD is cleared too: the backup is a plain method of the
-    // generated class, and if the target happened to be a proxy method, leaving
-    // the bit set would make the GC treat the backup as a proxy and read its
-    // data_ as an interface-method root.
-    uint32_t backup_flags_new =
-            __atomic_load_n(backup_af, __ATOMIC_RELAXED) & ~fast_interp & ~precomp &
-            ~ACC_PROXY_METHOD;
+    // The backup retains the target's declaring class and DEX semantics.
+    // 0x00400000 is kAccDefault, not a proxy flag: preserve default methods.
+    // For JNI methods, preserve FastNative/CriticalNative calling conventions.
+    uint32_t backup_flags_new = __atomic_load_n(backup_af, __ATOMIC_RELAXED);
     if ((backup_flags_new & ACC_STATIC) == 0) {
         backup_flags_new = (backup_flags_new | ACC_PRIVATE) & ~(ACC_PUBLIC | ACC_PROTECTED);
     }
@@ -268,9 +266,12 @@ int art_hook_method(JNIEnv *env, uintptr_t target, uintptr_t backup, uintptr_t b
     // The preexisting flag is checked before TCQT adds its own. Interpreting
     // the copied DEX body would bypass that engine's callbacks.
     // Native methods also need their JNI entry and data_ from the copied method.
-    const bool preserve_entry = (original_target_flags & (ACC_NATIVE | ACC_COMPILE_DONT_BOTHER)) != 0 ||
+    const bool existing_non_compilable =
+            (original_target_flags & (ACC_INTRINSIC | ACC_COMPILE_DONT_BOTHER | ACC_PRECOMPILED)) ==
+            ACC_COMPILE_DONT_BOTHER;
+    const bool preserve_entry = (original_target_flags & ACC_NATIVE) != 0 || existing_non_compilable ||
             is_quick_redirect(reinterpret_cast<uintptr_t>(original_target_ep), ep_off, method_size);
-    void *backup_entry = preserve_entry ? original_target_ep : original_bridge_ep;
+    void *backup_entry = preserve_entry ? original_target_ep : interpreter;
     __atomic_store_n(backup_ep_ptr, backup_entry, __ATOMIC_RELAXED);
     if (__atomic_load_n(backup_ep_ptr, __ATOMIC_RELAXED) != backup_entry)
         fail("backup entry point");

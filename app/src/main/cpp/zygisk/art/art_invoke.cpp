@@ -5,13 +5,23 @@
 #include "zygisk/logging/log.h"
 namespace tcqt::zygisk {
 using namespace art_detail;
-jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jobject this_object, jobjectArray args) {
-    if (backup_method == nullptr) return nullptr;
+jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jmethodID mid,
+                          jclass target_cls, jobject this_object, jobjectArray args) {
+    if (env == nullptr || backup_method == nullptr || mid == nullptr || target_cls == nullptr) return nullptr;
 
-    jmethodID mid = env->FromReflectedMethod(backup_method);
-    if (mid == nullptr) return nullptr;
+    const uintptr_t backup_art = art_get_method(env, backup_method);
+    if (backup_art == 0) {
+        jclass error = env->FindClass("java/lang/IllegalStateException");
+        if (error != nullptr) {
+            env->ThrowNew(error, "Cannot read backup ArtMethod");
+            env->DeleteLocalRef(error);
+        }
+        return nullptr;
+    }
 
-    uintptr_t backup_art = reinterpret_cast<uintptr_t>(mid);
+    // Reuse the ID encoded while the backup still belonged to its generated
+    // class. FromReflectedMethod after the memcpy computes an invalid offset
+    // into the target class's JNI ID array on runtimes using opaque IDs.
     size_t af_off = state().layout.access_flags_offset;
     uint32_t flags = __atomic_load_n(reinterpret_cast<const uint32_t *>(backup_art + af_off), __ATOMIC_RELAXED);
     bool is_static = (flags & ACC_STATIC) != 0;
@@ -123,18 +133,9 @@ jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jobject this_objec
     }
     if (param_array != nullptr) env->DeleteLocalRef(param_array);
 
-    jclass target_cls = nullptr;
-    if (is_static) {
-        if (this_object != nullptr) {
-            target_cls = env->GetObjectClass(this_object);
-        } else {
-            jclass m_cls = env->GetObjectClass(backup_method);
-            jmethodID get_decl_mid = env->GetMethodID(m_cls, "getDeclaringClass", "()Ljava/lang/Class;");
-            target_cls = static_cast<jclass>(env->CallObjectMethod(backup_method, get_decl_mid));
-            env->DeleteLocalRef(m_cls);
-        }
-    }
-
+    // The reflected backup caches its generated declaring class, while its
+    // ArtMethod now belongs to the original target. JNI (especially CheckJNI)
+    // requires the target's actual declaring class for both invocation kinds.
     jobject result = nullptr;
     auto box_b = [&](jboolean v) {
         // Preserve a pending target exception; JNI class lookup would abort ART.
@@ -223,37 +224,24 @@ jobject art_invoke_backup(JNIEnv *env, jobject backup_method, jobject this_objec
             default: result = env->CallStaticObjectMethodA(target_cls, mid, jargs.data()); break;
         }
     } else {
-        jclass backup_decl_cls = nullptr;
-        jclass m_cls = env->GetObjectClass(backup_method);
-        jmethodID get_decl_mid = env->GetMethodID(m_cls, "getDeclaringClass", "()Ljava/lang/Class;");
-        backup_decl_cls = static_cast<jclass>(env->CallObjectMethod(backup_method, get_decl_mid));
-        env->DeleteLocalRef(m_cls);
-
         switch (type_code) {
-            case 'V': env->CallNonvirtualVoidMethodA(this_object, backup_decl_cls, mid, jargs.data()); break;
-            case 'Z': result = box_b(env->CallNonvirtualBooleanMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'I': result = box_i(env->CallNonvirtualIntMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'J': result = box_j(env->CallNonvirtualLongMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'F': result = box_f(env->CallNonvirtualFloatMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'D': result = box_d(env->CallNonvirtualDoubleMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'B': result = box_byte(env->CallNonvirtualByteMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'C': result = box_char(env->CallNonvirtualCharMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            case 'S': result = box_short(env->CallNonvirtualShortMethodA(this_object, backup_decl_cls, mid, jargs.data())); break;
-            default: result = env->CallNonvirtualObjectMethodA(this_object, backup_decl_cls, mid, jargs.data()); break;
-        }
-        if (backup_decl_cls != nullptr) {
-            env->DeleteLocalRef(backup_decl_cls);
+            case 'V': env->CallNonvirtualVoidMethodA(this_object, target_cls, mid, jargs.data()); break;
+            case 'Z': result = box_b(env->CallNonvirtualBooleanMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'I': result = box_i(env->CallNonvirtualIntMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'J': result = box_j(env->CallNonvirtualLongMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'F': result = box_f(env->CallNonvirtualFloatMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'D': result = box_d(env->CallNonvirtualDoubleMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'B': result = box_byte(env->CallNonvirtualByteMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'C': result = box_char(env->CallNonvirtualCharMethodA(this_object, target_cls, mid, jargs.data())); break;
+            case 'S': result = box_short(env->CallNonvirtualShortMethodA(this_object, target_cls, mid, jargs.data())); break;
+            default: result = env->CallNonvirtualObjectMethodA(this_object, target_cls, mid, jargs.data()); break;
         }
     }
 
     for (jsize i = 0; i < argc; ++i) {
         if (jarg_refs[i] && jargs[i].l != nullptr) env->DeleteLocalRef(jargs[i].l);
     }
-    if (target_cls != nullptr && target_cls != this_object) {
-        env->DeleteLocalRef(target_cls);
-    }
 
     return result;
 }
-
 }  // namespace tcqt::zygisk

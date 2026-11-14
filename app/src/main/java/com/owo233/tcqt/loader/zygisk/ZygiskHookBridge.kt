@@ -13,7 +13,6 @@ import com.owo233.tcqt.core.hook.HookLifecycle
 import com.owo233.tcqt.core.hook.HookParam
 import com.owo233.tcqt.core.hook.Invoker
 import com.owo233.tcqt.core.hook.Unhook
-import dalvik.system.DexFile
 import dalvik.system.InMemoryDexClassLoader
 import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
@@ -30,10 +29,12 @@ internal object ZygiskHookBridge {
     private const val TAG = "ZygiskHookBridge"
 
     private external fun nativeGetArtMethod(executable: Executable): Long
+    private external fun nativeGetMethodId(executable: Executable): Long
     private external fun nativeHookMethod(targetArt: Long, backupArt: Long, bridgeArt: Long): Int
     private external fun nativeUnhookMethod(targetArt: Long, backupArt: Long): Int
-    private external fun nativeTrustDexFile(dexFile: DexFile): Boolean
-    private external fun nativeInvokeBackup(backupMethod: Method, thisObject: Any?, args: Array<Any?>): Any?
+    private external fun nativeInvokeBackup(
+        backupMethod: Method, backupId: Long, targetClass: Class<*>, thisObject: Any?, args: Array<Any?>,
+    ): Any?
 
     private enum class Mode { BEFORE, AFTER, REPLACE }
 
@@ -119,7 +120,7 @@ internal object ZygiskHookBridge {
     private fun invokeBackup(entry: HookEntry, thisObject: Any?, args: Array<Any?>): Any? {
         HookContract.arguments(entry.member, args)
         val self = if (Modifier.isStatic(entry.member.modifiers)) null else thisObject
-        return nativeInvokeBackup(entry.backupMethod, self, args)
+        return nativeInvokeBackup(entry.backupMethod, entry.pair.backupId, entry.member.declaringClass, self, args)
     }
 
     // ── Dispatch（由生成的 bridge 方法调用） ────────────────────────────────
@@ -201,6 +202,7 @@ internal object ZygiskHookBridge {
     private data class BridgePair(
         val bridgeMethod: Method,
         val backupMethod: Method,
+        val backupId: Long,
         /** 生成类写入 hookId 的入口，必须在 nativeHookMethod 之前调用。 */
         val setHookId: (Long) -> Unit,
     )
@@ -419,6 +421,9 @@ internal object ZygiskHookBridge {
         return BridgePair(
             bridgeMethod = bridgeMethod,
             backupMethod = backupMethod,
+            // Encode the opaque JNI ID before nativeHookMethod replaces this
+            // method's declaring class and DEX metadata with the target's.
+            backupId = nativeGetMethodId(backupMethod).also { check(it != 0L) },
             setHookId = { id -> hookIdStaticFld.setLong(null, id) },
         )
     }

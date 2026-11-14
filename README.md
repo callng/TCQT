@@ -18,7 +18,7 @@
 | 项目       | 说明                                                |
 |------------|-----------------------------------------------------|
 | 适配客户端 | QQ / TIM Android（NT 架构）                         |
-| 系统版本   | Android 8.1 ~ 17                                    |
+| 系统版本   | LSPosed：Android 8.1 ~ 17；Zygisk：Android 13 ~ 17  |
 | 框架支持   | LSPosed（默认）；也可通过 Zygisk 注入运行（见下文） |
 
 ---
@@ -30,11 +30,11 @@
 
 ### 环境要求
 
-| 项目      | 说明                                                                         |
-|-----------|------------------------------------------------------------------------------|
-| Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext）                      |
-| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                                         |
-| 系统版本  | minSdk Android 8.1；Android 17 arm64 已完成设备回归，其他 ART/OEM 组合需验证 |
+| 项目      | 说明                                                                      |
+|-----------|---------------------------------------------------------------------------|
+| Root 方案 | Magisk（启用 Zygisk）、KernelSU 或 APatch（ZygiskNext）                   |
+| 架构      | 仅支持 arm64-v8a（与 QQ 全量包一致）                                      |
+| 系统版本  | Android 13–17（API 33–37）；其他版本拒绝安装/注入，APK 的 minSdk 单独保留 |
 
 ### 安装
 
@@ -80,6 +80,7 @@ KernelSU 也可能因安全模式或模块目录替换失败等原因回退为�
 - **不要同时启用 LSPosed 中的 TCQT 模块**：两种模式共用同一份配置，
   同时 hook 会造成冲突。使用 Zygisk 模式时请在 LSPosed 中停用 TCQT。
 - 当前只构建 arm64-v8a；Android 17 的设备回归不代表所有 ART/OEM 组合都已验证。
+- ART 源码基线、兼容处理与逐版本验证范围见 [Android 13–17 兼容记录](docs/zygisk-art-compatibility.md)。
 - 功能范围与 LSPosed 模式一致（包括 DexKit 方法查找、设置页联动等）。
 
 ### 注入控制（WebUI）
