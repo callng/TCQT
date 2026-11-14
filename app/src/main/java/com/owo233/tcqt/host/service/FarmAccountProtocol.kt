@@ -5,6 +5,7 @@ internal object FarmAccountProtocol {
     const val APP_ID = "1112386029"
     const val GET_CODE_CMD = "LightAppSvc.mini_program_auth.GetCode"
     const val FAST_LOGIN_CMD = "OidbSvcTrpcTcp.0x94b9_33"
+    const val HTTP_TRANSFER_CMD = "miniapp.trpc.minigame.transfer.Transfer.HTTPTransfer"
     const val EXTRA_ACCOUNT = "tcqt.farm.account"
     const val EXTRA_NICKNAME = "tcqt.farm.nickname"
     const val EXTRA_SERVICE = "tcqt.farm.login_service"
@@ -20,7 +21,16 @@ internal object FarmAccountProtocol {
     fun isAccount(uin: String?): Boolean =
         !uin.isNullOrEmpty() && uin.all { it in '0'..'9' } && (uin.toLongOrNull() ?: 0) > 0
 
-    fun mayRoute(command: String): Boolean = command == GET_CODE_CMD || command == FAST_LOGIN_CMD
+    fun commandFor(operation: Int): String? = when (operation) {
+        REQUEST_LOGIN -> GET_CODE_CMD
+        REQUEST_FAST_LOGIN -> FAST_LOGIN_CMD
+        else -> FarmFriendOperation.fromId(operation)?.let { HTTP_TRANSFER_CMD }
+    }
+
+    fun mayRoute(command: String): Boolean = command == GET_CODE_CMD || command == FAST_LOGIN_CMD ||
+        command == HTTP_TRANSFER_CMD
+
+    fun matchesRequest(operation: Int, command: String): Boolean = commandFor(operation) == command
 
     fun isFarmPreloadKey(key: String): Boolean {
         val prefix = "key_preload_login_info"
@@ -36,6 +46,23 @@ internal object FarmAccountProtocol {
             "请粘贴完整的 js_code，内容不能包含空格或换行"
         }
         return code
+    }
+}
+
+/** QQ farm uses HTTPTransfer, not the WeChat branch's getFriendCloudStorage API. */
+internal enum class FarmFriendOperation(val id: Int, val path: String) {
+    PLAYING(3, "get_friend_storage"),
+    RECENT(4, "get_recent_friends"),
+    RECOMMENDED(5, "get_recommend_friends"),
+    CHECK(6, "check_friend");
+
+    val url: String = "http://fakeapi.qq.com/$path"
+
+    companion object {
+        fun fromId(id: Int): FarmFriendOperation? = entries.firstOrNull { it.id == id }
+        fun fromRequest(appId: String, method: String, url: String): FarmFriendOperation? =
+            if (appId == FarmAccountProtocol.APP_ID && method == "POST") entries.firstOrNull { it.url == url }
+            else null
     }
 }
 

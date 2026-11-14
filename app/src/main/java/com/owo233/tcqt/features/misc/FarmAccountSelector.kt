@@ -25,6 +25,9 @@ import com.owo233.tcqt.core.reflect.findMethods
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.host.service.FarmAccountHost
 import com.owo233.tcqt.host.service.FarmAccountProtocol
+import com.owo233.tcqt.host.service.FarmFriendOperation
+import com.owo233.tcqt.host.service.FarmCustomFriendsHost
+import com.owo233.tcqt.host.service.FarmCustomFriendsDiagnostics
 import com.owo233.tcqt.host.service.FarmGameProcess
 import com.owo233.tcqt.host.service.receiver
 import com.owo233.tcqt.host.service.remoteReceiver
@@ -220,11 +223,11 @@ object FarmAccountSelector : Feature(
         loadOrThrow("com.tencent.qqmini.sdk.cache.Storage").getMethod(
             "openContainerStorage", Context::class.java, String::class.java, String::class.java, Int::class.javaPrimitiveType,
         ).hookBefore { param ->
-            val active = session?.takeIf { it.custom } ?: return@hookBefore
+            val active = session ?: return@hookBefore
             if (param.args[2] != FarmAccountProtocol.APP_ID) return@hookBefore
             // This argument is only a disk-cache namespace, not a QQ/MSF account identity.
             param.args[1] = active.storageNamespace
-            LogAndroid.d("[FarmAccount] Isolated custom game storage")
+            LogAndroid.d("[FarmAccount] Isolated selected account's game storage")
         }
         val proxy = loadOrThrow("com.tencent.qqmini.proxyimpl.MiniAppProxyImpl")
         // An imported code identifies the game user, not a locally authenticated QQ account.
@@ -251,6 +254,27 @@ object FarmAccountSelector : Feature(
             param.result = null
             active.request(FarmAccountProtocol.REQUEST_FAST_LOGIN, callback, reply)
         }
+        installMiniFriends(callbackClass, reply)
+        FarmCustomFriendsHost { session?.custom == true }.install()
+    }
+
+    private fun installMiniFriends(callbackClass: Class<*>, reply: Method) {
+        loadOrThrow("com.tencent.qqmini.proxyimpl.QQCustomizedProxyImpl").getMethod(
+            "httpToSsoRequest", JSONObject::class.java, callbackClass,
+        ).hookBefore { param ->
+            val active = session ?: return@hookBefore
+            val request = param.args[0] as? JSONObject ?: return@hookBefore
+            val operation = FarmFriendOperation.fromRequest(
+                request.optString("appid"), request.optString("method"), request.optString("url"),
+            ) ?: return@hookBefore
+            val callback = param.args[1] ?: return@hookBefore
+            // The QQ branch obtains OpenIDs here before farm SyncAll; never query the main account.
+            param.result = null
+            active.request(operation.id, callback, reply, Bundle().apply {
+                putString("body", request.optString("body"))
+                putString("header", request.optJSONObject("header")?.toString() ?: "{}")
+            })
+        }
     }
 
     private fun acceptLaunch(intent: Intent) {
@@ -258,6 +282,7 @@ object FarmAccountSelector : Feature(
         intent.setExtrasClassLoader(HookEnv.hostClassLoader)
         if (appId(intent.appInfo()) != FarmAccountProtocol.APP_ID) { session = null; return }
         val custom = intent.getBooleanExtra(FarmAccountProtocol.EXTRA_CUSTOM_LOGIN, false)
+        if (custom) FarmCustomFriendsDiagnostics.record("custom_session")
         val account = if (custom) null else intent.getStringExtra(FarmAccountProtocol.EXTRA_ACCOUNT)
         if (!custom && account == null) { session = null; return }
         LogAndroid.d("[FarmAccount] Accepted farm session, custom=$custom")
@@ -278,19 +303,26 @@ object FarmAccountSelector : Feature(
         val custom: Boolean,
         sessionId: UUID,
     ) {
-        val storageNamespace = "tcqt-farm-$sessionId"
-        fun request(operation: Int, callback: Any, method: Method) {
+        // The v2 namespace also discards game caches populated by the old foreground-account APIs.
+        val storageNamespace = if (account != null) "tcqt-farm-v2-$account" else "tcqt-farm-$sessionId"
+        fun request(operation: Int, callback: Any, method: Method, payload: Bundle = Bundle()) {
             val completed = AtomicBoolean()
             lateinit var timeout: Runnable
             fun result(success: Boolean, data: Bundle?) {
-                val code = data?.getString("code").orEmpty()
-                LogAndroid.d("[FarmAccount] Login callback operation=$operation, success=${success && code.isNotBlank()}")
-                val json = JSONObject().apply {
-                    if (success && code.isNotBlank()) put(if (operation == FarmAccountProtocol.REQUEST_FAST_LOGIN) "jsCode" else "code", code)
-                    else put("errMsg", data?.getString("errMsg") ?: "农场账号会话已失效，请重新打开农场")
+                val json = if (success && session === this) runCatching {
+                    if (FarmFriendOperation.fromId(operation) != null) {
+                        JSONObject(checkNotNull(data?.getString("json")))
+                    } else {
+                        val code = checkNotNull(data?.getString("code")).also { check(it.isNotBlank()) }
+                        JSONObject().put(if (operation == FarmAccountProtocol.REQUEST_FAST_LOGIN) "jsCode" else "code", code)
+                    }
+                }.getOrNull() else null
+                LogAndroid.d("[FarmAccount] Session callback operation=$operation, success=${json != null}")
+                val result = json ?: JSONObject().apply {
+                    put("errMsg", data?.getString("errMsg") ?: "农场账号会话已失效，请重新打开农场")
                 }
-                runCatching { method.invoke(callback, success && code.isNotBlank(), json) }.onFailure {
-                    ActionErrorStore.report(key, "农场登录回调", it)
+                runCatching { method.invoke(callback, json != null, result) }.onFailure {
+                    ActionErrorStore.report(key, "农场账号回调", it)
                 }
             }
             fun complete(success: Boolean, data: Bundle?) {
@@ -306,11 +338,15 @@ object FarmAccountSelector : Feature(
                     complete(resultCode == FarmAccountProtocol.SUCCESS, resultData)
                 }
             }
-            mainHandler.postDelayed(timeout, 20_000)
+            mainHandler.postDelayed(timeout, if (FarmFriendOperation.fromId(operation) != null) 5_500 else 20_000)
             if (service == null || (!custom && !FarmAccountProtocol.isAccount(account))) receiver.send(FarmAccountProtocol.FAILURE, null)
-            else service.send(operation, Bundle().apply {
-                putParcelable(FarmAccountProtocol.EXTRA_REPLY, receiver.remoteReceiver())
-            })
+            else try {
+                service.send(operation, Bundle(payload).apply {
+                    putParcelable(FarmAccountProtocol.EXTRA_REPLY, receiver.remoteReceiver())
+                })
+            } catch (_: Exception) {
+                complete(false, null)
+            }
         }
     }
 

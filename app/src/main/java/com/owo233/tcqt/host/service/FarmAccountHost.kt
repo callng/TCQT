@@ -42,12 +42,13 @@ internal class FarmAccountHost(private val context: Context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private class CodeRequest(val uin: String, val id: Long) {
+    private class AccountRequest(val uin: String, val id: Long, val operation: Int) {
         val routed = AtomicBoolean()
     }
     private val requestSequence = AtomicLong()
-    private val requests = ConcurrentHashMap<Long, CodeRequest>()
-    private val fastRequestAccount = ThreadLocal<CodeRequest>()
+    private val requests = ConcurrentHashMap<Long, AccountRequest>()
+    private val fastRequestAccount = ThreadLocal<AccountRequest>()
+    private val friendRequestAccount = ThreadLocal<AccountRequest>()
     private val cmdUtilClass = loadOrThrow("com.tencent.mobileqq.mini.reuse.MiniAppCmdUtil")
     private val cmdCallbackClass = loadOrThrow("com.tencent.mobileqq.mini.reuse.MiniAppCmdInterface")
     private val loginServlet = loadOrThrow("com.tencent.mobileqq.mini.servlet.MiniAppGetLoginCodeServlet")
@@ -73,23 +74,38 @@ internal class FarmAccountHost(private val context: Context) {
     }
 
     fun installRoutingHooks() {
+        loadOrThrow("mqq.app.AppRuntime").getMethod("startServlet", NewIntent::class.java).hookBefore { param ->
+            val request = friendRequestAccount.get() ?: return@hookBefore
+            val intent = param.args[0] as? NewIntent
+            val msg = intent?.getParcelableExtra<ToServiceMsg>("ToServiceMsg")
+            if (msg?.serviceCmd != FarmAccountProtocol.HTTP_TRANSFER_CMD) {
+                param.throwable = IllegalStateException("农场好友请求的发送路径无效")
+                return@hookBefore
+            }
+            // SSOChannel ignores SSORequest.extra. Mark its concrete Intent before the async handoff.
+            intent.putExtra(FarmAccountProtocol.EXTRA_ACCOUNT, request.uin)
+            intent.putExtra(FarmAccountProtocol.EXTRA_REQUEST, request.id)
+            msg.addAttribute(FarmAccountProtocol.EXTRA_ACCOUNT, request.uin)
+            msg.addAttribute(FarmAccountProtocol.EXTRA_REQUEST, request.id)
+        }
         loadOrThrow("com.tencent.mobileqq.msf.sdk.MsfServiceSdk").getMethod(
             "sendMsg", ToServiceMsg::class.java,
         ).hookBefore { param ->
             val msg = param.args[0] as? ToServiceMsg ?: return@hookBefore
-            if (!FarmAccountProtocol.mayRoute(msg.serviceCmd)) return@hookBefore
             val account = msg.getAttribute(FarmAccountProtocol.EXTRA_ACCOUNT) as? String
             if (account != null) {
                 val id = msg.getAttribute(FarmAccountProtocol.EXTRA_REQUEST) as? Long
                 val request = id?.let(requests::get)
-                if (!FarmAccountProtocol.isAccount(account) || request == null || request.uin != account) {
+                if (!FarmAccountProtocol.isAccount(account) || request == null || request.uin != account ||
+                    !FarmAccountProtocol.matchesRequest(request.operation, msg.serviceCmd)) {
                     // Frameworks catch exceptions thrown by before callbacks and still call
                     // the original method. Set its throwable explicitly to stop this send.
-                    param.throwable = IllegalStateException("农场登录请求已取消或失效")
+                    param.throwable = IllegalStateException("农场账号请求已取消或失效")
                     return@hookBefore
                 }
                 msg.uin = account
                 msg.addAttribute("uinNotMatch", true)
+                msg.setIsSupportRetry(false)
                 request.routed.set(true)
                 LogAndroid.d("[FarmAccount] Sending ${msg.serviceCmd}, current=${account == QQInterfaces.appRuntime.account}")
             }
@@ -176,6 +192,12 @@ internal class FarmAccountHost(private val context: Context) {
         return object : ResultReceiver(mainHandler) {
             override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                 val reply = resultData?.receiver(FarmAccountProtocol.EXTRA_REPLY) ?: return
+                if (FarmFriendOperation.fromId(resultCode) != null) {
+                    reply.send(FarmAccountProtocol.FAILURE, Bundle().apply {
+                        putString("errMsg", "自定义 js_code 不包含 QQ 好友访问凭据，请选择本机已登录账号")
+                    })
+                    return
+                }
                 val value = code.take(resultCode)
                 reply.send(if (value != null) FarmAccountProtocol.SUCCESS else FarmAccountProtocol.FAILURE, Bundle().apply {
                     if (value != null) putString("code", value)
@@ -195,25 +217,31 @@ internal class FarmAccountHost(private val context: Context) {
         return object : ResultReceiver(mainHandler) {
             override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                 val reply = resultData?.receiver(FarmAccountProtocol.EXTRA_REPLY) ?: return
-                if (resultCode !in FarmAccountProtocol.REQUEST_LOGIN..FarmAccountProtocol.REQUEST_FAST_LOGIN) {
-                    reply.send(FarmAccountProtocol.FAILURE, Bundle().apply { putString("errMsg", "登录请求无效") })
+                if (FarmAccountProtocol.commandFor(resultCode) == null) {
+                    reply.send(FarmAccountProtocol.FAILURE, Bundle().apply { putString("errMsg", "农场请求无效") })
                     return
                 }
                 scope.launch {
                     try {
                         requireAccount(account)
+                        val friends = FarmFriendOperation.fromId(resultCode)
+                        if (friends != null) {
+                            val data = requestFriends(account.uin, friends, resultData)
+                            reply.send(FarmAccountProtocol.SUCCESS, Bundle().apply { putString("json", data) })
+                            return@launch
+                        }
                         val fresh = preflight.take(account.uin, resultCode, SystemClock.elapsedRealtime())
                             ?: requestCode(account.uin, resultCode)
                         reply.send(FarmAccountProtocol.SUCCESS, Bundle().apply { putString("code", fresh) })
                     } catch (_: TimeoutCancellationException) {
                         reply.send(FarmAccountProtocol.FAILURE, Bundle().apply {
-                            putString("errMsg", "农场登录超时，请检查网络后重新打开农场")
+                            putString("errMsg", "农场账号请求超时，请检查网络后重新打开农场")
                         })
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
                         reply.send(FarmAccountProtocol.FAILURE, Bundle().apply {
-                            putString("errMsg", "该账号的农场登录失败，请重新打开农场或在 QQ 中重新登录该账号")
+                            putString("errMsg", "该账号的农场请求失败，请重新打开农场或在 QQ 中重新登录该账号")
                         })
                     }
                 }
@@ -224,7 +252,7 @@ internal class FarmAccountHost(private val context: Context) {
     private suspend fun requestCode(uin: String, operation: Int): String = withTimeout(15_000.milliseconds) {
         withContext(Dispatchers.Main.immediate) {
             suspendCancellableCoroutine { continuation ->
-                val request = CodeRequest(uin, requestSequence.incrementAndGet())
+                val request = AccountRequest(uin, requestSequence.incrementAndGet(), operation)
                 requests[request.id] = request
                 continuation.invokeOnCancellation { requests.remove(request.id) }
                 val completed = AtomicBoolean()
@@ -283,6 +311,62 @@ internal class FarmAccountHost(private val context: Context) {
             }
         }
     }
+
+    private suspend fun requestFriends(uin: String, operation: FarmFriendOperation, data: Bundle): String =
+        withTimeout(5_000.milliseconds) {
+            withContext(Dispatchers.Main.immediate) {
+                suspendCancellableCoroutine { continuation ->
+                    val callbackType = loadOrThrow($$"com.tencent.qq.minibox.api.IHttpTransferSSOApi$a")
+                    val request = AccountRequest(uin, requestSequence.incrementAndGet(), operation.id)
+                    requests[request.id] = request
+                    continuation.invokeOnCancellation { requests.remove(request.id) }
+                    val completed = AtomicBoolean()
+                    val callback = callback(callbackType) { name, args ->
+                        if (name != "a" || !completed.compareAndSet(false, true)) return@callback
+                        requests.remove(request.id)
+                        if (!continuation.isActive) return@callback
+                        val response = args?.getOrNull(1) as? JSONObject
+                        val json = response?.toString()
+                        val success = request.routed.get() && args?.getOrNull(0) == true && json != null && json.length <= 200_000
+                        LogAndroid.d("[FarmAccount] Friends callback operation=${operation.path}, success=$success, " +
+                            "routed=${request.routed.get()}, transport=${args?.getOrNull(0)}, errCode=${response?.optInt("errCode")}, " +
+                            "status=${response?.optInt("statusCode")}")
+                        if (success) continuation.resume(checkNotNull(json))
+                        else continuation.resumeWithException(IllegalStateException("农场好友请求失败"))
+                    }
+                    try {
+                        // Only reconstruct these four read APIs; preserve SDK headers (e.g. JSON content type).
+                        // The Binder cannot choose another endpoint or another account.
+                        val body = data.getString("body").orEmpty()
+                        val headers = data.getString("header") ?: "{}"
+                        check(body.length + headers.length <= 16_384) { "农场好友请求过长" }
+                        val json = JSONObject().apply {
+                            put("appid", FarmAccountProtocol.APP_ID)
+                            put("url", operation.url)
+                            put("method", "POST")
+                            put("header", JSONObject(headers))
+                            put("body", body)
+                            put("dataType", "text")
+                            put("responseType", "text")
+                        }
+                        val type = loadOrThrow("com.tencent.qq.minibox.api.IHttpTransferSSOApi")
+                        val api = loadOrThrow("com.tencent.mobileqq.qroute.QRoute")
+                            .getMethod("api", Class::class.java).invoke(null, type)
+                        friendRequestAccount.set(request)
+                        try {
+                            type.getMethod("sendReq", JSONObject::class.java, callbackType).invoke(api, json, callback)
+                        } finally {
+                            friendRequestAccount.remove()
+                        }
+                    } catch (e: Exception) {
+                        requests.remove(request.id)
+                        if (completed.compareAndSet(false, true) && continuation.isActive) {
+                            continuation.resumeWithException(e)
+                        }
+                    }
+                }
+            }
+        }
 
     private fun callback(type: Class<*>, handle: (String, Array<out Any?>?) -> Unit): Any =
         Proxy.newProxyInstance(HookEnv.hostClassLoader, arrayOf(type)) { proxy, method, args ->

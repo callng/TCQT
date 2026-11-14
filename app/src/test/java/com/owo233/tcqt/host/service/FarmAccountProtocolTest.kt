@@ -68,12 +68,55 @@ class FarmAccountProtocolTest {
     }
 
     @Test
-    fun `only the two verified login commands can use another account`() {
+    fun `only verified login and friend transfer commands can use another account`() {
         assertTrue(FarmAccountProtocol.mayRoute("LightAppSvc.mini_program_auth.GetCode"))
         assertTrue(FarmAccountProtocol.mayRoute("OidbSvcTrpcTcp.0x94b9_33"))
         assertFalse(FarmAccountProtocol.mayRoute("MessageSvc.PbSendMsg"))
         assertFalse(FarmAccountProtocol.mayRoute("OidbSvcTrpcTcp.0x94b9_34"))
         assertFalse(FarmAccountProtocol.mayRoute("LightAppSvc.mini_program_auth.GetCode.extra"))
+        assertFalse(FarmAccountProtocol.mayRoute("LightAppSvc.mini_app_cloudstorage.ModifyFriendInteractiveStorage"))
+        assertFalse(FarmAccountProtocol.mayRoute("LightAppSvc.mini_app_cloudstorage.GetFriendCloudStorage.extra"))
+    }
+
+    @Test
+    fun `friend requests cannot reuse a login routing capability`() {
+        assertTrue(FarmAccountProtocol.mayRoute(FarmAccountProtocol.HTTP_TRANSFER_CMD))
+        for (operation in 1..2) {
+            assertFalse(FarmAccountProtocol.matchesRequest(operation, FarmAccountProtocol.HTTP_TRANSFER_CMD))
+        }
+        FarmFriendOperation.entries.forEach { operation ->
+            assertTrue(FarmAccountProtocol.matchesRequest(operation.id, FarmAccountProtocol.HTTP_TRANSFER_CMD))
+            assertFalse(FarmAccountProtocol.matchesRequest(operation.id, FarmAccountProtocol.FAST_LOGIN_CMD))
+        }
+        assertFalse(FarmAccountProtocol.matchesRequest(999, FarmAccountProtocol.HTTP_TRANSFER_CMD))
+        assertFalse(FarmAccountProtocol.mayRoute(FarmAccountProtocol.HTTP_TRANSFER_CMD + ".extra"))
+    }
+
+    @Test
+    fun `only exact farm friend read endpoints are accepted`() {
+        FarmFriendOperation.entries.forEach { operation ->
+            assertEquals(operation, FarmFriendOperation.fromRequest(FarmAccountProtocol.APP_ID, "POST", operation.url))
+        }
+        val url = "http://fakeapi.qq.com/get_friend_storage"
+        assertNull(FarmFriendOperation.fromRequest("other-app", "POST", url))
+        assertNull(FarmFriendOperation.fromRequest(FarmAccountProtocol.APP_ID, "GET", url))
+        listOf(
+            "$url?account=12345", "$url/extra", "https://fakeapi.qq.com/get_friend_storage",
+            "http://fakeapi.qq.com.evil/get_friend_storage", "http://fakeapi.qq.com/push_gray_message",
+            "http://fakeapi.qq.com/set_farm_status", "http://fakeapi.qq.com/set_auth_status",
+        ).forEach { assertNull(FarmFriendOperation.fromRequest(FarmAccountProtocol.APP_ID, "POST", it)) }
+    }
+
+    @Test
+    fun `friend requests cannot consume an imported or preflight login code`() {
+        val custom = FarmCustomCode("imported-code")
+        val preflight = FarmPreflightCode("12345", "preflight-code", 100)
+        FarmFriendOperation.entries.forEach { operation ->
+            assertNull(custom.take(operation.id))
+            assertNull(preflight.take("12345", operation.id, 101))
+        }
+        assertEquals("imported-code", custom.take(FarmAccountProtocol.REQUEST_FAST_LOGIN))
+        assertEquals("preflight-code", preflight.take("12345", FarmAccountProtocol.REQUEST_FAST_LOGIN, 102))
     }
 
     @Test
