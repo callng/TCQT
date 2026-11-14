@@ -33,7 +33,9 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
 `:webui:assembleWebUi` 检查 HTML/CSS/JS/SVG 总量不超过 64 KiB，并自动合并进双格式 APK。
 构建不需要 Node/npm；勿提交 `webui/build/`。`UiLayout.kt` / `UiDialog.kt` 仅供 Android 使用。
 日志导出应打开系统分享面板，附件使用 MediaStore `content://` 和临时读取授权，禁止共享 `file://`。
-`share-logs.sh` 在 root 下收集日志，`LogShare` 以 shell UID 调用 Android 分享；不依赖 APK 安装。
+`share-logs.sh` 在 root 下收集日志，独立的 `logshare.dex` 以 shell UID 调用 Android 分享；
+不依赖 APK 安装或 `main.apk` 成功加载。分享失败时保留 `/data/adb/tcqt/last-share-report.txt`，
+错误信息应包含保留路径。导出同时包含开机载荷激活结果和实际载荷哈希。
 
 ## 颜色、文字与形状
 

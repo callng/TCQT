@@ -31,6 +31,7 @@ tcqt_injector_id() {
 tcqt_publish_payload() {
   tcqt_valid_hash "$2" && [ "$(tcqt_hash "$1")" = "$2" ] || return 1
   cp "$1" "$DATAPATH/main.apk.tmp" || return 1
+  [ "$(tcqt_hash "$DATAPATH/main.apk.tmp")" = "$2" ] || return 1
   printf '%s' "$2" > "$DATAPATH/main.apk.sha256.tmp" || return 1
   chmod 0644 "$DATAPATH/main.apk.tmp" "$DATAPATH/main.apk.sha256.tmp" || return 1
   # SCM_RIGHTS checks the Zygote's permission to read the payload FD.

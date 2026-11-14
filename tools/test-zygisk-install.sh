@@ -7,6 +7,8 @@ SANDBOX=$(mktemp -d)
 trap 'rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/package/zygisk" "$SANDBOX/bin"
 cp -R "$ROOT/app/src/main/zygisk-template/." "$SANDBOX/package/"
+printf 'standalone diagnostic dex fixture' > "$SANDBOX/package/logshare.dex"
+sha256sum "$SANDBOX/package/logshare.dex" | cut -d ' ' -f1 > "$SANDBOX/package/logshare.dex.sha256"
 for script in "$SANDBOX/package/"*.sh; do
   sed -e "s|/data/adb|$SANDBOX/data/adb|g" \
       -e "s|/proc/sys/kernel/random/boot_id|$SANDBOX/boot_id|g" \
@@ -78,6 +80,8 @@ apply_at_boot() {
   sh "$live_dir/post-fs-data.sh"
   assert_published
   [ "$(cat "$case_dir/tcqt/boot-injector")" = "boot-two $NEW_ID" ]
+  grep -q TCQT_ACTIVATION_OK "$case_dir/tcqt/activation.log"
+  cmp "$SANDBOX/package/logshare.dex" "$live_dir/logshare.dex"
 }
 
 for mode in changed missing-record stale-boot replaced-inode legacy-record missing-id duplicate-id disabled removed pending-update; do (
@@ -156,7 +160,23 @@ for mode in corrupt wrong-injector other-install label-failure; do (
     label-failure) export TCQT_TEST_CHCON_FAIL=1 ;;
   esac
   if sh "$live_dir/post-fs-data.sh"; then echo "Unexpected activation: $mode"; exit 1; fi
+  grep -q TCQT_ACTIVATION_ERROR "$case_dir/tcqt/activation.log"
   [ "$(cat "$case_dir/tcqt/main.apk")" = 'old payload' ]
   [ ! -e "$case_dir/tcqt/boot-injector" ]
   echo "PASS: rejected $mode without replacing payload"
 ); done
+
+(
+  setup_case
+  . "$SANDBOX/package/payload.sh"
+  cp() {
+    command cp "$@"
+    if [ "$2" = "$DATAPATH/main.apk.tmp" ]; then printf 'short copy' > "$2"; fi
+  }
+  if tcqt_publish_payload "$ZIPFILE" "$APK_HASH_EXPECTED"; then
+    echo 'A damaged copy was published'; exit 1
+  fi
+  [ "$(cat "$DATAPATH/main.apk")" = 'old payload' ]
+  [ "$(cat "$DATAPATH/main.apk.sha256")" = "$(hash "$DATAPATH/main.apk")" ]
+  echo 'PASS: copied payload is verified before replacing the active package'
+)

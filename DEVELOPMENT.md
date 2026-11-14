@@ -63,6 +63,10 @@ python tools/test-action-processor.py
 
 Linux/WSL 原生 IPC 检查：`bash tools/test-native-host.sh`。原生脚本从项目读取已固定的 NDK 版本；可用 `-SdkPath` 显式指定 SDK。ART 内存脚本要求 arm64 设备。
 
+Zygisk 安装/分享脚本回归：`bash tools/test-zygisk-install.sh` 和 `bash tools/test-log-share.sh`。
+分享入口由 `:app:compileLogShareDex` 独立编译，在 `main.apk` 缺失或损坏时也能导出诊断。
+实际 Android 验收仍需检查 MediaStore 附件和系统分享面板；主机脚本测试不代替设备验证。
+
 测试报告在 `app/build/reports/tests/`、`libs/core/build/reports/tests/`、`libs/processor/build/reports/tests/`；lint 报告在 `app/build/reports/lint-results-debug.html`。两项带前序阶段条件的 app 测试当前跳过，不能将跳过算作通过。门禁工作流见 [.github/workflows/checks.yml](.github/workflows/checks.yml)。
 
 ## APK 与 ZIP 校验

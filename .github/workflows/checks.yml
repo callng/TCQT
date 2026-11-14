@@ -61,3 +61,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Compile and test native IPC
         run: bash tools/test-native-host.sh
+      - name: Test Zygisk installation and diagnostic sharing
+        run: |
+          bash tools/test-zygisk-install.sh
+          bash tools/test-log-share.sh

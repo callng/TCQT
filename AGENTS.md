@@ -151,9 +151,13 @@ Architecture:
   markers, but default-enabled). The UI uses native HTML/CSS/JS following Miuix styling, with a 64 KiB raw
   asset budget. `:webui:assembleWebUi` checks and stages the offline assets;
   no Node/npm, WASM runtime or bundled font is required for builds.
-  「导出并分享日志」 calls `share-logs.sh` and the APK's `LogShare` app_process
-  entry point as shell UID: publishes an attachment in MediaStore and opens
-  the Android chooser with a content URI/read grant; APK installation is not required.
+  「导出并分享日志」 calls `share-logs.sh` and a standalone `logshare.dex`
+  compiled from `LogShare.java`, independent of `main.apk` and app R8 output.
+  The helper runs as shell UID with an explicit VM classpath, publishes a
+  MediaStore attachment and opens the Android chooser with a content URI/read
+  grant; APK installation is not required. Failed sharing retains the report
+  at `/data/adb/tcqt/last-share-report.txt`. Boot payload activation stages are
+  recorded in `/data/adb/tcqt/activation.log` and included in exported reports.
 - `app/src/main/cpp/zygisk/plt/plt_hook.h/.cpp` — generic PLT/GOT hook engine with a
   declarative spec table in `zygisk/plt/default_plt_hooks.cpp`:
   new hooks are added by writing one same-signature

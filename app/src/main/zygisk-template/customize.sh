@@ -21,7 +21,7 @@ if [ "$ARCH" != "arm64" ]; then
 fi
 
 ui_print "- Extracting module files"
-unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'open-link.sh' 'payload.sh' 'post-fs-data.sh' -d "$MODPATH" >&2 ||
+unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'logshare.dex' 'logshare.dex.sha256' 'open-link.sh' 'payload.sh' 'post-fs-data.sh' -d "$MODPATH" >&2 ||
   abort "! Missing module scripts or metadata"
 
 mkdir -p "$MODPATH/zygisk"
@@ -57,6 +57,8 @@ set_perm "$MODPATH/payload.sh" 0 0 0644
 set_perm "$MODPATH/payload.sha256" 0 0 0644
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/share-logs.sh" 0 0 0755
+set_perm "$MODPATH/logshare.dex" 0 0 0644
+set_perm "$MODPATH/logshare.dex.sha256" 0 0 0644
 set_perm "$MODPATH/open-link.sh" 0 0 0755
 
 ui_print "- Fixing SELinux contexts"

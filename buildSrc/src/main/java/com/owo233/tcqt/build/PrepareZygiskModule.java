@@ -3,6 +3,9 @@ package com.owo233.tcqt.build;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
@@ -11,7 +14,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.*;
 import org.gradle.process.ExecOperations;
 
-/** Variant-local native output and offline assets are the only packaging inputs. */
+/** Stages the native injector, standalone diagnostic helper and offline assets. */
 public abstract class PrepareZygiskModule extends DefaultTask {
     @InputDirectory @PathSensitive(PathSensitivity.RELATIVE)
     public abstract DirectoryProperty getTemplateDirectory();
@@ -21,6 +24,8 @@ public abstract class PrepareZygiskModule extends DefaultTask {
     public abstract RegularFileProperty getNativeLibrary();
     @InputFile @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getStripExecutable();
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    public abstract RegularFileProperty getLogShareDex();
     @Input public abstract Property<String> getVersionName();
     @Input public abstract Property<Integer> getVersionCode();
     @OutputDirectory public abstract DirectoryProperty getOutputDirectory();
@@ -39,6 +44,14 @@ public abstract class PrepareZygiskModule extends DefaultTask {
             spec.from(getWebUiDirectory());
             spec.into(new File(output, "webroot"));
         });
+        byte[] helper = Files.readAllBytes(getLogShareDex().get().getAsFile().toPath());
+        Files.write(output.toPath().resolve("logshare.dex"), helper);
+        try {
+            Files.writeString(output.toPath().resolve("logshare.dex.sha256"),
+                HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(helper)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
         try (var paths = Files.walk(output.toPath())) {
             for (Path path : paths.filter(Files::isRegularFile).toList()) {
                 if (path.toString().endsWith(".sh")) {
