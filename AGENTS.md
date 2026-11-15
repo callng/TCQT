@@ -1,5 +1,19 @@
 # AGENTS.md
 
+## Coding Principles
+
+1. **Avoid over-defense**: For edge/concurrency issues that almost never happen, explain the probability and get user confirmation before adding handling; strictly forbid bloating the code on your own for the sake of "theoretically more robust."
+
+2. **Validate once at the entry point**: External data is validated only once at the boundary; internally it flows through the type system, and repeated layer-by-layer checks are forbidden.
+
+3. **Refuse premature abstraction**: Logic used only once stays inline where it is; do not casually split out meaningless helpers in advance.
+
+4. **Control complexity**: Do not use try-catch unless necessary; if a single function can handle it clearly, don't force a split.
+
+5. **Restrain auxiliary labels and explanations**: Avoid adding unnecessary auxiliary labels, hint text, descriptive copy, and decorative explanations; convey information through layout, visual hierarchy, and the components themselves rather than repeating in words what the interface already makes clear.
+
+6. **Leave state changes to the human, keep mechanical operations to the AI**: When it comes to modifying app settings or toggling UI states to assist testing (e.g., temporarily turning a configuration on/off), do not simulate the operations step by step via ADB—directly prompt the user to do it manually, and wait for user confirmation before continuing. However, purely mechanical operations (e.g., installing an APK via ADB, restarting the host app, taking screenshots, pulling logs) are your responsibility—you must execute them directly and not offload them to the user.
+
 ## Project Overview
 
 TCQT provides message anti-recall and other features for QQ/TIM Android (NT architecture), through LSPosed or Zygisk. APK/LSPosed minSdk is Android 8.1; Zygisk supports only Android 13–17 (API 33–37) and rejects other versions. Android 17 arm64 has device regression coverage, while ART compatibility still depends on the runtime/OEM. See [ARCHITECTURE.md](ARCHITECTURE.md), [DEVELOPMENT.md](DEVELOPMENT.md), and [ART compatibility](docs/zygisk-art-compatibility.md).

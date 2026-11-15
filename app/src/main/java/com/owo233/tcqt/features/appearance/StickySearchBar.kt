@@ -38,6 +38,8 @@ object StickySearchBar : Feature(
 
     override fun install() {
         val registerHeader = requireMethod("stickySearchRegisterHeader")
+        val setColorType = "com.tencent.mobileqq.widget.search.QUISearchBar".toClass
+            .getDeclaredMethod("setColorType", Int::class.javaPrimitiveType)
         val createContacts = "com.tencent.mobileqq.friend.contact.ContactsFragment".clazz
             ?.getDeclaredMethod("onCreateView",
                 LayoutInflater::class.java,
@@ -45,12 +47,20 @@ object StickySearchBar : Feature(
             ) ?: "com.tencent.mobileqq.activity.contacts.base.Contacts".toClass
             .getDeclaredMethod("notifyCreateView", LayoutInflater::class.java)
 
+        // QQ normally chooses this palette from the first conversation's isTop flag.
+        // A pinned message search uses the native header palette regardless of that flag;
+        // QQ's resource provider still supplies night and custom-theme drawables.
+        setColorType.hookBefore { param ->
+            if (PinnedSearchBar.isPinnedMessage(param.thisObject as View)) param.args[0] = 1
+        }
+
         // -1 is the search header, not a conversation. Keep the adapter's header
         // entry/position, but give it an empty slot so recycling cannot steal the bar.
         registerHeader.hookBefore { param ->
             val search = param.args[1] as? View ?: return@hookBefore
             if (param.args[0] == -1 && PinnedSearchBar.isNativeSearch(search)) {
                 param.args[1] = PinnedSearchBar.messageSlot(search)
+                setColorType.invoke(search, 1)
             }
         }
 
