@@ -41,12 +41,16 @@ internal data class CustomChatGroup(
 internal data class ChatGroupConfig(
     val accounts: Map<String, List<CustomChatGroup>> = emptyMap(),
     val orders: Map<String, List<String>> = emptyMap(),
+    val selections: Map<String, String> = emptyMap(),
 ) {
     fun withGroups(account: String, groups: List<CustomChatGroup>) =
         copy(accounts = accounts + (account to groups))
 
     fun withOrder(account: String, order: List<String>) =
         copy(orders = orders + (account to order))
+
+    fun withSelection(account: String, selected: String) =
+        copy(selections = selections + (account to selected))
 
     fun encode(): String = json.encodeToString(this)
 

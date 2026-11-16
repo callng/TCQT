@@ -2,12 +2,12 @@ package com.owo233.tcqt.features.appearance.chatgroups
 
 import com.tencent.qqnt.kernel.nativeinterface.RecentContactInfo
 
-/** QQ 9.3.85: classes are resolved by DexKit; fields are resolved by their unique types. */
-internal class RecentChatAccess(private val itemClass: Class<*>, private val foldClass: Class<*>) {
+/** Native contact fields are shared by QQ 9.3.x; older lists have no fold wrapper. */
+internal class RecentChatAccess(private val itemClass: Class<*>, foldClass: Class<*>?) {
     private val contact = itemClass.declaredFields.single { it.type == RecentContactInfo::class.java }
         .apply { isAccessible = true }
-    private val folded = foldClass.declaredFields.single { it.type == List::class.java }
-        .apply { isAccessible = true }
+    private val folded = foldClass?.declaredFields?.single { it.type == List::class.java }
+        ?.apply { isAccessible = true }
 
     fun isConversation(item: Any): Boolean = itemClass.isInstance(item)
 
@@ -36,7 +36,7 @@ internal class RecentChatAccess(private val itemClass: Class<*>, private val fol
 
     @Suppress("UNCHECKED_CAST")
     fun foldedItems(item: Any): List<Any>? =
-        if (foldClass.isInstance(item)) folded.get(item) as List<Any> else null
+        if (folded != null && folded.declaringClass.isInstance(item)) folded.get(item) as List<Any> else null
 
     fun catalog(items: List<Any>): List<ChatSummary> = buildMap {
         fun append(rows: List<Any>) {

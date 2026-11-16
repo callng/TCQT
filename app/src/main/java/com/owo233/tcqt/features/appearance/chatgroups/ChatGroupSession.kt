@@ -34,12 +34,15 @@ internal class ChatGroupSession(
         groups = config.accounts[current].orEmpty()
         order = config.orders[current].orEmpty()
         source = emptyList()
-        selected = ChatCategory.ALL.id
+        selected = config.selections[current]?.takeIf { id -> tabs.any { it.id == id } }
+            ?: ChatCategory.ALL.id
         empty = false
     }
 
     fun select(id: String) {
         if (id == selected) return
+        val config = ChatGroupConfig.decode(readConfig())
+        writeConfig(config.withSelection(account, id).encode())
         selected = id
         refresh()
     }
@@ -49,11 +52,12 @@ internal class ChatGroupSession(
             "QQ 账号已切换，请重新打开分组管理"
         }
         val config = ChatGroupConfig.decode(readConfig())
-        writeConfig(config.withGroups(account, updated).encode())
+        val selection = selected.takeIf { id ->
+            categories.any { it.id == id } || updated.any { it.id == id }
+        } ?: ChatCategory.ALL.id
+        writeConfig(config.withGroups(account, updated).withSelection(account, selection).encode())
         groups = updated
-        if (categories.none { it.id == selected } && groups.none { it.id == selected }) {
-            selected = ChatCategory.ALL.id
-        }
+        selected = selection
         refresh()
     }
 

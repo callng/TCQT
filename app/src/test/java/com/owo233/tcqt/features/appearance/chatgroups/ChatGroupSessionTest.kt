@@ -19,6 +19,10 @@ class ChatGroupSessionTest {
         assertEquals("all", session.selected)
         assertEquals(3, refreshes)
         assertEquals(emptyList(), ChatGroupConfig.decode(stored).accounts["a"])
+        assertEquals("all", ChatGroupConfig.decode(stored).selections["a"])
+        val reopened = ChatGroupSession(ChatCategory.entries, { stored }, { stored = it }, { "a" }) {}
+        reopened.syncAccount()
+        assertEquals("all", reopened.selected)
     }
 
     @Test
@@ -61,6 +65,7 @@ class ChatGroupSessionTest {
         reopened.syncAccount()
         assertEquals(order, reopened.tabs.map { it.id })
         assertEquals(listOf(custom), reopened.groups)
+        assertEquals("friend", reopened.selected)
     }
 
     @Test
@@ -82,5 +87,67 @@ class ChatGroupSessionTest {
         assertEquals(categories.map { it.id }, session.tabs.map { it.id })
         session.saveOrder(listOf("group", "unread", "all"), "b")
         assertEquals(fullOrder, ChatGroupConfig.decode(stored).orders["a"])
+    }
+
+    @Test
+    fun reopeningRestoresEachBuiltinBeforeTheFirstMessageListIsFiltered() {
+        var stored = ""
+        val chats = listOf(
+            ChatSummary("1:10", "好友", 1, false),
+            ChatSummary("2:20", "群聊", 2, true),
+        )
+        for (category in ChatCategory.entries) {
+            val session = ChatGroupSession(ChatCategory.entries, { stored }, { stored = it }, { "a" }) {}
+            session.syncAccount()
+            session.select(category.id)
+            val reopened = ChatGroupSession(ChatCategory.entries, { stored }, { stored = it }, { "a" }) {}
+            reopened.syncAccount()
+            assertEquals(category.id, reopened.selected)
+            if (category == ChatCategory.FRIEND) {
+                assertEquals(listOf(chats.first()), projectChatItems(chats, reopened.selected,
+                    reopened.groups, { it }, { null }))
+            }
+        }
+    }
+
+    @Test
+    fun customSelectionSurvivesRenameAndAccountsRestoreTheirOwnSelection() {
+        var account = "a"
+        var stored = ""
+        val session = ChatGroupSession(ChatCategory.entries, { stored }, { stored = it }, { account }) {}
+        session.syncAccount()
+        val custom = CustomChatGroup("custom:one", "工作")
+        session.save(listOf(custom), "a")
+        session.select(custom.id)
+        session.save(listOf(custom.copy(name = "同事")), "a")
+        account = "b"
+        session.syncAccount()
+        assertEquals("all", session.selected)
+        session.select("unread")
+        account = "a"
+        session.syncAccount()
+        assertEquals(custom.id, session.selected)
+        assertEquals("同事", session.groups.single().name)
+        val reopened = ChatGroupSession(ChatCategory.entries, { stored }, { stored = it }, { account }) {}
+        reopened.syncAccount()
+        assertEquals(custom.id, reopened.selected)
+        account = "b"
+        reopened.syncAccount()
+        assertEquals("unread", reopened.selected)
+    }
+
+    @Test
+    fun oldConfigAndMissingOrHiddenSelectionsOpenAll() {
+        val cases = listOf(
+            """{"accounts":{},"orders":{}}""",
+            ChatGroupConfig(selections = mapOf("a" to "custom:deleted")).encode(),
+            ChatGroupConfig(selections = mapOf("a" to "friend")).encode(),
+        )
+        for (stored in cases) {
+            val session = ChatGroupSession(listOf(ChatCategory.ALL, ChatCategory.GROUP),
+                { stored }, {}, { "a" }) {}
+            session.syncAccount()
+            assertEquals("all", session.selected)
+        }
     }
 }

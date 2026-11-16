@@ -10,6 +10,7 @@ import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.api.Requires
 import com.owo233.tcqt.core.action.ActionPriority
 import com.owo233.tcqt.core.dexkit.DexKitTask
+import com.owo233.tcqt.core.env.load
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.hookReplace
@@ -53,8 +54,9 @@ object ChatGroups : Feature(
             }
         },
         "chatGroupsMergeList" to FindMethod().apply {
+            searchPackages("com.tencent.qqnt.chats.core.adapter")
             matcher {
-                declaredClass = "com.tencent.qqnt.chats.core.adapter.ChatsListAdapter"
+                declaredClass { usingEqStrings("ChatsListAdapter") }
                 paramTypes("java.util.List")
                 returnType = "java.util.List"
             }
@@ -67,15 +69,8 @@ object ChatGroups : Feature(
             }
         },
         "chatGroupsRecentItem" to FindClass().apply {
-            searchPackages("com.tencent.qqnt.chats.core.adapter.itemdata")
+            // 9.3.10 / 9.3.15 also obfuscate the itemdata package.
             matcher { usingEqStrings("RecentContactChatItem{ uid=") }
-        },
-        "chatGroupsFoldItem" to FindClass().apply {
-            searchPackages("com.tencent.qqnt.chats.core.adapter.itemdata")
-            matcher {
-                superClass("java.lang.Object")
-                usingEqStrings("foldedItems")
-            }
         },
     )
 
@@ -83,9 +78,12 @@ object ChatGroups : Feature(
         val register = requireMethod("stickySearchRegisterHeader")
         val merge = requireMethod("chatGroupsMergeList")
         val updateHeader = requireMethod("chatGroupsUpdateHeader")
-        val adapterClass = "com.tencent.qqnt.chats.core.adapter.ChatsListAdapter".toClass
-        val submit = adapterClass.getDeclaredMethod("submitList", List::class.java)
-        val access = RecentChatAccess(requireClass("chatGroupsRecentItem"), requireClass("chatGroupsFoldItem"))
+        val submit = merge.declaringClass.getDeclaredMethod("submitList", List::class.java)
+        // Older QQ has no fold items. The named binding exists only with that host
+        // structure; its captured field gives the actual (obfuscated) fold base class.
+        val foldClass = load($$"com.tencent.qqnt.chats.core.adapter.holder.ChatsFoldItemHolder$bind$1")
+            ?.getDeclaredField($$"$foldItem")?.type
+        val access = RecentChatAccess(requireClass("chatGroupsRecentItem"), foldClass)
         val categories = listOf(ChatCategory.ALL) + ChatCategory.entries.drop(1)
             .filterIndexed { index, _ -> visibleCategories and (1 shl index) != 0 }
         val sessions = WeakHashMap<Any, ChatGroupSession>()
