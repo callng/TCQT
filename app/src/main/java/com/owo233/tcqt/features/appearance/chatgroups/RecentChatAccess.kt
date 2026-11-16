@@ -64,39 +64,62 @@ internal class RecentChatAccess(private val itemClass: Class<*>, foldClass: Clas
 
     fun catalog(items: List<Any>): List<ChatSummary> = contacts(items).map { describe(it) }
 
+    fun readTargets(
+        items: List<Any>, id: String, groups: List<CustomChatGroup>,
+        troopHelperContacts: List<RecentContactInfo>? = null,
+    ): List<RecentContactInfo> = contacts(items).filter {
+        val chat = describe(it)
+        chat.unread && matchesChatGroup(id, chat, groups)
+    }.flatMap { info ->
+        if (info.chatType == 7 && troopHelperContacts != null) {
+            troopHelperContacts.filter { it.chatType == 2 && describe(it).unread }
+        } else listOf(info)
+    }.distinctBy { "${it.chatType}:${it.contactId}" }
+
     fun markRead(items: List<Any>, id: String, groups: List<CustomChatGroup>, onFinished: (String?) -> Unit) {
-        val targets = contacts(items).filter {
-            val chat = describe(it)
-            chat.unread && matchesChatGroup(id, chat, groups)
-        }
+        val targets = readTargets(items, id, groups)
         if (targets.isEmpty()) return
         val service = QQInterfaces.msgService
         val main = Handler(Looper.getMainLooper())
-        var remaining = targets.size
-        var firstError: String? = null
-        for (info in targets) {
-            val callback = IOperateCallback { code, message ->
-                main.post {
-                    if (code != 0) {
-                        Log.e("ChatGroups mark read failed: type=${info.chatType}, code=$code, message=$message")
-                        firstError = "部分会话标记已读失败（$code）"
-                    }
-                    remaining--
-                    if (remaining == 0) onFinished(firstError)
-                }
+        fun mark(targets: List<RecentContactInfo>) {
+            if (targets.isEmpty()) {
+                onFinished(null)
+                return
             }
-            if (info.chatType == 16 || info.chatType == 60 || info.chatType == 62) {
-                // QQ's GuildRedDotDragUseCase clears the guild through this adapter,
-                // including the guild-message folder (60), rather than setMsgRead.
-                GuildMsgApiImpl().setGProGuildMsgRead(info.peerUid, info.chatType) { code, message ->
-                    callback.onResult(code, message)
+            var remaining = targets.size
+            var firstError: String? = null
+            for (info in targets) {
+                val callback = IOperateCallback { code, message ->
+                    main.post {
+                        if (code != 0) {
+                            Log.e("ChatGroups mark read failed: type=${info.chatType}, code=$code, message=$message")
+                            firstError = "部分会话标记已读失败（$code）"
+                        }
+                        remaining--
+                        if (remaining == 0) onFinished(firstError)
+                    }
                 }
-            } else {
-                when (val target = MapleContact.new(QQInterfaces.maple, info.chatType, info.peerUid)) {
-                    is MapleContact.Contact -> service.setMsgRead(target.inner, callback)
-                    is MapleContact.PublicContact -> service.setMsgRead(target.inner, callback)
+                if (info.chatType == 16 || info.chatType == 60 || info.chatType == 62) {
+                    // QQ's GuildRedDotDragUseCase clears the guild through this adapter,
+                    // including the guild-message folder (60), rather than setMsgRead.
+                    GuildMsgApiImpl().setGProGuildMsgRead(info.peerUid, info.chatType) { code, message ->
+                        callback.onResult(code, message)
+                    }
+                } else {
+                    when (val target = MapleContact.new(QQInterfaces.maple, info.chatType, info.peerUid)) {
+                        is MapleContact.Contact -> service.setMsgRead(target.inner, callback)
+                        is MapleContact.PublicContact -> service.setMsgRead(target.inner, callback)
+                    }
                 }
             }
         }
+        if (targets.any { it.chatType == 7 }) {
+            loadTroopHelperContacts { code, message, contacts ->
+                if (code != 0) {
+                    Log.e("ChatGroups group assistant load failed: code=$code, message=$message")
+                    onFinished("群助手会话读取失败（$code）")
+                } else mark(readTargets(items, id, groups, contacts))
+            }
+        } else mark(targets)
     }
 }

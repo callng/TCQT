@@ -36,4 +36,39 @@ class RecentChatAccessTest {
         chat.contact.unreadFlag = 0
         assertEquals(false, access.describe(chat)?.unread)
     }
+
+    @Test
+    fun unreadFolderExpandsGroupAssistantAndDeduplicatesItsGroups() {
+        val helper = recent(7, 7, 1)
+        val group = recent(20, 2, 100)
+        val flagged = recent(21, 2, 0).apply { contact.unreadFlag = 1 }
+        val targets = access.readTargets(listOf(helper, group, recent(10, 1, 2)), "unread", emptyList(),
+            listOf(group.contact, flagged.contact, recent(22, 2, 0).contact))
+        assertEquals(listOf(20L, 21L, 10L), targets.map { it.contactId })
+        assertEquals(listOf(2, 2, 1), targets.map { it.chatType })
+    }
+
+    @Test
+    fun customFolderExpandsOnlyWhenItContainsGroupAssistant() {
+        val items = listOf(recent(7, 7, 1), recent(10, 1, 1), recent(30, 2, 1))
+        val helperGroups = listOf(recent(20, 2, 100).contact)
+        val folders = listOf(
+            CustomChatGroup("custom:helper", "收集", mapOf("7:7" to "群助手", "1:10" to "好友")),
+            CustomChatGroup("custom:friend", "好友", mapOf("1:10" to "好友")),
+        )
+        assertEquals(listOf(20L, 10L), access.readTargets(items, "custom:helper", folders, helperGroups)
+            .map { it.contactId })
+        assertEquals(listOf(10L), access.readTargets(items, "custom:friend", folders, helperGroups)
+            .map { it.contactId })
+    }
+
+    @Test
+    fun emptyOrReadGroupAssistantNeverBecomesAnOrdinaryReadTarget() {
+        val helper = recent(7, 7, 1)
+        assertEquals(listOf(7), access.readTargets(listOf(helper), "all", emptyList()).map { it.chatType })
+        assertEquals(emptyList(), access.readTargets(listOf(helper), "all", emptyList(), emptyList()))
+        helper.contact.unreadCnt = 0
+        assertEquals(emptyList(), access.readTargets(listOf(helper), "all", emptyList(),
+            listOf(recent(20, 2, 100).contact)))
+    }
 }

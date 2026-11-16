@@ -50,6 +50,11 @@ public interface IQQNTWrapperSession {
         }
 
         @Override
+        public IKernelRecentContactService getRecentContactService() {
+            return null;
+        }
+
+        @Override
         public IKernelRichMediaService getRichMediaService() {
             return null;
         }
@@ -104,6 +109,8 @@ public interface IQQNTWrapperSession {
     IKernelGroupService getGroupService();
 
     IKernelMsgService getMsgService();
+
+    IKernelRecentContactService getRecentContactService();
 
     IKernelRichMediaService getRichMediaService();
 
