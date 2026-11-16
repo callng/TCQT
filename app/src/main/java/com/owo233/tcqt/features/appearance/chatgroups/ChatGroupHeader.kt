@@ -16,6 +16,7 @@ internal class ChatGroupHeader(
     private val bar: View,
 ) : LinearLayout(search.context) {
     val coveredRows = RectF()
+    val pinnedBarHeight: Int get() = bar.measuredHeight
     private val space = View(context)
     private var root: ViewGroup? = null
     private var scroller: ViewGroup? = null

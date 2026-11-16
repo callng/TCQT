@@ -103,6 +103,55 @@ object ChatGroups : Feature(
                 }
             }
 
+        val recycler = "androidx.recyclerview.widget.RecyclerView".toClass
+        val childPosition = recycler.getDeclaredMethod("getChildAdapterPosition", View::class.java)
+        val getAdapter = recycler.getDeclaredMethod("getAdapter")
+        val currentList = merge.declaringClass.getMethod("getCurrentList")
+        "androidx.recyclerview.widget.LinearSmoothScroller".toClass
+            .getDeclaredMethod("calculateDyToMakeVisible", View::class.java, Int::class.javaPrimitiveType)
+            .hookAfter { param ->
+                // QQ's next-unread locator uses SNAP_TO_START (-1), including after paging.
+                // Its native distance already accounts for the optional pinned search padding.
+                if (param.args[1] != -1) return@hookAfter
+                val target = param.args[0] as View
+                val scroll = target.parent as? View ?: return@hookAfter
+                val header = scroll.getTag(R.id.tcqt_tag_chat_group_header)
+                    as? ChatGroupHeader ?: return@hookAfter
+                val position = childPosition.invoke(scroll, target) as Int
+                val items = currentList.invoke(getAdapter.invoke(scroll)) as List<*>
+                val item = items.getOrNull(position) ?: return@hookAfter
+                // Keep the native header target when QQ cycles back to the top.
+                if (access.isConversation(item)) {
+                    param.result = (param.result as Int) + header.pinnedBarHeight
+                }
+            }
+
+        val layoutManager = $$"androidx.recyclerview.widget.RecyclerView$LayoutManager".toClass
+        val childAt = layoutManager.getDeclaredMethod("getChildAt", Int::class.javaPrimitiveType)
+        val childCount = layoutManager.getDeclaredMethod("getChildCount")
+        val decoratedBottom = layoutManager.getDeclaredMethod("getDecoratedBottom", View::class.java)
+        val layoutPosition = layoutManager.getDeclaredMethod("getPosition", View::class.java)
+        "androidx.recyclerview.widget.LinearLayoutManager".toClass
+            .getDeclaredMethod("findFirstVisibleItemPosition").hookAfter { param ->
+                if (param.result == -1) return@hookAfter
+                val first = childAt.invoke(param.thisObject, 0) as? View ?: return@hookAfter
+                val scroll = first.parent as? View ?: return@hookAfter
+                val header = scroll.getTag(R.id.tcqt_tag_chat_group_header)
+                    as? ChatGroupHeader ?: return@hookAfter
+                // The next-unread search starts after the first visible row. Exclude rows
+                // hidden by the strip, or consecutive taps keep finding the same unread.
+                for (index in 0 until childCount.invoke(param.thisObject) as Int) {
+                    val child = childAt.invoke(param.thisObject, index) as View
+                    val bottom = decoratedBottom.invoke(param.thisObject, child) as Int
+                    val margin = (child.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+                    if (bottom + margin > header.coveredRows.bottom) {
+                        param.result = layoutPosition.invoke(param.thisObject, child)
+                        return@hookAfter
+                    }
+                }
+                param.result = -1
+            }
+
         register.hookAfter { param ->
             if (param.args[0] != -1) return@hookAfter
             // An outer After hook can retain the original argument even when StickySearchBar
