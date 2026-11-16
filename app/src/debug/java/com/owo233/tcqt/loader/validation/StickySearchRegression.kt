@@ -2,14 +2,19 @@ package com.owo233.tcqt.loader.validation
 
 import android.content.Intent
 import android.graphics.Rect
+import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.ui.graphics.toArgb
 import com.owo233.tcqt.R
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.HostBridge
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.ActionErrorStore
+import com.owo233.tcqt.core.reflect.callMethod
+import com.tencent.mobileqq.utils.QQTheme
 import com.owo233.tcqt.features.appearance.StickySearchBar
+import com.owo233.tcqt.features.appearance.chatgroups.ChatGroupBarView
 import com.owo233.tcqt.features.appearance.stickysearch.PinnedSearchBar
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,6 +30,7 @@ internal object StickySearchRegression {
         val activity = requireNotNull(HostBridge.topActivity())
         val bars = JSONArray()
         val scrollers = JSONArray()
+        val folders = JSONArray()
         var visiblePinnedBars = 0
         val queue = ArrayDeque<View>()
         queue.add(activity.window.decorView)
@@ -32,6 +38,12 @@ internal object StickySearchRegression {
         while (queue.isNotEmpty()) {
             check(++inspected < 10_000) { "Unexpectedly large host view tree" }
             val view = queue.removeFirst()
+            if (view is ChatGroupBarView) {
+                folders.put(JSONObject().put("backgroundClass", view.background?.javaClass?.name)
+                    .put("surface", view.hostColors?.surface?.toArgb())
+                    .put("foreground", view.hostColors?.foreground?.toArgb())
+                    .put("height", view.height))
+            }
             if (PinnedSearchBar.isNativeSearch(view)) {
                 val location = IntArray(2).also(view::getLocationOnScreen)
                 val visible = Rect()
@@ -50,6 +62,8 @@ internal object StickySearchRegression {
                         .put("visibility", ancestor.visibility)
                         .put("x", position[0]).put("y", position[1])
                         .put("width", ancestor.width).put("height", ancestor.height)
+                        .put("backgroundClass", ancestor.background?.javaClass?.name)
+                        .put("backgroundColor", (ancestor.background as? ColorDrawable)?.color)
                         .put("layoutParams", ancestor.layoutParams?.javaClass?.name))
                     ancestor = ancestor.parent as? View
                 }
@@ -58,6 +72,14 @@ internal object StickySearchRegression {
                     .put("visible", isVisible)
                     .put("x", location[0]).put("y", location[1])
                     .put("width", view.width).put("height", view.height)
+                    .put("backgroundClass", view.background?.javaClass?.name)
+                    .put("backgroundColor", (view.background as? ColorDrawable)?.color)
+                    .put("navigationBackgroundColor", view.context.getColor(view.resources.getIdentifier(
+                        "qui_common_bg_nav_primary", "color", view.context.packageName)))
+                    .put("customTheme", QQTheme.isVasTheme())
+                    .put("inputBackgroundClass", (view.callMethod("getInputBg") as View).background?.javaClass?.name)
+                    .put("textColor", requireNotNull(view.callMethod("getCustomResource"))
+                        .callMethod("getTextColor", view))
                     .put("visibleHeight", visible.height())
                     .put("pinned", isPinned)
                     .put("parentClass", parent?.javaClass?.name)
@@ -69,6 +91,8 @@ internal object StickySearchRegression {
                     view.javaClass.name == "com.tencent.mobileqq.widget.LebaOverScrollRecyclerView")) {
                 val position = IntArray(2).also(view::getLocationOnScreen)
                 scrollers.put(JSONObject().put("class", view.javaClass.name)
+                    .put("backgroundClass", view.background?.javaClass?.name)
+                    .put("backgroundColor", (view.background as? ColorDrawable)?.color)
                     .put("top", view.top).put("translationY", view.translationY)
                     .put("y", position[1]).put("height", view.height)
                     .put("paddingTop", view.paddingTop)
@@ -91,6 +115,6 @@ internal object StickySearchRegression {
             .put("enabled", TCQTSetting.getBoolean(StickySearchBar.key))
             .put("available", StickySearchBar.onInit())
             .put("error", ActionErrorStore.readAll()[StickySearchBar.key]?.details)
-            .put("bars", bars).put("scrollers", scrollers)
+            .put("bars", bars).put("scrollers", scrollers).put("folders", folders)
     }
 }

@@ -19,8 +19,8 @@ internal class ChatGroupSession(
     var groups by mutableStateOf(emptyList<CustomChatGroup>())
         private set
     private var order by mutableStateOf(emptyList<String>())
-    val tabs: List<ChatGroupTab> get() = chatGroupTabs(categories, groups, order)
-    var empty by mutableStateOf(false)
+    var chats by mutableStateOf(emptyList<ChatSummary>())
+    val tabs: List<ChatGroupTab> get() = chatGroupTabs(categories, groups, order, chats)
     var source: List<Any> = emptyList()
     var header = WeakReference<View>(null)
     var originalHeader = WeakReference<View>(null)
@@ -34,9 +34,9 @@ internal class ChatGroupSession(
         groups = config.accounts[current].orEmpty()
         order = config.orders[current].orEmpty()
         source = emptyList()
+        chats = emptyList()
         selected = config.selections[current]?.takeIf { id -> tabs.any { it.id == id } }
             ?: ChatCategory.ALL.id
-        empty = false
     }
 
     fun select(id: String) {

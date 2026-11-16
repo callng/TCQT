@@ -33,7 +33,7 @@ import java.util.WeakHashMap
 object ChatGroups : Feature(
     key = "chat_groups",
     name = "聊天分组",
-    desc = "在消息页搜索框下按类型筛选会话，也可创建自定义分组。",
+    desc = "在消息页按文件夹筛选会话，支持自定义文件夹、拖动排序和批量标记已读。",
     requires = Requires(host = Requires.Host.QQOnly, ntOnly = true),
 ), DexKitTask {
 
@@ -95,7 +95,7 @@ object ChatGroups : Feature(
                 val canvas = chain.args[0] as Canvas
                 val saved = canvas.save()
                 try {
-                    // Hide scrolling rows behind the transparent strip; keep QQ's background.
+                    // Hide scrolling rows under the pinned folder strip.
                     canvas.clipOutRect(header.coveredRows)
                     chain.proceed()
                 } finally {
@@ -170,7 +170,7 @@ object ChatGroups : Feature(
             val existing = session.header.get()
             val container = if (session.originalHeader.get() === header && existing != null) existing else {
                 ChatGroupHeader(PinnedSearchBar.messagePlaceholder(header),
-                    createChatGroupBar(header.context, session, access)).also {
+                    createChatGroupBar(header.context, session, access), nativeSearch = header).also {
                     session.originalHeader = WeakReference(header)
                     session.header = WeakReference(it)
                 }
@@ -200,9 +200,9 @@ object ChatGroups : Feature(
             @Suppress("UNCHECKED_CAST")
             val rendered = param.result as List<Any>
             session.source = source
+            session.chats = access.catalog(rendered)
             val projected = projectChatItems(rendered, session.selected, session.groups,
                 access::describe, access::foldedItems)
-            session.empty = session.selected != ChatCategory.ALL.id && projected.none(access::isConversation)
             param.result = projected
         }
     }

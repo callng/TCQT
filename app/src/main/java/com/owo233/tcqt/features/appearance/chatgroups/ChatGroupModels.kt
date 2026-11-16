@@ -4,21 +4,24 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 internal enum class ChatCategory(val id: String, val title: String) {
-    ALL("all", "全部"), GROUP("group", "群聊"), FRIEND("friend", "好友"),
+    ALL("all", "所有"), GROUP("group", "群聊"), FRIEND("friend", "好友"),
     UNREAD("unread", "未读"), CHANNEL("channel", "频道"), OTHER("other", "其他"),
     TEMPORARY("temporary", "临时");
 }
 
-internal data class ChatGroupTab(val id: String, val title: String)
+internal data class ChatGroupTab(val id: String, val title: String, val unreadCount: Int = 0)
 
 internal fun chatGroupTabs(
     categories: List<ChatCategory>,
     groups: List<CustomChatGroup>,
     order: List<String>,
+    chats: List<ChatSummary> = emptyList(),
 ): List<ChatGroupTab> {
     val positions = order.withIndex().associate { it.value to it.index }
     val tabs = categories.map { ChatGroupTab(it.id, it.title) } + groups.map { ChatGroupTab(it.id, it.name) }
-    return tabs.sortedBy { positions[it.id] ?: Int.MAX_VALUE }
+    return tabs.sortedBy { positions[it.id] ?: Int.MAX_VALUE }.map { tab ->
+        tab.copy(unreadCount = chats.count { it.unread && matchesChatGroup(tab.id, it, groups) })
+    }
 }
 
 internal data class ChatSummary(

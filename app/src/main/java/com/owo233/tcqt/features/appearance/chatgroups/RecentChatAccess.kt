@@ -1,5 +1,12 @@
 package com.owo233.tcqt.features.appearance.chatgroups
 
+import android.os.Handler
+import android.os.Looper
+import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.host.QQInterfaces
+import com.owo233.tcqt.host.service.maple.MapleContact
+import com.tencent.qqnt.aio.adapter.api.impl.GuildMsgApiImpl
+import com.tencent.qqnt.kernel.nativeinterface.IOperateCallback
 import com.tencent.qqnt.kernel.nativeinterface.RecentContactInfo
 
 /** Native contact fields are shared by QQ 9.3.x; older lists have no fold wrapper. */
@@ -13,7 +20,10 @@ internal class RecentChatAccess(private val itemClass: Class<*>, foldClass: Clas
 
     fun describe(item: Any): ChatSummary? {
         if (!itemClass.isInstance(item)) return null
-        val info = contact.get(item) as RecentContactInfo
+        return describe(contact.get(item) as RecentContactInfo)
+    }
+
+    private fun describe(info: RecentContactInfo): ChatSummary {
         val guild = info.guildContactInfo
         val guildUnread = guild?.unreadCntInfo?.showUnreadCnt
         return ChatSummary(
@@ -38,14 +48,55 @@ internal class RecentChatAccess(private val itemClass: Class<*>, foldClass: Clas
     fun foldedItems(item: Any): List<Any>? =
         if (folded != null && folded.declaringClass.isInstance(item)) folded.get(item) as List<Any> else null
 
-    fun catalog(items: List<Any>): List<ChatSummary> = buildMap {
+    private fun contacts(items: List<Any>): List<RecentContactInfo> = buildMap {
         fun append(rows: List<Any>) {
             for (item in rows) {
                 val children = foldedItems(item)
                 if (children != null) append(children)
-                else describe(item)?.let { put(it.key, it) }
+                else if (itemClass.isInstance(item)) {
+                    val info = contact.get(item) as RecentContactInfo
+                    put("${info.chatType}:${info.contactId}", info)
+                }
             }
         }
         append(items)
     }.values.toList()
+
+    fun catalog(items: List<Any>): List<ChatSummary> = contacts(items).map { describe(it) }
+
+    fun markRead(items: List<Any>, id: String, groups: List<CustomChatGroup>, onFinished: (String?) -> Unit) {
+        val targets = contacts(items).filter {
+            val chat = describe(it)
+            chat.unread && matchesChatGroup(id, chat, groups)
+        }
+        if (targets.isEmpty()) return
+        val service = QQInterfaces.msgService
+        val main = Handler(Looper.getMainLooper())
+        var remaining = targets.size
+        var firstError: String? = null
+        for (info in targets) {
+            val callback = IOperateCallback { code, message ->
+                main.post {
+                    if (code != 0) {
+                        Log.e("ChatGroups mark read failed: type=${info.chatType}, code=$code, message=$message")
+                        firstError = "部分会话标记已读失败（$code）"
+                    }
+                    remaining--
+                    if (remaining == 0) onFinished(firstError)
+                }
+            }
+            if (info.chatType == 16 || info.chatType == 60 || info.chatType == 62) {
+                // QQ's GuildRedDotDragUseCase clears the guild through this adapter,
+                // including the guild-message folder (60), rather than setMsgRead.
+                GuildMsgApiImpl().setGProGuildMsgRead(info.peerUid, info.chatType) { code, message ->
+                    callback.onResult(code, message)
+                }
+            } else {
+                when (val target = MapleContact.new(QQInterfaces.maple, info.chatType, info.peerUid)) {
+                    is MapleContact.Contact -> service.setMsgRead(target.inner, callback)
+                    is MapleContact.PublicContact -> service.setMsgRead(target.inner, callback)
+                }
+            }
+        }
+    }
 }

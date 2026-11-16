@@ -33,6 +33,7 @@ class ChatGroupSessionTest {
         session.syncAccount()
         session.save(listOf(CustomChatGroup("custom:a", "工作")), "a")
         session.source = listOf("old host item")
+        session.chats = listOf(ChatSummary("2:20", "工作群", 2, true))
         session.select("custom:a")
         account = "b"
         assertFailsWith<IllegalStateException> { session.save(emptyList(), "a") }
@@ -40,6 +41,7 @@ class ChatGroupSessionTest {
         assertEquals("all", session.selected)
         assertTrue(session.groups.isEmpty())
         assertTrue(session.source.isEmpty())
+        assertTrue(session.chats.isEmpty())
         session.save(listOf(CustomChatGroup("custom:b", "学习")), "b")
         assertEquals(setOf("a", "b"), ChatGroupConfig.decode(stored).accounts.keys)
     }

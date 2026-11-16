@@ -18,6 +18,25 @@ class ChatGroupModelsTest {
         projectChatItems(rows, selected, groups, { it.chat }, { it.children })
 
     @Test
+    fun badgesCountUnreadConversationsInEachFolderAndFollowReadUpdates() {
+        val chats = listOf(friend.chat!!, group.chat!!, channel.chat!!)
+        val counts = chatGroupTabs(ChatCategory.entries, listOf(custom), emptyList(), chats)
+            .associate { it.id to it.unreadCount }
+        assertEquals(2, counts["all"])
+        assertEquals(1, counts["group"])
+        assertEquals(0, counts["friend"])
+        assertEquals(2, counts["unread"])
+        assertEquals(1, counts["channel"])
+        assertEquals(2, counts[custom.id])
+        val readGroup = chats.map { if (it.key == group.chat.key) it.copy(unread = false) else it }
+        val updated = chatGroupTabs(ChatCategory.entries, listOf(custom), emptyList(), readGroup)
+            .associate { it.id to it.unreadCount }
+        assertEquals(1, updated["all"])
+        assertEquals(0, updated["group"])
+        assertEquals(1, updated[custom.id])
+    }
+
+    @Test
     fun allPreservesOriginalListAndFoldObjects() {
         val original = listOf(header, folder, channel)
         assertSame(original, project(original, "all"))

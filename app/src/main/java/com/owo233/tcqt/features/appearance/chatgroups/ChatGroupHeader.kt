@@ -1,19 +1,26 @@
 package com.owo233.tcqt.features.appearance.chatgroups
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import androidx.compose.ui.graphics.Color
+import com.tencent.mobileqq.utils.QQTheme
 import com.owo233.tcqt.R
+import com.owo233.tcqt.core.reflect.callMethod
 
 /** A list placeholder reserves the bar's height; the actual bar stays above the scrolling rows. */
 internal class ChatGroupHeader(
     val search: View,
-    private val bar: View,
+    private val bar: ChatGroupBarView,
+    private val nativeSearch: View,
 ) : LinearLayout(search.context) {
     val coveredRows = RectF()
     val pinnedBarHeight: Int get() = bar.measuredHeight
@@ -21,6 +28,11 @@ internal class ChatGroupHeader(
     private var root: ViewGroup? = null
     private var scroller: ViewGroup? = null
     private var observer: ViewTreeObserver? = null
+    private val headerBackgroundId = nativeSearch.resources.getIdentifier(
+        "qui_common_bg_nav_primary", "color", nativeSearch.context.packageName,
+    )
+    private var searchBackground: Drawable? = null
+    private var themeApplied = false
     private val bounds = Rect()
     private val preDraw = ViewTreeObserver.OnPreDrawListener {
         updatePosition()
@@ -84,6 +96,33 @@ internal class ChatGroupHeader(
         val scroll = scroller ?: return
         val height = bar.measuredHeight
         if (height <= 0 || scroll.width <= 0) return
+        if (!themeApplied || searchBackground !== nativeSearch.background) {
+            if (QQTheme.isVasTheme()) {
+                // Leave QQ's skin image visible at its original list coordinates.
+                bar.background = null
+                val resource = requireNotNull(nativeSearch.callMethod("getCustomResource"))
+                val background = resource.callMethod("getInputBackground", nativeSearch) as Drawable
+                // This fresh skin drawable is independent of the host View's bounds.
+                background.setBounds(0, 0, nativeSearch.width, nativeSearch.height)
+                val pixel = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(pixel)
+                canvas.translate(-background.bounds.exactCenterX(), -background.bounds.exactCenterY())
+                background.draw(canvas)
+                val surface = Color(pixel.getPixel(0, 0))
+                pixel.recycle()
+                val fill = if (surface.alpha == 0f) {
+                    Color(nativeSearch.context.getColor(headerBackgroundId)).copy(alpha = 0.88f)
+                } else surface
+                bar.hostColors = ChatGroupHostColors(fill,
+                    Color(resource.callMethod("getTextColor", nativeSearch) as Int))
+            } else {
+                // Default day/night headers have a solid navigation background.
+                bar.setBackgroundColor(nativeSearch.context.getColor(headerBackgroundId))
+                bar.hostColors = null
+            }
+            searchBackground = nativeSearch.background
+            themeApplied = true
+        }
         if (space.layoutParams.height != height) {
             space.layoutParams = space.layoutParams.apply { this.height = height }
         }
