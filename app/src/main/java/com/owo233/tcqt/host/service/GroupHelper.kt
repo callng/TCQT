@@ -1,13 +1,12 @@
 package com.owo233.tcqt.host.service
 
-import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.loadOrThrow
+import com.owo233.tcqt.core.reflect.hostFunction
 import com.tencent.mobileqq.data.troop.TroopMemberNickInfo
 import com.tencent.mobileqq.qroute.QRoute
 import com.tencent.qqnt.troopmemberlist.ITroopMemberListRepoApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import java.lang.reflect.Proxy
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
@@ -28,18 +27,6 @@ internal object GroupHelper {
                 it.name == "fetchTroopMemberName" && it.parameterCount == 4
             }
             .apply { isAccessible = true }
-    }
-
-    private val function1Class by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        fetchNickMethod.parameterTypes[3]
-    }
-
-    private val kotlinUnit by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        HookEnv.hostClassLoader
-            .loadClass("kotlin.Unit")
-            .getDeclaredField("INSTANCE")
-            .apply { isAccessible = true }
-            .get(null)
     }
 
     private val repoInstance by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -70,19 +57,11 @@ internal object GroupHelper {
 
         val result = withTimeoutOrNull(5.seconds) {
             suspendCancellableCoroutine { cont ->
-
-                val callback = Proxy.newProxyInstance(
-                    HookEnv.hostClassLoader,
-                    arrayOf(function1Class)
-                ) { _, method, args ->
-                    if (method.name == "invoke" && args?.isNotEmpty() == true) {
-                        (args[0] as? TroopMemberNickInfo)
-                            ?.takeIf { cont.isActive }
-                            ?.also { cont.resume(it) }
-                    }
-                    kotlinUnit
+                val callback = hostFunction<TroopMemberNickInfo?>(
+                    fetchNickMethod.parameterTypes[3]
+                ) { info ->
+                    info?.takeIf { cont.isActive }?.also { cont.resume(it) }
                 }
-
                 runCatching {
                     fetchNickMethod.invoke(
                         repoInstance,
@@ -96,11 +75,9 @@ internal object GroupHelper {
                 }
             }
         }
-
         if (result != null) {
             nickCache[key] = NickCacheEntry(result)
         }
-
         return result
     }
 }

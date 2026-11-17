@@ -2,7 +2,10 @@ package com.owo233.tcqt.features.appearance.chatgroups
 
 import android.os.Handler
 import android.os.Looper
+import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.log.Log
+import com.owo233.tcqt.core.reflect.findMethod
+import com.owo233.tcqt.core.reflect.hostFunction
 import com.owo233.tcqt.host.QQInterfaces
 import com.owo233.tcqt.host.service.maple.MapleContact
 import com.tencent.qqnt.aio.adapter.api.impl.GuildMsgApiImpl
@@ -102,8 +105,18 @@ internal class RecentChatAccess(private val itemClass: Class<*>, foldClass: Clas
                 if (info.chatType == 16 || info.chatType == 60 || info.chatType == 62) {
                     // QQ's GuildRedDotDragUseCase clears the guild through this adapter,
                     // including the guild-message folder (60), rather than setMsgRead.
-                    GuildMsgApiImpl().setGProGuildMsgRead(info.peerUid, info.chatType) { code, message ->
-                        callback.onResult(code, message)
+                    GuildMsgApiImpl::class.java.findMethod {
+                        name = "setGProGuildMsgRead"
+                        paramTypes(string, int, "kotlin.jvm.functions.Function2".toClass)
+                    }.also { method ->
+                        method.invoke(
+                            GuildMsgApiImpl(),
+                            info.peerUid,
+                            info.chatType,
+                            hostFunction<Int, String>(method.parameterTypes[2]) { c, m ->
+                                callback.onResult(c, m)
+                            }
+                        )
                     }
                 } else {
                     when (val target = MapleContact.new(QQInterfaces.maple, info.chatType, info.peerUid)) {
