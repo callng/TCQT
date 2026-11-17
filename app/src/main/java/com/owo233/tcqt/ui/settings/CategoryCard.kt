@@ -1,7 +1,5 @@
 package com.owo233.tcqt.ui.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,20 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.owo233.tcqt.core.env.TCQTBuild
-import com.owo233.tcqt.core.env.Toasts
 import com.owo233.tcqt.ui.component.TCQTPanel
 import com.owo233.tcqt.ui.settings.model.CategoryUiState
 import top.yukonga.miuix.kmp.basic.Icon
@@ -45,22 +34,13 @@ internal fun CategoryCard(category: CategoryUiState, onClick: () -> Unit) {
     )
 }
 
-// ───── Compact Header ─────
 @Composable
-internal fun CompactHeaderCard(
-    hostName: String,
-    hostVersion: String,
-    moduleName: String,
-    moduleVersion: String,
-    isZygisk: Boolean,
+internal fun FeatureSummaryCard(
     enabledCount: Int,
     disabledCount: Int,
     errorCount: Int,
     onErrorClick: () -> Unit,
 ) {
-    var clickCount by remember { mutableIntStateOf(0) }
-    var lastClickTime by remember { mutableLongStateOf(0L) }
-
     TCQTPanel(
         cornerRadius = 16.dp,
         color = MiuixTheme.colorScheme.surfaceContainer,
@@ -70,49 +50,10 @@ internal fun CompactHeaderCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(
-                text = buildAnnotatedString {
-                    append(moduleName)
-                    if (isZygisk) {
-                        withStyle(
-                            SpanStyle(
-                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                                fontWeight = FontWeight.Normal,
-                            )
-                        ) {
-                            append(" · 经 Zygisk 注入")
-                        }
-                    }
-                },
-                style = MiuixTheme.textStyles.title4,
-                fontWeight = FontWeight.SemiBold,
-                color = MiuixTheme.colorScheme.onSurface,
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                HeaderVersionRow(label = "宿主", version = "$hostName $hostVersion")
-                HeaderVersionRow(
-                    label = "模块",
-                    version = moduleVersion,
-                    modifier = Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        val currentTime = System.currentTimeMillis()
-                        clickCount = if (currentTime - lastClickTime < 500) clickCount + 1 else 1
-                        lastClickTime = currentTime
-                        if (clickCount >= 5) {
-                            clickCount = 0
-                            Toasts.info("编译时间: ${TCQTBuild.BUILD_TIME}")
-                        }
-                    },
-                )
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
             ) {
                 HeaderFeatureStat(
                     label = "已启用",
@@ -144,32 +85,6 @@ internal fun CompactHeaderCard(
 }
 
 @Composable
-private fun HeaderVersionRow(
-    label: String,
-    version: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Text(
-            text = label,
-            style = MiuixTheme.textStyles.footnote1,
-            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-            softWrap = false,
-        )
-        Text(
-            text = version,
-            modifier = Modifier.weight(1f),
-            style = MiuixTheme.textStyles.footnote1,
-            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-        )
-    }
-}
-
-@Composable
 private fun HeaderFeatureStat(
     label: String,
     count: Int,
@@ -179,6 +94,7 @@ private fun HeaderFeatureStat(
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = count.toString(),
@@ -191,6 +107,7 @@ private fun HeaderFeatureStat(
             text = label,
             style = MiuixTheme.textStyles.footnote1,
             color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            textAlign = TextAlign.Center,
         )
     }
 }

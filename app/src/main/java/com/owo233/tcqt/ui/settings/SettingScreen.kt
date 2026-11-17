@@ -9,7 +9,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.owo233.tcqt.core.action.ActionUiType
@@ -31,7 +32,6 @@ import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.PlatformTools
 import com.owo233.tcqt.core.env.TCQTBuild
 import com.owo233.tcqt.core.hook.HookEngineManager
-import com.owo233.tcqt.core.hook.HookFramework
 import com.owo233.tcqt.ui.component.AdaptiveContent
 import com.owo233.tcqt.ui.component.PreferenceSegment
 import com.owo233.tcqt.ui.component.horizontalSafePadding
@@ -68,6 +68,7 @@ private data class SettingsPageContentState(
     val isSearchActive: Boolean,
     val isErrorOverviewActive: Boolean,
     val isAppearanceActive: Boolean,
+    val isAboutActive: Boolean,
     val detail: FeatureItemUiState?,
     val searchQuery: String,
     val categories: List<CategoryUiState>,
@@ -80,6 +81,7 @@ private data class SettingsPageContentState(
         get() = when {
             detail != null -> "detail:${detail.key}"
             isAppearanceActive -> "appearance"
+            isAboutActive -> "about"
             isSearchActive -> "search"
             isErrorOverviewActive -> "errors"
             else -> "category:$path"
@@ -98,7 +100,10 @@ internal fun SettingScreen(
     onSearchRequested: () -> Unit,
     onSearchClosed: () -> Unit,
     onIssueClick: () -> Unit,
-    onIssueLongClick: () -> Unit,
+    onGroupClick: () -> Unit,
+    onSourceClick: () -> Unit,
+    onUpdatesClick: () -> Unit,
+    onUpdatesLongClick: () -> Unit,
     onSaveClick: () -> Unit,
     onBackupRestoreClick: () -> Unit,
     onSelectPngIcon: (String) -> Unit,
@@ -111,7 +116,8 @@ internal fun SettingScreen(
     val errorFeatures by viewModel.errorFeatures
     val detail by viewModel.detailFeature
     val isAppearanceActive = viewModel.isAppearanceActive
-    val isSearchActive = viewModel.isSearchActive && detail == null && !isAppearanceActive
+    val isAboutActive = viewModel.isAboutActive
+    val isSearchActive = viewModel.isSearchActive && detail == null && !isAppearanceActive && !isAboutActive
     val isErrorOverviewActive = viewModel.isErrorOverviewActive && detail == null
     val pageState = SettingsPageContentState(
         path = viewModel.currentPath,
@@ -119,6 +125,7 @@ internal fun SettingScreen(
         isSearchActive = isSearchActive,
         isErrorOverviewActive = isErrorOverviewActive,
         isAppearanceActive = isAppearanceActive,
+        isAboutActive = isAboutActive,
         detail = detail,
         searchQuery = viewModel.searchQuery,
         categories = categories,
@@ -135,14 +142,16 @@ internal fun SettingScreen(
     val title = when {
         detail != null -> detail!!.feature.label
         isAppearanceActive -> "主题设置"
+        isAboutActive -> "关于 ${TCQTBuild.APP_NAME}"
         isErrorOverviewActive -> "运行异常"
         viewModel.isAtRoot -> "设置"
         else -> viewModel.currentCategoryLabel.value
     }
 
+    val aboutGradient = if (isAboutActive) rememberAboutGradient() else null
     Scaffold(
-        modifier = Modifier.imePadding(),
-        containerColor = MiuixTheme.colorScheme.surface,
+        modifier = Modifier.then(aboutGradient?.background ?: Modifier).imePadding(),
+        containerColor = if (isAboutActive) Color.Transparent else MiuixTheme.colorScheme.surface,
         topBar = {
             TopBar(
                 title = title,
@@ -150,13 +159,14 @@ internal fun SettingScreen(
                 isSearchActive = isSearchActive,
                 searchQuery = viewModel.searchQuery,
                 onBack = onBack,
-                onSearchRequested = if (detail == null && !isAppearanceActive) onSearchRequested else null,
+                onSearchRequested = if (detail == null && !isAppearanceActive && !isAboutActive) onSearchRequested else null,
                 onSearchClosed = onSearchClosed,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 isErrorOverviewActive = isErrorOverviewActive,
                 isExportingBugReport = isExportingBugReport,
                 onExportBugReportClick = onExportBugReportClick,
                 scrollBehavior = scrollBehavior,
+                compact = isAboutActive,
             )
         },
         snackbarHost = {
@@ -188,19 +198,31 @@ internal fun SettingScreen(
                 Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
             } else Modifier
             AdaptiveContent { sidePadding ->
+                val aboutViewport = if (targetPage.isAboutActive) Modifier
+                    .padding(top = innerPadding.calculateTopPadding()).clipToBounds() else Modifier
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().horizontalSafePadding()
+                    modifier = Modifier.fillMaxSize().then(aboutViewport).horizontalSafePadding()
                         .then(listScrollModifier).overScrollVertical(),
                     state = listState,
                     contentPadding = PaddingValues(
                         start = sidePadding,
                         end = sidePadding,
-                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        top = if (targetPage.isAboutActive) 8.dp else innerPadding.calculateTopPadding() + 8.dp,
                         bottom = innerPadding.calculateBottomPadding() + 24.dp,
                     ),
                 ) {
                     when {
                         targetPage.detail != null -> featureDetail(targetPage.detail, viewModel, onFeatureClick, onSelectPngIcon)
+                        targetPage.isAboutActive -> aboutPage(
+                            hostVersion = "${HookEnv.appName} ${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
+                            frameworkName = if (HookEngineManager.isInitialized) HookEngineManager.engine.frameworkName else "未激活",
+                            titleModifier = aboutGradient?.title ?: Modifier,
+                            onSourceClick = onSourceClick,
+                            onUpdatesClick = onUpdatesClick,
+                            onUpdatesLongClick = onUpdatesLongClick,
+                            onIssueClick = onIssueClick,
+                            onGroupClick = onGroupClick,
+                        )
                         targetPage.isAppearanceActive -> {
                             settingsGroupTitle("外观")
                             item(key = "theme_mode") {
@@ -231,8 +253,6 @@ internal fun SettingScreen(
                             viewModel = viewModel,
                             onFeatureClick = onFeatureClick,
                             onBackupRestoreClick = onBackupRestoreClick,
-                            onIssueClick = onIssueClick,
-                            onIssueLongClick = onIssueLongClick,
                         )
                     }
                 }
@@ -241,7 +261,7 @@ internal fun SettingScreen(
     }
 }
 
-private fun LazyListScope.settingsGroupTitle(title: String) {
+internal fun LazyListScope.settingsGroupTitle(title: String) {
     item(key = "group:$title") {
         SmallTitle(text = title, insideMargin = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp))
     }
@@ -322,19 +342,11 @@ private fun LazyListScope.featureDirectory(
     viewModel: SettingViewModel,
     onFeatureClick: (String) -> Unit,
     onBackupRestoreClick: () -> Unit,
-    onIssueClick: () -> Unit,
-    onIssueLongClick: () -> Unit,
 ) {
     val isRoot = page.isAtRoot && !page.isSearchActive && !page.isErrorOverviewActive
     if (isRoot) {
-        item(key = "host") {
-            CompactHeaderCard(
-                hostName = HookEnv.appName,
-                hostVersion = "${HookEnv.versionName} (${HookEnv.versionCode}) ${PlatformTools.getHostChannel()}",
-                moduleName = TCQTBuild.APP_NAME,
-                moduleVersion = "${TCQTBuild.VER_NAME} ${if (TCQTBuild.DEBUG) "D" else "R"}",
-                isZygisk = HookEngineManager.isInitialized &&
-                    HookEngineManager.engine.frameworkName == HookFramework.ZYGISK,
+        item(key = "feature_summary") {
+            FeatureSummaryCard(
                 enabledCount = page.enabledCount,
                 disabledCount = page.disabledCount,
                 errorCount = page.errorCount,
@@ -394,15 +406,15 @@ private fun LazyListScope.featureDirectory(
         }
         item(key = "backup_entry") {
             PreferenceSegment(first = false, last = false) {
-                ArrowPreference(title = "备份与还原", insideMargin = SettingsRowPadding, onClick = onBackupRestoreClick)
+                ArrowPreference(title = "备份还原", insideMargin = SettingsRowPadding, onClick = onBackupRestoreClick)
             }
         }
-        item(key = "feedback_entry") {
+        item(key = "about_entry") {
             PreferenceSegment(first = false, last = true) {
                 ArrowPreference(
-                    title = "反馈与建议 · (试试长按)",
+                    title = "关于 ${TCQTBuild.APP_NAME}",
                     insideMargin = SettingsRowPadding,
-                    modifier = Modifier.combinedClickable(onClick = onIssueClick, onLongClick = onIssueLongClick),
+                    onClick = viewModel::openAbout,
                 )
             }
         }

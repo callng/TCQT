@@ -12,6 +12,7 @@ object BuildWrapper {
     const val APP_NAME = BuildConfig.APP_NAME
     const val OPEN_ISSUES = BuildConfig.OPEN_ISSUES
     const val OPEN_SOURCE = BuildConfig.OPEN_SOURCE
+    const val OPEN_UPDATES = BuildConfig.OPEN_UPDATES
     const val TG_CHANNEL = BuildConfig.TG_CHANNEL
     const val TG_GROUP = BuildConfig.TG_GROUP
 }
@@ -29,6 +30,7 @@ object TCQTBuild {
     const val TG_GROUP = BuildWrapper.TG_GROUP
     const val OPEN_ISSUES = BuildWrapper.OPEN_ISSUES
     const val OPEN_SOURCE = BuildWrapper.OPEN_SOURCE
+    const val OPEN_UPDATES = BuildWrapper.OPEN_UPDATES
 
     val COPYRIGHT_YEAR: String by lazy {
         val startYear = 2025

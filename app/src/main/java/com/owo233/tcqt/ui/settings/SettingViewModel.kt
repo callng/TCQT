@@ -67,6 +67,13 @@ class SettingViewModel : ViewModel() {
         isAppearanceActive = true
     }
 
+    var isAboutActive by mutableStateOf(false)
+        private set
+
+    fun openAbout() {
+        isAboutActive = true
+    }
+
     val detailFeature: State<FeatureItemUiState?> = derivedStateOf {
         detailFeatureKey?.let(featureByKey::get)?.let(::toFeatureItemUiState)
     }
@@ -190,6 +197,10 @@ class SettingViewModel : ViewModel() {
     }
 
     fun navigateUp(): Boolean {
+        if (isAboutActive) {
+            isAboutActive = false
+            return true
+        }
         if (isAppearanceActive) {
             isAppearanceActive = false
             return true
@@ -208,6 +219,7 @@ class SettingViewModel : ViewModel() {
     }
 
     fun navigateToRoot() {
+        isAboutActive = false
         isAppearanceActive = false
         detailFeatureKey = null
         isErrorOverviewActive = false

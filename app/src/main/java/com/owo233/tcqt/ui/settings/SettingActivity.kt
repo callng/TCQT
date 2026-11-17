@@ -172,44 +172,22 @@ class SettingActivity : BaseComposeActivity() {
         }
     }
 
-    private fun openUrlInDefaultBrowser(url: String, isSkip: Boolean) {
-        if (!openTelegramChannel(isSkip)) {
-            runCatching {
-                if (!url.contains(TCQTBuild.OPEN_SOURCE)) {
-                    Toasts.error("尝试打开不支持的链接!")
-                    Log.e("尝试打开不受支持的链接: $url !!!")
-                    return
-                }
-                val uri = url.toUri()
-                val intent =
-                    Intent(Intent.ACTION_VIEW, uri).apply {
-                        addCategory(Intent.CATEGORY_BROWSABLE)
-                    }
-                startActivity(intent)
-            }
-                .onFailure {
-                    Toasts.error("Failed to open url: $url")
-                    copyToClipboard(url, false)
-                    Toasts.info("Url地址已复制到剪贴板,请手动访问.")
-                }
+    private fun openUrlInDefaultBrowser(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            })
+        } catch (_: ActivityNotFoundException) {
+            copyToClipboard(url, false)
+            Toasts.info("未找到可打开链接的应用，地址已复制")
         }
     }
 
-    private fun openTelegramChannel(isSkip: Boolean): Boolean {
-        if (isSkip) return false
-
-        val tgIntent =
-            Intent(Intent.ACTION_VIEW).apply {
-                data = "tg://resolve?domain=${TCQTBuild.TG_GROUP}".toUri()
-            }
-
-        return try {
-            startActivity(tgIntent)
-            true
+    private fun openTelegram(domain: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, "tg://resolve?domain=$domain".toUri()))
         } catch (_: ActivityNotFoundException) {
-            false
-        } catch (_: Exception) {
-            false
+            openUrlInDefaultBrowser("https://t.me/$domain")
         }
     }
 
@@ -268,6 +246,7 @@ class SettingActivity : BaseComposeActivity() {
 
                 BackHandler {
                     when {
+                        viewModel.isAboutActive -> viewModel.navigateUp()
                         viewModel.isAppearanceActive -> viewModel.navigateUp()
                         viewModel.detailFeatureKey != null -> viewModel.navigateUp()
                         viewModel.isSearchActive -> viewModel.exitSearch()
@@ -497,8 +476,11 @@ class SettingActivity : BaseComposeActivity() {
                         onBack = { if (!viewModel.navigateUp()) finish() },
                         onSearchRequested = viewModel::enterSearch,
                         onSearchClosed = viewModel::exitSearch,
-                        onIssueClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, false) },
-                        onIssueLongClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES, true) },
+                        onIssueClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_ISSUES) },
+                        onGroupClick = { openTelegram(TCQTBuild.TG_GROUP) },
+                        onSourceClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_SOURCE) },
+                        onUpdatesClick = { openUrlInDefaultBrowser(TCQTBuild.OPEN_UPDATES) },
+                        onUpdatesLongClick = { openTelegram(TCQTBuild.TG_CHANNEL) },
                         onSaveClick = {
                             if (viewModel.isImportingPngIcon) {
                                 scope.launch { snackbarHostState.showSnackbar("请等待 PNG 图片读取完成") }
@@ -560,7 +542,7 @@ private fun BackupRestoreDialog(
     onClearSettings: () -> Unit,
 ) {
     WindowDialog(
-        title = "备份与还原",
+        title = "备份还原",
         show = true,
         onDismissRequest = onDismissRequest,
         insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 24.dp),

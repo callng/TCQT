@@ -235,7 +235,7 @@ internal fun ChatGroupTabs(
                         } else 0f
                         return title + counter + with(density) { 24.dp.toPx() }
                     }
-                    val fullTitles = tabs.map { if (it.id == "all") it.copy(title = "全部聊天") else it }
+                    val fullTitles = tabs.map { if (it.id == "all") it.copy(title = "所有") else it }
                     val fitted = if (fullTitles.sumOf { tabWidth(it).toDouble() } <= viewportPx) fullTitles else tabs
                     val natural = fitted.map(::tabWidth)
                     val extra = ((viewportPx - natural.sum()) / fitted.size).coerceAtLeast(0f)

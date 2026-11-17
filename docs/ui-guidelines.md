@@ -14,7 +14,7 @@ TCQT 是嵌入 QQ/TIM 的工具模块。优先保证设置容易寻找、状态�
 | 设置首页、分类、功能、搜索、异常列表 | `ui/settings/SettingScreen.kt`                            |
 | 通知渠道管理                         | `ui/settings/NotificationChannelManagerActivity.kt`       |
 | 清空、导出、重启等确认               | `ui/component/UiDialog.kt` 的 `TCQTAlertDialog`           |
-| 备份与还原                           | `ui/settings/SettingActivity.kt` 的 `BackupRestoreDialog` |
+| 备份还原                             | `ui/settings/SettingActivity.kt` 的 `BackupRestoreDialog` |
 | GUID 编辑、资料卡、敏感信息确认      | `features/advanced/*Dialog.kt`                            |
 | 消息 JSON 查看与搜索                 | `features/chat/MsgDetailDialog.kt`                        |
 | 群管理菜单与子表单                   | `features/menu/troop/`                                    |
@@ -78,6 +78,17 @@ KernelSU WebUI 显式启用 `enableEdgeToEdge(true)`，保持系统栏可见，�
 - 设置仍是“修改 → 保存 → 重启生效”。行内标识未保存，仅有草稿时显示底部主按钮和待保存数量。
   保存按钮最小高度 52dp、图标 20dp，文字/图标都用 onPrimary，不使用无尺寸约束的 FAB 内容。
   主题设置和备份入口放在首页的通用分组；分类页不重复反馈按钮和版权页脚。
+  首页顶部只展示已启用、未启用、功能总数与异常入口；三列等宽，数字与标签在列内居中，顶部对齐。
+  通用分组的「关于」进入独立页面。
+  关于页的项目名、模块版本和构建时间取 `TCQTBuild`，宿主版本、渠道和注入方式集中放在这里；
+  查看源代码打开项目仓库，获取更新点击打开 GitHub CI 工作流、长按打开 CI 频道，不显示额外说明。
+  反馈问题点击打开 Issues、长按打开 Telegram 群组；其下提供独立「TG 群组」入口。
+  关于页不显示图标，名称与版本居中，保留连续 Preference 分组。
+  背景采用 OS3 着色器与粉、紫、蓝循环配色；色块持续移动，离开前台暂停，
+  关于页中央项目名取其背后的同一渐变，使用参考项目的浅／深色混色参数填充字形，随背景同步变色；
+  系统关闭动画时保持静态，Android 13 以下回退为同色系静态渐变。
+  透明顶栏显示同一背景，列表视口在顶栏下裁剪，滚动内容不得穿过标题或系统栏。
+  不添加许可证列表、调试开关或重复的操作说明。
   分类和页面切换不得清除草稿。运行异常、初始化条件不满足和未保存要分别表达。
 
 ## 弹窗与宿主窗口
