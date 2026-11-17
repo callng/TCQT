@@ -20,6 +20,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.graphics.withClip
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withSave
 import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
@@ -98,6 +99,7 @@ internal class GlassDropletView(
     private var supported = true
 
     private var dark = false
+    private var baseColour = 0
 
     init {
         runCatching {
@@ -124,6 +126,7 @@ internal class GlassDropletView(
     /** 底栏重建动态 Tab 行后重新绑定。 */
     fun setTabRow(tabRow: ViewGroup?) {
         tabRowRef = WeakReference(tabRow)
+        accentCache = 0
         invalidate()
     }
 
@@ -131,9 +134,15 @@ internal class GlassDropletView(
      * 主题切换：与药丸共用同一份表面材质参数，保证拖拽淡入时两者颜色无缝衔接。
      */
     fun setTheme(night: Boolean) {
-        dark = night
-        pillSurfacePaint.color = if (night) 0x662C2C2E else 0x66F2F2F7
-        washPaint.color = if (night) 0x1AFFFFFF else 0x1A000000
+        setTheme(BottomBarTheme.default(night))
+    }
+
+    fun setTheme(theme: BottomBarTheme) {
+        dark = theme.dark
+        baseColour = theme.surface
+        accentCache = 0
+        pillSurfacePaint.color = ColorUtils.setAlphaComponent(theme.surface, 0x66)
+        washPaint.color = theme.outline
         invalidate()
     }
 
@@ -262,7 +271,7 @@ internal class GlassDropletView(
         backdropNode.setPosition(0, 0, nodeWidth, nodeHeight)
         val recording = backdropNode.beginRecording(nodeWidth, nodeHeight)
         try {
-            recording.drawColor(if (dark) 0xFF111111.toInt() else 0xFFF7F7F7.toInt())
+            recording.drawColor(baseColour)
             var drewAny = false
             for (page in backdrop.children) {
                 if (page.visibility != VISIBLE || !page.getGlobalVisibleRect(visibleRect) ||
@@ -424,34 +433,25 @@ internal class GlassDropletView(
     }
 
     /**
-     * 当前选中的强调色，从处于选中态的标签文字实时读取以跟随宿主主题；
-     * 近白/近黑的无效值被拒绝，避免选中尚未落定时缓存到未选中颜色。
+     * 读取宿主真实选中色；黑白选中色同样有效，主题切换后不沿用旧强调色。
      */
     private fun accentColour(tabRow: ViewGroup): Int {
         for (tab in tabRow.children) {
             if (!tab.isSelected) continue
             val colour = firstLabelColour(tab, 0)
-            if (colour != 0 && !isNeutral(colour)) {
+            if (colour != 0) {
                 accentCache = colour
                 return colour
             }
         }
-        return if (accentCache != 0) accentCache else 0xFF0099FF.toInt()
-    }
-
-    /** 近灰判定：RGB 最大与最小通道之差小于阈值即视为无色彩倾向。 */
-    private fun isNeutral(colour: Int): Boolean {
-        val r = (colour shr 16) and 0xFF
-        val g = (colour shr 8) and 0xFF
-        val b = colour and 0xFF
-        return max(r, max(g, b)) - min(r, min(g, b)) < 24
+        return if (accentCache != 0) accentCache else BottomBarTheme.default(dark).foreground
     }
 
     /** 深度优先查找第一个无背景、有内容的标签文字颜色。 */
     private fun firstLabelColour(view: View, depth: Int): Int {
         if (depth > 4 || view.visibility != VISIBLE) return 0
         if (view is TextView) {
-            return if (view.background == null && !view.text.isNullOrEmpty()) {
+            return if (NewViewTabContentLayout.isTitleCandidate(view)) {
                 view.currentTextColor or 0xFF000000.toInt()
             } else 0
         }

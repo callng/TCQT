@@ -14,6 +14,8 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.graphics.withClip
+import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.withTranslation
 import androidx.core.view.children
 import kotlin.math.max
 import kotlin.math.min
@@ -23,28 +25,32 @@ import kotlin.math.roundToInt
 internal class FloatingBarSurfaceView(
     context: Context,
     private var mode: FloatingBottomBarMode,
-    private var dark: Boolean,
+    dark: Boolean,
 ) : View(context) {
+    private var theme = BottomBarTheme.default(dark)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val border = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
 
     fun update(mode: FloatingBottomBarMode, dark: Boolean) {
-        if (this.mode == mode && this.dark == dark) return
+        update(mode, BottomBarTheme.default(dark))
+    }
+
+    fun update(mode: FloatingBottomBarMode, theme: BottomBarTheme) {
+        if (this.mode == mode && this.theme == theme) return
         this.mode = mode
-        this.dark = dark
+        this.theme = theme
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         val radius = height * 0.5f
-        val base = if (dark) Color.rgb(43, 43, 46) else Color.rgb(246, 246, 250)
         val alpha = if (mode == FloatingBottomBarMode.LIQUID_GLASS) 0xD0 else 0xF2
-        paint.color = (alpha shl 24) or (base and 0x00FFFFFF)
+        paint.color = ColorUtils.setAlphaComponent(theme.surface, alpha)
         canvas.drawRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, paint)
 
         border.strokeWidth = max(1f, resources.displayMetrics.density)
-        border.color = if (dark) 0x48FFFFFF else 0x55000000
+        border.color = theme.outline
         val borderRadius = max(0f, radius - border.strokeWidth * 0.5f)
         canvas.drawRoundRect(
             border.strokeWidth * 0.5f,
@@ -61,15 +67,20 @@ internal class FloatingBarSurfaceView(
 /** Selected-item renderer shared by NewView runtime and the preview. */
 internal class FloatingBarIndicatorView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var dark = false
+    private var theme = BottomBarTheme.default(false)
 
     fun setTheme(dark: Boolean) {
-        this.dark = dark
+        setTheme(BottomBarTheme.default(dark))
+    }
+
+    fun setTheme(theme: BottomBarTheme) {
+        if (this.theme == theme) return
+        this.theme = theme
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
-        paint.color = if (dark) 0xFF56565B.toInt() else 0xFFE0E4EA.toInt()
+        paint.color = theme.indicator
         canvas.drawRoundRect(0f, 0f, width.toFloat(), height.toFloat(), height * 0.5f, height * 0.5f, paint)
     }
 }
@@ -194,6 +205,8 @@ internal class FloatingBarHostLayout(
     private val shadowPath = Path()
     private var shadowClipWidth = -1
     private var shadowClipHeight = -1
+    private var shadowOffsetY = 0f
+    private var shadowAlpha = 255
     private var dragHandler: GlassBarHostLayout.DragHandler? = null
     private var downX = 0f
     private var downY = 0f
@@ -223,6 +236,14 @@ internal class FloatingBarHostLayout(
         if (isDarkTheme == dark) return
         isDarkTheme = dark
         applyShadowColour()
+        invalidate()
+    }
+
+    fun setShadowOffsetY(translationY: Float, alpha: Float) {
+        val newAlpha = (255 * alpha).roundToInt()
+        if (shadowOffsetY == translationY && shadowAlpha == newAlpha) return
+        shadowOffsetY = translationY
+        shadowAlpha = newAlpha
         invalidate()
     }
 
@@ -268,10 +289,11 @@ internal class FloatingBarHostLayout(
             shadowClipWidth = width
             shadowClipHeight = height
         }
-        canvas.save()
-        canvas.clipOutPath(shadowPath)
-        canvas.drawRoundRect(left, top, right, bottom, radius, radius, shadowPaint)
-        canvas.restore()
+        canvas.withTranslation(0f, shadowOffsetY) {
+            clipOutPath(shadowPath)
+            shadowPaint.alpha = shadowAlpha
+            drawRoundRect(left, top, right, bottom, radius, radius, shadowPaint)
+        }
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {

@@ -34,14 +34,20 @@ internal class TabViewSnapshot(tab: ViewGroup, originalAlpha: Float = tab.alpha)
 
     fun originalHeight(view: View): Int? = states.firstOrNull { it.view.get() === view }?.height
 
-    fun restore() {
+    fun restore(preserveNativeMotion: Boolean = false) {
         val tab = target.get() ?: return
         val originalParent = parent.get() ?: return
+        val liveTranslation = tab.translationY
+        val liveAlpha = tab.alpha
         if (tab.parent !== originalParent) {
             (tab.parent as? ViewGroup)?.removeView(tab)
             originalParent.addView(tab, originalIndex.coerceIn(0, originalParent.childCount), states.first().params)
         }
         states.forEach { it.restore() }
+        if (preserveNativeMotion) {
+            tab.translationY = liveTranslation
+            tab.alpha = liveAlpha
+        }
         ancestorClips.forEach { (ref, children, padding) ->
             ref.get()?.let { it.clipChildren = children; it.clipToPadding = padding }
         }

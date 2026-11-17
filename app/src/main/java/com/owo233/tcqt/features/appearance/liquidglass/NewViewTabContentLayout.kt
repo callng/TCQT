@@ -111,7 +111,8 @@ internal object NewViewTabContentLayout {
         view is android.widget.TextView && !view.text.isNullOrBlank() &&
             // A skin can attach a transparent drawable to the label. Its background
             // is not a reliable distinction from QQ's separate badge widget.
-            !view.javaClass.name.contains("Badge", ignoreCase = true)
+            !view.javaClass.name.contains("Badge", ignoreCase = true) &&
+            !view.javaClass.name.contains("RedTouch", ignoreCase = true)
 
     fun collectContentBounds(view: View, offset: Int, tabHeight: Int, out: IntArray) {
         if (view.visibility != View.VISIBLE || view.width <= 0 || view.height <= 0) return

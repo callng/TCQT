@@ -71,7 +71,8 @@ internal class GlassPageLayoutController(
 
     /** 把每个页面拉伸至屏幕底部并给滚动容器补充底部留白，使列表末行能滚过药丸下方。 */
     fun extendPagesToBottom(pager: ViewGroup?) {
-        if (pager == null || hostProvider() == null) return
+        val host = hostProvider() ?: return
+        if (pager == null || host.visibility != View.VISIBLE || host.translationY != 0f) return
         changes.remember(pager)
         if (isPagerMoving(pager)) {
             if (pager.getTag(PAGE_EXTEND_RETRY_TAG) != true) {
@@ -160,6 +161,8 @@ internal class GlassPageLayoutController(
         changes.remember(view)
         view.setTag(EXTEND_TAG, true)
         changes.listen(view, View.OnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val host = hostProvider() ?: return@OnLayoutChangeListener
+            if (host.visibility != View.VISIBLE || host.translationY != 0f) return@OnLayoutChangeListener
             val parent = v.parent as? ViewGroup ?: return@OnLayoutChangeListener
             dropParentBottomReserve(parent, v)
             val grand = parent.parent as? ViewGroup
@@ -257,9 +260,9 @@ internal class GlassPageLayoutController(
 
     fun observeBackdrop(backdrop: ViewGroup) {
         val token = generation
-        changes.listen(backdrop, View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        changes.listen(backdrop) { _, _, _, _, _, _, _, _, _ ->
             if (token == generation && pagerProvider() === backdrop) extendPagesToBottom(backdrop)
-        })
+        }
     }
     fun reset() { generation++; changes.restore(); paddedScrollers.clear(); scrollerPad = 0; extentTick = 0 }
 }

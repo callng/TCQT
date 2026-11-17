@@ -13,9 +13,7 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.core.graphics.withTranslation
-import androidx.core.view.children
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.log.Log
 import kotlin.math.abs
@@ -28,7 +26,7 @@ import kotlin.math.max
  * 自绘才能保证阴影始终与药丸外形吻合；其二，接管触摸分发——拦截横向拖拽驱动
  * 液滴，阻止外层抽屉抢占手势，纵向滑动在底栏上滑回调所需行程后放行；
  * 其三，探测深浅色主题——QQ 皮肤引擎的夜间模式独立于系统 uiMode，
- * 以全部标签文字颜色的众数投票判定。
+ * 以未选中标签的实际文字色判定。
  */
 @SuppressLint("ViewConstructor")
 internal class GlassBarHostLayout(
@@ -42,7 +40,7 @@ internal class GlassBarHostLayout(
     /** 渲染层回调：尺寸与主题变化时通知玻璃面板与液滴同步。 */
     interface RendererCallback {
         fun onSize(width: Int, height: Int, cornerRadius: Float)
-        fun onTheme(dark: Boolean)
+        fun onTheme(theme: BottomBarTheme)
     }
 
     /** 手势接管方：优先获得触摸事件，但只应认领横向拖拽。 */
@@ -57,6 +55,7 @@ internal class GlassBarHostLayout(
     /** 已解析的深色主题状态。 */
     var isDarkTheme: Boolean
         private set
+    private var theme = bar?.let(BottomBarTheme::fromNative) ?: BottomBarTheme.default(HookEnv.isNightMode())
 
     private var renderer: RendererCallback? = null
     private var dragHandler: DragHandler? = null
@@ -86,8 +85,7 @@ internal class GlassBarHostLayout(
     private var preDrawListener: ViewTreeObserver.OnPreDrawListener? = null
 
     init {
-        val probe = detectDarkFromText(bar)
-        isDarkTheme = probe ?: HookEnv.isNightMode()
+        isDarkTheme = theme.dark
         // Log.i("玻璃容器创建: dark=$isDarkTheme 信号=${if (probe != null) "标签色投票" else "宿主主题"}")
         tag = GLASS_HOST_TAG
         setWillNotDraw(false)
@@ -96,7 +94,7 @@ internal class GlassBarHostLayout(
     /** 挂载渲染层回调，并立即以当前主题初始化渲染层。 */
     fun setRendererCallback(callback: RendererCallback) {
         renderer = callback
-        callback.onTheme(isDarkTheme)
+        callback.onTheme(theme)
     }
 
     fun setDragHandler(handler: DragHandler) {
@@ -226,7 +224,7 @@ internal class GlassBarHostLayout(
     // ---- 主题探测 ----
 
     /**
-     * 开始周期性主题复核：宿主的皮肤切换没有回调可订阅，只能在每帧绘制前轮询，以计数节流。
+     * 主题回调负责重装；定期复核同时覆盖宿主异步更新的标签色。
      */
     fun attachThemeProbe() {
         detachThemeProbe()
@@ -252,51 +250,17 @@ internal class GlassBarHostLayout(
     }
 
     private fun refreshThemeIfDue() {
+        if (bar?.visibility != View.VISIBLE) return
         themeProbeCount++
         if (themeProbeCount % PROBE_INTERVAL != 1) return
-        val detected = detectDarkFromText(bar) ?: HookEnv.isNightMode()
+        val detected = BottomBarTheme.darkFromTabs(bar) ?: theme.dark
         if (detected != isDarkTheme) {
             isDarkTheme = detected
+            theme = BottomBarTheme.default(detected)
             applyShadowColour(detected)
-            renderer?.onTheme(detected)
+            renderer?.onTheme(theme)
             invalidate()
             Log.i("玻璃主题切换: dark=$detected")
-        }
-    }
-
-    /**
-     * 以标签文字颜色的众数判定主题。
-     *
-     * 标签子树中混有未读角标（红底白字），首个命中会被其污染；众数投票可规避——
-     * 未选中颜色始终占多数席位，角标与单个选中标签都赢不了投票。
-     * 明亮文字意味着深色底栏。
-     */
-    private fun detectDarkFromText(root: ViewGroup?): Boolean? {
-        if (root == null) return null
-        return runCatching {
-            val votes = HashMap<Int, Int>()
-            collectTextColors(root, votes)
-            val best = votes.maxByOrNull { it.value }?.key ?: return null
-            val luminance = (0.299f * Color.red(best) +
-                0.587f * Color.green(best) +
-                0.114f * Color.blue(best)) / 255f
-            luminance > 0.5f
-        }.getOrNull()
-    }
-
-    private fun collectTextColors(view: View, votes: MutableMap<Int, Int>) {
-        if (view.visibility != VISIBLE) return
-        if (view is TextView) {
-            // 角标带背景drawable，普通标签没有，以此区分。
-            if (view.background == null && !view.text.isNullOrEmpty()) {
-                view.textColors?.defaultColor?.or(0xFF000000.toInt())?.let { colour ->
-                    votes.merge(colour, 1, Int::plus)
-                }
-            }
-            return
-        }
-        if (view is ViewGroup) {
-            for (child in view.children) collectTextColors(child, votes)
         }
     }
 
