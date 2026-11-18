@@ -27,6 +27,8 @@ docs/*
 !docs/zygisk-art-compatibility.md
 !docs/zygisk-plt-compatibility.md
 !docs/qq-farm-account-selection.md
+!docs/native-recall-kernel-9.3.85.md
+!docs/native-recall-versions.json
 
 # --- Android / App Specific ---
 app/build/

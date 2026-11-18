@@ -1,5 +1,15 @@
 # Third-Party Licenses
 
+## Dobby
+
+Source: https://github.com/jmpews/Dobby
+Revision: 0932d69c320e786672361ab53825ba8f4245e9d3
+License: Apache-2.0
+Full license: app/src/main/assets/licenses/Dobby-LICENSE.txt (also included in the APK).
+Build-only adaptation: the downloaded CMake shared target is made static and given
+a distinct output name; CMake 4's compatibility floor is set to 3.5. Symbol/linker
+plugins are disabled and full ARM64 floating-point register preservation is enabled.
+
 ## WeChat-LiquidGlass
 
 Source: https://github.com/liuran001/WeChat-LiquidGlass

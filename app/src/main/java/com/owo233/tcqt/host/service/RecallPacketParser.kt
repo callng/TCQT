@@ -16,6 +16,7 @@ internal object RecallPacketParser {
         val senderMsgSeq: Long = 0,
         val msgTime: Long = 0,
         val msgRandom: Long = 0,
+        val chatType: Int = if (group) 2 else 1,
     )
 
     data class Result(

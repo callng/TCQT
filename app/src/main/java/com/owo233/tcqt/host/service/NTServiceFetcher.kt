@@ -19,7 +19,7 @@ object NTServiceFetcher {
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
-        if (!TCQTSetting.getBoolean("msg_anti_recall")) return
+        if (AntiRecallConfig.isNativeEnabled() || !TCQTSetting.getBoolean("msg_anti_recall")) return
 
         val sessionClass = try {
             service.wrapperSession.javaClass

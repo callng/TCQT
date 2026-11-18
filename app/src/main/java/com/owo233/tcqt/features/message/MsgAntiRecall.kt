@@ -1,6 +1,7 @@
 package com.owo233.tcqt.features.message
 
 import android.view.ViewGroup
+import com.owo233.tcqt.annotations.ActionPriority
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
@@ -9,21 +10,28 @@ import com.owo233.tcqt.core.hook.hookMethodAfter
 import com.owo233.tcqt.features.internal.pipeline.OnAIOViewUpdate
 import com.owo233.tcqt.host.service.AntiRecallConfig
 import com.owo233.tcqt.host.service.NTServiceFetcher
+import com.owo233.tcqt.host.service.NativeRecallBridge
 import com.owo233.tcqt.host.service.RecallTargetResolver
 import com.tencent.qqnt.kernel.api.IKernelService
 import com.tencent.qqnt.kernel.api.impl.KernelServiceImpl
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
 import mqq.app.MobileQQ
 
-@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF])
+@RegisterAction(processes = [ActionProcess.MAIN, ActionProcess.MSF], priority = ActionPriority.CRITICAL)
 object MsgAntiRecall : Feature(
     key = "msg_anti_recall",
     name = "消息防撤回",
-    desc = "阻止消息被撤回后删除，需要保活进程。",
+    desc = "阻止消息被撤回后删除，需要保活进程，Native拦截方式并不适配所有QQ版本且不适于用TIM，无效则改用Java拦截方式。",
     uiOrder = 1,
 ), OnAIOViewUpdate {
 
     override val decoratorOrder: Int = 50
+
+    @Suppress("unused")
+    private val mode by intOption(
+        settingKey = "mode", name = "拦截方式", defaultValue = 0,
+        options = listOf("Java", "Native"),
+    )
 
     override fun onGetViewNt(view: ViewGroup, msgRecord: MsgRecord, param: MethodHookParam) {
         if (canRun() && AntiRecallConfig.isGrayTipEnabled()) RecallTargetResolver.remember(msgRecord)
@@ -43,6 +51,10 @@ object MsgAntiRecall : Feature(
 
     override fun install() {
         AntiRecallConfig.migrateLegacyOptions()
+        if (AntiRecallConfig.isNativeEnabled()) {
+            check(NativeRecallBridge.start()) { "Native 防撤回引擎初始化失败，请查看 TCQT.NativeRecall 日志" }
+            return
+        }
 
         KernelServiceImpl::class.java.hookMethodAfter("initService") {
             // 登录后触发Hook2次，退出登录后触发Hook1次，未登录状态打开QQ不会触发Hook

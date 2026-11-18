@@ -81,7 +81,7 @@ internal object RecallManager {
         listeners.add(listener)
     }
 
-    private fun mark(chatType: Int, peerId: String, msgSeq: Long): Boolean {
+    internal fun mark(chatType: Int, peerId: String, msgSeq: Long): Boolean {
         if (peerId.isBlank() || msgSeq <= 0) return false
 
         val key = MessageKey(currentAccount(), chatType, peerId, msgSeq)

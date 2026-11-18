@@ -16,6 +16,9 @@ internal object AntiRecallConfig {
 
     fun useNewParser(): Boolean = options().isFlagEnabled(NEW_PARSER_INDEX)
 
+    fun isNativeEnabled(): Boolean = TCQTSetting.getBoolean("msg_anti_recall") &&
+        TCQTSetting.getInt("msg_anti_recall.mode") == 1
+
     fun isGrayTipEnabled(): Boolean = options().isFlagEnabled(GRAY_TIP_INDEX)
 
     fun isTopTipEnabled(): Boolean = options().isFlagEnabled(TOP_TIP_INDEX)
