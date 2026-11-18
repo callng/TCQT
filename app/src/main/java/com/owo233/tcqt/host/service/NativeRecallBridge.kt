@@ -2,20 +2,50 @@ package com.owo233.tcqt.host.service
 
 import androidx.annotation.Keep
 import com.google.protobuf.CodedInputStream
+import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.NativeLibs
 import com.owo233.tcqt.core.env.launchWithCatch
-import com.owo233.tcqt.core.log.LogUtils
 import com.owo233.tcqt.core.sync.ModuleScope
 import com.owo233.tcqt.host.QQInterfaces
+import java.lang.reflect.Method
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Reminders only. Native interception does not consult this class or its result. */
 @Keep
 internal object NativeRecallBridge {
 
-    @JvmStatic private external fun nativeStart(): Boolean
+    @JvmStatic private external fun nativeStart(callbackClass: Class<*>, cacheFile: String): Boolean
     private val reminders = RecallPushHandler(GoogleRecallMetadataDecoder)
 
-    fun start(): Boolean = NativeLibs.load("tcqtrecall") && nativeStart()
+    private const val NATIVE_ENTRY_KEY = "tcqt.native_recall.entry.v1"
+    private val started = AtomicBoolean(false)
+
+    fun start(): Boolean {
+        if (started.get()) return true
+        // LSPosed replaces the module ClassLoader on hot reload. Keep the first
+        // JNI owner alive for this process; a new loader only rebinds reminders.
+        synchronized(NATIVE_ENTRY_KEY.intern()) {
+            if (started.get()) return true
+            val properties = System.getProperties()
+            val entry = properties[NATIVE_ENTRY_KEY] as? Method ?: run {
+                if (!NativeLibs.load("tcqtrecall")) return false
+                NativeRecallBridge::class.java.getDeclaredMethod(
+                    "nativeStart", Class::class.java, String::class.java
+                ).apply {
+                    isAccessible = true
+                    // Loading and engine initialization have separate lifetimes:
+                    // even a failed initialization must not load another SO copy.
+                    properties[NATIVE_ENTRY_KEY] = this
+                }
+            }
+            val ok = entry.invoke(
+                null, NativeRecallBridge::class.java,
+                HookEnv.application.cacheDir.resolve("tcqt-native-recall.bin").absolutePath
+            ) as Boolean
+            if (ok) started.set(true)
+            return ok
+        }
+    }
 
     @JvmStatic
     fun onNativeRecall(snapshot: ByteArray) {
@@ -57,10 +87,10 @@ internal object NativeRecallBridge {
         // persistence and UI work run asynchronously on the module's Java scope.
         ModuleScope.launchWithCatch {
             if (QQInterfaces.currentUid != account) {
-                LogUtils.xposedNoFilter.w("NativeAntiRecall reminder skipped: account changed")
+                // LogUtils.xposedNoFilter.w("NativeAntiRecall reminder skipped: account changed")
                 return@launchWithCatch
             }
-            LogUtils.xposedNoFilter.i("NativeAntiRecall event chatType=$chatType seq=$seq")
+            // LogUtils.xposedNoFilter.i("NativeAntiRecall event chatType=$chatType seq=$seq")
             reminders.notifyRecalls(listOf(recall))
         }
     }

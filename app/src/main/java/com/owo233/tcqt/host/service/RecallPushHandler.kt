@@ -78,7 +78,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.mark(chatType, recall.peerId, it) }
             if (!AntiRecallConfig.isGrayTipEnabled()) return@launchWithCatch
-            if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
+            // if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
             // The recall is still blocked, but a tip for a message that was never stored locally
             // can only be an unlocatable gray bar.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
@@ -106,7 +106,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             val target = RecallTargetResolver.resolve(recall, contact)
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markGroup(recall.peerId, it) }
-            if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
+            // if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
             // Still blocked, but no tip for a message that was never stored locally.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
 

@@ -17,8 +17,10 @@
 #include <type_traits>
 #include <vector>
 #include "kernel_profiles.h"
+#include "kernel_scan.h"
 
-// QQ 9.2.30–9.3.85 ARM64. See docs/native-recall-kernel-9.3.85.md for the
+// Validated on QQ 9.2.30–9.3.85 ARM64; unknown builds use native discovery.
+// See docs/native-recall-kernel-9.3.85.md for the
 // instruction sites, native layouts and caller evidence. No JNI push hooks.
 namespace tcqt::recall {
 namespace {
@@ -36,7 +38,7 @@ struct Event {
 };
 
 JavaVM *vm{};
-jclass bridge{};
+jclass bridge{}; // Callback binding is guarded by event_mutex after preparation.
 jmethodID on_event{};
 std::mutex install_mutex, event_mutex;
 std::condition_variable event_ready;
@@ -46,6 +48,9 @@ bool prepared{};
 KernelState kernel_state{KernelState::Waiting}; // Guarded by install_mutex.
 DeliveryState delivery_state{DeliveryState::Starting}; // Guarded by event_mutex.
 void *stubs[kSites]{};
+std::string cache_path;
+char kernel_id[41]{};
+KernelProfile dynamic_profile{}; // Stable storage for scan/cache targets after installation.
 using GetSessionParameter = bool (*)(const char *, size_t, uint32_t, uint32_t,
                                     const uint32_t *, std::string *);
 GetSessionParameter get_session_parameter{};
@@ -259,13 +264,23 @@ void *deliver_events(void *) {
         scalar_field(bytes, 8, event.client_seq);
         scalar_field(bytes, 9, event.time);
         scalar_field(bytes, 10, event.random);
-        auto data = env->NewByteArray(static_cast<jsize>(bytes.size()));
+        jclass callback_class;
+        jmethodID callback_method;
+        {
+            std::lock_guard lock(event_mutex);
+            // A reload can replace/delete the global reference while Java runs.
+            // The local reference keeps this event's class and method paired.
+            callback_class = static_cast<jclass>(env->NewLocalRef(bridge));
+            callback_method = on_event;
+        }
+        auto data = callback_class != nullptr ? env->NewByteArray(static_cast<jsize>(bytes.size())) : nullptr;
         if (data != nullptr) {
             env->SetByteArrayRegion(data, 0, static_cast<jsize>(bytes.size()),
                                     reinterpret_cast<const jbyte *>(bytes.data()));
-            if (!env->ExceptionCheck()) env->CallStaticVoidMethod(bridge, on_event, data);
+            if (!env->ExceptionCheck()) env->CallStaticVoidMethod(callback_class, callback_method, data);
             env->DeleteLocalRef(data);
         }
+        if (callback_class != nullptr) env->DeleteLocalRef(callback_class);
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
             env->ExceptionClear();
@@ -276,41 +291,22 @@ void *deliver_events(void *) {
                                 "reminder allocation failed; event discarded; recall remains blocked");
         }
     }
-    env->DeleteGlobalRef(bridge);
+    jclass previous;
+    {
+        std::lock_guard lock(event_mutex);
+        previous = bridge;
+        bridge = nullptr;
+        on_event = nullptr;
+    }
+    env->DeleteGlobalRef(previous);
     vm->DetachCurrentThread();
     return nullptr;
 }
 
-const KernelProfile *identify_profile(const dl_phdr_info *info) {
-    for (size_t i = 0; i < info->dlpi_phnum; ++i) {
-        const auto &ph = info->dlpi_phdr[i];
-        if (ph.p_type != PT_NOTE) continue;
-        auto p = reinterpret_cast<const uint8_t *>(info->dlpi_addr + ph.p_vaddr);
-        auto end = p + ph.p_memsz;
-        while (size_t(end - p) >= sizeof(Elf64_Nhdr)) {
-            Elf64_Nhdr note;
-            std::memcpy(&note, p, sizeof(note));
-            p += sizeof(note);
-            const size_t name_size = (size_t(note.n_namesz) + 3) & ~size_t(3);
-            const size_t desc_size = (size_t(note.n_descsz) + 3) & ~size_t(3);
-            // A truncated note has no reliable next offset. Skip this PT_NOTE
-            // segment, then continue looking in subsequent note segments.
-            if (name_size > size_t(end - p) || desc_size > size_t(end - p) - name_size) break;
-            if (note.n_type == NT_GNU_BUILD_ID && note.n_namesz == 4 &&
-                std::memcmp(p, "GNU", 4) == 0 && note.n_descsz == 20) {
-                constexpr char hex[] = "0123456789abcdef";
-                char id[40];
-                for (size_t j = 0; j < 20; ++j) {
-                    id[j * 2] = hex[p[name_size + j] >> 4];
-                    id[j * 2 + 1] = hex[p[name_size + j] & 15];
-                }
-                for (const auto &profile : KERNEL_PROFILES)
-                    if (std::string_view(id, sizeof(id)) == profile.build_id) return &profile;
-                return nullptr;
-            }
-            p += name_size + desc_size;
-        }
-    }
+const KernelProfile *identify_profile(const dl_phdr_info *info, char (&id)[41]) {
+    if (!read_kernel_build_id(*info, id)) return nullptr;
+    for (const auto &profile : KERNEL_PROFILES)
+        if (std::string_view(id, 40) == profile.build_id) return &profile;
     return nullptr;
 }
 
@@ -321,33 +317,44 @@ void install_kernel(const dl_phdr_info *info) {
     if (!prepared || kernel_state != KernelState::Waiting) return;
     // A single installation attempt per process, even if rollback fails.
     kernel_state = KernelState::Failed;
-    const auto *profile = identify_profile(info);
-    if (profile == nullptr) {
-        stop_delivery();
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "unsupported libkernel build ID; hooks not installed");
-        return;
-    }
-    constexpr dobby_instrument_callback_t callbacks[kSites] = {on_notify, on_replace, on_traceless};
-    constexpr uint32_t loads[kSites] = {0xf8420ea8, 0xf9400028, 0xf9400028};
-    for (size_t i = 0; i < kSites; ++i) {
-        if (value_at<uint32_t>(info->dlpi_addr + profile->offsets[i]) != profile->instructions[i] ||
-            value_at<uint32_t>(info->dlpi_addr + profile->offsets[i] - 4) != loads[i]) {
+    const auto *profile = identify_profile(info, kernel_id);
+    const char *source = "built-in";
+    bool discovered = false;
+    if (profile != nullptr) {
+        if (!validate_kernel_targets(*info, *profile)) {
             stop_delivery();
-            __android_log_print(ANDROID_LOG_ERROR, TAG, "kernel instruction mismatch at %zx", profile->offsets[i]);
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "built-in kernel instructions mismatch; hooks not installed");
             return;
         }
+    } else {
+        if (kernel_id[0] == 0) {
+            stop_delivery();
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "kernel has no usable GNU Build ID; hooks not installed");
+            return;
+        }
+        if (!cache_path.empty() && read_kernel_cache(cache_path.c_str(), kernel_id, dynamic_profile) &&
+            validate_kernel_targets(*info, dynamic_profile)) {
+            source = "cache";
+        } else {
+            const auto start = std::chrono::steady_clock::now();
+            const char *error{};
+            if (!scan_kernel(*info, dynamic_profile, error) || !validate_kernel_targets(*info, dynamic_profile)) {
+                stop_delivery();
+                __android_log_print(ANDROID_LOG_ERROR, TAG, "kernel scan rejected build_id=%s: %s; hooks not installed",
+                                    kernel_id, error ? error : "recall argument instructions mismatch");
+                return;
+            }
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - start).count();
+            __android_log_print(ANDROID_LOG_INFO, TAG, "kernel scan resolved build_id=%s in %lld ms",
+                                kernel_id, static_cast<long long>(ms));
+            source = "scan";
+            discovered = true;
+        }
+        dynamic_profile.build_id = kernel_id;
+        profile = &dynamic_profile;
     }
-    if (value_at<uint32_t>(info->dlpi_addr + profile->offsets[1] + 8) != 0x2a0503f5 ||
-        value_at<uint32_t>(info->dlpi_addr + profile->offsets[2] + 4) != 0x39430449) {
-        stop_delivery();
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "kernel recall argument instructions mismatch");
-        return;
-    }
-    if (value_at<uint32_t>(info->dlpi_addr + profile->session_query) != profile->query_instruction) {
-        stop_delivery();
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "kernel session query instruction mismatch");
-        return;
-    }
+    constexpr dobby_instrument_callback_t callbacks[kSites] = {on_notify, on_replace, on_traceless};
     get_session_parameter = reinterpret_cast<GetSessionParameter>(info->dlpi_addr + profile->session_query);
     for (size_t i = 0; i < kSites; ++i) {
         stubs[i] = reinterpret_cast<void *>(info->dlpi_addr + profile->offsets[i]);
@@ -373,7 +380,10 @@ void install_kernel(const dl_phdr_info *info) {
     }
     kernel_state = KernelState::Installed;
     active.store(true, std::memory_order_release);
-    __android_log_print(ANDROID_LOG_INFO, TAG, "kernel instruction hooks active: QQ %s notify/replace/traceless", profile->version);
+    if (discovered && !cache_path.empty() && !write_kernel_cache(cache_path.c_str(), kernel_id, *profile))
+        __android_log_print(ANDROID_LOG_WARN, TAG, "kernel cache write failed; installed hooks remain active");
+    __android_log_print(ANDROID_LOG_INFO, TAG, "kernel instruction hooks active: source=%s profile=%s build_id=%s notify/replace/traceless",
+                        source, profile->version, kernel_id);
 }
 
 int enumerate(struct dl_phdr_info *info, size_t, void *) { install_kernel(info); return 0; }
@@ -384,16 +394,37 @@ void lsposed_loaded(const char *name, void *) {
 } // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(JNIEnv *env, jclass cls) {
+Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(
+    JNIEnv *env, jclass, jclass callback_class, jstring cache_file) {
     {
         std::lock_guard lock(install_mutex);
-        if (prepared) return kernel_state != KernelState::Failed;
-        JavaVM *java_vm{};
-        if (env->GetJavaVM(&java_vm) != JNI_OK) return JNI_FALSE;
-        const auto callback = env->GetStaticMethodID(cls, "onNativeRecall", "([B)V");
+        if (prepared && kernel_state == KernelState::Failed) return JNI_FALSE;
+        JavaVM *java_vm = vm;
+        if (!prepared && env->GetJavaVM(&java_vm) != JNI_OK) return JNI_FALSE;
+        const auto callback = env->GetStaticMethodID(callback_class, "onNativeRecall", "([B)V");
         if (callback == nullptr) return JNI_FALSE;
-        const auto global = reinterpret_cast<jclass>(env->NewGlobalRef(cls));
+        // Java supplies only the app-private cache path during bootstrap.
+        // Discovery, validation, persistence and recall decisions stay native.
+        if (!prepared && cache_file != nullptr) {
+            const auto path = env->GetStringUTFChars(cache_file, nullptr);
+            if (path == nullptr) return JNI_FALSE;
+            cache_path = path;
+            env->ReleaseStringUTFChars(cache_file, path);
+        }
+        const auto global = static_cast<jclass>(env->NewGlobalRef(callback_class));
         if (global == nullptr) return JNI_FALSE;
+        if (prepared) {
+            jclass previous;
+            {
+                std::lock_guard event_lock(event_mutex);
+                previous = bridge;
+                bridge = global;
+                on_event = callback;
+            }
+            env->DeleteGlobalRef(previous);
+            __android_log_print(ANDROID_LOG_INFO, TAG, "existing kernel engine reused; reminder bridge rebound");
+            return JNI_TRUE; // No new poller, consumer thread or Dobby installation.
+        }
         // Publish only a complete binding. Method lookup failure creates no
         // global reference, so repeated initialization cannot leak one.
         vm = java_vm;

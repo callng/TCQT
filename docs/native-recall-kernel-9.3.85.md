@@ -187,9 +187,11 @@ chat type、seq、sender UID、peer UID。string 返回遵守 AAPCS64 的 X8 间
 两者不能混用：标准化通知快照用 seq、sender、time、random 定位；已有记录
 替换路径才传入实际本地 msgId。Java 提醒桥检查的是查询所得的 UID。
 
-模块仅在 ELF Build ID、三处指令字和 UID 查询函数的首指令全部匹配时安装，
-并在全部成功后激活。
-未知版本不按固定偏移修改。QQ 热补丁若更换 so，同样要重新分析 Build ID。
+模块优先按 ELF Build ID 使用内置表；未知 ID 先检查同 ID 的本地扫描缓存，
+再使用原生字符串交叉引用、展开表函数边界及指令／布局验证定位。
+所有来源都在指令校验通过、三处安装全部成功后激活。未知版本不猜相邻版本
+偏移；无法确认兼容性的内核停止安装。自动适配及缓存的规则、验证和限制见
+[native-recall-auto-adaptation.md](native-recall-auto-adaptation.md)。
 
 ## Dobby 与 ShadowHook，双注入模式
 
@@ -213,7 +215,7 @@ native `dl_iterate_phdr` 扫描覆盖已加载的库；50 ms 扫描线程补充�
 后退出。没有增加 `dlopen`／`android_dlopen_ext` GOT 触发器。
 
 使用现有功能开关 `msg_anti_recall` 和原有提醒位掩码 `msg_anti_recall.type`。
-新增单选项 `msg_anti_recall.mode`：0=Java，1=Native；Native 模式不安装 Java
+新增单选项 `msg_anti_recall.mode`：1=Java（0 为旧默认值），2=Native；Native 模式不安装 Java
 push／后台防撤回 Hook。曾安装独立 Native 功能的配置在首次读取设置时原子迁移，
 保留启用状态、两项提醒和原解析选项；已保存统一模式选择时不覆盖。
 两种注入模式的配置入口和 native 引擎相同。

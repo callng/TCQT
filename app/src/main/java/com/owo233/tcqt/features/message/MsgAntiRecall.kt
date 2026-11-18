@@ -29,7 +29,7 @@ object MsgAntiRecall : Feature(
 
     @Suppress("unused")
     private val mode by intOption(
-        settingKey = "mode", name = "拦截方式", defaultValue = 0,
+        settingKey = "mode", name = "拦截方式", defaultValue = AntiRecallConfig.JAVA_MODE,
         options = listOf("Java", "Native"),
     )
 
@@ -51,9 +51,9 @@ object MsgAntiRecall : Feature(
 
     override fun install() {
         AntiRecallConfig.migrateLegacyOptions()
+
         if (AntiRecallConfig.isNativeEnabled()) {
             check(NativeRecallBridge.start()) { "Native 防撤回引擎初始化失败，请查看 TCQT.NativeRecall 日志" }
-            return
         }
 
         KernelServiceImpl::class.java.hookMethodAfter("initService") {

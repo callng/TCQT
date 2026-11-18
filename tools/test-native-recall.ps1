@@ -13,6 +13,7 @@ $taskLib = Join-Path $DobbyBuild 'libdobby.a'
 $taskProbe = Join-Path $taskOutput 'recall-probe'
 & $taskCompiler '-std=c++20' '-O2' '-fno-exceptions' '-fno-rtti' '-static-libstdc++' `
     "-I$(Join-Path $DobbySource 'include')" (Join-Path $taskRoot 'tests/native/kernel_recall_probe.cpp') `
+    (Join-Path $taskRoot 'app/src/main/cpp/recall/kernel_scan.cpp') `
     $taskLib '-llog' '-ldl' '-o' $taskProbe
 if ($LASTEXITCODE -ne 0) { throw 'Native probe compilation failed' }
 $taskRemote = '/data/local/tmp/tcqt-native-recall-probe'

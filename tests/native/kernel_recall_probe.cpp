@@ -7,10 +7,11 @@
 #include <new>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <unistd.h>
 #include <dobby.h>
 
 bool mock_install{}, mock_thread_failure{};
-int instrument_calls{}, destroy_calls{}, fail_index{-1}, no_patch_index{-1};
+int instrument_calls{}, destroy_calls{}, thread_create_calls{}, fail_index{-1}, no_patch_index{-1};
 bool fail_rollback{};
 uint32_t *mock_sites[3]{};
 uint32_t mock_original[3]{};
@@ -31,6 +32,7 @@ int probe_destroy(void *address) {
 }
 int probe_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
                          void *(*entry)(void *), void *arg) {
+    ++thread_create_calls;
     if (mock_thread_failure) return EAGAIN;
     return pthread_create(thread, attr, entry, arg);
 }
@@ -123,18 +125,20 @@ jint fake_get_vm(JNIEnv *, JavaVM **out) {
     *out = &fake_vm;
     return JNI_OK;
 }
-jmethodID fake_method(JNIEnv *, jclass, const char *, const char *) {
-    return jni_failure == 2 ? nullptr : reinterpret_cast<jmethodID>(1);
+jmethodID fake_method(JNIEnv *, jclass cls, const char *, const char *) {
+    return jni_failure == 2 ? nullptr : reinterpret_cast<jmethodID>(cls);
 }
+const char *fake_utf_failure(JNIEnv *, jstring, jboolean *) { return nullptr; }
 jobject fake_global(JNIEnv *, jobject cls) {
     if (jni_failure == 3) return nullptr;
     ++global_created;
     return cls;
 }
 void fake_delete_global(JNIEnv *, jobject) { ++global_deleted; }
+jobject fake_local(JNIEnv *, jobject obj) { return obj; }
 jint fake_attach(JavaVM *, JNIEnv **, void *) { return JNI_ERR; }
 JNIEnv *delivery_env{};
-bool delivery_exception{};
+bool delivery_exception{}, binding_pairs_ok{true};
 int callback_calls{}, exceptions_cleared{}, refs_deleted{}, daemon_detaches{};
 jint fake_attach_ready(JavaVM *, JNIEnv **out, void *) { *out = delivery_env; return JNI_OK; }
 jint fake_detach(JavaVM *) { ++daemon_detaches; return JNI_OK; }
@@ -144,8 +148,17 @@ void fake_delete_local(JNIEnv *, jobject) { ++refs_deleted; }
 jboolean fake_exception_check(JNIEnv *) { return delivery_exception; }
 void fake_exception_describe(JNIEnv *) {}
 void fake_exception_clear(JNIEnv *) { delivery_exception = false; ++exceptions_cleared; }
-void fake_callback(JNIEnv *, jclass, jmethodID, va_list) {
-    if (++callback_calls == 1) delivery_exception = true;
+void fake_callback(JNIEnv *env, jclass cls, jmethodID method, va_list) {
+    binding_pairs_ok &= reinterpret_cast<uintptr_t>(cls) == reinterpret_cast<uintptr_t>(method);
+    if (++callback_calls == 1) {
+        // Rebind during an in-flight callback. The next event must use the new
+        // class/method pair, while this callback's local reference stays valid.
+        tcqt::recall::kernel_state = tcqt::recall::KernelState::Installed;
+        tcqt::recall::prepared = true;
+        tcqt::recall::Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(
+            env, cls, reinterpret_cast<jclass>(2), nullptr);
+        delivery_exception = true;
+    }
     else tcqt::recall::stop_delivery();
 }
 int mode;
@@ -183,16 +196,17 @@ int main() {
     phdr.p_vaddr = reinterpret_cast<uintptr_t>(&notes);
     phdr.p_memsz = sizeof(notes);
     dl_phdr_info info{};
+    char observed_id[41]{};
     info.dlpi_phdr = &phdr;
     info.dlpi_phnum = 1;
     for (const auto &profile : KERNEL_PROFILES) {
         auto digit = [](char c) { return c <= '9' ? c - '0' : c - 'a' + 10; };
         for (size_t i = 0; i < 20; ++i)
             notes.id[i] = (digit(profile.build_id[i*2]) << 4) | digit(profile.build_id[i*2+1]);
-        failures += test(profile.version, identify_profile(&info) == &profile);
+        failures += test(profile.version, identify_profile(&info, observed_id) == &profile);
     }
     std::memset(notes.id, 0, sizeof(notes.id));
-    failures += test("unknown kernel build rejected", identify_profile(&info) == nullptr);
+    failures += test("unknown kernel build absent from built-in table", identify_profile(&info, observed_id) == nullptr);
     const auto &profile = KERNEL_PROFILES[std::size(KERNEL_PROFILES) - 1];
     auto digit = [](char c) { return c <= '9' ? c - '0' : c - 'a' + 10; };
     for (size_t i = 0; i < 20; ++i)
@@ -203,13 +217,14 @@ int main() {
     note_phdrs[0].p_memsz = sizeof(malformed);
     info.dlpi_phdr = note_phdrs;
     info.dlpi_phnum = 2;
-    failures += test("malformed note segment does not hide later Build ID", identify_profile(&info) == &profile);
+    failures += test("malformed note segment does not hide later Build ID", identify_profile(&info, observed_id) == &profile);
 
     JNINativeInterface jni_functions{};
     jni_functions.GetJavaVM = fake_get_vm;
     jni_functions.GetStaticMethodID = fake_method;
     jni_functions.NewGlobalRef = fake_global;
     jni_functions.DeleteGlobalRef = fake_delete_global;
+    jni_functions.GetStringUTFChars = fake_utf_failure;
     JNIEnv fake_env{&jni_functions};
     JNIInvokeInterface vm_functions{};
     vm_functions.AttachCurrentThreadAsDaemon = fake_attach;
@@ -217,18 +232,22 @@ int main() {
     auto cls = reinterpret_cast<jclass>(1);
     for (jni_failure = 1; jni_failure <= 3; ++jni_failure) {
         failures += test("incomplete JNI binding not published",
-            Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls) == JNI_FALSE &&
+            Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, cls, nullptr) == JNI_FALSE &&
             !prepared && global_created == 0 && bridge == nullptr && vm == nullptr);
     }
     jni_failure = 0;
+    failures += test("cache path JNI failure creates no global reference",
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(
+            &fake_env, cls, cls, reinterpret_cast<jstring>(1)) == JNI_FALSE &&
+        !prepared && global_created == 0 && bridge == nullptr);
     mock_thread_failure = true;
     failures += test("consumer thread creation failure releases global ref",
-        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls) == JNI_FALSE &&
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, cls, nullptr) == JNI_FALSE &&
         !prepared && global_created == global_deleted && bridge == nullptr);
     mock_thread_failure = false;
     for (int attempt = 0; attempt < 2; ++attempt) {
         failures += test("consumer JNI attach failure is retryable without reference leak",
-            Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls) == JNI_FALSE &&
+            Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, cls, nullptr) == JNI_FALSE &&
             !prepared && global_created == global_deleted && bridge == nullptr);
     }
     delivery_state = DeliveryState::Running;
@@ -239,8 +258,12 @@ int main() {
     info.dlpi_addr = reinterpret_cast<uintptr_t>(image);
     info.dlpi_name = "libkernel.so";
     phdr.p_vaddr = reinterpret_cast<uintptr_t>(&notes) - info.dlpi_addr;
-    info.dlpi_phdr = &phdr;
-    info.dlpi_phnum = 1;
+    Elf64_Phdr image_phdrs[2]{phdr, {}};
+    image_phdrs[1].p_type = PT_LOAD;
+    image_phdrs[1].p_memsz = image_size;
+    image_phdrs[1].p_flags = PF_R | PF_X;
+    info.dlpi_phdr = image_phdrs;
+    info.dlpi_phnum = 2;
     auto reset_install = [&] {
         kernel_state = KernelState::Waiting;
         prepared = true;
@@ -274,7 +297,7 @@ int main() {
         kernel_state == KernelState::Failed && instrument_calls == 2 && destroy_calls == 1 &&
         *mock_sites[0] == mock_original[0] && !active.load() && delivery_state == DeliveryState::Stopped);
     failures += test("failed installation reports failure on repeated nativeStart",
-        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls) == JNI_FALSE);
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, cls, nullptr) == JNI_FALSE);
     reset_install();
     fail_index = 1;
     fail_rollback = true;
@@ -293,6 +316,68 @@ int main() {
     install_kernel(&info);
     failures += test("complete installation activates exactly once",
         kernel_state == KernelState::Installed && instrument_calls == kSites && active.load());
+    bridge = static_cast<jclass>(fake_global(&fake_env, cls));
+    on_event = reinterpret_cast<jmethodID>(cls);
+    vm = &fake_vm;
+    const auto new_class = reinterpret_cast<jclass>(2);
+    const auto threads_before_reload = thread_create_calls;
+    const auto created_before_reload = global_created;
+    const auto deleted_before_reload = global_deleted;
+    jni_failure = 2;
+    failures += test("reload method lookup failure preserves live binding and hooks",
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, new_class, nullptr) == JNI_FALSE &&
+        bridge == cls && on_event == reinterpret_cast<jmethodID>(cls) && active.load());
+    jni_failure = 3;
+    failures += test("reload allocation failure preserves live binding without leaking",
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, new_class, nullptr) == JNI_FALSE &&
+        bridge == cls && global_created == created_before_reload && global_deleted == deleted_before_reload);
+    jni_failure = 0;
+    publish(Event{});
+    failures += test("reload rebinds latest class without hooks threads or queue reset",
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, new_class, nullptr) == JNI_TRUE &&
+        bridge == new_class && on_event == reinterpret_cast<jmethodID>(new_class) &&
+        active.load() && kernel_state == KernelState::Installed && instrument_calls == kSites &&
+        thread_create_calls == threads_before_reload && global_created == created_before_reload + 1 &&
+        global_deleted == deleted_before_reload + 1 && events.size() == 1);
+    kernel_state = KernelState::Waiting;
+    failures += test("reload also reuses pending kernel discovery without another poller",
+        Java_com_owo233_tcqt_host_service_NativeRecallBridge_nativeStart(&fake_env, cls, cls, nullptr) == JNI_TRUE &&
+        kernel_state == KernelState::Waiting && thread_create_calls == threads_before_reload && instrument_calls == kSites);
+    events.clear();
+    fake_delete_global(&fake_env, bridge);
+    bridge = nullptr;
+    on_event = nullptr;
+    const auto note_id = notes;
+    cache_path = "/data/local/tmp/tcqt-native-recall-probe/kernel-cache-" + std::to_string(getpid()) + ".bin";
+    char unknown_id[41];
+    std::memset(unknown_id, '0', 40);
+    unknown_id[40] = 0;
+    std::memset(notes.id, 0, sizeof(notes.id));
+    reset_install();
+    const bool saved = write_kernel_cache(cache_path.c_str(), unknown_id, profile);
+    install_kernel(&info);
+    failures += test("unknown Build ID installs validated native cache targets",
+        saved && kernel_state == KernelState::Installed && instrument_calls == kSites && active.load() &&
+        std::string_view(dynamic_profile.version) == "cached" && std::string_view(kernel_id) == unknown_id);
+    reset_install();
+    notes = note_id;
+    auto bad_profile = profile;
+    bad_profile.offsets[0] = 4;
+    const bool bad_saved = write_kernel_cache(cache_path.c_str(), profile.build_id, bad_profile);
+    install_kernel(&info);
+    failures += test("built-in profile has priority over local cache",
+        bad_saved && kernel_state == KernelState::Installed && instrument_calls == kSites && active.load());
+    reset_install();
+    std::memset(notes.id, 0, sizeof(notes.id));
+    std::remove(cache_path.c_str());
+    install_kernel(&info);
+    install_kernel(&info);
+    failures += test("unknown incompatible kernel stops before any instrumentation",
+        kernel_state == KernelState::Failed && instrument_calls == 0 && !active.load() &&
+        delivery_state == DeliveryState::Stopped);
+    notes = note_id;
+    cache_path.clear();
+    delivery_state = DeliveryState::Running;
     munmap(image, image_size);
     mock_install = false;
     prepared = false;
@@ -381,6 +466,7 @@ int main() {
     publish(Event{});
     publish(Event{});
     jni_functions.NewByteArray = fake_new_array;
+    jni_functions.NewLocalRef = fake_local;
     jni_functions.SetByteArrayRegion = fake_set_array;
     jni_functions.DeleteLocalRef = fake_delete_local;
     jni_functions.CallStaticVoidMethodV = fake_callback;
@@ -396,9 +482,10 @@ int main() {
     const auto globals_before = global_deleted;
     deliver_events(nullptr);
     failures += test("JNI failure discards one event and continues with the next",
-        callback_calls == 2 && exceptions_cleared == 1 && refs_deleted == 2 && events.empty());
+        callback_calls == 2 && exceptions_cleared == 1 && refs_deleted == 4 && events.empty());
+    failures += test("delivery pairs class with method across callback-time reload", binding_pairs_ok);
     failures += test("stopped consumer releases binding and detaches daemon",
-        global_deleted == globals_before + 1 && daemon_detaches == 1);
+        global_deleted == globals_before + 2 && daemon_detaches == 1 && bridge == nullptr && on_event == nullptr);
     std::printf("failures=%d\n", failures);
     return failures ? 1 : 0;
 }
