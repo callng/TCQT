@@ -66,6 +66,14 @@ object ChatGroups : Feature(
                 declaredClass = "com.tencent.qqnt.chats.core.ui.ChatsListVB"
                 paramTypes("int", "android.view.View")
                 returnType = "void"
+                // 9.2.66 also has a row updater with this signature; only the header moves its View.
+                invokeMethods {
+                    add {
+                        declaredClass("android.view.ViewGroup")
+                        name = "removeView"
+                        paramTypes("android.view.View")
+                    }
+                }
             }
         },
         "chatGroupsRecentItem" to FindClass().apply {
