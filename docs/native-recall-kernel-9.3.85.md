@@ -1,7 +1,7 @@
 # QQ 9.2.30～9.3.85 内核防撤回分析
 
 现有“消息防撤回”提供 Java / Native 拦截方式，共用原有灰字／顶部提醒选项。
-9.3.85 是 Ghidra MCP 完整分析基准；`D:\QQAPK` 范围内的 29 个 APK、27 个
+9.3.85 是 Ghidra MCP 完整分析基准；`D:\QQAPK` 范围内的 30 个 APK、28 个
 不同内核均已逐个核对 ARM64 指令和布局。完整输入 SHA-256、Build ID、指令点、
 UID 查询地址和布局证据见 [native-recall-versions.json](native-recall-versions.json)，
 运行适配表位于 `app/src/main/cpp/recall/kernel_profiles.h`。
@@ -282,3 +282,76 @@ libc++ string、通知标量字段和记录 getter。输出指令列表、`evide
 
 9.2.65 / 9.2.66、9.3.0 / 9.3.1 分别共用内核，其余输入各有自己的 Build ID。
 没有输入 APK 的中间发行版不宣称适配；更换内核的热补丁也不按版本号猜地址。
+
+### 补充 QQ 9.3.70.41925
+
+输入为 `D:\QQAPK\9.3.70.41925_2a98ecf56e5ef04b.apk`，APK SHA-256 为
+`e8c28713b740c18246989d47916d9fbbad06d440778a5aab3f4e108a2423e55c`。
+提取的 ARM64 `libkernel.so` 为 53,709,184 字节，SHA-256 为
+`9adfd1c2785b1bc037b8de92421cc09b0b40eef80cea5c95e989aa37e60c5a32`，
+Build ID 为 `a203ba89f2d9a4124e0ee18d392523c82511514e`。
+它与 9.3.65、9.3.75 的内核都不同，必须单独登记，不能复用相邻版本的地址。
+
+| 版本         | 通知 Hook RVA | 普通替换 Hook RVA | 无痕替换 Hook RVA | UID 查询 RVA |
+|--------------|---------------|-------------------|-------------------|--------------|
+| 9.3.65       | `0x2178c40`   | `0x2176978`       | `0x21777d8`       | `0x1711568`  |
+| 9.3.70.41925 | `0x21a002c`   | `0x219dd64`       | `0x219ebc4`       | `0x172d1a8`  |
+| 9.3.75.42350 | `0x21d5de8`   | `0x21d3b08`       | `0x21d4944`       | `0x174fdf0`  |
+
+9.3.70 三个 CBZ X8 指令字为 `0xb4002928 / 0xb4004988 / 0xb4001d48`，
+与 9.3.65 相同，对应原退出目标为 `0x21a0550 / 0x219e694 / 0x219ef6c`。
+9.3.75 的普通／无痕分支已变为 `0xb40048a8 / 0xb4001ea8`，函数内部指令
+也有变化，不能用它的指令字校验 9.3.70。
+
+逐函数比较了通知接收、普通替换、无痕替换、C2C worker 和本地记录分发的
+ARM64 指令；9.3.70 更接近 9.3.65。另行验证三处前置 load、普通替换的
+`MOV W21,W5`、无痕替换的 `LDRB W9,[X2,#0xc1]`、通知标量偏移、记录 getter
+槽位和 24 字节 libc++ string 布局。UID 查询首指令仍为 `0xd10243ff`，其
+outlined helper `0x17331cc` 保存 X3～X5，查询函数保存 X2，原生参数约定兼容。
+因此本次只增加专属 profile 和证据，不需要修改拦截回调或 Java 提醒代码。
+
+9.3.70 的原件、逐函数指令列表和证据位于
+`app/build/analysis/native-recall-versions/9.3.70.41925_2a98ecf56e5ef04b/`，
+相邻版本指令比较位于同级 `9.3.70-adjacent-instruction-comparison.txt`。
+本版本目前完成静态验证；尚未在运行 QQ 9.3.70 的设备上验收撤回与提醒。
+
+补入后 ARM64 探针 72 项全部通过，包含 28 个内核 Build ID 的选择检查。
+Debug、Release、Zygisk ZIP 构建及双格式内容、签名、16 KiB 对齐、Linux ZIP CRC
+检查通过；两种 APK 内均确认包含 9.3.70 的版本与 Build ID。
+Release 为 `4.0.2.r742.56ca99f`，4,122,799 字节，使用本地 Debug 证书，
+SHA-256 为 `bc52e73375547a2cda3fcd0221583ba0f5ed954c6c45b7ebed49924c09ad7dd8`。
+
+## Native 健壮性修正
+
+用户随后确认 Native 防撤回及两种提醒可用。本次修正聚焦资源与错误路径：
+
+- 提醒队列最多 1024 条，满时丢弃最老快照并记录警告；JNI 投递失败丢弃该事件，
+  日志明确区分提醒丢弃与消息撤回拦截。失败事件不反复入队。
+- 安装状态使用 Waiting / Failed / Installed。旧实现的 `seen_kernel` 已能阻止
+  重试；显式状态进一步让初始化返回值反映失败，轮询和加载回调都不再次安装。
+- JNI 方法解析在 global ref 创建之前完成。消费者使用可返回错误码的
+  `pthread_create`，并等待 JNI attach 成功后才允许安装 Hook；失败时清理绑定。
+  终止投递时清空队列、释放 global ref 并 detach daemon。
+- 空对象在三个 Hook 回调边界检查；string view 处理零地址和空的长字符串存储。
+  UID 查询失败时舍弃可能不完整的输出，不用它进行本人撤回判定。
+- 字符串 getter 单独使用 `std::string (*)(void*)`，由 ARM64 libc++/Clang 的
+  AAPCS64 非平凡返回约定传递 X8。`void (*)(void*, std::string*)` 会使用 X1，
+  与内核 ABI 不匹配。测试 fixture 以独立汇编显式读取 X8 并构造长／短结果。
+- 共用 `kSites` 和统一虚表字节偏移。安装时除 CBZ 外还核对前置 load、
+  `MOV W21,W5` 和 `LDRB W9,[X2,#0xc1]`，29 个输入 APK 均通过新增检查。
+  W5 是含 this 的第六个机器参数、第五个显式 C++ 参数。
+- 无痕回调保留原 `traceless` 资格判断，未设置该标记的调用不产生拦截或提醒。
+- 安装后检查指令确实被修改，回滚时检查状态码和首指令恢复。即使回滚失败，
+  回调保持未激活，且不重试。不把 Dobby 的返回 0 单独作为写入成功证据。
+- 损坏 note 无法计算下一条的可靠位置时跳过该 PT_NOTE 段，继续检查后续段。
+
+ARM64 探针共 71 项通过，包含部分安装失败、回滚失败、返回成功但未写入、
+线程创建／JNI attach 失败、队列溢出、JNI 投递异常、独立 X8 返回和坏 note。
+故障注入只发生在独立探针，不改变 QQ 设置或故意使宿主出错。
+
+本次 Debug、Release、Zygisk ZIP 构建通过，双格式内容、APK 签名、16 KB 对齐
+和 Linux ZIP CRC 检查通过。Release 为 `4.0.2.r742.56ca99f`，4,122,799 字节，
+本地 Debug 证书，SHA-256 为
+`ce859bd1dba710ef06b044377154387d39fc7b6f80fe8b2a05378c636ac2a1a0`。
+已安装并重启 QQ，设备 base.apk 哈希一致。该次启动配置为 Java，日志正常；
+新增错误路径和 ABI 验证由独立 ARM64 探针覆盖，不宣称该次 Native 宿主回归已完成。

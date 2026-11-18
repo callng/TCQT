@@ -1772,6 +1772,74 @@
       }
     },
     {
+      "apk": "9.3.70.41925_2a98ecf56e5ef04b.apk",
+      "build_id": "a203ba89f2d9a4124e0ee18d392523c82511514e",
+      "sha256": "9adfd1c2785b1bc037b8de92421cc09b0b40eef80cea5c95e989aa37e60c5a32",
+      "profile": {
+        "sites": [
+          {
+            "offset": "0x21a002c",
+            "instruction": "0xb4002928"
+          },
+          {
+            "offset": "0x219dd64",
+            "instruction": "0xb4004988"
+          },
+          {
+            "offset": "0x219ebc4",
+            "instruction": "0xb4001d48"
+          }
+        ],
+        "session_query": "0x172d1a8",
+        "query_instruction": "0xd10243ff"
+      },
+      "layout": {
+        "notify_scalars": {
+          "seq": "0x20",
+          "client_seq": "0x28",
+          "random": "0x30",
+          "time": "0x40",
+          "server_id": "0x38"
+        },
+        "libcxx_string_view": "0x14fedc0",
+        "record_getter_loads": {
+          "0x0": [
+            "0x219ebd4",
+            "0x21adc3c",
+            "0x21add44",
+            "0x21ae210",
+            "0x21aeae0",
+            "0x21aeaf0",
+            "0x21aeb00"
+          ],
+          "0x8": [
+            "0x21adedc"
+          ],
+          "0x18": [
+            "0x219de34",
+            "0x219de54",
+            "0x219df0c",
+            "0x21adcc4"
+          ],
+          "0x40": [
+            "0x219dfd4",
+            "0x219e100",
+            "0x219e1b0",
+            "0x219e1d0",
+            "0x219e2b4",
+            "0x21ae2bc"
+          ],
+          "0xa0": [
+            "0x219e404",
+            "0x219e5e4",
+            "0x21ae8c0",
+            "0x21af3a8"
+          ]
+        },
+        "group_worker": "0x21b2828"
+      }
+    },
+    {
       "apk": "9.3.75.42350_8b979832d5b7a366.apk",
       "build_id": "5233c03560845df1480c68f4afaa524b2b30cc11",
       "sha256": "282dc010722ce6c2f53ed1ee13f76a3ecc628ec512b82dbc3caf9d462ee130a5",
