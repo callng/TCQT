@@ -28,6 +28,9 @@ internal object DexKitFinder {
     private var resumeCallback: Application.ActivityLifecycleCallbacks? = null
     private val findStarted = AtomicBoolean(false)
 
+    /** 扫描并成功落盘后的回调；用于补装首轮因缺 key 被跳过的功能。 */
+    private val afterScanCallbacks = java.util.concurrent.CopyOnWriteArrayList<(Set<String>) -> Unit>()
+
     private val allTasks: List<DexKitTask> by lazy {
         GeneratedActionList.ACTIONS
             .filter { DexKitTask::class.java.isAssignableFrom(it) }
@@ -48,16 +51,58 @@ internal object DexKitFinder {
 
     fun needsFind(): Boolean {
         val keys = getAllTaskKeys()
-        return getMissingKeys().isNotEmpty() || DexKitCache.cacheMap.keys.any { it !in keys }
+        return needsFind(keys)
     }
 
-    fun getMissingKeys(): Set<String> {
-        val allKeys = getAllTaskKeys()
+    /** 启动路径复用一次枚举结果，避免每个判定都重建全部查询对象。 */
+    fun needsFind(allKeys: Set<String>): Boolean {
+        return getMissingKeys(allKeys).isNotEmpty() || DexKitCache.cacheMap.keys.any { it !in allKeys }
+    }
+
+    /**
+     * 注册“扫描完成且缓存已落盘”回调，参数为最新的缺失 key 集合。
+     *
+     * 只在 MAIN 进程真正扫描成功时触发一次；全部回调消费后清空。
+     */
+    fun runAfterScan(block: (Set<String>) -> Unit) {
+        afterScanCallbacks += block
+    }
+
+    fun getMissingKeys(): Set<String> = getMissingKeys(getAllTaskKeys())
+
+    fun getMissingKeys(allKeys: Set<String>): Set<String> {
         if (!DexKitCache.isHostVersionMatched || !DexKitCache.isHostCodeMatched) {
             return allKeys
         }
         return allKeys.filter { it !in DexKitCache.cacheMap }.toSet()
     }
+
+    /**
+     * 启动路径只枚举一次：任务数与 key 集合一起返回。
+     *
+     * [selectDexKitTasks] 为了判空会先调一次 `getCacheKeys()`，若这里再调一次，
+     * 每个任务就会构造两遍查询对象（DexKitTask 的默认实现每次都重建 matcher）。
+     * 启动路径直接单遍收集，每个任务只构造一次。
+     */
+    fun startupKeys(): StartupKeys {
+        val keys = LinkedHashSet<String>()
+        var taskCount = 0
+        allTasks.forEach { task ->
+            val available = runCatching { (task as? ActionSpec)?.onInit() ?: true }
+                .onFailure {
+                    LogUtils.xposedNoFilter.e("DexKit 功能条件判断异常，跳过扫描: ${task.scanOwner}", it)
+                }
+                .getOrDefault(false)
+            if (!available) return@forEach
+            val taskKeys = task.getCacheKeys()
+            if (taskKeys.isEmpty()) return@forEach
+            taskCount++
+            keys.addAll(taskKeys)
+        }
+        return StartupKeys(taskCount, keys)
+    }
+
+    data class StartupKeys(val taskCount: Int, val keys: Set<String>)
 
     private fun getAllTaskKeys(): Set<String> {
         return getTasks()
@@ -209,10 +254,23 @@ internal object DexKitFinder {
                         previousCache = oldCache, savedCache = newCache,
                         previousCacheUsable = snapshot.previousCacheUsable,
                     )
+                    notifyScanFinished()
                 } else {
                     progress.finish(restartRequired = false, errorMessage = "扫描期间缓存已被清空或切换，本次结果已丢弃，请重启宿主后重新扫描。")
                 }
             }
+        }
+    }
+
+    private fun notifyScanFinished() {
+        if (afterScanCallbacks.isEmpty()) return
+        val callbacks = afterScanCallbacks.toList()
+        afterScanCallbacks.clear()
+        val missingKeys = getMissingKeys()
+        Log.i("DexKit 扫描完成，通知 ${callbacks.size} 个补装回调，剩余缺失 ${missingKeys.size} 项")
+        callbacks.forEach { callback ->
+            runCatching { callback(missingKeys) }
+                .onFailure { Log.e("DexKit 扫描完成回调异常", it) }
         }
     }
 
