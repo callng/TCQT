@@ -49,6 +49,10 @@ object ZygiskEntry {
     fun init(processName: String, dataDir: String, apkPath: String) {
         val pkg = processName.substringBefore(':')
         if (!HostTypeEnum.contain(pkg)) return
+        if (Build.VERSION.SDK_INT !in 33..37) {
+            log(Log.ERROR, TAG, "Unsupported Android API ${Build.VERSION.SDK_INT}; Zygisk requires Android 13–17")
+            return
+        }
 
         if (!InjectionGuard.tryAcquire(InjectionGuard.MODE_ZYGISK)) {
             nativeLog(TAG, "init blocked: ${InjectionGuard.activeMode()} already active")

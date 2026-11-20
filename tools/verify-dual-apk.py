@@ -26,13 +26,18 @@ def verify(apk: Path, raw: Path | None = None, flash_zip: Path | None = None):
         names = package.namelist()
         assert len(names) == len(set(names)), "Duplicate ZIP entries"
         required = {"AndroidManifest.xml", "classes.dex", "resources.arsc", "module.prop",
-                    "customize.sh", "payload.sh", "post-fs-data.sh",
+                    "customize.sh", "payload.sh", "post-fs-data.sh", "share-logs.sh",
+                    "logshare.dex", "logshare.dex.sha256",
                     "zygisk/arm64-v8a.so", "webroot/index.html",
                     "META-INF/com/google/android/update-binary"}
         assert required <= set(names), f"Missing entries: {required - set(names)}"
         assert not any(n.startswith("payload/") or n.endswith("libtcqtzygisk.so") for n in names)
         assert not any(n.endswith(".apk") for n in names), "Nested APK"
         assert b"@VERSION" not in package.read("module.prop"), "Unresolved version"
+        helper = package.read("logshare.dex")
+        assert helper.startswith(b"dex\n"), "Log sharing helper is not DEX"
+        assert b"Lcom/owo233/tcqt/loader/zygisk/LogShare;" in helper, "LogShare entry missing"
+        assert hashlib.sha256(helper).hexdigest() == package.read("logshare.dex.sha256").decode().strip(), "LogShare hash mismatch"
         injector_ids = re.findall(rb"TCQT_INJECTOR_ID_V1=[0-9a-f]{64}",
                                   package.read("zygisk/arm64-v8a.so"))
         assert len(injector_ids) == 1, "Missing or duplicate injector implementation identity"

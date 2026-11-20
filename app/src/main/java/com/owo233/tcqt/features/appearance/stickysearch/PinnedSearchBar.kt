@@ -16,6 +16,21 @@ internal object PinnedSearchBar {
 
     fun isNativeSearch(view: View): Boolean = view.javaClass.name == SEARCH_CLASS
 
+    fun isPinnedMessage(view: View): Boolean =
+        (view.getTag(R.id.tcqt_tag_pinned_search) as? Binding)?.kind == Kind.MESSAGE
+
+    fun messageHeader(view: View): View? {
+        val binding = view.getTag(R.id.tcqt_tag_pinned_search) as? Binding
+        return when {
+            binding?.slot === view -> binding.search
+            isNativeSearch(view) -> view
+            else -> null
+        }
+    }
+
+    fun messagePlaceholder(search: View): View =
+        (search.getTag(R.id.tcqt_tag_pinned_search) as? Binding)?.slot ?: search
+
     fun findSearch(root: View): View? {
         if (isNativeSearch(root)) return root
         if (root is ViewGroup) {
@@ -43,7 +58,7 @@ internal object PinnedSearchBar {
 
     // Bindings are owned by their views, never a process-global map of Activities.
     // Detaching a page unregisters its observer; reattaching resumes maintenance.
-    private class Binding(private val search: View, private val kind: Kind) {
+    private class Binding(val search: View, val kind: Kind) {
         val slot = FrameLayout(search.context).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO

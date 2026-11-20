@@ -27,8 +27,8 @@ import com.owo233.tcqt.core.hook.hookAfter
 import com.owo233.tcqt.core.hook.isNotStatic
 import com.owo233.tcqt.core.hook.paramCount
 import com.owo233.tcqt.core.log.Log
-import com.owo233.tcqt.core.reflect.fieldValue
 import com.owo233.tcqt.core.reflect.getFields
+import com.owo233.tcqt.core.reflect.hostFunction
 import com.owo233.tcqt.core.reflect.invoke
 import com.owo233.tcqt.core.reflect.new
 import com.owo233.tcqt.core.sync.ModuleScope
@@ -41,7 +41,6 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import java.lang.reflect.Method
-import java.lang.reflect.Proxy
 import kotlin.time.Duration.Companion.milliseconds
 
 @RegisterAction
@@ -192,16 +191,9 @@ object AddModuleEntrance : Feature(
     }
 
     private fun Any.bindClick(method: Method, listener: (Context) -> Unit, context: Context) {
-        val function0Class = method.parameterTypes.first()
-        val unitInstance = HookEnv.hostClassLoader
-            .loadClass("kotlin.Unit")?.fieldValue("INSTANCE") ?: Unit
-
-        val proxy = Proxy.newProxyInstance(HookEnv.hostClassLoader, arrayOf(function0Class)) { _, m, _ ->
-            if (m.name == "invoke") {
-                runCatching { listener(context) }
-                    .onFailure { Log.e("设置入口点击事件执行失败", it) }
-            }
-            unitInstance
+        val proxy = hostFunction(method.parameterTypes.first()) { ->
+            runCatching { listener(context) }
+                .onFailure { Log.e("设置入口点击事件执行失败", it) }
         }
         method.invoke(this, proxy)
     }

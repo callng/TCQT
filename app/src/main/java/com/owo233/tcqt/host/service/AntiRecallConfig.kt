@@ -10,11 +10,20 @@ internal object AntiRecallConfig {
     const val GRAY_TIP_INDEX = 1
     const val TOP_TIP_INDEX = 2
     const val DEFAULT_OPTIONS = 2
+    // IntSetting 的单选值为下标 + 1。
+    const val JAVA_MODE = 1
+    const val NATIVE_MODE = 2
 
     private const val LEGACY_OPTIONS_MIGRATION_KEY =
         "msg_anti_recall.type.reminder_options_migrated"
 
     fun useNewParser(): Boolean = options().isFlagEnabled(NEW_PARSER_INDEX)
+
+    fun isNativeEnabled(): Boolean = TCQTSetting.getBoolean("msg_anti_recall") &&
+        TCQTSetting.getInt("msg_anti_recall.mode") == NATIVE_MODE
+
+    fun isJavaEnabled(): Boolean = TCQTSetting.getBoolean("msg_anti_recall") &&
+        TCQTSetting.getInt("msg_anti_recall.mode") != NATIVE_MODE
 
     fun isGrayTipEnabled(): Boolean = options().isFlagEnabled(GRAY_TIP_INDEX)
 

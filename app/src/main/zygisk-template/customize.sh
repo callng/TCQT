@@ -20,8 +20,15 @@ if [ "$ARCH" != "arm64" ]; then
   abort "! Unsupported platform: $ARCH (only arm64-v8a)"
 fi
 
+# Keep the Zygisk support range separate from the installable APK's minSdk.
+TCQT_API="$(getprop ro.build.version.sdk)"
+case "$TCQT_API" in
+  33|34|35|36|37) ;;
+  *) abort "! Unsupported Android API: $TCQT_API (requires Android 13-17 / API 33-37)" ;;
+esac
+
 ui_print "- Extracting module files"
-unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'open-link.sh' 'payload.sh' 'post-fs-data.sh' -d "$MODPATH" >&2 ||
+unzip -o "$ZIPFILE" 'module.prop' 'uninstall.sh' 'hotinstall.sh' 'share-logs.sh' 'logshare.dex' 'logshare.dex.sha256' 'open-link.sh' 'payload.sh' 'post-fs-data.sh' -d "$MODPATH" >&2 ||
   abort "! Missing module scripts or metadata"
 
 mkdir -p "$MODPATH/zygisk"
@@ -57,6 +64,8 @@ set_perm "$MODPATH/payload.sh" 0 0 0644
 set_perm "$MODPATH/payload.sha256" 0 0 0644
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/share-logs.sh" 0 0 0755
+set_perm "$MODPATH/logshare.dex" 0 0 0644
+set_perm "$MODPATH/logshare.dex.sha256" 0 0 0644
 set_perm "$MODPATH/open-link.sh" 0 0 0755
 
 ui_print "- Fixing SELinux contexts"

@@ -2,8 +2,6 @@
 
 package com.owo233.tcqt.core.env
 
-import com.owo233.tcqt.core.reflect.field
-
 private fun getSimpleName(className: String): String {
     var name = className
     if (name.startsWith('L') && name.endsWith(';') || name.contains('/')) {
@@ -62,9 +60,3 @@ val String.clazz: Class<*>?
 
 val String.toClass: Class<*>
     get() = loadOrThrow(this)
-
-val hostUnit: Any = "kotlin.Unit".toClass.field("INSTANCE", false)!!.get(null)!!
-
-val hostFunction1 = "kotlin.jvm.functions.Function1".toClass
-
-val hostFunction2 = "kotlin.jvm.functions.Function2".toClass

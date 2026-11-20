@@ -8,6 +8,12 @@ public interface IKernelMsgService {
     final class CppProxy implements IKernelMsgService {
 
         @Override
+        public void setMsgRead(Contact contact, IOperateCallback callback) {}
+
+        @Override
+        public void setMsgRead(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, IOperateCallback callback) {}
+
+        @Override
         public void addLocalJsonGrayTipMsg(Contact contact, JsonGrayElement jsonGrayElement, boolean z, boolean z2, IAddJsonGrayTipMsgCallback iAddJsonGrayTipMsgCallback) {
 
         }
@@ -123,4 +129,8 @@ public interface IKernelMsgService {
     void getSingleMsg(Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
 
     void getSingleMsg(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, long j, IMsgOperateCallback iMsgOperateCallback);
+
+    void setMsgRead(Contact contact, IOperateCallback callback);
+
+    void setMsgRead(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, IOperateCallback callback);
 }

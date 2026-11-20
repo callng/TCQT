@@ -17,7 +17,7 @@ struct PltHookSpec {
     const char *lib;     // 目标库名子串（strstr 匹配），如 "libfekit.so"
     const char *symbol;  // 被替换的导入符号，如 "fopen"
     void *hook_fn;       // 替换函数地址（须与 symbol 同签名）
-    void **real;         // 输出：真实函数地址（安装时由 dlsym 解析写入）
+    void **real;         // 输出：真实函数地址（安装时由 dlsym 解析写入；存储须保持有效）
 };
 
 // 内置默认 hook 表（定义于 default_plt_hooks.cpp，只读）zygisk_entry 依据它
@@ -30,7 +30,9 @@ std::size_t default_plt_hook_count();
 void install_default_plt_hooks(const std::vector<std::string> &disabled_ids);
 
 // 用自定义表安装（扩展入口）。安装后立即对已加载目标库打补丁，并启动
-// 后台轮询发现，直到所有目标库都出现或超时。重复调用直接返回
+// 后台轮询发现，直到每个 spec 的槽位成功写入或超时。并发/重复调用只安装一次。
+// 表及名称由引擎快照；hook_fn 和 real 的存储必须保持到进程结束。
+// 支持普通 RELA 与 Android APS2；RELR 不携带导入符号，无需改写。
 void install_plt_hooks(const PltHookSpec *specs, std::size_t count);
 
 }  // namespace tcqt::zygisk

@@ -41,26 +41,44 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
         )
     }
 
-    private fun notifyRecalls(recalls: List<RecallPacketParser.Recall>) {
+    internal fun notifyRecalls(recalls: List<RecallPacketParser.Recall>) {
         recalls.distinct().forEach { recall ->
             if (recall.group) {
                 if (RecallManager.markGroup(recall.peerId, recall.msgSeq)) showGroupRecallTip(recall)
             } else {
-                if (RecallManager.markC2C(recall.peerId, recall.msgSeq)) showC2CRecallTip(recall)
+                if (RecallManager.mark(recall.chatType, recall.peerId, recall.msgSeq)) showC2CRecallTip(recall)
             }
         }
     }
 
     private fun showC2CRecallTip(recall: RecallPacketParser.Recall) {
-        if (!AntiRecallConfig.isGrayTipEnabled()) return
+        if (!AntiRecallConfig.isGrayTipEnabled() &&
+            !(AntiRecallConfig.isNativeEnabled() && AntiRecallConfig.isTopTipEnabled())) return
         val account = QQInterfaces.currentUid
         ModuleScope.launchWithCatch {
             if (QQInterfaces.currentUid != account) return@launchWithCatch
-            val contact = ContactHelper.generateContact(MsgConstant.KCHATTYPEC2C, recall.peerId)
-            val target = RecallTargetResolver.resolve(recall, contact)
+            var chatType = recall.chatType
+            var contact = ContactHelper.generateContact(chatType, recall.peerId)
+            var target = RecallTargetResolver.resolve(recall, contact)
+            // The kernel's online C2C RecallNotify uses type 1 even for temporary
+            // sessions. Locate the actual record before attaching a native tip.
+            if (AntiRecallConfig.isNativeEnabled() && chatType == MsgConstant.KCHATTYPEC2C &&
+                target.state == RecallTargetLookup.State.MISSING) {
+                for (type in intArrayOf(100, 101, 102, 42)) {
+                    val candidate = ContactHelper.generateContactByUid(type, recall.peerId)
+                    val found = RecallTargetResolver.resolve(recall, candidate)
+                    if (found.state == RecallTargetLookup.State.FOUND) {
+                        chatType = type
+                        contact = candidate
+                        target = found
+                        break
+                    }
+                }
+            }
             if (QQInterfaces.currentUid != account) return@launchWithCatch
-            target.msgSeq?.let { RecallManager.markC2C(recall.peerId, it) }
-            // logTarget(recall, target)
+            target.msgSeq?.let { RecallManager.mark(chatType, recall.peerId, it) }
+            if (!AntiRecallConfig.isGrayTipEnabled()) return@launchWithCatch
+            // if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
             // The recall is still blocked, but a tip for a message that was never stored locally
             // can only be an unlocatable gray bar.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
@@ -88,7 +106,7 @@ internal class RecallPushHandler(private val decoder: RecallMetadataDecoder) : M
             val target = RecallTargetResolver.resolve(recall, contact)
             if (QQInterfaces.currentUid != account) return@launchWithCatch
             target.msgSeq?.let { RecallManager.markGroup(recall.peerId, it) }
-            // logTarget(recall, target)
+            // if (AntiRecallConfig.isNativeEnabled()) logTarget(recall, target)
             // Still blocked, but no tip for a message that was never stored locally.
             if (target.state == RecallTargetLookup.State.MISSING) return@launchWithCatch
 

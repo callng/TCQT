@@ -16,20 +16,25 @@ bool bootstrap_payload(JNIEnv *env, const std::string &apk_path,
                        const std::string &process_name, const std::string &data_dir) {
     // Read all classes*.dex from the copied package and build an
     // InMemoryDexClassLoader. An APK-path DexClassLoader is not usable
-    // here: Android 10+ refuses to load dex from app-writable paths
+    // here: newer Android/target SDK combinations reject writable DEX paths
     // ("Attempt to load writable dex file"), so the payload is loaded
     // from memory instead. kotlinx-coroutines' Main dispatcher discovery
     // (META-INF/services) is therefore unavailable; the Java side
     // compensates by hooking Dispatchers.getMain() in
     // ModuleLoader.installMainDispatcher().
-    // Note: dex_bufs is intentionally never freed — the class loader
-    // holds direct ByteBuffers referencing the underlying dex memory.
-    auto *dex_bufs = new std::vector<std::vector<uint8_t>>();
-    if (!read_dex_from_apk(env, apk_path, dex_bufs)) {
-        LOGE("postAppSpecialize: failed to read dex from %s", apk_path.c_str());
-        return false;
+    jobject loader = nullptr;
+    {
+        // ART copies direct-buffer DEX data into its own MemMap during the
+        // InMemoryDexClassLoader constructor on the supported Android versions. Only
+        // retain the source bytes until that synchronous call returns.
+        // Scope ownership also releases partially read DEX on failure.
+        std::vector<std::vector<uint8_t>> dex_bufs;
+        if (!read_dex_from_apk(env, apk_path, &dex_bufs)) {
+            LOGE("postAppSpecialize: failed to read dex from %s", apk_path.c_str());
+            return false;
+        }
+        loader = build_dex_classloader(env, dex_bufs);
     }
-    jobject loader = build_dex_classloader(env, *dex_bufs);
     if (loader == nullptr) {
         LOGE("postAppSpecialize: failed to build InMemoryDexClassLoader");
         return false;

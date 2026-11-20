@@ -21,6 +21,7 @@ import com.owo233.tcqt.features.appearance.liquidglass.FloatingBottomBarConfigSt
 import com.owo233.tcqt.features.appearance.liquidglass.GlassBarInstaller
 import com.owo233.tcqt.features.appearance.liquidglass.NewViewBarInstaller
 import com.owo233.tcqt.features.appearance.liquidglass.QQTabLocator
+import java.lang.ref.WeakReference
 
 @RegisterAction(priority = ActionPriority.CRITICAL)
 object LiquidGlassTabBar : Feature(
@@ -43,6 +44,7 @@ object LiquidGlassTabBar : Feature(
         },
     ),
 ) {
+    private var themeActivity = WeakReference<Activity?>(null)
 
     // 声明顺序 = 设置界面的渲染顺序。
     // 派生 key 必须逐个等于 FloatingBottomBarConfigStore / QQTabLocator 里的常量
@@ -108,14 +110,31 @@ object LiquidGlassTabBar : Feature(
 
     private fun hookThemeChange() {
         val fragment = load("com.tencent.mobileqq.app.FrameFragment") ?: return
-        // QQ re-applies the native tab layout while changing skins. Let it operate on
-        // the original hierarchy, then measure and install against the refreshed views.
+        // Both implementations must give QQ its native hierarchy during a skin refresh.
+        val restoreForTheme = {
+            val activity = NewViewBarInstaller.currentActivity() ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                GlassBarInstaller.currentActivity()
+            } else null
+            if (activity != null) {
+                themeActivity = WeakReference(activity)
+                NewViewBarInstaller.restore(preserveNativeMotion = true)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) GlassBarInstaller.restore(preserveNativeMotion = true)
+            }
+        }
         runCatching { fragment.getDeclaredMethod("onPreThemeChanged") }.getOrNull()
-            ?.hookBefore { NewViewBarInstaller.onHostThemeChanging() }
+            ?.hookBefore { restoreForTheme() }
         val postThemeChange = runCatching { fragment.getDeclaredMethod("onPostThemeChanged") }.getOrNull()
         // Also cover hosts which dispatch only the post callback.
-        postThemeChange?.hookBefore { NewViewBarInstaller.onHostThemeChanging() }
-        postThemeChange?.hookAfter { NewViewBarInstaller.onHostThemeChanged() }
+        postThemeChange?.hookBefore { restoreForTheme() }
+        postThemeChange?.hookAfter {
+            val activity = themeActivity.get() ?: return@hookAfter
+            themeActivity.clear()
+            if (FloatingBottomBarConfigStore.read().implementation == BottomBarImplementation.NEW_VIEW) {
+                NewViewBarInstaller.scheduleInstall(activity)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                GlassBarInstaller.scheduleInstall(activity)
+            }
+        }
     }
 
     /**

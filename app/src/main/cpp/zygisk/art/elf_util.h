@@ -15,7 +15,7 @@ struct ArtLibrary {
 bool find_art_library(ArtLibrary *out);
 
 // Resolve an ELF symbol from the on-disk shared object (scans .dynsym/.symtab).
-// Returns base + st_value, or 0 when the symbol is not found.
+// Returns st_value (the caller adds the load bias), or 0 when not found.
 uintptr_t resolve_elf_symbol(const std::string &path, const char *symbol);
 
 }  // namespace tcqt::zygisk

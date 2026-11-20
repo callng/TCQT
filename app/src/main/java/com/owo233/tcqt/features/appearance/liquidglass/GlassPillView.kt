@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.withClip
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.children
 import com.owo233.tcqt.core.log.Log
 import java.lang.ref.WeakReference
@@ -101,11 +102,15 @@ internal class GlassPillView(
      * 模拟玻璃边缘的镜面反射。
      */
     fun setTheme(dark: Boolean) {
-        baseColour = if (dark) 0xFF111111.toInt() else 0xFFF7F7F7.toInt()
-        surfacePaint.color = if (dark) 0x662C2C2E else 0x66F2F2F7
+        setTheme(BottomBarTheme.default(dark))
+    }
+
+    fun setTheme(theme: BottomBarTheme) {
+        baseColour = theme.surface
+        surfacePaint.color = ColorUtils.setAlphaComponent(theme.surface, 0x66)
         highlightPaint.style = Paint.Style.STROKE
         highlightPaint.strokeWidth = density
-        highlightPaint.color = if (dark) 0x1FFFFFFF else 0x2EFFFFFF
+        highlightPaint.color = if (theme.dark) 0x1FFFFFFF else 0x2EFFFFFF
         invalidate()
     }
 

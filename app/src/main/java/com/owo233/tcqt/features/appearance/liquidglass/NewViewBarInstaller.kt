@@ -35,7 +35,6 @@ internal object NewViewBarInstaller {
     private var surfaceRef = WeakReference<View?>(null)
     private var parentRef = WeakReference<ViewGroup?>(null)
     private var activityRef = WeakReference<Activity?>(null)
-    private var themeChangeActivityRef = WeakReference<Activity?>(null)
     private var driver: DropletGestureDriver? = null
     private var refreshListener: ViewTreeObserver.OnPreDrawListener? = null
 
@@ -47,7 +46,8 @@ internal object NewViewBarInstaller {
     private var baseTabWidth = 0
     private var appliedScale = 0f
     private var appliedWidthBudget = 0
-    private var appliedDark: Boolean? = null
+    private var appliedTheme: BottomBarTheme? = null
+    private var themeProbeCount = 0
     private var installedMode: FloatingBottomBarMode? = null
     private var installedPosition: FloatingBottomBarPosition? = null
     /** Captured before the native TabView is detached; detached views often report zero insets. */
@@ -57,19 +57,7 @@ internal object NewViewBarInstaller {
     private var layoutSyncPending = false
 
     fun currentPager(): ViewGroup? = backdropRef.get()
-
-    fun onHostThemeChanging() {
-        val activity = activityRef.get() ?: return
-        restore()
-        themeChangeActivityRef = WeakReference(activity)
-    }
-
-    fun onHostThemeChanged() {
-        val activity = themeChangeActivityRef.get() ?: return
-        themeChangeActivityRef.clear()
-        // Wait for QQ's theme callback to finish before measuring the new tab content.
-        scheduleInstall(activity)
-    }
+    fun currentActivity(): Activity? = activityRef.get()
 
     fun scheduleInstall(activity: Activity) {
         val decor = activity.window.decorView
@@ -92,7 +80,7 @@ internal object NewViewBarInstaller {
     }
 
     private fun scheduleInstallFromView(tabView: ViewGroup) {
-        val activity = (tabView.rootView?.context as? Activity) ?: return
+        val activity = TabViewOperations.activityOf(tabView) ?: return
         scheduleInstall(activity)
     }
 
@@ -117,6 +105,11 @@ internal object NewViewBarInstaller {
         }
 
         val tabView = QQTabLocator.locateTabView(decor)
+        if (tabView != null && tabView.visibility != View.VISIBLE) {
+            // An open mini-app desktop is not an installation failure. Wait for QQ to reveal the tabs.
+            decor.postDelayed({ reconcile(activity, decor, attempt) }, RETRY_DELAY_MS)
+            return
+        }
         if (tabView == null || tabView.parent !is ViewGroup) {
             if (attempt < MAX_INSTALL_ATTEMPTS) {
                 decor.postDelayed({ reconcile(activity, decor, attempt + 1) }, RETRY_DELAY_MS)
@@ -138,6 +131,7 @@ internal object NewViewBarInstaller {
     }
 
     private fun install(activity: Activity, tabView: ViewGroup): Boolean {
+        if (tabView.visibility != View.VISIBLE) return false
         val parent = tabView.parent as? ViewGroup ?: return false
         if (parent is FloatingBarHostLayout || parent is GlassBarHostLayout) return false
         val row = QQTabLocator.findTabRow(tabView) ?: return false
@@ -167,25 +161,29 @@ internal object NewViewBarInstaller {
         baseTabWidth = max(1, (barWidth - horizontalPad * 2) / visibleTabs.size)
 
         val host = FloatingBarHostLayout(context)
+        val theme = BottomBarTheme.fromNative(tabView)
+        host.setDarkTheme(theme.dark)
         host.setupShadow()
-        appliedDark = host.isDarkTheme
+        appliedTheme = theme
         val config = FloatingBottomBarConfigStore.read()
         val mode = config.mode
         val liquid = mode == FloatingBottomBarMode.LIQUID_GLASS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
         val surface: View = if (liquid) {
             GlassPillView(context, backdrop, density, host.isDarkTheme).apply {
+                setTheme(theme)
                 setBlurPercent(config.blurPercent)
             }
         } else {
-            FloatingBarSurfaceView(context, mode, host.isDarkTheme)
+            FloatingBarSurfaceView(context, mode, host.isDarkTheme).apply { update(mode, theme) }
         }
         val indicator: View = if (liquid) {
             GlassDropletView(context, backdrop, row, density, host.isDarkTheme).apply {
+                setTheme(theme)
                 setBlurPercent(config.blurPercent)
                 visibility = View.INVISIBLE
             }
         } else {
-            FloatingBarIndicatorView(context).apply { setTheme(host.isDarkTheme) }
+            FloatingBarIndicatorView(context).apply { setTheme(theme) }
         }
         val shadow = host.shadowPadding
         val inset = effectiveNavigationInset(tabView)
@@ -228,7 +226,7 @@ internal object NewViewBarInstaller {
             } else {
                 tabView.setPadding(0, 0, 0, 0)
             }
-            stripSolidBackgrounds(tabView)
+            TabViewOperations.stripBarBackgrounds(tabView)
             TabViewOperations.disableTabWidgetStrips(tabView)
             hideOwnBarChrome(parent, tabView)
         } catch (t: Throwable) {
@@ -279,23 +277,28 @@ internal object NewViewBarInstaller {
                     }
                 }
                 else -> {
+                    val visible = TabViewOperations.followNativeBar(host, tabView, surface, indicator)
+                    host.setShadowOffsetY(tabView.translationY, tabView.alpha)
+                    if (!visible) return@OnPreDrawListener true
                     val scaleChanged = applyScale(current.scale, current.position)
                     applyPosition(current.position)
                     NewViewTabContentLayout.centerTabContent(row)
                     keepOwnBarChromeHidden(parent, tabView)
-                    val dark =
-                        runCatching { com.owo233.tcqt.core.env.HookEnv.isNightMode() }.getOrDefault(
-                            false
-                        )
-                    if (appliedDark != dark) {
-                        appliedDark = dark
-                        host.setDarkTheme(dark)
-                        (surfaceRef.get() as? FloatingBarSurfaceView)?.update(current.mode, dark)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            (surfaceRef.get() as? GlassPillView)?.setTheme(dark)
-                            (indicatorRef.get() as? GlassDropletView)?.setTheme(dark)
+                    if (tabView.background != null || ++themeProbeCount % 20 == 1) {
+                        val dark = BottomBarTheme.darkFromTabs(tabView) ?: appliedTheme!!.dark
+                        val theme = if (tabView.background != null) {
+                            BottomBarTheme.fromNative(tabView).also { TabViewOperations.stripBarBackgrounds(tabView) }
+                        } else if (appliedTheme?.dark != dark) BottomBarTheme.default(dark) else appliedTheme!!
+                        if (appliedTheme != theme) {
+                            appliedTheme = theme
+                            host.setDarkTheme(theme.dark)
+                            (surfaceRef.get() as? FloatingBarSurfaceView)?.update(current.mode, theme)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                (surfaceRef.get() as? GlassPillView)?.setTheme(theme)
+                                (indicatorRef.get() as? GlassDropletView)?.setTheme(theme)
+                            }
+                            (indicatorRef.get() as? FloatingBarIndicatorView)?.setTheme(theme)
                         }
-                        (indicatorRef.get() as? FloatingBarIndicatorView)?.setTheme(dark)
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         (surfaceRef.get() as? GlassPillView)?.setBlurPercent(current.blurPercent)
@@ -334,21 +337,23 @@ internal object NewViewBarInstaller {
         }
     }
 
-    fun restore() {
+    fun restore(preserveNativeMotion: Boolean = false) {
         val host = hostRef.get()
         hostRef = WeakReference(null)
         lifecycleListeners.clear()
         refreshListener?.let { listener -> host?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(listener) }
         driver = null
-        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
-        tabSnapshot?.restore()
+        val nativeHidden = preserveNativeMotion && tabViewRef.get()?.visibility != View.VISIBLE
+        hiddenChrome.forEach { (view, visibility) -> view.visibility = if (nativeHidden) View.GONE else visibility }
+        tabSnapshot?.restore(preserveNativeMotion)
         tabSnapshot = null
         (host?.parent as? ViewGroup)?.removeView(host)
         tabViewRef.clear(); tabRowRef.clear(); backdropRef.clear()
         indicatorRef.clear(); surfaceRef.clear(); parentRef.clear(); activityRef.clear()
         refreshListener = null
         hiddenChrome.clear()
-        appliedScale = 0f; appliedWidthBudget = 0; appliedDark = null; installedMode = null; installedPosition = null
+        appliedScale = 0f; appliedWidthBudget = 0; appliedTheme = null; installedMode = null; installedPosition = null
+        themeProbeCount = 0
         layoutSyncPending = false; navigationInset = 0; reinstallPosted = false
     }
 
@@ -429,11 +434,6 @@ internal object NewViewBarInstaller {
         host.layoutParams = lp
         installedPosition = position
         host.requestLayout()
-    }
-
-    private fun stripSolidBackgrounds(view: View) {
-        view.background = null
-        if (view is ViewGroup) view.children.forEach { stripSolidBackgrounds(it) }
     }
 
     private fun hideOwnBarChrome(parent: ViewGroup, tabView: View) {

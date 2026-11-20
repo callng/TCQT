@@ -37,8 +37,8 @@ bool read_dex_from_apk(JNIEnv *env, const std::string &apk_path,
                        std::vector<std::vector<uint8_t>> *out);
 
 // Build an InMemoryDexClassLoader over the given dex buffers with
-// ClassLoader.getSystemClassLoader() as parent. The buffers must stay valid
-// for the lifetime of the returned loader.
+// ClassLoader.getSystemClassLoader() as parent. ART copies the DEX data
+// synchronously, so the buffers only need to stay valid until this returns.
 jobject build_dex_classloader(JNIEnv *env, const std::vector<std::vector<uint8_t>> &dex_bufs);
 
 // Load a class via ClassLoader.loadClass(dot_name).

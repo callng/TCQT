@@ -1,6 +1,5 @@
 package com.owo233.tcqt.host.service
 
-import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.hook.MethodHookParam
 import com.owo233.tcqt.core.hook.hookMethodBefore
 import com.owo233.tcqt.core.log.LogUtils
@@ -19,7 +18,7 @@ object NTServiceFetcher {
     fun onFetch(service: IKernelService) {
         this.iKernelService = service // initService钩子会被多次调用，允许它重新赋值
 
-        if (!TCQTSetting.getBoolean("msg_anti_recall")) return
+        if (!AntiRecallConfig.isJavaEnabled()) return
 
         val sessionClass = try {
             service.wrapperSession.javaClass
@@ -39,6 +38,7 @@ object NTServiceFetcher {
                 ByteArray::class.java,
                 PushExtraInfo::class.java
             ) { param ->
+                if (!AntiRecallConfig.isJavaEnabled()) return@hookMethodBefore
                 val cmd = param.args.getOrNull(0) as? String ?: return@hookMethodBefore
                 val buffer = param.args.getOrNull(1) as? ByteArray ?: return@hookMethodBefore
                 if (isRecallPushCommand(cmd) && observedPushCommands.add(cmd)) {
@@ -54,7 +54,7 @@ object NTServiceFetcher {
 
         installHook(sessionClass, HookInstallationRegistry.Hook.BACKGROUND) {
             sessionClass.hookMethodBefore("switchToBackGround") {
-                if (TCQTSetting.getBoolean("msg_anti_recall")) it.result = null
+                if (AntiRecallConfig.isJavaEnabled()) it.result = null
             }
         }
     }
@@ -80,8 +80,6 @@ object NTServiceFetcher {
                 cmd == "trpc.msg.olpush.OlPushService.MsgPush"
 
     private fun action(cmd: String, buffer: ByteArray, param: MethodHookParam) {
-        if (!TCQTSetting.getBoolean("msg_anti_recall")) return
-
         // 新旧解析器的区别：旧版用 Google Protobuf，新版用 kotlinx-serialization
         val handler: MessageHandler = if (AntiRecallConfig.useNewParser()) {
             NewPreventRetractingMessageCore

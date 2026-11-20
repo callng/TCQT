@@ -7,6 +7,8 @@ SANDBOX=$(mktemp -d)
 trap 'rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/package/zygisk" "$SANDBOX/bin"
 cp -R "$ROOT/app/src/main/zygisk-template/." "$SANDBOX/package/"
+printf 'standalone diagnostic dex fixture' > "$SANDBOX/package/logshare.dex"
+sha256sum "$SANDBOX/package/logshare.dex" | cut -d ' ' -f1 > "$SANDBOX/package/logshare.dex.sha256"
 for script in "$SANDBOX/package/"*.sh; do
   sed -e "s|/data/adb|$SANDBOX/data/adb|g" \
       -e "s|/proc/sys/kernel/random/boot_id|$SANDBOX/boot_id|g" \
@@ -38,6 +40,8 @@ setup_case() {
   MODPATH="$case_dir/modules_update/zygisk_tcqt"
   mkdir -p "$MODPATH"
   BOOTMODE=true ARCH=arm64 KSU=true KSU_HAS_HOT_INSTALL=true ZIPFILE="$SANDBOX/module.zip"
+  TCQT_TEST_API=37
+  getprop() { [ "$1" = ro.build.version.sdk ] && printf '%s' "$TCQT_TEST_API"; }
   export MODULE_HOT_INSTALL_REQUEST=true MODULE_HOT_RUN_SCRIPT=stale.sh
   ui_print() { echo "$1"; }
   abort() { echo "$1" >&2; exit 1; }
@@ -78,7 +82,27 @@ apply_at_boot() {
   sh "$live_dir/post-fs-data.sh"
   assert_published
   [ "$(cat "$case_dir/tcqt/boot-injector")" = "boot-two $NEW_ID" ]
+  grep -q TCQT_ACTIVATION_OK "$case_dir/tcqt/activation.log"
+  cmp "$SANDBOX/package/logshare.dex" "$live_dir/logshare.dex"
 }
+
+for api in '' bad 27 32 38; do (
+  setup_case
+  TCQT_TEST_API="$api"
+  if (install_package); then echo "FAIL: accepted unsupported API $api"; exit 1; fi
+  [ ! -e "$MODPATH/zygisk/arm64-v8a.so" ]
+  [ ! -d "$case_dir/tcqt/pending" ]
+  [ "$(cat "$case_dir/tcqt/main.apk")" = 'old payload' ]
+  echo "PASS: reject unsupported API '$api' before extraction/publication"
+); done
+
+for api in 33 34 35 36 37; do (
+  setup_case
+  TCQT_TEST_API="$api"
+  install_package
+  assert_published
+  echo "PASS: install on supported API $api"
+); done
 
 for mode in changed missing-record stale-boot replaced-inode legacy-record missing-id duplicate-id disabled removed pending-update; do (
   setup_case
@@ -156,7 +180,23 @@ for mode in corrupt wrong-injector other-install label-failure; do (
     label-failure) export TCQT_TEST_CHCON_FAIL=1 ;;
   esac
   if sh "$live_dir/post-fs-data.sh"; then echo "Unexpected activation: $mode"; exit 1; fi
+  grep -q TCQT_ACTIVATION_ERROR "$case_dir/tcqt/activation.log"
   [ "$(cat "$case_dir/tcqt/main.apk")" = 'old payload' ]
   [ ! -e "$case_dir/tcqt/boot-injector" ]
   echo "PASS: rejected $mode without replacing payload"
 ); done
+
+(
+  setup_case
+  . "$SANDBOX/package/payload.sh"
+  cp() {
+    command cp "$@"
+    if [ "$2" = "$DATAPATH/main.apk.tmp" ]; then printf 'short copy' > "$2"; fi
+  }
+  if tcqt_publish_payload "$ZIPFILE" "$APK_HASH_EXPECTED"; then
+    echo 'A damaged copy was published'; exit 1
+  fi
+  [ "$(cat "$DATAPATH/main.apk")" = 'old payload' ]
+  [ "$(cat "$DATAPATH/main.apk.sha256")" = "$(hash "$DATAPATH/main.apk")" ]
+  echo 'PASS: copied payload is verified before replacing the active package'
+)

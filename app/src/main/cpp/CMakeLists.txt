@@ -28,6 +28,7 @@ function(tcqt_configure_native_target target)
 endfunction()
 
 add_subdirectory(zygisk)
+add_subdirectory(recall)
 
 # GetSign JNI scanner, also used outside Zygisk mode.
 add_library(tcqtmem SHARED source32_scanner.cpp)

@@ -5,9 +5,11 @@
 namespace tcqt::zygisk::art_detail {
 uintptr_t strip_pac(uintptr_t addr) {
 #ifdef __aarch64__
-    register uintptr_t x16 __asm__("x16") = addr;
-    __asm__ __volatile__("hint #32" : "+r"(x16));
-    return x16;
+    // XPACLRI operates on LR and is a backwards-compatible hint on non-PAC
+    // CPUs. HINT #32 is BTI, not XPACI, and never stripped pointer signatures.
+    register uintptr_t lr __asm__("x30") = addr;
+    __asm__ __volatile__("hint #7" : "+r"(lr));
+    return lr;
 #else
     return addr;
 #endif

@@ -1,20 +1,9 @@
 #include "zygisk/art/art_runtime.h"
 #include "zygisk/art/art_memory.h"
-#include <sys/system_properties.h>
-#include <cstdlib>
+#include <algorithm>
 #include <cstring>
 namespace tcqt::zygisk::art_detail {
 namespace {
-int get_api_level() {
-    static int api = -1;
-    if (api >= 0) return api;
-    char buf[PROP_VALUE_MAX] = {0};
-    __system_property_get("ro.build.version.sdk", buf);
-    api = atoi(buf);
-    if (api <= 0) api = 35;  // assume modern API when detection fails
-    return api;
-}
-
 bool init_reflection_fields(JNIEnv *env, MethodLayout &layout) {
     jclass exec_cls = env->FindClass("java/lang/reflect/Executable");
     if (exec_cls == nullptr) {
@@ -72,8 +61,13 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
         return false;
     }
 
-    constexpr jsize MAX_CTORS = 4;
-    const jsize n = len < MAX_CTORS ? len : MAX_CTORS;
+    constexpr jsize MAX_CTORS = 32;
+    if (len > MAX_CTORS) {
+        LOGE("probe_art_method_layout: too many constructors: %d", len);
+        env->DeleteLocalRef(ctors);
+        return false;
+    }
+    const jsize n = len;
     uintptr_t arts[MAX_CTORS] = {0};
     uint32_t flags_arr[MAX_CTORS] = {0};
     for (jsize i = 0; i < n; ++i) {
@@ -101,7 +95,14 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
     env->DeleteLocalRef(ctors);
     env->ExceptionClear();
 
-    // Constructors must come in ascending address order (methods_ array order).
+    // Reflection does not promise declaration/address order. Sort the paired
+    // values before checking adjacency, rather than rejecting a reordered VM.
+    for (jsize i = 1; i < n; ++i) {
+        for (jsize j = i; j > 0 && arts[j] < arts[j - 1]; --j) {
+            std::swap(arts[j], arts[j - 1]);
+            std::swap(flags_arr[j], flags_arr[j - 1]);
+        }
+    }
     for (jsize i = 1; i < n; ++i) {
         if (arts[i] <= arts[i - 1]) {
             LOGE("probe_art_method_layout: constructors not in ascending order at %d", i);
@@ -121,6 +122,15 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
         if (d != delta) {
             LOGE("probe_art_method_layout: constructor deltas disagree (%zu vs %zu) — "
                  "constructors are not adjacent, refusing to probe", d, delta);
+            return false;
+        }
+    }
+
+    for (jsize i = 0; i < n; ++i) {
+        const int first = get_prot_for_addr(arts[i]);
+        const int last = get_prot_for_addr(arts[i] + delta - 1);
+        if (first < 0 || last < 0 || !(first & PROT_READ) || !(last & PROT_READ)) {
+            LOGE("probe_art_method_layout: unreadable constructor span");
             return false;
         }
     }
@@ -177,8 +187,11 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
                 }
             }
             if (all) {
+                if (af_off >= 0) {
+                    dump_bytes("multiple fallback access_flags offsets");
+                    return false;
+                }
                 af_off = static_cast<long>(off);
-                break;
             }
         }
     }
@@ -187,11 +200,8 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
         return false;
     }
 
-    // ── Entry point: the first 8-byte slot after the flags that holds an
-    // executable address, consistently across all constructors. ArtMethod's
-    // entry point is always its last field, so this directly yields the size.
-    // Scan every 8-byte-aligned slot (data_/dex fields are not executable, so
-    // the entry point is the first executable slot after the flags).
+    // The unique aligned code pointer must be the final field and exactly
+    // agree with the constructor stride. Ambiguous candidates fail closed.
     long ep_off = -1;
     uintptr_t ep_value = 0;
     size_t scan_start = (static_cast<size_t>(af_off) + 4 + sizeof(void *) - 1) &
@@ -211,9 +221,12 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
             v0 = v;
         }
         if (all) {
+            if (ep_off >= 0) {
+                dump_bytes("multiple executable entry-point candidates");
+                return false;
+            }
             ep_off = static_cast<long>(off);
             ep_value = v0;
-            break;
         }
     }
     if (ep_off < 0 || static_cast<size_t>(af_off) + 4 > static_cast<size_t>(ep_off)) {
@@ -223,7 +236,7 @@ bool probe_art_method_layout(JNIEnv *env, const MethodLayout &layout, size_t *me
 
     size_t size = static_cast<size_t>(ep_off) + sizeof(void *);
     if (size < sizeof(void *) * 4 || size > sizeof(void *) * 8 ||
-        size % sizeof(void *) != 0 || delta % size != 0) {
+        size % sizeof(void *) != 0 || delta != size) {
         dump_bytes("implausible method size derived from entry point");
         return false;
     }
@@ -269,23 +282,9 @@ bool probe_layout(JNIEnv *env, MethodLayout *result) {
         return false;
     }
 
-    // 6. Access flag masks by API level.
-    int api = get_api_level();
-    uint32_t acc_precompiled;
-    if (api < 30) {
-        acc_precompiled = 0;
-    } else if (api >= 31) {
-        acc_precompiled = 0x00800000;
-    } else {
-        acc_precompiled = 0x00200000;
-    }
-    uint32_t acc_fast_interp = api < 29 ? 0 : ACC_FAST_INTERPRETER;
-
     layout.method_size = method_size;
     layout.entry_point_offset = entry_point_offset;
     layout.access_flags_offset = flags_offset;
-    layout.acc_precompiled = acc_precompiled;
-    layout.acc_fast_interp = acc_fast_interp;
     *result = layout;
     return true;
 }

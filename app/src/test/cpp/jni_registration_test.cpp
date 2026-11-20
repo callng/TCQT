@@ -17,8 +17,7 @@ bool art_hook_init(JNIEnv *) { return false; }
 uintptr_t art_get_method(JNIEnv *, jobject) { return 0; }
 int art_hook_method(JNIEnv *, uintptr_t, uintptr_t, uintptr_t) { return -1; }
 int art_unhook_method(JNIEnv *, uintptr_t, uintptr_t) { return -1; }
-bool art_trust_dex_file(JNIEnv *, jobject) { return false; }
-jobject art_invoke_backup(JNIEnv *, jobject, jobject, jobjectArray) { return nullptr; }
+jobject art_invoke_backup(JNIEnv *, jobject, jmethodID, jclass, jobject, jobjectArray) { return nullptr; }
 jclass load_class_from_loader(JNIEnv *env, jobject selected_class, const char *) {
     return static_cast<jclass>(env->NewLocalRef(selected_class));
 }

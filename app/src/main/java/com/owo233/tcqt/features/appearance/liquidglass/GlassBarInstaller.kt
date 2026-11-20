@@ -55,9 +55,6 @@ internal object GlassBarInstaller {
     /** 绑定行不可用时的容忍帧数；超过即认为旧绑定已死。 */
     private const val TAB_ROW_EMPTY_FRAME_LIMIT = 120
 
-    /** 逐帧复用坐标缓冲；全部调用位于 UI 线程。 */
-    private val tmpLoc = IntArray(2)
-
     /** 逐帧复用的宿主坐标系缓冲；全部调用位于 UI 线程。 */
     private val tmpPos = IntArray(2)
 
@@ -65,6 +62,7 @@ internal object GlassBarInstaller {
     // ---- 安装状态：以弱引用持有宿主视图，Activity 重建后自动失效并重装 ----
 
     private var hostRef = WeakReference<GlassBarHostLayout?>(null)
+    private var activityRef = WeakReference<Activity?>(null)
     private var tabViewRef = WeakReference<View?>(null)
     private var tabRowRef = WeakReference<ViewGroup?>(null)
     private var pagerRef = WeakReference<ViewGroup?>(null)
@@ -113,6 +111,7 @@ internal object GlassBarInstaller {
 
     /** 玻璃当前折射的页面容器。 */
     fun currentPager(): ViewGroup? = pagerRef.get()
+    fun currentActivity(): Activity? = activityRef.get()
 
     /** 主界面恢复后调度安装。 */
     fun scheduleInstall(activity: Activity) {
@@ -169,6 +168,10 @@ internal object GlassBarInstaller {
             if (live != null) resetState()
 
             val tabView = QQTabLocator.locateTabView(decor)
+            if (tabView != null && tabView.visibility != View.VISIBLE) {
+                decor.postDelayed({ tryInstall(activity, decor, attempt) }, RETRY_DELAY_MS)
+                return
+            }
             if (tabView == null) {
                 if (attempt < MAX_INSTALL_ATTEMPTS) {
                     decor.postDelayed({ tryInstall(activity, decor, attempt + 1) }, RETRY_DELAY_MS)
@@ -182,19 +185,21 @@ internal object GlassBarInstaller {
     }
 
     /** 丢弃上一个界面的残留引用，保证重建后重新安装。 */
-    fun restore() = resetState()
+    fun restore(preserveNativeMotion: Boolean = false) = resetState(preserveNativeMotion)
 
-    private fun resetState() {
+    private fun resetState(preserveNativeMotion: Boolean = false) {
         val oldHost = hostRef.get()
         hostRef = WeakReference(null)
         listeners.clear()
-        hiddenChrome.forEach { (view, visibility) -> view.visibility = visibility }
+        val nativeHidden = preserveNativeMotion && tabViewRef.get()?.visibility != View.VISIBLE
+        hiddenChrome.forEach { (view, visibility) -> view.visibility = if (nativeHidden) View.GONE else visibility }
         hiddenChrome.clear()
         pageLayout.reset()
-        tabSnapshot?.restore()
+        tabSnapshot?.restore(preserveNativeMotion)
         tabSnapshot = null
         (oldHost?.parent as? ViewGroup)?.removeView(oldHost)
         tabViewRef = WeakReference(null)
+        activityRef.clear()
         tabRowRef = WeakReference(null)
         pagerRef = WeakReference(null)
         glassRef = WeakReference(null)
@@ -210,12 +215,13 @@ internal object GlassBarInstaller {
         dropletBaseY = 0f
         dropletGeometryKey = 0
         dropletLogged = false
-        Log.i("检测到上个界面的残留状态，已重置并重新安装")
+        // Log.i("检测到上个界面的残留状态，已重置并重新安装")
     }
 
     // ---- 安装主体 ----
 
     private fun install(tabView: ViewGroup) {
+        if (tabView.visibility != View.VISIBLE) return
         val parent = tabView.parent as? ViewGroup ?: return
         if (parent is GlassBarHostLayout) return
 
@@ -247,7 +253,7 @@ internal object GlassBarInstaller {
 
         val geometry = TabViewSnapshot(tabView, stockAlpha.remove(tabView) ?: tabView.alpha)
         val hostParams = FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.MATCH_PARENT, resolvedHeight + shadowPad * 2,
         ).apply {
             gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
             bottomMargin = floatOffset - shadowPad
@@ -289,6 +295,7 @@ internal object GlassBarInstaller {
 
         tabSnapshot = geometry
         hostRef = WeakReference(host)
+        activityRef = WeakReference(TabViewOperations.activityOf(tabView))
         listeners.onDetached(host) { if (hostRef.get() === host) restore() }
         tabViewRef = WeakReference(tabView)
         tabRowRef = WeakReference(tabRow)
@@ -303,7 +310,7 @@ internal object GlassBarInstaller {
         runCatching {
             hideOwnBlurLayers(parent)
             hideBarHairline(parent, tabView)
-            stripSolidBackgrounds(tabView)
+            TabViewOperations.stripBarBackgrounds(tabView)
             TabViewOperations.disableTabWidgetStrips(tabView)
         }.onFailure { Log.e("清理原生底栏装饰失败", it) }
 
@@ -390,9 +397,9 @@ internal object GlassBarInstaller {
             host.setRendererCallback(object : GlassBarHostLayout.RendererCallback {
                 override fun onSize(width: Int, height: Int, cornerRadius: Float) = glass.invalidate()
 
-                override fun onTheme(dark: Boolean) {
-                    glass.setTheme(dark)
-                    droplet.setTheme(dark)
+                override fun onTheme(theme: BottomBarTheme) {
+                    glass.setTheme(theme)
+                    droplet.setTheme(theme)
                 }
             })
 
@@ -431,8 +438,9 @@ internal object GlassBarInstaller {
                 }
             }
             runCatching {
-                if (restoreBarContentHeight(host)) return@preDraw true
                 followBarOffset(host)
+                if (host.visibility != View.VISIBLE) return@preDraw true
+                if (restoreBarContentHeight(host)) return@preDraw true
                 if (scheduleStructureRefreshIfNeeded(host)) return@preDraw true
                 // 逐帧保持诚实：宿主会在自己的布局回合里撤销一部分页面手术——滚动容器的
                 // 裁剪内边距、页面的延伸高度——且都不以布局变化的形式通知出来。
@@ -624,35 +632,15 @@ internal object GlassBarInstaller {
     private fun followBarOffset(host: GlassBarHostLayout) {
         val tabView = tabViewRef.get() ?: return
         // 皮肤切换会把新的不透明底色交给底栏，需要持续清空。
-        if (tabView.background != null) stripSolidBackgrounds(tabView)
+        if (tabView.background != null) TabViewOperations.stripBarBackgrounds(tabView)
 
         val translationY = tabView.translationY
         val alpha = tabView.alpha
         val gone = tabView.visibility != View.VISIBLE
-
-        host.translationY = if (translationY == 0f) 0f else hideShortfall(host, tabView) * translationY
-
         val glass = glassRef.get()
-        if (glass != null && glass.translationY != translationY) glass.translationY = translationY
         val droplet = dropletRef.get()
-        if (droplet != null) {
-            droplet.translationY = dropletBaseY + translationY
-            droplet.alpha = if (gone) 0f else alpha
-        }
-        glass?.alpha = if (gone) 0f else alpha
+        TabViewOperations.followNativeBar(host, tabView, glass, droplet, dropletBaseY)
         host.setShadowOffsetY(if (gone) Float.MAX_VALUE else translationY, alpha)
-    }
-
-    /** 底栏平移后仍无法完全离开屏幕时所需的额外行程比例。 */
-    private fun hideShortfall(host: GlassBarHostLayout, tabView: View): Float {
-        val travel = tabView.height.toFloat()
-        if (travel <= 0f) return 0f
-        host.getLocationOnScreen(tmpLoc)
-        val pillTop = tmpLoc[1] - host.translationY + host.paddingTop
-        val root = host.rootView ?: return 0f
-        root.getLocationOnScreen(tmpLoc)
-        val need = tmpLoc[1] + root.height - pillTop
-        return max(0f, need / travel - 1f)
     }
 
     // ---- 结构刷新 ----
@@ -729,7 +717,7 @@ internal object GlassBarInstaller {
 
             // 新建的 Tab 会带回宿主的底色、等分宽度与停靠高度，
             // 复用初始安装的同套处理。
-            stripSolidBackgrounds(tabView)
+            TabViewOperations.stripBarBackgrounds(tabView)
             TabViewOperations.disableTabWidgetStrips(tabView)
             dropNavigationReserve(tabView)
             val tabLp = tabView.layoutParams
@@ -769,19 +757,6 @@ internal object GlassBarInstaller {
     // ---- 背景与装饰清理 ----
 
     /** 玻璃折射的背景兄弟容器：底栏与页面容器同处一个 FrameLayout，取面积最大的可见兄弟。 */
-
-    /** 清空底栏自身的底色；底栏与其行、各 Tab 列的背景一并清除。 */
-    private fun stripSolidBackgrounds(view: View) {
-        view.background = null
-        if (view is ViewGroup) {
-            for (child in view.children) {
-                child.background = null
-                if (child is ViewGroup) {
-                    for (tab in child.children) tab.background = null
-                }
-            }
-        }
-    }
 
     /** 隐藏宿主自绘的毛玻璃长条。 */
     private fun hideOwnBlurLayers(parent: ViewGroup) {

@@ -5,6 +5,7 @@ import com.android.build.api.dsl.SigningConfig
 import com.android.build.api.variant.impl.VariantOutputImpl
 import com.google.protobuf.gradle.proto
 import com.owo233.tcqt.build.DualApkTask
+import com.owo233.tcqt.build.CompileLogShareDex
 import com.owo233.tcqt.build.PrepareZygiskModule
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
@@ -115,6 +116,7 @@ extensions.configure<ApplicationExtension> {
         buildConfigField("String", "APP_NAME", "\"TCQT\"")
         buildConfigField("String", "OPEN_ISSUES", "\"https://github.com/callng/TCQT/issues\"")
         buildConfigField("String", "OPEN_SOURCE", "\"https://github.com/callng/TCQT\"")
+        buildConfigField("String", "OPEN_UPDATES", "\"https://github.com/callng/TCQT/actions/workflows/android_ci.yml\"")
         buildConfigField("String", "TG_CHANNEL", "\"citcqt\"")
         buildConfigField("String", "TG_GROUP", "\"astcqt\"")
     }
@@ -332,6 +334,28 @@ fun signingValue(injectedName: String, envName: String, fallback: String): Strin
     else -> fallback
 }
 
+// Keep diagnostics usable even when main.apk is missing, stale or cannot load.
+// Compile the same Java source without the app's dependencies or R8 output.
+val compileLogShareJava = tasks.register<JavaCompile>("compileLogShareJava") {
+    source("src/main/java/com/owo233/tcqt/loader/zygisk/LogShare.java")
+    classpath = files(androidComponents.sdkComponents.bootClasspath)
+    destinationDirectory.set(layout.buildDirectory.dir("log-share/classes"))
+    javaCompiler.set(javaToolchains.compilerFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+    sourceCompatibility = "11"
+    targetCompatibility = "11"
+    options.encoding = "UTF-8"
+}
+val compileLogShareDex = tasks.register<CompileLogShareDex>("compileLogShareDex") {
+    classesDirectory.set(compileLogShareJava.flatMap { it.destinationDirectory })
+    platformClasspath.from(androidComponents.sdkComponents.bootClasspath)
+    d8Jar.set(toolDirectory.map { it.file("lib/d8.jar") })
+    javaExecutable.set(compileLogShareJava.flatMap { it.javaCompiler }.map {
+        it.metadata.installationPath.file("bin/java$executableSuffix")
+    })
+    minSdk.set(androidMinSdkVersion)
+    outputDirectory.set(layout.buildDirectory.dir("log-share/dex"))
+}
+
 androidComponents.onVariants { variant ->
     val capitalized = variant.name.replaceFirstChar { it.uppercase() }
     val prepare = tasks.register<PrepareZygiskModule>("prepareZygiskModule$capitalized") {
@@ -341,6 +365,7 @@ androidComponents.onVariants { variant ->
         webUiDirectory.set(rootProject.layout.projectDirectory.dir("webui/build/dist"))
         nativeLibrary.set(layout.buildDirectory.file("intermediates/cmake/${variant.name}/obj/arm64-v8a/libtcqtzygisk.so"))
         stripExecutable.set(sdkDirectory.map { it.file("ndk/$androidNdkVersion/toolchains/llvm/prebuilt/$ndkHost/bin/llvm-strip$executableSuffix") })
+        logShareDex.set(compileLogShareDex.flatMap { it.outputDirectory.file("classes.dex") })
         versionName.set(appVersionName)
         versionCode.set(appVersionCode)
         outputDirectory.set(layout.buildDirectory.dir("zygisk-module-${variant.name}"))

@@ -191,6 +191,7 @@ internal object RuntimeValidation {
                             }
                         }
                         "16" -> report.put("stickySearch", StickySearchRegression.run(intent))
+                        "17" -> TroopHelperRegression.run(app)
                         else -> error("Unimplemented validation step: $step")
                     }
                     report.put("passed", true)

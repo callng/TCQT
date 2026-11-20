@@ -2,6 +2,7 @@ package com.owo233.tcqt.loader.validation
 
 import android.app.Application
 import android.graphics.drawable.ColorDrawable
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -18,9 +19,12 @@ import com.owo233.tcqt.features.appearance.liquidglass.PageViewChanges
 import com.owo233.tcqt.features.appearance.liquidglass.QQTabLocator
 import com.owo233.tcqt.features.appearance.liquidglass.TabViewOperations
 import com.owo233.tcqt.features.appearance.liquidglass.TabViewSnapshot
+import com.owo233.tcqt.features.appearance.liquidglass.BottomBarTheme
 import org.json.JSONObject
 import java.io.File
 import java.lang.ref.WeakReference
+import androidx.core.view.isInvisible
+import androidx.core.graphics.drawable.toDrawable
 
 internal object GlassRegression {
     private var nativeTab: WeakReference<ViewGroup>? = null
@@ -54,10 +58,16 @@ internal object GlassRegression {
         check(parent.clipChildren) { "ancestor clipping not restored" }
         parent.removeView(host)
 
+        val movingSnapshot = TabViewSnapshot(tab)
+        tab.translationY = 32f; tab.alpha = .4f; label.translationY = 99f
+        movingSnapshot.restore(preserveNativeMotion = true)
+        check(tab.translationY == 32f && tab.alpha == .4f && label.translationY == 3f)
+        tab.translationY = 0f; tab.alpha = .7f
+
         val changes = PageViewChanges()
         changes.remember(tab)
         var callbacks = 0
-        changes.listen(tab, View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> callbacks++ })
+        changes.listen(tab) { _, _, _, _, _, _, _, _, _ -> callbacks++ }
         tab.setPadding(1, 2, 3, 100); tab.clipToPadding = false; tab.layoutParams.height = -1
         changes.restore(); changes.restore()
         tab.layout(0, 0, 10, 10)
@@ -67,8 +77,65 @@ internal object GlassRegression {
         check(TabViewOperations.leafContentWidth(tab) == 20)
         label.visibility = View.GONE
         check(TabViewOperations.leafContentWidth(tab) == 0)
-        return 4
+
+        val scene = FrameLayout(app)
+        val wrapper = FrameLayout(app).apply { setPadding(14, 14, 14, 14) }
+        val native = LinearLayout(app)
+        val surface = View(app)
+        val indicator = View(app)
+        wrapper.addView(surface, FrameLayout.LayoutParams(-1, -1))
+        wrapper.addView(indicator, FrameLayout.LayoutParams(76, 56))
+        wrapper.addView(native, FrameLayout.LayoutParams(312, 64))
+        scene.addView(wrapper, FrameLayout.LayoutParams(340, 92).apply { gravity = android.view.Gravity.BOTTOM })
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        scene.measure(widthSpec, heightSpec); scene.layout(0, 0, 400, 1000)
+        repeat(12) {
+            native.visibility = View.VISIBLE
+            native.translationY = 64f; native.alpha = .6f
+            check(TabViewOperations.followNativeBar(wrapper, native, surface, indicator, 4f))
+            check(wrapper.translationY + surface.translationY >= 986f)
+            check(surface.alpha == .6f && indicator.alpha == .6f && indicator.translationY == 68f)
+            native.translationY = 0f; native.visibility = View.GONE
+            check(!TabViewOperations.followNativeBar(wrapper, native, surface, indicator, 4f))
+            scene.measure(widthSpec, heightSpec); scene.layout(0, 0, 400, 1000)
+            check(wrapper.isInvisible && wrapper.height == 92)
+            native.visibility = View.VISIBLE; native.alpha = 1f
+            check(TabViewOperations.followNativeBar(wrapper, native, surface, indicator, 4f))
+            check(wrapper.translationY == 0f && surface.translationY == 0f && indicator.translationY == 4f)
+        }
+
+        for ((fill, text) in listOf(Color.rgb(246, 246, 250) to Color.DKGRAY,
+            Color.rgb(43, 43, 46) to Color.LTGRAY, Color.rgb(240, 224, 236) to Color.rgb(89, 54, 81))) {
+            val tabs = LinearLayout(app).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(fill) }
+            repeat(4) { index ->
+                val cell = FrameLayout(app).apply { isSelected = index == 0 }
+                cell.addView(UnreadBadge(app).apply { this.text = "99"; setTextColor(Color.WHITE); setBackgroundColor(Color.RED) })
+                cell.addView(TextView(app).apply {
+                    this.text = "Tab $index"
+                    setTextColor(if (index == 0) Color.BLUE else text)
+                    background = Color.TRANSPARENT.toDrawable()
+                })
+                tabs.addView(cell)
+            }
+            tabs.layout(0, 0, 312, 64)
+            val originalBounds = android.graphics.Rect(3, 4, 300, 56)
+            tabs.background.bounds = originalBounds
+            val theme = BottomBarTheme.fromNative(tabs)
+            check(theme.surface == fill && theme.foreground == text)
+            check(theme.dark == (text == Color.LTGRAY))
+            check(tabs.background.bounds == originalBounds)
+            for (index in 0 until tabs.childCount) {
+                (tabs.getChildAt(index) as ViewGroup).getChildAt(1).visibility = View.GONE
+            }
+            check(BottomBarTheme.fromNative(tabs).dark == (text == Color.LTGRAY))
+            TabViewOperations.stripBarBackgrounds(tabs)
+            check((tabs.getChildAt(0) as ViewGroup).getChildAt(0).background != null)
+        }
+        return 8
     }
+
+    private class UnreadBadge(app: Application) : androidx.appcompat.widget.AppCompatTextView(app)
 
     @androidx.annotation.RequiresApi(33)
     fun action(app: Application, action: String): JSONObject {
