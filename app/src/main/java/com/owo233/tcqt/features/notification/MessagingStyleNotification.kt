@@ -75,15 +75,18 @@ object MessagingStyleNotification : Feature(
         }
 
         postTarget.first.hookBefore { param ->
-            val oldNotification = param.args[postTarget.second] as? Notification ?: return@hookBefore
-            val pair = notificationCapture.take(oldNotification) ?: return@hookBefore
-            val newNotification = runCatching {
-                notificationBuilder.createNotification(pair.first, pair.second, oldNotification)
-            }.onFailure {
-                logger.w("MessagingStyleNotification replace failed", it)
-            }.getOrNull() ?: return@hookBefore
+            com.owo233.tcqt.core.diag.RuntimePhase.section("notification-post") {
+                val oldNotification = param.args[postTarget.second] as? Notification
+                    ?: return@section
+                val pair = notificationCapture.take(oldNotification) ?: return@section
+                val newNotification = runCatching {
+                    notificationBuilder.createNotification(pair.first, pair.second, oldNotification)
+                }.onFailure {
+                    logger.w("MessagingStyleNotification replace failed", it)
+                }.getOrNull() ?: return@section
 
-            param.args[postTarget.second] = newNotification
+                param.args[postTarget.second] = newNotification
+            }
         }
 
         postTarget.first.hookAfter {

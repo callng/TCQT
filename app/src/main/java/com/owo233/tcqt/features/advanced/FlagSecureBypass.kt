@@ -7,7 +7,10 @@ import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.hook.hookMethodBefore
 
-@RegisterAction(processes = [ActionProcess.ALL])
+// r757：只 hook Window.setFlags/addFlags，只有 UI 进程有意义。原先 ALL 会让 MSF/TOOL
+// 主线程白加载 android.view.Window（r756 实测在 MSF 里被拖到 20.4s）。
+// QZONE 需要时再单独加 ActionProcess.QZONE，默认不加。回退：改回 ActionProcess.ALL。
+@RegisterAction(processes = [ActionProcess.MAIN])
 object FlagSecureBypass : Feature(
     key = "flag_secure_bypass",
     name = "绕过FLAG_SECURE",

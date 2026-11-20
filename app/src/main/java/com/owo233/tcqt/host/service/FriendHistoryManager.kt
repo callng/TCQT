@@ -12,6 +12,7 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.owo233.tcqt.core.action.StartupTrace
 import com.owo233.tcqt.core.config.TCQTSetting
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.ModuleComponents
@@ -192,10 +193,12 @@ internal object FriendHistoryManager {
     fun install() {
         if (!installed.compareAndSet(false, true)) return
         ModuleScope.launchIO("好友历史安装") {
+            val startedAt = SystemClock.elapsedRealtime()
             runCatching { installSteps() }.onFailure {
                 Log.e("好友历史：安装失败", it)
                 FriendHistoryStore.diag("install 失败：${it.message ?: it.javaClass.simpleName}")
             }
+            StartupTrace.mark("friend-history=${SystemClock.elapsedRealtime() - startedAt}ms")
         }
     }
 
@@ -422,13 +425,15 @@ internal object FriendHistoryManager {
             lastNewFriendCheckAt = now
         }
         ModuleScope.launchIO("好友新增检测") {
-            runCatching { checkNewFriends(reason) }
-                .onFailure {
-                    Log.w("好友历史：新增好友即时检测异常（${it.message}）")
-                    FriendHistoryStore.diag(
-                        "$reason：即时检测异常：${it.message ?: it.javaClass.simpleName}"
-                    )
-                }
+            com.owo233.tcqt.core.diag.RuntimePhase.section("friend-history") {
+                runCatching { checkNewFriends(reason) }
+                    .onFailure {
+                        Log.w("好友历史：新增好友即时检测异常（${it.message}）")
+                        FriendHistoryStore.diag(
+                            "$reason：即时检测异常：${it.message ?: it.javaClass.simpleName}"
+                        )
+                    }
+            }
         }
     }
 

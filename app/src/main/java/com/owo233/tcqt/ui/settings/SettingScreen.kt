@@ -101,6 +101,7 @@ internal fun SettingScreen(
     onIssueLongClick: () -> Unit,
     onSaveClick: () -> Unit,
     onBackupRestoreClick: () -> Unit,
+    onStartupPerfClick: () -> Unit,
     onSelectPngIcon: (String) -> Unit,
     isExportingBugReport: Boolean,
     onExportBugReportClick: () -> Unit,
@@ -231,6 +232,7 @@ internal fun SettingScreen(
                             viewModel = viewModel,
                             onFeatureClick = onFeatureClick,
                             onBackupRestoreClick = onBackupRestoreClick,
+                            onStartupPerfClick = onStartupPerfClick,
                             onIssueClick = onIssueClick,
                             onIssueLongClick = onIssueLongClick,
                         )
@@ -345,6 +347,7 @@ private fun LazyListScope.featureDirectory(
     viewModel: SettingViewModel,
     onFeatureClick: (String) -> Unit,
     onBackupRestoreClick: () -> Unit,
+    onStartupPerfClick: () -> Unit,
     onIssueClick: () -> Unit,
     onIssueLongClick: () -> Unit,
 ) {
@@ -418,6 +421,16 @@ private fun LazyListScope.featureDirectory(
         item(key = "backup_entry") {
             PreferenceSegment(first = false, last = false) {
                 ArrowPreference(title = "备份与还原", insideMargin = SettingsRowPadding, onClick = onBackupRestoreClick)
+            }
+        }
+        item(key = "startup_perf_entry") {
+            PreferenceSegment(first = false, last = false) {
+                ArrowPreference(
+                    title = "启动耗时",
+                    summary = "本进程启动的分段计时，排查“装了模块后启动变慢”",
+                    insideMargin = SettingsRowPadding,
+                    onClick = onStartupPerfClick,
+                )
             }
         }
         item(key = "feedback_entry") {

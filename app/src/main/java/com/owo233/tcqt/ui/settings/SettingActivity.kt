@@ -28,6 +28,7 @@ import androidx.core.net.toUri
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import com.owo233.tcqt.core.action.ActionRegistry
+import com.owo233.tcqt.core.action.StartupTrace
 import com.owo233.tcqt.core.command.ModuleCommandBus
 import com.owo233.tcqt.core.config.ConfigBackupManager
 import com.owo233.tcqt.core.config.ThemeSettings
@@ -249,6 +250,7 @@ class SettingActivity : BaseComposeActivity() {
                 var restartPrompt by rememberSaveable { mutableStateOf<RestartPrompt?>(null) }
                 var showClearDialog by rememberSaveable { mutableStateOf(false) }
                 var showBackupDialog by rememberSaveable { mutableStateOf(false) }
+                var showStartupPerfDialog by rememberSaveable { mutableStateOf(false) }
                 var showDexKitClearDialog by rememberSaveable { mutableStateOf(false) }
                 var showBugReportDialog by rememberSaveable { mutableStateOf(false) }
                 var isExportingBugReport by remember { mutableStateOf(false) }
@@ -331,6 +333,10 @@ class SettingActivity : BaseComposeActivity() {
                                 showClearDialog = true
                             },
                         )
+                    }
+
+                    if (showStartupPerfDialog) {
+                        StartupPerfDialog(onDismissRequest = { showStartupPerfDialog = false })
                     }
 
                     if (showDexKitClearDialog) {
@@ -516,6 +522,9 @@ class SettingActivity : BaseComposeActivity() {
                         onBackupRestoreClick = {
                             showBackupDialog = true
                         },
+                        onStartupPerfClick = {
+                            showStartupPerfDialog = true
+                        },
                         onSelectPngIcon = { key ->
                             if (viewModel.beginPngIconSelection(key)) {
                                 try {
@@ -546,6 +555,24 @@ class SettingActivity : BaseComposeActivity() {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StartupPerfDialog(onDismissRequest: () -> Unit) {
+    WindowDialog(
+        title = "启动耗时",
+        show = true,
+        onDismissRequest = onDismissRequest,
+        insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 24.dp),
+    ) {
+        Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
+            Text(
+                text = StartupTrace.summaryText() +
+                        "\n\n主线程卡顿日志\n" +
+                        com.owo233.tcqt.core.diag.StallWatchdog.statusText()
+            )
         }
     }
 }

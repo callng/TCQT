@@ -17,7 +17,9 @@ import com.owo233.tcqt.core.hook.isNotStatic
 import com.owo233.tcqt.core.hook.isPublic
 import com.owo233.tcqt.core.hook.paramCount
 
-@RegisterAction(priority = ActionPriority.CRITICAL)
+// r757：实测 CRITICAL 里单独花 195~253ms（占 Critical 的 98%），全是目标类解析/加载。
+// 广告 banner 首次更新在首帧之后，放 EARLY 仍早于它，但不再占 Application.onCreate 同步路径。
+@RegisterAction(priority = ActionPriority.EARLY)
 object RemoveAD : Feature(
     key = "remove_ad",
     name = "移除部分广告",

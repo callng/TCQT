@@ -44,7 +44,11 @@ object NTServiceFetcher {
                 if (isRecallPushCommand(cmd) && observedPushCommands.add(cmd)) {
                     LogUtils.xposedNoFilter.i("AntiRecall push callback active: $cmd")
                 }
-                action(cmd, buffer, param)
+                // 接收消息的 push 分发就在这个回调里同步执行；卡住时看门狗能看到
+                // 主线程/工作线程停在哪个命令上。
+                com.owo233.tcqt.core.diag.RuntimePhase.section("push:${cmd.take(40)}") {
+                    action(cmd, buffer, param)
+                }
             }
         }
 

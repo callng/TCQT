@@ -39,11 +39,20 @@ internal object StartupScheduler {
     ) {
         if (plan.isEmpty && !needDexKitFind) return
 
+        // 新安装周期（进程启动 / 热重载）：清空执行去重，允许重新安装全部功能。
+        ActionRegistry.resetStartupCycle()
+        StartupTrace.mark(
+            "schedule early=${plan.early.size} deferred=${plan.deferred.size}" +
+                    " background=${plan.background.size} dexkitFind=$needDexKitFind"
+        )
+
         // EARLY：onCreate 返回后立刻（主线程 Handler post，随即转入 IO 线程）。
         if (plan.early.isNotEmpty()) {
             SyncUtils.post {
                 ModuleScope.launchIO("TCQT-Early") {
-                    ActionRegistry.runEarly(app, proc, plan)
+                    StartupTrace.measure("early(${plan.early.size})") {
+                        ActionRegistry.runEarly(app, proc, plan)
+                    }
                 }
             }
         }
@@ -54,9 +63,16 @@ internal object StartupScheduler {
         if (plan.deferred.isNotEmpty() || plan.background.isNotEmpty()) {
             val runDeferred = {
                 ModuleScope.launchIO("TCQT-Deferred") {
+                    StartupTrace.mark("deferred-start")
                     deferredStartedNanos = System.nanoTime()
-                    ActionRegistry.runDeferred(app, proc, plan)
-                    ActionRegistry.runBackground(app, proc, plan)
+                    StartupTrace.measure("deferred(${plan.deferred.size})") {
+                        ActionRegistry.runDeferred(app, proc, plan)
+                    }
+                    StartupTrace.measure("background(${plan.background.size})") {
+                        ActionRegistry.runBackground(app, proc, plan)
+                    }
+                    StartupTrace.mark("deferred-done")
+                    StartupTrace.persist()
                 }
             }
             if (ProcUtil.isMain) {
@@ -64,6 +80,7 @@ internal object StartupScheduler {
                     runCatching {
                         FirstFrameAwaiter(app) { completion ->
                             lastFirstFrame = completion
+                            StartupTrace.mark("first-frame=${completion.reason}")
                             runDeferred()
                         }.start()
                     }.onFailure {
@@ -75,10 +92,17 @@ internal object StartupScheduler {
             } else {
                 runDeferred()
             }
+        } else {
+            SyncUtils.post { StartupTrace.persist() }
         }
 
         // DexKit 缓存失效：触发后台查找，不阻塞 onCreate。
         if (needDexKitFind) {
+            StartupTrace.mark("dexkit-find-queued")
+            // 扫描成功落盘后立刻补装首轮被跳过的 DexKit 功能；否则升级模块后要重启宿主才生效。
+            DexKitFinder.runAfterScan { missingKeys ->
+                ActionRegistry.runPendingAfterDexKit(app, proc, missingKeys)
+            }
             SyncUtils.post {
                 ModuleScope.launchIO("TCQT-DexKit") {
                     DexKitFinder.doFind(dexKitClassLoader)

@@ -2,12 +2,17 @@ package com.owo233.tcqt.loader
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ProviderInfo
 import android.os.Environment
 import android.os.Process
+import android.os.SystemClock
+import com.owo233.tcqt.core.action.ActionRegistry
 import com.owo233.tcqt.core.action.HookSteps
 import com.owo233.tcqt.core.action.StartupScheduler
+import com.owo233.tcqt.core.action.StartupTrace
 import com.owo233.tcqt.core.config.SettingsStore
 import com.owo233.tcqt.core.dexkit.DexKitCache
 import com.owo233.tcqt.core.dexkit.DexKitFinder
@@ -68,6 +73,9 @@ internal object ModuleLoader {
 
         HookSteps.initModulePath(selfPath)
         HookSteps.initHandleLoadPackage(processName, packageName)
+        // 取证钩子必须在宿主 attachBaseContext / ContentProvider 安装之前挂上，
+        // initialize 由 LoadedApk.instantiateClassLoader 触发，早于二者。
+        installBootstrapTraceHooks()
 
         if (!nextInit(hostClassLoader)) {
             return false
@@ -196,37 +204,103 @@ internal object ModuleLoader {
         }
     }
 
+    /**
+     * 只记录、不改行为：把 `Application.attachBaseContext` 与 `ContentProvider.attachInfo`
+     * 的名称和耗时写进 [StartupTrace]。用于定位 module-entry → onCreate 之间的长耗时
+     * （r756 出现过启动页卡 66s，而看门狗当时还没装上，stall.log 抓不到）。
+     */
+    private fun installBootstrapTraceHooks() {
+        runCatching {
+            val attachStart = java.util.concurrent.atomic.AtomicLong(0L)
+            Application::class.java
+                .getDeclaredMethod("attachBaseContext", Context::class.java)
+                .apply {
+                    hookBefore { attachStart.set(SystemClock.elapsedRealtime()) }
+                    hookAfter {
+                        StartupTrace.mark(
+                            "attachBaseContext=${SystemClock.elapsedRealtime() - attachStart.get()}ms"
+                        )
+                    }
+                }
+        }.onFailure { Log.e("bootstrap trace: attachBaseContext hook failed", it) }
+
+        runCatching {
+            val starts = java.util.concurrent.ConcurrentHashMap<Any, Long>()
+            ContentProvider::class.java
+                .getDeclaredMethod("attachInfo", Context::class.java, ProviderInfo::class.java)
+                .apply {
+                    hookBefore { param ->
+                        val provider = param.thisObject ?: return@hookBefore
+                        starts[provider] = SystemClock.elapsedRealtime()
+                    }
+                    hookAfter { param ->
+                        val startedAt = starts.remove(param.thisObject) ?: return@hookAfter
+                        val info = param.args.getOrNull(1) as? ProviderInfo
+                        val label = info?.name?.substringAfterLast('.') ?: "unknown"
+                        StartupTrace.mark(
+                            "provider:$label=${SystemClock.elapsedRealtime() - startedAt}ms"
+                        )
+                    }
+                }
+        }.onFailure { Log.e("bootstrap trace: provider attach hook failed", it) }
+    }
+
     private fun doRealStartup(reClassLoader: ClassLoader) {
         if (isInit.get()) return
+        StartupTrace.begin("module-entry")
         HookEnv.setHostClassLoader(reClassLoader)
         HookSteps.injectClassLoader(reClassLoader)
+        // r757：看门狗必须在 onCreate 之前就装上。r756 只在 onCreate Before 里 install，
+        // 导致 16:47 那次 module-entry→onCreate-before 的 66s 卡顿完全抓不到。
+        // install() 自带 installed 幂等保护，onCreate 处保留的调用只是兜底。
+        runCatching { com.owo233.tcqt.core.diag.StallWatchdog.install() }
+            .onFailure { Log.e("StallWatchdog early install failed", it) }
 
         try {
             val startupAfterCreate = com.owo233.tcqt.core.action.StartupAfterCreate<Application>()
             val onCreate = BaseApplicationImpl::class.java.getDeclaredMethod("onCreate")
             onCreate.hookBefore { param ->
                 if (isInit.compareAndSet(false, true)) {
-                    installMainDispatcher()
+                    StartupTrace.mark("onCreate-before")
+                    StartupTrace.measure("main-dispatcher") { installMainDispatcher() }
                     val app = param.thisObject as Application
                     // 补丁加载尝试可能失败并回退。以 Application 实际采用的 loader 为准。
                     val activeClassLoader = app.classLoader
                     HookEnv.setHostClassLoader(activeClassLoader)
                     HookSteps.injectClassLoader(activeClassLoader)
-                    installHostBridge()
-                    HookSteps.initContext(app)
-                    RuntimeValidation.install(app)
+                    StartupTrace.measure("host-bridge") { installHostBridge() }
+                    StartupTrace.measure("init-context") { HookSteps.initContext(app) }
+                    // 主线程卡顿看门狗：只挂 MAIN/MSF，安装本身只创建线程 + 投递一次心跳。
+                    StartupTrace.measure("watchdog") { com.owo233.tcqt.core.diag.StallWatchdog.install() }
+                    StartupTrace.measure("validation") { RuntimeValidation.install(app) }
                     System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
 
-                    val cacheValid = DexKitCache.initCache(HostCodeMode.identify(activeClassLoader))
-                    val missingKeys = DexKitFinder.getMissingKeys()
+                    val cacheValid = StartupTrace.measure("dexkit-cache") {
+                        DexKitCache.initCache(HostCodeMode.identify(activeClassLoader))
+                    }
+                    // 全量枚举 DexKit 任务会构造每个功能的查询对象；只算一次并复用，
+                    // 避免 getMissingKeys()/needsFind() 各自再跑一遍。
+                    val dexKit = StartupTrace.measure("dexkit-keys") { DexKitFinder.startupKeys() }
+                    val dexKitKeys = dexKit.keys
+                    val missingKeys = DexKitFinder.getMissingKeys(dexKitKeys)
+                    StartupTrace.mark("dexkit-tasks=${dexKit.taskCount} keys=${dexKitKeys.size} missing=${missingKeys.size}")
                     val proc = HookSteps.resolveActionProcess()
                     // 同一补丁跨重启复用缓存；代码指纹变化由 initCache 使缓存失效。
-                    val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
+                    val needDexKitFind = !cacheValid || DexKitFinder.needsFind(dexKitKeys)
 
-                    installPipelineDecorators()
+                    StartupTrace.measure("decorators") { installPipelineDecorators() }
 
                     // 只同步安装 CRITICAL，其余由 StartupScheduler 在 onCreate 返回后分批后台安装
-                    val plan = HookSteps.initStartup(app, proc, missingKeys)
+                    val plan = StartupTrace.measure("plan+critical") {
+                        HookSteps.initStartup(app, proc, missingKeys)
+                    }
+                    StartupTrace.mark(
+                        "onCreate-before-done critical=${plan.critical.size}" +
+                                " early=${plan.early.size} deferred=${plan.deferred.size}" +
+                                " background=${plan.background.size}" +
+                                " plan=${ActionRegistry.lastPlanCostMs}ms" +
+                                " dexkitFind=$needDexKitFind"
+                    )
                     startupAfterCreate.prepare(app) {
                         StartupScheduler.schedule(
                             app, proc, plan, needDexKitFind,
@@ -236,6 +310,7 @@ internal object ModuleLoader {
                 }
             }
             onCreate.hookAfter { param ->
+                StartupTrace.mark("onCreate-returned")
                 startupAfterCreate.complete(param.thisObject as Application, param.throwable)
             }
         } catch (th: Throwable) {
@@ -279,6 +354,7 @@ internal object ModuleLoader {
     }
 
     fun reload(state: Map<*, *>) {
+        StartupTrace.begin("module-reload")
         installMainDispatcher()
         HookSteps.initModulePath(state["moduleApkPath"] as String)
         HookSteps.initHandleLoadPackage(
@@ -289,6 +365,7 @@ internal object ModuleLoader {
         HookSteps.injectClassLoader(state["hostClassLoader"] as ClassLoader)
         installHostBridge()
         HookSteps.initContext(state["hostApplication"] as Application)
+        com.owo233.tcqt.core.diag.StallWatchdog.install()
         RuntimeValidation.install(state["hostApplication"] as Application)
 
         System.getProperties()["tcqt.module_class_loader"] = this.javaClass.classLoader
@@ -305,9 +382,10 @@ internal object ModuleLoader {
 
         // 始终根据正在运行的 loader 判断，不让旧模块保存的布尔值覆盖真实代码来源。
         val cacheValid = DexKitCache.initCache(HostCodeMode.identify(HookEnv.hostClassLoader))
-        val missingKeys = DexKitFinder.getMissingKeys()
+        val dexKitKeys = DexKitFinder.startupKeys().keys
+        val missingKeys = DexKitFinder.getMissingKeys(dexKitKeys)
         val proc = HookSteps.resolveActionProcess()
-        val needDexKitFind = !cacheValid || DexKitFinder.needsFind()
+        val needDexKitFind = !cacheValid || DexKitFinder.needsFind(dexKitKeys)
 
         val app = state["hostApplication"] as Application
         installPipelineDecorators()
