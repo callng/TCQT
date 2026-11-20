@@ -25,6 +25,7 @@ struct InjectionState {
 };
 
 struct CompanionPaths {
+    // 与官方 Zygisk 模块逐项一致：同一模块 id、同一数据目录。
     std::string module_dir = "/data/adb/modules/zygisk_tcqt";
     std::string data_dir = "/data/adb/tcqt";
 };
