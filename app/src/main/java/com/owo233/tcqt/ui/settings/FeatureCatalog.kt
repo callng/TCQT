@@ -58,6 +58,7 @@ internal object FeatureCatalog {
                         label = s.name,
                         placeholder = s.placeholder.ifEmpty { "填写${s.name}内容" },
                         isPngIcon = s.isPngIcon,
+                        isGroupPicker = s.isGroupPicker,
                     )
                 }
 

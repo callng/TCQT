@@ -495,6 +495,7 @@ class SettingViewModel : ViewModel() {
                         placeholder = area.placeholder,
                         value = effectiveString(area.key),
                         isPngIcon = area.isPngIcon,
+                        isGroupPicker = area.isGroupPicker,
                     )
                 },
             uiType = feature.uiType,

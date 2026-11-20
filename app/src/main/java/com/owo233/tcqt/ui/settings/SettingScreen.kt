@@ -315,6 +315,11 @@ private fun LazyListScope.featureDetail(
                         onSelect = { onSelectPngIcon(area.key) },
                         onReset = { viewModel.setTextValue(area.key, "") },
                     )
+                } else if (area.isGroupPicker) {
+                    GroupPickerPreference(
+                        area = area,
+                        onChange = { viewModel.setTextValue(area.key, it) },
+                    )
                 } else {
                     Box(Modifier.padding(16.dp)) {
                         FeatureTextArea(area, repositionKey = Unit) { viewModel.setTextValue(area.key, it) }
