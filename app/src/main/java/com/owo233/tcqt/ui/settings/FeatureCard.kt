@@ -113,6 +113,15 @@ internal fun FeatureCard(
                 color = summaryColor,
             )
         }
+        // 入口未读红点：只在有未读变动时出现，打开对应页面后由数据层清掉。
+        item.feature.badge?.let { badge ->
+            Text(
+                text = "● $badge",
+                style = MiuixTheme.textStyles.footnote2,
+                color = MiuixTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         if (!item.initReady || item.error != null || item.hasPending) {
             Text(
                 text = when {

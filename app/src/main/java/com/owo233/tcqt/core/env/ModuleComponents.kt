@@ -18,4 +18,7 @@ object ModuleComponents {
     /** 群打卡监控页（`ui/settings/GroupCheckInLogActivity.kt`）。 */
     const val GROUP_CHECK_IN_LOG_ACTIVITY: String =
         "com.owo233.tcqt.ui.settings.GroupCheckInLogActivity"
+
+    /** 历史好友页（`ui/settings/FriendHistoryActivity.kt`）。 */
+    const val FRIEND_HISTORY_ACTIVITY: String = "com.owo233.tcqt.ui.settings.FriendHistoryActivity"
 }

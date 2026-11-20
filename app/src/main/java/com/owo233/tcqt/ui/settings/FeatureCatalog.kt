@@ -38,6 +38,12 @@ internal object FeatureCatalog {
         return action.getSettingDesc(key) ?: defaultDesc
     }
 
+    /** 入口未读红点文案；没有未读或实现抛异常时返回 null（红点不显示）。 */
+    fun getBadgeText(key: String): String? {
+        val action = ActionRegistry.getActionByKey(key) ?: return null
+        return runCatching { action.badgeText() }.getOrNull()
+    }
+
     fun getAllFeatures(): List<SettingFeature> {
         return features
     }

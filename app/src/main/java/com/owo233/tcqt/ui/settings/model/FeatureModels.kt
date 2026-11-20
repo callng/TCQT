@@ -22,6 +22,10 @@ data class SettingFeature(
     val desc: String
         get() = FeatureCatalog.getSettingDesc(key, staticDesc)
 
+    /** 入口上的未读红点文案；null 表示不显示。 */
+    val badge: String?
+        get() = FeatureCatalog.getBadgeText(key)
+
     val expandable: Boolean
         get() = desc.isNotBlank() || textAreas.isNotEmpty() || optionGroups.isNotEmpty() || sliders.isNotEmpty()
 

@@ -70,6 +70,13 @@ interface ActionSpec {
      */
     fun getSettingDesc(key: String): String? = null
 
+    /**
+     * 设置入口上的未读红点文案；返回 null 表示不显示。
+     *
+     * 只在 `ENTRY` 类入口上生效，调用方应保证实现是廉价的（不要在这里读大文件）。
+     */
+    fun badgeText(): String? = null
+
     operator fun invoke(app: Application, process: ActionProcess) {
         ActionErrorStore.withAction(key) {
             // 每次宿主启动都重新开始健康检查，下方任一失败都会立即上报。

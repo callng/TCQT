@@ -22,6 +22,7 @@ import mqq.manager.MainTicketInfo
 import mqq.manager.TicketManager
 import oicq.wlogin_sdk.request.WTLoginRecordSnapshot
 import java.lang.reflect.Proxy
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
@@ -37,6 +38,13 @@ internal object TicketManager {
     private val ticketManagerMap = mutableMapOf<String, TicketManager>()
     private val uin: String get() = QQInterfaces.currentUin
     private var thirdSigService: Any? = null
+    private var pskeyManager: Any? = null
+    private val pskeyCache = ConcurrentHashMap<String, Pair<String, Long>>()
+    private var superKeyCache: String = ""
+    private var superKeyCacheAt: Long = 0L
+
+    /** pskey / superkey 有效期，避免每次请求都走一遍回调等待。 */
+    private const val TICKET_CACHE_MS = 5 * 60 * 1000L
 
     init {
         if (TCQTSetting.getBoolean(
@@ -118,15 +126,68 @@ internal object TicketManager {
     }
 
     fun getSkey(): String {
-        return getTicketManager().getRealSkey(uin)
+        return runCatching { getTicketManager().getRealSkey(uin) }.getOrNull().orEmpty()
     }
 
+    /**
+     * 新版 QQ 的 `TicketManager.getPskey` 只会返回本地已缓存的 pskey，
+     * 未预热的域名（ti.qq.com 等）直接返回 null。XAutoDaily 3.x 的顺序是
+     * 先用 `com.tencent.mobileqq.pskey.api.IPskeyManager` 主动请求，失败再退回
+     * `TicketManager.getPskey`，这里保持一致。
+     */
     fun getPskey(domain: String): String {
-        return getTicketManager().getPskey(uin, domain)
+        val now = System.currentTimeMillis()
+        pskeyCache[domain]?.let { (value, expireAt) ->
+            if (now < expireAt) return value
+        }
+        val pskey = runCatching { requestPskey(domain) }.getOrNull()
+            ?: runCatching { getTicketManager().getPskey(uin, domain) }.getOrNull()
+        return pskey.orEmpty().also {
+            if (it.isNotBlank()) pskeyCache[domain] = it to (now + TICKET_CACHE_MS)
+        }
+    }
+
+    private fun initPskeyManager() {
+        if (pskeyManager != null) return
+        runCatching {
+            pskeyManager = QQInterfaces.appRuntime.getRuntimeService(
+                loadAs("com.tencent.mobileqq.pskey.api.IPskeyManager"), "all"
+            )
+        }.onFailure { Log.w("pskeyManager 获取失败：${it.message}") }
+    }
+
+    private fun requestPskey(domain: String): String? {
+        initPskeyManager()
+        val manager = pskeyManager ?: return null
+        val getPskeyMethod = manager.getMethods(false).firstOrNull {
+            it.name == "getPskey" && it.parameterTypes.size == 2
+        } ?: return null
+
+        val countDownLatch = CountDownLatch(1)
+        var psKey: String? = null
+        val callback = Proxy.newProxyInstance(
+            HookEnv.hostClassLoader,
+            arrayOf(getPskeyMethod.parameterTypes.last())
+        ) { _, _, args ->
+            runCatching {
+                if (args == null || args.size == 2) {
+                    Log.e("getPskey fail, code: ${args?.getOrNull(0)}, msg: ${args?.getOrNull(1)}")
+                } else {
+                    @Suppress("UNCHECKED_CAST")
+                    psKey = (args[0] as? Map<String, String>)?.get(domain)
+                }
+            }
+            countDownLatch.countDown()
+            null
+        }
+        runCatching { getPskeyMethod.invoke(manager, arrayOf(domain), callback) }
+            .onFailure { Log.e("getPskey 调用失败：${it.message}") }
+        countDownLatch.await(15, TimeUnit.SECONDS)
+        return psKey
     }
 
     fun getPt4Token(domain: String): String {
-        return getTicketManager().getPt4Token(uin, domain)
+        return runCatching { getTicketManager().getPt4Token(uin, domain) }.getOrNull().orEmpty()
     }
 
     fun getStweb(): String {
@@ -234,27 +295,31 @@ internal object TicketManager {
     }
 
     fun getCookie(domain: String): String {
-        var uin = uin
-        val skey = getSkey()
-        val pksey = getPskey(domain)
-        val pt4Token = getPt4Token(domain)
-        val puin = StringBuilder().append('o')
+        val pUin = StringBuilder().append('o')
         for (i in 0 until 10 - uin.length) {
-            puin.append('0')
+            pUin.append('0')
         }
-        puin.append(uin)
-        uin = puin.toString()
-        val cookiesMap: MutableMap<String, String> = HashMap()
-        cookiesMap["uin"] = uin
-        cookiesMap["p_uin"] = uin
-        cookiesMap["skey"] = skey
-        cookiesMap["p_skey"] = pksey
-        cookiesMap["pt4Token"] = pt4Token
-        return buildString {
-            cookiesMap.forEach { (key, value) ->
-                append("$key=$value; ")
-            }
-        }.removeSuffix("; ")
+        pUin.append(uin)
+        val cookies = linkedMapOf<String, String>()
+        cookies["uin"] = pUin.toString()
+        cookies["p_uin"] = pUin.toString()
+        fun put(name: String, value: String) {
+            if (value.isNotBlank() && value != "null") cookies[name] = value
+        }
+        put("skey", getSkey())
+        put("p_skey", getPskey(domain))
+        put("pt4Token", getPt4Token(domain))
+        put("superkey", superKeyForCookie())
+        return cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+    }
+
+    /** superkey 用于 Web 侧鉴权，XAutoDaily 的 cookie 里同样会带上它。 */
+    private fun superKeyForCookie(): String {
+        val now = System.currentTimeMillis()
+        if (now - superKeyCacheAt < TICKET_CACHE_MS) return superKeyCache
+        superKeyCache = runCatching { getSuperKey() }.getOrDefault("")
+        superKeyCacheAt = now
+        return superKeyCache
     }
 }
 

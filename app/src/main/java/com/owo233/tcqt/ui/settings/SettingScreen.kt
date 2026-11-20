@@ -258,7 +258,11 @@ private fun LazyListScope.featureDetail(
             if (item.uiType == ActionUiType.ENTRY) {
                 ArrowPreference(
                     title = item.feature.label,
-                    summary = item.feature.desc.takeIf(String::isNotBlank),
+                    summary = listOfNotNull(
+                        item.feature.desc.takeIf(String::isNotBlank),
+                        // 入口红点：有新变动时在摘要前加一个圆点标记，打开页面后由数据层清除。
+                        item.feature.badge?.let { "● $it" },
+                    ).joinToString("  ").takeIf(String::isNotBlank),
                     insideMargin = SettingsRowPadding,
                     enabled = item.initReady,
                     onClick = { onFeatureClick(item.key) },

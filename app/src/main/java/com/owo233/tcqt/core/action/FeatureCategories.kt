@@ -23,6 +23,7 @@ object FeatureCategories {
         "checkin" to "打卡",
         "message" to "消息操作",
         "menu" to "菜单与入口",
+        "friendhistory" to "好友历史",
         "appearance" to "外观",
         "cleanup" to "净化",
         "advanced" to "高级",
