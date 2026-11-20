@@ -105,6 +105,7 @@ class AuthoringSurfaceTest {
             listOf(
                 "AddModuleEntrance.kt",
                 "FloatingBottomBarConfig.kt",
+                "GroupCheckIn.kt",
                 "InjectConsole.kt",
                 "ModuleCommand.kt",
                 "QQTabLocator.kt",

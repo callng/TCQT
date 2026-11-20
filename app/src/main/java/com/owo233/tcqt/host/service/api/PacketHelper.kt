@@ -21,7 +21,12 @@ internal object PacketHelper {
         }
     }
 
-    fun sendRequest(serviceCmd: String, rawData: ByteArray, receiver: IReceiver? = null) {
+    fun sendRequest(
+        serviceCmd: String,
+        rawData: ByteArray,
+        configure: ToServiceMsg.() -> Unit = {},
+        receiver: IReceiver? = null,
+    ) {
         NewIntent(
             QQInterfaces.appRuntime.app,
             SSOEasyServlet::class.java
@@ -32,6 +37,7 @@ internal object PacketHelper {
                 serviceCmd
             ).apply {
                 putWupBuffer(packet(rawData))
+                configure()
                 if (receiver == null) isNeedCallback = false
             })
             receiver?.let {

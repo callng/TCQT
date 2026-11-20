@@ -32,7 +32,8 @@ import kotlin.test.assertTrue
 class RuntimeSettingsRegistrationTest {
 
     private val optionCtor = Regex(
-        "\\b(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption|pngIconOption)\\s*\\("
+        "\\b(?:booleanOption|intOption|multiIntOption|sliderOption|stringOption|pngIconOption|" +
+            "groupListOption)\\s*\\("
     )
 
     /** 取注册单例：Kotlin `object` 直接读 `INSTANCE`，普通类走无参构造。 */

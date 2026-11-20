@@ -62,6 +62,8 @@ abstract class Feature(
      * 例如 `ModuleUpdate` 只在非 Zygisk 且 `apiLevel < 102` 时默认开启。
      */
     private val defaultEnabledProvider: (() -> Boolean)? = null,
+    /** 设置详情页里的手动动作标题，见 [ActionSpec.actionLabel]。 */
+    final override val actionLabel: String? = null,
 ) : ActionSpec, PipelineDecorator {
 
     /** [defaultEnabledProvider] 为 null 时使用的字面量默认值。 */
@@ -186,6 +188,18 @@ abstract class Feature(
         isHide: Boolean = false,
     ): StringOption = register(
         StringOption(key, settingKey, name, defaultValue, desc, placeholder, isHide)
+    )
+
+    /** 群列表勾选器：值为逗号分隔的群号，界面从宿主群列表勾选。 */
+    protected fun groupListOption(
+        settingKey: String,
+        name: String,
+        desc: String = "",
+    ): StringOption = register(
+        StringOption(
+            key, settingKey, name, "", desc, "",
+            isGroupPicker = true,
+        )
     )
 
     /** PNG 图标选择器，空值表示使用宿主默认图标。 */

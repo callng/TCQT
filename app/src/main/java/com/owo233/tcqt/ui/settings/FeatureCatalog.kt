@@ -111,7 +111,8 @@ internal object FeatureCatalog {
                     uiType = action.uiType,
                     textAreas = textAreas,
                     optionGroups = optionGroups,
-                    sliders = sliders
+                    sliders = sliders,
+                    actionLabel = action.actionLabel
                 )
             )
         }

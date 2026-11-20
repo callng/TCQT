@@ -275,6 +275,20 @@ private fun LazyListScope.featureDetail(
             }
         }
     }
+    if (item.initReady && item.uiType != ActionUiType.ENTRY) {
+        item.feature.actionLabel?.let { label ->
+            settingsGroupTitle("操作")
+            item(key = "feature_action:${item.key}") {
+                PreferenceSegment(first = true, last = true) {
+                    ArrowPreference(
+                        title = label,
+                        insideMargin = SettingsRowPadding,
+                        onClick = { onFeatureClick(item.key) },
+                    )
+                }
+            }
+        }
+    }
     if (item.initReady) {
         val fieldCount = item.optionGroups.size + item.sliders.size + item.textAreas.size
         if (fieldCount > 0) settingsGroupTitle("选项")

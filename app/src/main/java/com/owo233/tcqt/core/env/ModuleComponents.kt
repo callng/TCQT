@@ -14,4 +14,8 @@ object ModuleComponents {
     /** 通知渠道管理页（`ui/settings/NotificationChannelManagerActivity.kt`）。 */
     const val NOTIFICATION_CHANNEL_ACTIVITY: String =
         "com.owo233.tcqt.ui.settings.NotificationChannelManagerActivity"
+
+    /** 群打卡监控页（`ui/settings/GroupCheckInLogActivity.kt`）。 */
+    const val GROUP_CHECK_IN_LOG_ACTIVITY: String =
+        "com.owo233.tcqt.ui.settings.GroupCheckInLogActivity"
 }

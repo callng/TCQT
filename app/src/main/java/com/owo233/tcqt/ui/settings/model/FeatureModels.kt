@@ -15,7 +15,8 @@ data class SettingFeature(
     val uiType: ActionUiType,
     val textAreas: List<TextAreaField>,
     val optionGroups: List<FeatureOptionGroup>,
-    val sliders: List<FeatureSliderField>
+    val sliders: List<FeatureSliderField>,
+    val actionLabel: String? = null,
 ) {
 
     val desc: String

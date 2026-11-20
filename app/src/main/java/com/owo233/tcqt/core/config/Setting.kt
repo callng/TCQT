@@ -87,6 +87,7 @@ class BooleanSetting(
  * @param placeholder 输入框占位提示文案；为空时界面自动使用“填写{name}内容”
  * @param hasTextAreas 预留字段，保持默认 false
  * @param isPngIcon 使用 PNG 选择器，值为内嵌 PNG 的 Base64，空值使用默认图标
+ * @param isGroupPicker 使用群列表勾选器，值为逗号分隔的群号
  */
 class StringSetting(
     override val key: String,
@@ -97,6 +98,7 @@ class StringSetting(
     val hasTextAreas: Boolean = false,
     override val isHide: Boolean = false,
     val isPngIcon: Boolean = false,
+    val isGroupPicker: Boolean = false,
 ) : Setting<String>()
 
 /**

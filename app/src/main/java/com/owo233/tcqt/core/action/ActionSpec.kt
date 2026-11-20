@@ -48,6 +48,13 @@ interface ActionSpec {
 
     val settings: List<Setting<*>> get() = emptyList()
 
+    /**
+     * 设置详情页里的手动动作标题；返回非 null 时渲染为可点击的一行。
+     *
+     * 仅对 [ActionUiType.SWITCH] 功能生效，点击后会回调 [onUiClick]。
+     */
+    val actionLabel: String? get() = null
+
     val processes: Set<ActionProcess> get() = ActionRegistry.metadataFor(javaClass)?.processes ?: DEFAULT_PROCESSES
 
     /**

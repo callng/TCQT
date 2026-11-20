@@ -20,6 +20,7 @@ object FeatureCategories {
     private val LABELS: Map<String, String> = linkedMapOf(
         "general" to "基础",
         "chat" to "聊天",
+        "checkin" to "打卡",
         "message" to "消息操作",
         "menu" to "菜单与入口",
         "appearance" to "外观",

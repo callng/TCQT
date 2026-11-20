@@ -179,6 +179,7 @@ class StringOption internal constructor(
     val placeholder: String,
     override val isHide: Boolean = false,
     val isPngIcon: Boolean = false,
+    val isGroupPicker: Boolean = false,
 ) : Option<String>() {
 
     override var value: String
@@ -188,5 +189,8 @@ class StringOption internal constructor(
     override fun set(value: String) = TCQTSetting.setString(key, value)
 
     override fun toSetting(): Setting<String> =
-        StringSetting(key, name, defaultValue, desc, placeholder, isHide = isHide, isPngIcon = isPngIcon)
+        StringSetting(
+            key, name, defaultValue, desc, placeholder,
+            isHide = isHide, isPngIcon = isPngIcon, isGroupPicker = isGroupPicker,
+        )
 }
