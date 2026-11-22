@@ -42,5 +42,6 @@ constexpr KernelProfile KERNEL_PROFILES[] = {
     {"9.3.75", "5233c03560845df1480c68f4afaa524b2b30cc11", {0x21d5de8, 0x21d3b08, 0x21d4944}, {0xb4002928, 0xb40048a8, 0xb4001ea8}, 0x174fdf0, 0xd10243ff},
     {"9.3.80", "2c9e6351154d98df1fcf13b4cd6b054c1d0590aa", {0x2214fe0, 0x2212d00, 0x2213b3c}, {0xb4002928, 0xb40048a8, 0xb4001ea8}, 0x177e0b4, 0xd10243ff},
     {"9.3.85", "744ad9d18fb2233fb3a36b44b79c6fbed69b39ed", {0x225bd8c, 0x2259aac, 0x225a8e8}, {0xb4002928, 0xb40048a8, 0xb4001ea8}, 0x17a9df4, 0xd10243ff},
+    {"9.3.90", "5599c763105bacfb5d7014cc80124622a42aaa94", {0x22cf800, 0x22cd520, 0x22ce35c}, {0xb4002928, 0xb40048a8, 0xb4001ea8}, 0x17f85f4, 0xd10243ff},
 };
 } // namespace tcqt::recall

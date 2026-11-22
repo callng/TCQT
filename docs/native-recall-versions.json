@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "QQ arm64 APKs present in D:/QQAPK, 9.2.30 through 9.3.85",
+  "scope": "QQ arm64 APKs present in D:/QQAPK, 9.2.30 through 9.3.90",
   "validation": "All listed kernels: static ARM64/ELF verification. QQ 9.3.85 / Android 17 / LSPosed: native friend/group events and gray tips observed. Later upper-marker screenshot was taken after Java mode became active; Native upper reminders require confirmation. Temporary sessions, older hosts and Zygisk require host regression.",
   "kernels": [
     {
@@ -2038,6 +2038,127 @@
           ]
         },
         "group_worker": "0x226e7b8"
+      }
+    },
+    {
+      "apk": "Android_9.3.90.43520_64.apk",
+      "build_id": "5599c763105bacfb5d7014cc80124622a42aaa94",
+      "sha256": "772e58fcb646791deb40b90655dc194bbdbd287202e93ebdaa9d442b7d85739a",
+      "anchors": {
+        "ReplaceToRecallMsg": [
+          {
+            "xref": "0x22cd878",
+            "function": "0x22cd504",
+            "end": "0x22cde70"
+          }
+        ],
+        "ReplaceToTracelessRecallMsgByNotify": [
+          {
+            "xref": "0x22ce4f8",
+            "function": "0x22ce344",
+            "end": "0x22ce750"
+          },
+          {
+            "xref": "0x22ce6cc",
+            "function": "0x22ce344",
+            "end": "0x22ce750"
+          }
+        ],
+        "HandleRecallMsgNotify": [
+          {
+            "xref": "0x22e0b88",
+            "function": "0x22e0494",
+            "end": "0x22e0c84"
+          }
+        ],
+        "HandleRecallNotifyInAndrSilence": [
+          {
+            "xref": "0x22cf948",
+            "function": "0x22cf7cc",
+            "end": "0x22cff04"
+          },
+          {
+            "xref": "0x22cf980",
+            "function": "0x22cf7cc",
+            "end": "0x22cff04"
+          }
+        ],
+        "OnRecallMsgNotifyWithLocalRecord": [
+          {
+            "xref": "0x22d1aa0",
+            "function": "0x22d198c",
+            "end": "0x22d1b5c"
+          }
+        ],
+        "[Msg] on grp recall nfy ! frm:{} to:{}, pr:{} seq:{} rd:{} t:{} op_uid:{} op_t:{} is_off:{} trl_flag:{} is_andr_silence:{}": [
+          {
+            "xref": "0x22e2874",
+            "function": "0x22e222c",
+            "end": "0x22e29a4"
+          }
+        ]
+      },
+      "layout": {
+        "notify_scalars": {
+          "seq": "0x20",
+          "client_seq": "0x28",
+          "random": "0x30",
+          "time": "0x40",
+          "server_id": "0x38"
+        },
+        "libcxx_string_view": "0x15b85c0",
+        "record_getter_loads": {
+          "0x0": [
+            "0x22ce36c",
+            "0x22dd620",
+            "0x22dd728",
+            "0x22ddc4c",
+            "0x22de560",
+            "0x22de570",
+            "0x22de580"
+          ],
+          "0x8": [
+            "0x22dd8d8"
+          ],
+          "0x18": [
+            "0x22cd5f0",
+            "0x22cd610",
+            "0x22cd6c8",
+            "0x22dd6a8"
+          ],
+          "0x40": [
+            "0x22cd790",
+            "0x22cd95c",
+            "0x22cda58",
+            "0x22ddc9c",
+            "0x22df2e0"
+          ],
+          "0xa0": [
+            "0x22cdba8",
+            "0x22cdd88",
+            "0x22de330",
+            "0x22dee6c"
+          ]
+        },
+        "group_worker": "0x22e222c"
+      },
+      "profile": {
+        "sites": [
+          {
+            "offset": "0x22cf800",
+            "instruction": "0xb4002928"
+          },
+          {
+            "offset": "0x22cd520",
+            "instruction": "0xb40048a8"
+          },
+          {
+            "offset": "0x22ce35c",
+            "instruction": "0xb4001ea8"
+          }
+        ],
+        "session_query": "0x17f85f4",
+        "query_instruction": "0xd10243ff"
       }
     }
   ]

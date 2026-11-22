@@ -191,9 +191,13 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
-    for apk in sorted(args.apk_directory.glob('9.*.apk'), key=lambda p: [int(x) for x in p.name.split('_')[0].split('.')]):
-        version = tuple(int(x) for x in apk.name.split('_')[0].split('.')[:3])
-        if not (9, 2, 30) <= version <= (9, 3, 85):
+    apk_files = list(args.apk_directory.glob('9.*.apk')) + list(args.apk_directory.glob('Android_9.*.apk'))
+    def apk_version(path):
+        name = path.name.removeprefix('Android_')
+        return tuple(int(x) for x in name.split('_')[0].split('.')[:3])
+    for apk in sorted(apk_files, key=apk_version):
+        version = apk_version(apk)
+        if not (9, 2, 30) <= version <= (9, 3, 90):
             continue
         destination = args.output / apk.stem
         destination.mkdir(exist_ok=True)
@@ -213,7 +217,7 @@ def main():
     (args.output / 'inventory.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
     profiles = {}
     for result in results:
-        version = '.'.join(result['apk'].split('_')[0].split('.')[:3])
+        version = '.'.join(str(part) for part in apk_version(Path(result['apk'])))
         if result['build_id'] in profiles:
             assert profiles[result['build_id']]['sha256'] == result['sha256']
             profiles[result['build_id']]['versions'].append(version)

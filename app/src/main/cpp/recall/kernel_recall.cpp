@@ -19,7 +19,7 @@
 #include "kernel_profiles.h"
 #include "kernel_scan.h"
 
-// Validated on QQ 9.2.30–9.3.85 ARM64; unknown builds use native discovery.
+// Validated on QQ 9.2.30–9.3.90 ARM64; unknown builds use native discovery.
 // See docs/native-recall-kernel-9.3.85.md for the
 // instruction sites, native layouts and caller evidence. No JNI push hooks.
 namespace tcqt::recall {
