@@ -1,16 +1,14 @@
 package com.owo233.tcqt.features.cleanup
 
 import android.app.Activity
-import android.content.Context
-import android.util.AttributeSet
 import android.view.View
-import android.widget.FrameLayout
 import com.owo233.tcqt.annotations.RegisterAction
 import com.owo233.tcqt.api.Feature
 import com.owo233.tcqt.core.action.ActionProcess
 import com.owo233.tcqt.core.env.HookEnv
 import com.owo233.tcqt.core.env.QQVersion
 import com.owo233.tcqt.core.env.TCQTBuild
+import com.owo233.tcqt.core.env.clazz
 import com.owo233.tcqt.core.env.isFlagEnabled
 import com.owo233.tcqt.core.env.toClass
 import com.owo233.tcqt.core.hook.MethodHookParam
@@ -25,6 +23,7 @@ import com.owo233.tcqt.core.log.Log
 import com.owo233.tcqt.core.proto.GlobalJson
 import com.owo233.tcqt.core.reflect.callMethod
 import com.owo233.tcqt.core.reflect.findMethod
+import com.owo233.tcqt.core.reflect.getObjectOrNull
 import com.owo233.tcqt.host.QQInterfaces
 import com.tencent.qphone.base.remote.FromServiceMsg
 import kotlinx.serialization.Serializable
@@ -35,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 object DisableDialog : Feature(
     key = "disable_dialog",
     name = "屏蔽烦人弹窗",
-    desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级弹窗」及「灰度版本体验」及「社交封禁提醒」弹窗。",
+    desc = "将一些烦人的弹窗给屏蔽掉，现支持「版本升级」「灰度版本」「社交封禁」以及「三方跳转」弹窗。",
 ) {
 
     private val options by multiIntOption(
@@ -72,7 +71,7 @@ object DisableDialog : Feature(
     }
 
     private fun disableNewVersionDialog() {
-        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_20)) {
+        if (HookEnv.requireMinQQVersion(QQVersion.QQ_9_2_15)) {
             "com.tencent.mobileqq.upgrade.ui.dialog.UpgradeActivity"
         } else {
             "com.tencent.mobileqq.upgrade.activity.UpgradeActivity"
@@ -84,13 +83,18 @@ object DisableDialog : Feature(
             true
         }
 
-        "com.tencent.biz.qui.noticebar.view.VQUINoticeBarLayout".toClass
-            .getDeclaredConstructor(Context::class.java, AttributeSet::class.java)
-            .hookAfter { param ->
-                val view = requireNotNull(param.thisObject) as FrameLayout
-                view.visibility = View.GONE
-                view.layoutParams = FrameLayout.LayoutParams(0, 0)
+        listOf(
+            "com.tencent.mobileqq.upgrade.ui.banner.UpgradeBannerProcessor",
+            "com.tencent.mobileqq.upgrade.ui.banner.InstallUpgradeBannerProcessor",
+        ).forEach { className ->
+            className.clazz?.findMethod {
+                name = "updateBanner"
+                paramCount = 2
+            }?.hookAfter { param ->
+                val banner = param.args[0] ?: return@hookAfter
+                (banner.getObjectOrNull("c") as? View)?.visibility = View.GONE
             }
+        }
     }
 
     private fun disableGrayCheckDialog() {
