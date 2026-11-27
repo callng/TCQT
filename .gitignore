@@ -23,6 +23,7 @@ gen/
 out/
 docs/*
 !docs/ui-guidelines.md
+!docs/chat-position.md
 !docs/zygisk-companion.md
 !docs/zygisk-art-compatibility.md
 !docs/zygisk-plt-compatibility.md
