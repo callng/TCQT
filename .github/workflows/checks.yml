@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: bash tools/prepare-android-sdk.sh
       - name: Run regression gates
-        run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache --refresh-dependencies
+        run: ./gradlew :libs:core:test :libs:processor:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --configuration-cache --refresh-dependencies --info --stacktrace
       - name: Verify debug package
         run: |
           apk_file=$(find app/build/outputs/apk/debug -name '*.apk' -type f -print -quit)
