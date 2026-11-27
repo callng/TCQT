@@ -187,7 +187,11 @@ internal class FarmAccountDialog(
                                 useLabelAsPlaceholder = true,
                                 singleLine = true,
                                 enabled = !working,
-                                visualTransformation = remember { PasswordVisualTransformation() },
+                                // Miuix 0.9.4 TextField uses the value/VisualTransformation API.
+                                visualTransformation = remember {
+                                    @Suppress("DEPRECATION")
+                                    PasswordVisualTransformation()
+                                },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
                                 keyboardActions = KeyboardActions(onGo = { enter(null, customCode) }),
                                 modifier = Modifier.weight(1f),

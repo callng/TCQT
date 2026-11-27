@@ -49,6 +49,8 @@ internal object TabViewOperations {
         .filter { it !== tab && it.isVisible && it.width > 0 && it.height > 0 && !QQTabLocator.isBlurWrapper(it) }
         .maxByOrNull { it.width.toLong() * it.height }
 
+    // QQ still owns a TabWidget; its strip API is required to update that existing view.
+    @Suppress("DEPRECATION")
     fun disableTabWidgetStrips(tab: View) {
         if (tab is TabWidget) { tab.isStripEnabled = false; tab.dividerDrawable = null }
     }

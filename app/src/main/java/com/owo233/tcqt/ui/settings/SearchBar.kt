@@ -61,6 +61,8 @@ internal fun SearchBar(query: String, onQueryChange: (String) -> Unit, onBackCli
         Spacer(Modifier.width(4.dp))
         // Miuix 0.9.4 InputField only exposes String, so it cannot accept a selection.
         // Keep its expanded appearance and focus-on-entry behavior with an editable value.
+        // Retain TextFieldValue's saved selection/composition and synchronous query callbacks.
+        @Suppress("DEPRECATION")
         BasicTextField(
             value = value,
             onValueChange = {

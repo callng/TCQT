@@ -127,6 +127,8 @@ internal object ZygiskHookBridge {
 
     @JvmStatic
     @Keep
+    // The typed hook entry points pair each mode with its callback signature.
+    @Suppress("UNCHECKED_CAST")
     fun dispatch(hookId: Long, thisObject: Any?, args: Array<Any?>): Any? {
         val slot = checkNotNull(lifecycle.forId(hookId)) { "Unpublished Hook: $hookId" }
         val entry = slot.value
@@ -274,14 +276,14 @@ internal object ZygiskHookBridge {
         fun boxInfo(prim: Class<*>): BoxInfo? {
             if (!prim.isPrimitive || prim == Void.TYPE) return null
             val wrapperClass: Class<*> = when (prim) {
-                Int::class.javaPrimitiveType -> java.lang.Integer::class.java
-                Long::class.javaPrimitiveType -> java.lang.Long::class.java
-                Boolean::class.javaPrimitiveType -> java.lang.Boolean::class.java
-                Byte::class.javaPrimitiveType -> java.lang.Byte::class.java
-                Char::class.javaPrimitiveType -> java.lang.Character::class.java
-                Short::class.javaPrimitiveType -> java.lang.Short::class.java
-                Float::class.javaPrimitiveType -> java.lang.Float::class.java
-                Double::class.javaPrimitiveType -> java.lang.Double::class.java
+                Int::class.javaPrimitiveType -> Int::class.javaObjectType
+                Long::class.javaPrimitiveType -> Long::class.javaObjectType
+                Boolean::class.javaPrimitiveType -> Boolean::class.javaObjectType
+                Byte::class.javaPrimitiveType -> Byte::class.javaObjectType
+                Char::class.javaPrimitiveType -> Char::class.javaObjectType
+                Short::class.javaPrimitiveType -> Short::class.javaObjectType
+                Float::class.javaPrimitiveType -> Float::class.javaObjectType
+                Double::class.javaPrimitiveType -> Double::class.javaObjectType
                 else -> return null
             }
             val unboxName = when (prim) {
@@ -356,7 +358,7 @@ internal object ZygiskHookBridge {
 
             // 2. self（静态方法为 null）
             if (receiver == null) {
-                code.loadConstant(selfLocal as com.android.dx.Local<Nothing?>, null)
+                code.loadConstant(selfLocal, null)
             } else {
                 code.cast(selfLocal, receiver)
             }

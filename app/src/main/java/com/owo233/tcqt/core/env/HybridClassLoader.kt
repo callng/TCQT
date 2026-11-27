@@ -43,6 +43,8 @@ object HybridClassLoader : ClassLoader(Context::class.java.classLoader) {
                             .apply { isAccessible = true }
                             .get(element) as? DexFile
 
+                        // ClassLoader has no replacement for enumerating names without loading classes.
+                        @Suppress("DEPRECATION")
                         dex?.entries()?.let { entries ->
                             while (entries.hasMoreElements()) {
                                 add(entries.nextElement().replace('/', '.'))

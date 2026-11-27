@@ -175,6 +175,8 @@ object EditAndResend : Feature(
                     runCatching {
                         val imm = editText.context
                             .getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                        // Keep implicit-show semantics on older Android versions when QQ hides the IME.
+                        @Suppress("DEPRECATION")
                         imm?.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
                     }
                 }, 120L)

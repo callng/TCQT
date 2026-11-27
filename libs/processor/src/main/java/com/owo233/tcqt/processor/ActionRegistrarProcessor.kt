@@ -1,5 +1,6 @@
 package com.owo233.tcqt.processor
 
+import com.google.devtools.ksp.buildApiFeatures
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
@@ -14,6 +15,10 @@ class ActionRegistrarProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger
 ) : SymbolProcessor {
+
+    override val apiFeatures = buildApiFeatures {
+        enableBackingFields = true
+    }
 
     private val table = RegistrationTable()
     private val inputs = linkedMapOf<String, KSFile>()
@@ -42,7 +47,7 @@ class ActionRegistrarProcessor(
             if (annotations.size != 1) { error("Duplicate @RegisterAction annotation", declaration); continue }
             val args = annotations.single().arguments.associate { it.name?.asString() to it.value }
             if (args["enabled"] == false) continue
-            if (!declaration.validate(enableNewFeatures = true) || spec == null) { deferred += declaration; continue }
+            if (!declaration.validate(apiFeatures = apiFeatures) || spec == null) { deferred += declaration; continue }
             val name = declaration.qualifiedName?.asString()
             if (name == null) { error("Registered action must have a qualified name", declaration); continue }
             val inaccessible = generateSequence<KSDeclaration>(declaration) { it.parentDeclaration }

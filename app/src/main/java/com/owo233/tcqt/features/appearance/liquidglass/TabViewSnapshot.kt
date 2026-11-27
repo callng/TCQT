@@ -53,6 +53,8 @@ internal class TabViewSnapshot(tab: ViewGroup, originalAlpha: Float = tab.alpha)
         }
     }
 
+    // Capture and restore QQ's existing TabWidget rather than replacing the host widget.
+    @Suppress("DEPRECATION")
     private class ViewState(target: View, private val alpha: Float) {
         val view = WeakReference(target)
         val params = target.layoutParams
