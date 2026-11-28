@@ -31,6 +31,8 @@ object ChatPositionCompatibilityMain {
     fun main(args: Array<String>) {
         require(args.size == 3) { "Expected command, library path and fixture directory/APK" }
         System.load(args[1])
+        @Suppress("DEPRECATION")
+        if (Looper.getMainLooper() == null) Looper.prepareMainLooper()
         val report = JSONObject().put("command", args[0])
         when (args[0]) {
             "compat" -> {
@@ -67,12 +69,16 @@ object ChatPositionCompatibilityMain {
                 HookEngineManager.engine = Proxy.newProxyInstance(
                     IHookEngine::class.java.classLoader, arrayOf(IHookEngine::class.java),
                 ) { _, method, values ->
-                    check(method.name == "hookBefore") { "Unexpected engine call: $method" }
+                    check(method.name in setOf("hookBefore", "hookAfter")) { "Unexpected engine call: $method" }
                     hooks += values[0] as Member
                     Unhook { }
                 } as IHookEngine
                 RememberChatPosition.onRun(Application(), ActionProcess.MAIN)
-                check(hooks.size == 3) { "Expected preload, focus and exit hooks: $hooks" }
+                check(hooks.size == 11) { "Expected position, unread and button hooks: $hooks" }
+                loader.loadClass("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService").getMethod(
+                    "getLatestDbMsgs", loader.loadClass("com.tencent.qqnt.kernelpublic.nativeinterface.Contact"),
+                    Int::class.java, loader.loadClass("com.tencent.qqnt.kernel.nativeinterface.IMsgOperateCallback"),
+                )
                 report.put("hooks", JSONArray(hooks.map(Member::toString)))
             }
             "inspect" -> {

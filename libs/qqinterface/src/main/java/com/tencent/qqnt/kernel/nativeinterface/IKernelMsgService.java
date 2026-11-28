@@ -8,6 +8,9 @@ public interface IKernelMsgService {
     final class CppProxy implements IKernelMsgService {
 
         @Override
+        public void getLatestDbMsgs(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, int count, IMsgOperateCallback callback) {}
+
+        @Override
         public void setMsgRead(Contact contact, IOperateCallback callback) {}
 
         @Override
@@ -83,6 +86,8 @@ public interface IKernelMsgService {
 
         }
     }
+
+    void getLatestDbMsgs(com.tencent.qqnt.kernelpublic.nativeinterface.Contact contact, int count, IMsgOperateCallback callback);
 
     /**
      * 已被删除的旧版本接口,新版本不要使用
